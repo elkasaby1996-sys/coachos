@@ -1,16 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  Archive,
-  Copy,
-  Layers3,
-  Plus,
-  Search,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { Copy, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Badge } from "../../components/ui/badge";
@@ -18,13 +11,13 @@ import {
   DashboardCard,
   EmptyState,
   Skeleton,
-  StatCard,
   StatusPill,
 } from "../../components/ui/coachos";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
@@ -55,6 +48,13 @@ export function PtNutritionPage() {
   const [templateActionError, setTemplateActionError] = useState<string | null>(
     null,
   );
+  const [templateActionErrorSource, setTemplateActionErrorSource] = useState<
+    "dialog" | "page" | null
+  >(null);
+  const [deleteTarget, setDeleteTarget] = useState<NutritionTemplate | null>(
+    null,
+  );
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting">("idle");
   const [typeFilter, setTypeFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
   const [name, setName] = useState("");
@@ -91,20 +91,10 @@ export function PtNutritionPage() {
       return bTime - aTime;
     });
   }, [templates, search, sortBy, typeFilter]);
-  const activeTemplatesCount = useMemo(
-    () => templates.filter((template) => template.is_active).length,
-    [templates],
-  );
-  const archivedTemplatesCount = useMemo(
-    () => templates.filter((template) => !template.is_active).length,
-    [templates],
-  );
   const buildTemplateTags = (template: NutritionTemplate) => {
-    const tags = [
-      formatNutritionTypeTag(template.nutrition_type_tag),
+    return [
       `Updated ${formatRelativeTime(template.updated_at ?? template.created_at)}`,
-    ].filter((value): value is string => Boolean(value));
-    return tags.slice(0, 2);
+    ];
   };
   const nutritionTypeOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -237,11 +227,8 @@ export function PtNutritionPage() {
 
   const deleteTemplate = async (template: NutritionTemplate) => {
     if (!canManageDelivery) return;
-    const confirmed = window.confirm(
-      `Delete nutrition program "${template.name}"? This cannot be undone.`,
-    );
-    if (!confirmed) return;
 
+    setDeleteStatus("deleting");
     setTemplateActionError(null);
     const { error } = await supabase
       .from("nutrition_templates")
@@ -249,15 +236,21 @@ export function PtNutritionPage() {
       .eq("id", template.id);
 
     if (error) {
+      setDeleteStatus("idle");
       setTemplateActionError(
         error.message.includes("violates foreign key constraint")
           ? "This nutrition program is already assigned to a client and cannot be deleted."
           : error.message,
       );
+      setTemplateActionErrorSource("dialog");
       return;
     }
 
     await invalidateTemplates();
+    setDeleteStatus("idle");
+    setDeleteTarget(null);
+    setTemplateActionError(null);
+    setTemplateActionErrorSource(null);
   };
 
   const loading = workspaceLoading || templatesQuery.isLoading;
@@ -269,56 +262,72 @@ export function PtNutritionPage() {
 
   return (
     <div className="space-y-6">
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && deleteStatus !== "deleting") {
+            setDeleteTarget(null);
+            setTemplateActionErrorSource((source) =>
+              source === "dialog" ? "page" : source,
+            );
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Delete nutrition program?</DialogTitle>
+            <DialogDescription>
+              This deletes{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name ?? "this nutrition program"}
+              </span>{" "}
+              from your library. Existing client assignments prevent deletion;
+              historical records are preserved.
+            </DialogDescription>
+          </DialogHeader>
+          {templateActionError && templateActionErrorSource === "dialog" ? (
+            <Alert tone="danger">
+              <AlertTitle>Delete failed</AlertTitle>
+              <AlertDescription>{templateActionError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={deleteStatus === "deleting"}
+              onClick={() => {
+                setDeleteTarget(null);
+                setTemplateActionErrorSource((source) =>
+                  source === "dialog" ? "page" : source,
+                );
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
+              disabled={deleteStatus === "deleting" || !deleteTarget}
+              onClick={() => {
+                if (deleteTarget) void deleteTemplate(deleteTarget);
+              }}
+            >
+              {deleteStatus === "deleting"
+                ? "Deleting..."
+                : "Delete nutrition program"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <WorkspacePageHeader
         title="Nutrition Programs"
         description="Build reusable multi-week nutrition systems and keep edits close to the list."
       />
 
-      <div className="flex justify-end">
-        {canManageDelivery ? (
-          <Button
-            onClick={() => {
-              setCreateError(null);
-              setCreateOpen(true);
-            }}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            New template
-          </Button>
-        ) : null}
-      </div>
-
-      <div className="page-kpi-block grid gap-4 md:grid-cols-3">
-        <StatCard
-          label="Nutrition Programs"
-          value={templates.length}
-          helper="Reusable plans ready to assign"
-          icon={Layers3}
-          accent
-          module="coaching"
-          className="h-full"
-        />
-        <StatCard
-          label="Active"
-          value={activeTemplatesCount}
-          helper="Available for current assignments"
-          icon={Sparkles}
-          module="coaching"
-          iconClassName="text-[var(--state-success-text)]"
-          className="h-full"
-        />
-        <StatCard
-          label="Archived"
-          value={archivedTemplatesCount}
-          helper="Stored for reference without clutter"
-          icon={Archive}
-          module="coaching"
-          iconClassName="text-muted-foreground"
-          className="h-full"
-        />
-      </div>
-
-      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem] xl:items-center">
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem_auto] xl:items-center">
         <div className="relative min-w-0 flex-1">
           <Search className="app-search-icon h-4 w-4" />
           <Input
@@ -350,12 +359,25 @@ export function PtNutritionPage() {
           <option value="updated">Sort by updated</option>
           <option value="name">Sort by name</option>
         </Select>
+        {canManageDelivery ? (
+          <Button
+            className="w-full whitespace-nowrap xl:w-auto"
+            onClick={() => {
+              setCreateError(null);
+              setCreateOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            New template
+          </Button>
+        ) : null}
       </div>
 
-      {templateActionError ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {templateActionError}
-        </div>
+      {templateActionError && templateActionErrorSource !== "dialog" ? (
+        <Alert tone="danger">
+          <AlertTitle>Nutrition action failed</AlertTitle>
+          <AlertDescription>{templateActionError}</AlertDescription>
+        </Alert>
       ) : null}
 
       {loading ? (
@@ -364,12 +386,26 @@ export function PtNutritionPage() {
             <Skeleton key={i} className="h-52 w-full" />
           ))}
         </div>
+      ) : templatesQuery.error ? (
+        <Alert tone="danger">
+          <AlertTitle>Unable to load nutrition programs</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>Please retry shortly.</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => void templatesQuery.refetch()}
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : filteredTemplates.length === 0 ? (
         templates.length === 0 ? (
           <DashboardCard title="No nutrition programs" className="bg-card/90">
             <EmptyState
               title="Create the first program"
-              description="Start with one template."
               actionLabel={canManageDelivery ? "Create program" : undefined}
               onAction={
                 canManageDelivery ? () => setCreateOpen(true) : undefined
@@ -403,12 +439,7 @@ export function PtNutritionPage() {
                   {buildTemplateTags(template).map((tag) => (
                     <Badge
                       key={`${template.id}-${tag}`}
-                      variant={
-                        tag ===
-                        formatNutritionTypeTag(template.nutrition_type_tag)
-                          ? "secondary"
-                          : "muted"
-                      }
+                      variant="muted"
                       className="text-[10px] uppercase"
                     >
                       {tag}
@@ -441,7 +472,11 @@ export function PtNutritionPage() {
                         size="sm"
                         variant="ghost"
                         className="flex-1 text-destructive hover:text-destructive"
-                        onClick={() => deleteTemplate(template)}
+                        onClick={() => {
+                          setTemplateActionError(null);
+                          setTemplateActionErrorSource(null);
+                          setDeleteTarget(template);
+                        }}
                       >
                         <Trash2 className="mr-1 h-3.5 w-3.5" />
                         Delete

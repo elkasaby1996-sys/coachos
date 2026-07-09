@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -395,11 +394,6 @@ export function ClientHabitsPage() {
         title="Habits"
         subtitle="Log nutrition, recovery, and daily metrics."
         stateText={selectedDate || todayStr}
-        actions={
-          <Badge variant={isEditable ? "success" : "muted"}>
-            {isEditable ? "Open for edits" : "Locked"}
-          </Badge>
-        }
       />
 
       <SectionCard className="flex flex-wrap items-center justify-between gap-3">
@@ -722,23 +716,6 @@ export function ClientHabitsPage() {
                     />
                   </div>
                 </div>
-              </SectionCard>
-
-              <SectionCard className="space-y-3">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-foreground">Notes</p>
-                </div>
-                <textarea
-                  className="min-h-[96px] w-full rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  value={formState.notes}
-                  onChange={(event) =>
-                    setFormState((prev) => ({
-                      ...prev,
-                      notes: event.target.value,
-                    }))
-                  }
-                  disabled={!isEditable}
-                />
               </SectionCard>
 
               <StickyActionBar>

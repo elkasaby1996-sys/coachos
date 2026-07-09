@@ -69,6 +69,34 @@ describe("delivery-backed notification center contract", () => {
     expect(pageSource).toContain("Mark unread");
   });
 
+  it("keeps the PT notifications page concise", () => {
+    expect(pageSource).toContain('showActionLabel={audience !== "pt"}');
+    expect(pageSource).toContain('showTitle={audience !== "pt"}');
+    expect(pageSource).toContain('showTypeLabel={audience !== "pt"}');
+    expect(pageSource).toContain(
+      'surface={audience === "pt" ? "embedded" : "card"}',
+    );
+    expect(pageSource).toContain("sm:grid-cols-[minmax(0,1fr)_auto]");
+    expect(pageSource).not.toContain(
+      "Track the latest workspace activity and open anything that needs attention.",
+    );
+    expect(pageSource).not.toContain("Everything reviewed");
+    expect(pageSource).not.toContain(
+      "Use All to revisit recent workspace activity whenever you need context.",
+    );
+  });
+
+  it("keeps the PT mark-all action beside the notification list heading", () => {
+    const workspaceHeaderBlock = pageSource.match(
+      /<WorkspacePageHeader[\s\S]*?\/>/,
+    )?.[0];
+
+    expect(workspaceHeaderBlock).toBeTruthy();
+    expect(workspaceHeaderBlock).not.toContain("Mark all as read");
+    expect(pageSource).toContain('className="self-start"');
+    expect(pageSource).toContain("Mark all as read");
+  });
+
   it("keeps PT Hub notifications reachable from the PT Hub shell", () => {
     expect(appRoutes).toContain('path="notifications"');
     expect(appRoutes).toContain("<PtHubNotificationsPage />");

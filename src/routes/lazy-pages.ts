@@ -308,11 +308,6 @@ export const WorkspaceSettingsGeneralTab = lazy(() =>
     default: m.WorkspaceSettingsGeneralTab,
   })),
 );
-export const WorkspaceSettingsBrandTab = lazy(() =>
-  import("../pages/workspace/settings/tabs/brand").then((m) => ({
-    default: m.WorkspaceSettingsBrandTab,
-  })),
-);
 export const WorkspaceSettingsClientExperienceTab = lazy(() =>
   import("../pages/workspace/settings/tabs/client-experience").then((m) => ({
     default: m.WorkspaceSettingsClientExperienceTab,
@@ -401,6 +396,11 @@ export const ClientCheckinPage = lazy(() =>
 export const ClientMessagesPage = lazy(() =>
   import("../pages/client/messages").then((m) => ({
     default: m.ClientMessagesPage,
+  })),
+);
+export const ClientCoachMarketplacePage = lazy(() =>
+  import("../pages/client/coach-marketplace").then((m) => ({
+    default: m.ClientCoachMarketplacePage,
   })),
 );
 export const ClientProfilePage = lazy(() =>

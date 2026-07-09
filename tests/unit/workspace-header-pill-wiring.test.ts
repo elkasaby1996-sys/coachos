@@ -11,12 +11,27 @@ describe("workspace header pill wiring", () => {
     const ptLayout = readSource("src/components/layouts/pt-layout.tsx");
 
     expect(ptLayout).toContain("workspaceSettingsRouteMatch");
+    expect(ptLayout).toContain("const isWorkspaceSettingsRoute =");
+    expect(ptLayout).toContain(
+      "/^\\/(?:workspace|w)\\/[^/]+\\/settings(?:\\/|$)/",
+    );
     expect(ptLayout).toContain("const routeWorkspaceId =");
     expect(ptLayout).toContain(
       "const headerWorkspaceId = routeWorkspaceId ?? workspaceId",
     );
     expect(ptLayout).toContain("workspace.id === headerWorkspaceId");
     expect(ptLayout).toContain("switchWorkspace(routeWorkspaceId);");
+  });
+
+  it("keeps the PT shell header height stable on workspace settings routes", () => {
+    const ptLayout = readSource("src/components/layouts/pt-layout.tsx");
+
+    expect(ptLayout).toContain(
+      "const allowHeaderCondense = !isWorkspaceSettingsRoute;",
+    );
+    expect(ptLayout).toContain("if (!allowHeaderCondense) {");
+    expect(ptLayout).toContain("setHeaderCondensed(false);");
+    expect(ptLayout).toContain("[allowHeaderCondense, routeTransitionKey]");
   });
 
   it("uses fallback-and-heal wiring in PT Hub header pill when cached workspace is stale", () => {
@@ -36,6 +51,18 @@ describe("workspace header pill wiring", () => {
     expect(ptHubLayout).toContain('? "Repsync PT Hub"');
     expect(ptHubLayout).toContain(
       "{!inPtHubWorkspace && workspace.id === workspaceId ? (",
+    );
+  });
+
+  it("shows PT Hub profile publication status only on the Coach Profile route", () => {
+    const ptHubLayout = readSource("src/components/layouts/pt-hub-layout.tsx");
+
+    expect(ptHubLayout).toContain(
+      'const showProfileStatusPill = location.pathname === "/pt-hub/profile"',
+    );
+    expect(ptHubLayout).toContain("{showProfileStatusPill ? (");
+    expect(ptHubLayout).toContain(
+      '{t("common.profileStatus", "Profile status")}',
     );
   });
 });

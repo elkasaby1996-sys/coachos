@@ -20,6 +20,7 @@ import { useWorkspaceSettingsOutletContext } from "../outlet-context";
 
 type GeneralFormState = {
   workspaceName: string;
+  logoUrl: string;
   timezone: string;
   unitPreference: string;
   weekStartDay: string;
@@ -27,6 +28,7 @@ type GeneralFormState = {
 
 const emptyState: GeneralFormState = {
   workspaceName: "",
+  logoUrl: "",
   timezone: "UTC",
   unitPreference: "metric",
   weekStartDay: "monday",
@@ -66,11 +68,13 @@ export function WorkspaceSettingsGeneralTab() {
     () =>
       ({
         workspaceName: workspace?.name ?? "",
+        logoUrl: workspace?.logo_url ?? "",
         timezone: workspace?.timezone ?? emptyState.timezone,
         unitPreference: workspace?.unit_preference ?? emptyState.unitPreference,
         weekStartDay: workspace?.week_start_day ?? emptyState.weekStartDay,
       }) satisfies GeneralFormState,
     [
+      workspace?.logo_url,
       workspace?.name,
       workspace?.timezone,
       workspace?.unit_preference,
@@ -107,6 +111,7 @@ export function WorkspaceSettingsGeneralTab() {
         .from("workspaces")
         .update({
           name: nextName,
+          logo_url: form.logoUrl.trim() || null,
           timezone: form.timezone,
           unit_preference: form.unitPreference,
           week_start_day: form.weekStartDay,
@@ -187,6 +192,20 @@ export function WorkspaceSettingsGeneralTab() {
               You do not have permission to edit workspace settings.
             </p>
           ) : null}
+        </SettingsFieldRow>
+
+        <SettingsFieldRow
+          label="Workspace logo"
+          hint="Logo used by client-facing workspace surfaces where supported."
+        >
+          <Input
+            value={form.logoUrl}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, logoUrl: event.target.value }))
+            }
+            disabled={!canManage}
+            placeholder="https://example.com/workspace-logo.png"
+          />
         </SettingsFieldRow>
 
         <SettingsFieldRow

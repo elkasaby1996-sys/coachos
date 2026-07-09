@@ -173,22 +173,21 @@ const routeMeta: Record<
   "/pt-hub": {
     title: "Overview",
     titleKey: "ptHub.routes.overview.title",
-    description: "Run your coaching business from one dashboard.",
+    description: "",
     descriptionKey: "ptHub.routes.overview.description",
     module: "overview",
   },
   "/pt-hub/profile": {
     title: "Coach Profile",
     titleKey: "ptHub.routes.profile.title",
-    description: "Update the public trainer page clients will see.",
+    description: "",
     descriptionKey: "ptHub.routes.profile.description",
     module: "profile",
   },
   "/pt-hub/packages": {
     title: "Packages",
     titleKey: "ptHub.routes.packages.title",
-    description:
-      "Manage package visibility and ordering for public lead intake.",
+    description: "",
     descriptionKey: "ptHub.routes.packages.description",
     module: "profile",
   },
@@ -209,28 +208,28 @@ const routeMeta: Record<
   "/pt-hub/clients": {
     title: "Clients",
     titleKey: "ptHub.routes.clients.title",
-    description: "See every client across your coaching spaces.",
+    description: "",
     descriptionKey: "ptHub.routes.clients.description",
     module: "clients",
   },
   "/pt-hub/workspaces": {
     title: "Coaching Spaces",
     titleKey: "ptHub.routes.workspaces.title",
-    description: "Open, create, and manage your coaching spaces.",
+    description: "",
     descriptionKey: "ptHub.routes.workspaces.description",
     module: "coaching",
   },
   "/pt-hub/payments": {
     title: "Payments",
     titleKey: "ptHub.routes.payments.title",
-    description: "Check billing, invoices, and revenue at a glance.",
+    description: "",
     descriptionKey: "ptHub.routes.payments.description",
     module: "billing",
   },
   "/pt-hub/analytics": {
     title: "Analytics",
     titleKey: "ptHub.routes.analytics.title",
-    description: "Track inquiries, conversions, and client growth.",
+    description: "",
     descriptionKey: "ptHub.routes.analytics.description",
     module: "analytics",
   },
@@ -405,6 +404,7 @@ export function PtHubLayout() {
     meta: getWorkspaceSwitcherMeta(workspace),
   }));
   const inPtHubWorkspace = location.pathname.startsWith("/pt-hub");
+  const showProfileStatusPill = location.pathname === "/pt-hub/profile";
   const publishedProfile = Boolean(profileQuery.data?.isPublished);
   const fallbackWorkspace =
     workspaceId && workspaces.some((workspace) => workspace.id === workspaceId)
@@ -449,10 +449,6 @@ export function PtHubLayout() {
       )
       .reduce((total, item) => total + item.count, 0);
     const clientStats = clientStatsQuery.data;
-    const clientAttentionCount =
-      (clientStats?.atRiskClients ?? 0) +
-      (clientStats?.overdueCheckinClients ?? 0) +
-      (clientStats?.onboardingIncompleteClients ?? 0);
     const profileBlockers =
       readinessQuery.data?.checklist.filter((item) => !item.complete).length ??
       0;
@@ -461,7 +457,7 @@ export function PtHubLayout() {
       "/pt-hub/profile": profileBlockers,
       "/pt-hub/packages": hiddenOrDraftPackages,
       "/pt-hub/leads": leads.filter((lead) => lead.status === "new").length,
-      "/pt-hub/clients": clientAttentionCount,
+      "/pt-hub/clients": clientStats?.totalClients ?? 0,
     } satisfies Record<string, number>;
   }, [
     clientStatsQuery.data,
@@ -700,46 +696,48 @@ export function PtHubLayout() {
                   </div>
 
                   <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 xl:flex-none xl:flex-nowrap">
-                    <div className={getPtHubStatusPillClassName(isLightMode)}>
-                      <div
-                        className={getPtHubStatusPillIconClassName({
-                          isLightMode,
-                          published: publishedProfile,
-                        })}
-                      >
-                        <Globe className="h-4 w-4 [stroke-width:1.7]" />
-                      </div>
-                      <div className="min-w-0 flex-1 space-y-0.5">
-                        <p className="pt-hub-minor-label">
-                          {t("common.profileStatus", "Profile status")}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span
-                            aria-hidden
-                            className={cn(
-                              "h-2 w-2 rounded-full",
-                              getSemanticToneClasses(
-                                getSemanticToneForStatus(
-                                  publishedProfile
-                                    ? "Published"
-                                    : "Unpublished",
-                                ),
-                              ).marker,
-                            )}
-                          />
-                          <p
-                            className={getPtHubStatusPillToneClassName({
-                              isLightMode,
-                              published: publishedProfile,
-                            })}
-                          >
-                            {publishedProfile
-                              ? t("common.published", "Published")
-                              : t("common.unpublished", "Unpublished")}
+                    {showProfileStatusPill ? (
+                      <div className={getPtHubStatusPillClassName(isLightMode)}>
+                        <div
+                          className={getPtHubStatusPillIconClassName({
+                            isLightMode,
+                            published: publishedProfile,
+                          })}
+                        >
+                          <Globe className="h-4 w-4 [stroke-width:1.7]" />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <p className="pt-hub-minor-label">
+                            {t("common.profileStatus", "Profile status")}
                           </p>
+                          <div className="flex items-center gap-2">
+                            <span
+                              aria-hidden
+                              className={cn(
+                                "h-2 w-2 rounded-full",
+                                getSemanticToneClasses(
+                                  getSemanticToneForStatus(
+                                    publishedProfile
+                                      ? "Published"
+                                      : "Unpublished",
+                                  ),
+                                ).marker,
+                              )}
+                            />
+                            <p
+                              className={getPtHubStatusPillToneClassName({
+                                isLightMode,
+                                published: publishedProfile,
+                              })}
+                            >
+                              {publishedProfile
+                                ? t("common.published", "Published")
+                                : t("common.unpublished", "Unpublished")}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ) : null}
                     <NotificationBell
                       viewAllHref="/pt-hub/notifications"
                       buttonClassName={cn(

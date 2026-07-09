@@ -16,7 +16,6 @@ import {
   PtHubOverviewErrorState,
   PtHubOverviewLoadingState,
   PtHubRecentActivityCard,
-  PtHubQuickActionsCard,
   PtHubSetupNoticeStrip,
   PtHubSummaryCard,
 } from "../../features/pt-hub/components/pt-hub-overview-sections";
@@ -368,12 +367,6 @@ export function PtHubOverviewPage() {
               }}
             />
           </div>
-
-          <PtHubQuickActionsCard
-            title="Route shortcuts"
-            description="Use these when you need a direct jump outside the priority queue."
-            actions={dashboardModel.quickActions}
-          />
 
           {dashboardModel.mode !== "activation" ? (
             <div className="pt-hub-work-grid">

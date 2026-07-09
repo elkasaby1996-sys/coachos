@@ -57,6 +57,20 @@ export type WorkspaceTeamClientOption = {
   email: string | null;
 };
 
+const memberStatusRank: Record<WorkspaceMemberStatus, number> = {
+  active: 0,
+  suspended: 1,
+  removed: 2,
+};
+
+const memberRoleRank: Record<WorkspaceRole, number> = {
+  owner: 0,
+  admin: 1,
+  coach: 2,
+  assistant_coach: 3,
+  viewer: 4,
+};
+
 async function getSupabaseClient() {
   const { supabase } = await import("../../lib/supabase");
   return supabase;
@@ -64,6 +78,51 @@ async function getSupabaseClient() {
 
 function parseRpcJson<T>(value: unknown): T {
   return value as T;
+}
+
+function getMemberDedupeKey(member: WorkspaceTeamMemberRow) {
+  return member.userId || member.id || member.email?.toLowerCase() || "";
+}
+
+function shouldReplaceMember(
+  current: WorkspaceTeamMemberRow,
+  candidate: WorkspaceTeamMemberRow,
+) {
+  if (candidate.role === "owner" && current.role !== "owner") return true;
+  if (current.role === "owner" && candidate.role !== "owner") return false;
+
+  const candidateStatusRank = memberStatusRank[candidate.status] ?? 99;
+  const currentStatusRank = memberStatusRank[current.status] ?? 99;
+  if (candidateStatusRank !== currentStatusRank) {
+    return candidateStatusRank < currentStatusRank;
+  }
+
+  const candidateRoleRank = memberRoleRank[candidate.role] ?? 99;
+  const currentRoleRank = memberRoleRank[current.role] ?? 99;
+  if (candidateRoleRank !== currentRoleRank) {
+    return candidateRoleRank < currentRoleRank;
+  }
+
+  if (!current.id && candidate.id) return false;
+  if (current.id && !candidate.id) return true;
+
+  return false;
+}
+
+export function dedupeWorkspaceTeamMembers(members: WorkspaceTeamMemberRow[]) {
+  const deduped = new Map<string, WorkspaceTeamMemberRow>();
+
+  for (const member of members) {
+    const key = getMemberDedupeKey(member);
+    if (!key) continue;
+
+    const current = deduped.get(key);
+    if (!current || shouldReplaceMember(current, member)) {
+      deduped.set(key, member);
+    }
+  }
+
+  return Array.from(deduped.values());
 }
 
 export async function listWorkspaceTeamSettings(workspaceId: string) {
@@ -77,7 +136,7 @@ export async function listWorkspaceTeamSettings(workspaceId: string) {
   if (error) throw error;
   const summary = parseRpcJson<WorkspaceTeamSettingsSummary>(data);
   return {
-    members: summary.members ?? [],
+    members: dedupeWorkspaceTeamMembers(summary.members ?? []),
     pendingInvites: summary.pendingInvites ?? [],
   };
 }

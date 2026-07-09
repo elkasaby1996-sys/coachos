@@ -8,10 +8,11 @@ import {
   useRef,
   useState,
   type ComponentType,
+  type ReactNode,
 } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Badge } from "../../components/ui/badge";
+import { Badge, type BadgeVariant } from "../../components/ui/badge";
 import {
   Card,
   CardContent,
@@ -77,8 +78,6 @@ import { DashboardShell } from "../../components/pt/dashboard/DashboardShell";
 import {
   DashboardCard,
   EmptyState,
-  LifecycleBadge,
-  RiskBadge,
   StatCard,
   StatusPill,
   TagInfoBadge,
@@ -93,9 +92,14 @@ import {
   getClientLifecycleMeta,
   getClientLifecycleReason,
   getClientRiskFlagMeta,
-  getClientRiskState,
   normalizeClientRiskFlags,
 } from "../../lib/client-lifecycle";
+import {
+  getClientGlobalStatusDisplay,
+  type ClientGlobalStatusDisplay,
+  type ClientStatusBadgeDisplay,
+  type StatusTone,
+} from "../../lib/client-status-display";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useWorkspaceWriteAccess } from "../../features/workspace-team";
 import { usePtHubWorkspaces } from "../../features/pt-hub/lib/pt-hub";
@@ -235,6 +239,49 @@ const TRANSFERRED_OUT_CLIENT_RELATIONSHIP_COPY =
 const REMOVED_CLIENT_RELATIONSHIP_COPY =
   "This client was removed from active coaching. Reinvite them to reactivate this relationship.";
 
+const clientDetailStatusBadgeVariant: Record<StatusTone, BadgeVariant> = {
+  neutral: "neutral",
+  muted: "muted",
+  info: "info",
+  success: "success",
+  warning: "warning",
+  danger: "danger",
+};
+
+function getClientDetailStatusTitle(badge: ClientStatusBadgeDisplay) {
+  if (badge.kind === "relationship") {
+    return badge.key === "relationship:transferred_out"
+      ? "Transferred out relationship"
+      : "Removed relationship";
+  }
+  if (badge.kind === "lifecycle") return `${badge.label} lifecycle`;
+  return "Needs attention";
+}
+
+function ClientDetailInlineStatusBadges({
+  statusDisplay,
+}: {
+  statusDisplay: ClientGlobalStatusDisplay;
+}) {
+  if (statusDisplay.globalBadges.length === 0) return null;
+
+  return (
+    <div className="client-detail-header-status-badges flex flex-wrap items-center gap-2">
+      {statusDisplay.globalBadges.map((badge) => (
+        <span key={badge.key} className="inline-flex">
+          <TagInfoBadge
+            label={badge.label}
+            variant={clientDetailStatusBadgeVariant[badge.tone]}
+            title={getClientDetailStatusTitle(badge)}
+            description={badge.description ?? badge.label}
+            disabled={badge.kind === "lifecycle"}
+          />
+        </span>
+      ))}
+    </div>
+  );
+}
+
 const getClientRouteKeyFallback = (clientId: string | null | undefined) =>
   clientId
     ? `c-${clientId.split("-").join("").slice(0, 8).toLowerCase()}`
@@ -289,6 +336,92 @@ function AssignmentSnapshotCallout() {
       </p>
       <p className="mt-1 text-muted-foreground">{ASSIGNMENT_SNAPSHOT_NOTICE}</p>
     </div>
+  );
+}
+
+function AssignmentCardHeader({
+  title,
+  description,
+  status,
+}: {
+  title: ReactNode;
+  description: ReactNode;
+  status?: ReactNode;
+}) {
+  return (
+    <CardHeader className="gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <CardTitle>{title}</CardTitle>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+        {status ? <div className="shrink-0">{status}</div> : null}
+      </div>
+    </CardHeader>
+  );
+}
+
+function AssignmentMetaRow({
+  items,
+}: {
+  items: Array<{ label: string; value: ReactNode; helper?: ReactNode }>;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="rounded-xl border border-border/60 bg-muted/20 p-3"
+        >
+          <p className="text-xs text-muted-foreground">{item.label}</p>
+          <div className="mt-1 text-sm font-semibold text-foreground">
+            {item.value}
+          </div>
+          {item.helper ? (
+            <div className="mt-1 text-xs text-muted-foreground">
+              {item.helper}
+            </div>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AssignmentActionRow({
+  children,
+  danger,
+}: {
+  children: ReactNode;
+  danger?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-3 rounded-lg border p-3 text-xs sm:flex-row sm:items-center sm:justify-between",
+        danger
+          ? "border-destructive/25 bg-destructive/5 text-muted-foreground"
+          : "border-border/60 bg-muted/20 text-muted-foreground",
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function AssignmentReadOnlyNotice({
+  historical = false,
+}: {
+  historical?: boolean;
+}) {
+  return (
+    <AssignmentActionRow>
+      <p>
+        {historical
+          ? HISTORICAL_CLIENT_RELATIONSHIP_COPY
+          : "Assignment history is preserved for reference."}
+      </p>
+    </AssignmentActionRow>
   );
 }
 
@@ -403,12 +536,6 @@ const checkinFrequencyOptions = [
   { value: "biweekly", label: "Bi-weekly" },
   { value: "monthly", label: "Monthly" },
 ];
-
-const checkinTemplateStatusMap = {
-  default: { label: "Default", variant: "muted" },
-  override: { label: "Override", variant: "warning" },
-  fallback: { label: "Fallback", variant: "secondary" },
-} as const;
 
 const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null => {
   if (Array.isArray(value)) return value[0] ?? null;
@@ -821,6 +948,13 @@ export function PtClientDetailPage({
   const [unassignStatus, setUnassignStatus] = useState<
     "idle" | "saving" | "error"
   >("idle");
+  const [confirmAction, setConfirmAction] = useState<
+    | "workout-override"
+    | "pause-program"
+    | "switch-program"
+    | "unassign-program"
+    | null
+  >(null);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideDate, setOverrideDate] = useState<string | null>(null);
   const [overrideTemplateId, setOverrideTemplateId] = useState("");
@@ -886,7 +1020,6 @@ export function PtClientDetailPage({
   const [reviewPhotoPreview, setReviewPhotoPreview] =
     useState<CheckinPhotoRow | null>(null);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
-  const [attentionFlagDialogOpen, setAttentionFlagDialogOpen] = useState(false);
   const [profileEditStatus, setProfileEditStatus] = useState<"idle" | "saving">(
     "idle",
   );
@@ -1351,13 +1484,6 @@ export function PtClientDetailPage({
     defaultCheckinTemplate ??
     latestActiveCheckinTemplate ??
     null;
-  const checkinTemplateStatusKey = checkinTemplateId
-    ? "override"
-    : defaultCheckinTemplate
-      ? "default"
-      : effectiveCheckinTemplate
-        ? "fallback"
-        : "default";
 
   const templatesQuery = useQuery({
     queryKey: ["workout-templates", workspaceQuery.data],
@@ -2081,7 +2207,7 @@ export function PtClientDetailPage({
     [planEndKey, queryClient, todayKey],
   );
 
-  const handleAssignWorkout = async () => {
+  const handleAssignWorkout = async (confirmedConflict = false) => {
     if (!canMutateActiveClient) return;
     if (!clientId || !selectedTemplateId || !scheduledDate) return;
     const sameDayWorkout = (upcomingQuery.data ?? []).find(
@@ -2090,13 +2216,9 @@ export function PtClientDetailPage({
         workout.day_type !== "rest" &&
         workout.status !== "completed",
     );
-    if (sameDayWorkout) {
-      const confirmed = window.confirm(
-        sameDayWorkout.program_id
-          ? "This date already has a workout from the assigned program. Assigning this workout will override that day for the client."
-          : "This date already has a workout. Assigning this workout will replace that day for the client.",
-      );
-      if (!confirmed) return;
+    if (sameDayWorkout && !confirmedConflict) {
+      setConfirmAction("workout-override");
+      return;
     }
     setAssignStatus("saving");
     setAssignMessage(null);
@@ -2246,8 +2368,6 @@ export function PtClientDetailPage({
   const handlePauseProgram = async () => {
     if (!canMutateActiveClient) return;
     if (!clientId || !activeProgram?.id) return;
-    const confirmed = window.confirm("Pause this client's active program?");
-    if (!confirmed) return;
     setProgramStatus("saving");
     setProgramMessage(null);
     try {
@@ -2363,8 +2483,6 @@ export function PtClientDetailPage({
   const handleSwitchProgramMidCycle = async () => {
     if (!canMutateActiveClient) return;
     if (!clientId || !selectedProgramId) return;
-    const confirmed = window.confirm("Switch program from today?");
-    if (!confirmed) return;
     setProgramStatus("saving");
     setProgramMessage(null);
     const { data, error } = await supabase.rpc("assign_program_to_client", {
@@ -2398,8 +2516,6 @@ export function PtClientDetailPage({
     if (!canMutateActiveClient) return;
     const targetProgram = activeProgram ?? pausedProgram;
     if (!clientId || !targetProgram?.id) return;
-    const confirmed = window.confirm("Unassign this program for this client?");
-    if (!confirmed) return;
     setUnassignStatus("saving");
     setProgramMessage(null);
     try {
@@ -3024,15 +3140,22 @@ export function PtClientDetailPage({
     () => normalizeClientRiskFlags(clientOperationalQuery.data?.risk_flags),
     [clientOperationalQuery.data?.risk_flags],
   );
-  const clientRiskState = useMemo(
+  const clientGlobalStatusDisplay = useMemo(
     () =>
-      getClientRiskState({
+      getClientGlobalStatusDisplay({
+        relationship_status: clientRelationshipStatus,
         lifecycle_state: clientSnapshot?.lifecycle_state,
         manual_risk_flag: clientSnapshot?.manual_risk_flag,
+        has_overdue_checkin: clientOperationalQuery.data?.has_overdue_checkin,
+        overdue_checkins_count:
+          clientOperationalQuery.data?.overdue_checkins_count,
         risk_flags: clientOperationalQuery.data?.risk_flags,
       }),
     [
+      clientOperationalQuery.data?.has_overdue_checkin,
+      clientOperationalQuery.data?.overdue_checkins_count,
       clientOperationalQuery.data?.risk_flags,
+      clientRelationshipStatus,
       clientSnapshot?.lifecycle_state,
       clientSnapshot?.manual_risk_flag,
     ],
@@ -3105,20 +3228,6 @@ export function PtClientDetailPage({
     today: todayKey,
     currentCheckin: checkinAssignmentCurrentRow,
   });
-  const checkinAssignmentStatusLabel =
-    checkinAssignmentState.kind === "no-assignment"
-      ? "No check-in assigned"
-      : checkinAssignmentState.kind === "assigned-not-open"
-        ? "Assigned, not open"
-        : checkinAssignmentState.kind === "open"
-          ? "Open / due"
-          : checkinAssignmentState.kind === "upcoming"
-            ? "Upcoming"
-            : checkinAssignmentState.kind === "overdue"
-              ? "Overdue"
-              : checkinAssignmentState.kind === "submitted"
-                ? "Submitted"
-                : "Reviewed";
   const checkinAssignmentNextDueLabel = formatShortDate(
     checkinAssignmentState.nextDueDate,
     "Not scheduled",
@@ -3159,73 +3268,6 @@ export function PtClientDetailPage({
     });
     setProfileEditOpen(true);
   }, [clientSnapshot]);
-  const latestClientActivityAt =
-    clientOperationalQuery.data?.last_activity_at ??
-    clientOperationalQuery.data?.last_client_reply_at ??
-    lastHabitLogDate ??
-    lastWorkout ??
-    lastCheckin ??
-    clientSnapshot?.updated_at ??
-    null;
-  const clientAttentionReasons = useMemo(() => {
-    const reasons: Array<{ id: string; title: string; helper: string }> = [];
-
-    if (clientSnapshot?.manual_risk_flag) {
-      reasons.push({
-        id: "manual-risk",
-        title: "Client is manually flagged at risk",
-        helper:
-          "A PT has manually marked this client as needing extra attention.",
-      });
-    }
-
-    if (onboardingSnapshot && onboardingSnapshot.status !== "completed") {
-      reasons.push({
-        id: "onboarding",
-        title: "Onboarding is incomplete",
-        helper: onboardingStatusMeta.description,
-      });
-    }
-
-    if (
-      clientRiskFlags.includes("low_adherence_trend") ||
-      (typeof adherenceStat === "number" && adherenceStat < 60)
-    ) {
-      reasons.push({
-        id: "adherence",
-        title: "Adherence is low",
-        helper:
-          typeof adherenceStat === "number"
-            ? `Adherence is currently ${adherenceStat}% across the last 7 days.`
-            : "Recent client adherence has dropped below the expected level.",
-      });
-    }
-
-    const inactivityDays = latestClientActivityAt
-      ? diffDays(latestClientActivityAt, todayKey)
-      : null;
-    if (inactivityDays === null || inactivityDays >= 3) {
-      reasons.push({
-        id: "portal-inactive",
-        title: "No recent portal activity",
-        helper:
-          inactivityDays === null
-            ? "No recent client activity has been captured yet."
-            : `The client has been inactive for ${inactivityDays} days.`,
-      });
-    }
-
-    return reasons;
-  }, [
-    adherenceStat,
-    clientRiskFlags,
-    clientSnapshot?.manual_risk_flag,
-    latestClientActivityAt,
-    onboardingSnapshot,
-    onboardingStatusMeta.description,
-    todayKey,
-  ]);
-  const hasClientAttentionFlag = clientAttentionReasons.length > 0;
   const nextDueSummary = pendingCheckin
     ? {
         title: "Next due check-in",
@@ -4390,6 +4432,49 @@ export function PtClientDetailPage({
     habitsStreakQuery.isLoading ||
     checkinsQuery.isLoading;
 
+  const confirmDialogConfig =
+    confirmAction === "workout-override"
+      ? {
+          title: "Override scheduled workout?",
+          description:
+            "This date already has a workout. Assigning this workout replaces that day for the client while completed workout history is preserved.",
+          confirmLabel: "Assign workout",
+          loadingLabel: "Assigning...",
+          isLoading: assignStatus === "saving",
+          onConfirm: () => handleAssignWorkout(true),
+        }
+      : confirmAction === "pause-program"
+        ? {
+            title: "Pause program?",
+            description:
+              "This pauses the client's active program. Existing completed workout history is preserved.",
+            confirmLabel: "Pause program",
+            loadingLabel: "Pausing...",
+            isLoading: programStatus === "saving",
+            onConfirm: () => handlePauseProgram(),
+          }
+        : confirmAction === "switch-program"
+          ? {
+              title: "Switch program from today?",
+              description:
+                "This replaces upcoming scheduled workouts from today with the selected program. Completed workout history is preserved.",
+              confirmLabel: "Switch program",
+              loadingLabel: "Switching...",
+              isLoading: programStatus === "saving",
+              onConfirm: () => handleSwitchProgramMidCycle(),
+            }
+          : confirmAction === "unassign-program"
+            ? {
+                title: "Remove program assignment?",
+                description:
+                  "This removes future scheduled workouts from this client. Completed workout history is preserved.",
+                confirmLabel: "Remove assignment",
+                loadingLabel: "Removing...",
+                isLoading: unassignStatus === "saving",
+                onConfirm: () => handleUnassignProgram(),
+              }
+            : null;
+
   return (
     <DashboardShell>
       {toastMessage ? (
@@ -4408,6 +4493,49 @@ export function PtClientDetailPage({
           </Alert>
         </div>
       ) : null}
+
+      <Dialog
+        open={Boolean(confirmDialogConfig)}
+        onOpenChange={(open) => {
+          if (!open && !confirmDialogConfig?.isLoading) {
+            setConfirmAction(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>{confirmDialogConfig?.title}</DialogTitle>
+            <DialogDescription>
+              {confirmDialogConfig?.description}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={confirmDialogConfig?.isLoading}
+              onClick={() => setConfirmAction(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
+              disabled={confirmDialogConfig?.isLoading}
+              onClick={async () => {
+                const nextConfirm = confirmDialogConfig;
+                await nextConfirm?.onConfirm();
+                setConfirmAction(null);
+              }}
+            >
+              {confirmDialogConfig?.isLoading
+                ? confirmDialogConfig.loadingLabel
+                : confirmDialogConfig?.confirmLabel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="w-full space-y-6">
         {identityLoading ? (
@@ -4432,45 +4560,13 @@ export function PtClientDetailPage({
                     {getInitials(clientSnapshot?.display_name)}
                   </div>
                   <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="client-detail-header-name-row flex flex-wrap items-center gap-2">
                       <h2 className="text-xl font-semibold tracking-tight">
                         {clientSnapshot?.display_name ?? "Client profile"}
                       </h2>
-                      <LifecycleBadge
-                        lifecycleState={clientSnapshot?.lifecycle_state}
+                      <ClientDetailInlineStatusBadges
+                        statusDisplay={clientGlobalStatusDisplay}
                       />
-                      <RiskBadge riskState={clientRiskState} />
-                      {onboardingSnapshot ? (
-                        <TagInfoBadge
-                          label={onboardingStatusMeta.label}
-                          variant={onboardingStatusMeta.variant}
-                          title="Onboarding status"
-                          description={onboardingStatusMeta.description}
-                        />
-                      ) : null}
-                      {hasClientAttentionFlag ? (
-                        <button
-                          type="button"
-                          onClick={() => setAttentionFlagDialogOpen(true)}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-200 transition hover:border-amber-300/40 hover:bg-amber-500/15"
-                        >
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                          Attention
-                        </button>
-                      ) : null}
-                      {clientRiskFlags.slice(0, 2).map((flag) => {
-                        const meta = getClientRiskFlagMeta(flag);
-                        if (!meta) return null;
-                        return (
-                          <TagInfoBadge
-                            key={flag}
-                            label={meta.shortLabel}
-                            variant={meta.variant}
-                            title={meta.label}
-                            description={meta.description}
-                          />
-                        );
-                      })}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {[
@@ -4656,52 +4752,6 @@ export function PtClientDetailPage({
               {!isOverviewCollapsed ? (
                 <div className="ops-surface p-4">
                   <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="ops-stat">
-                      <span className="block text-xs text-muted-foreground">
-                        Lifecycle
-                      </span>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        <LifecycleBadge
-                          lifecycleState={clientSnapshot?.lifecycle_state}
-                        />
-                        {clientSnapshot?.lifecycle_changed_at ? (
-                          <span className="text-xs text-muted-foreground">
-                            {formatRelativeTime(
-                              clientSnapshot.lifecycle_changed_at,
-                            )}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="ops-stat">
-                      <span className="block text-xs text-muted-foreground">
-                        Onboarding
-                      </span>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        <TagInfoBadge
-                          label={onboardingStatusMeta.label}
-                          variant={onboardingStatusMeta.variant}
-                          title="Onboarding status"
-                          description={onboardingStatusMeta.description}
-                        />
-                      </div>
-                    </div>
-                    <div className="ops-stat">
-                      <span className="block text-xs text-muted-foreground">
-                        Risk
-                      </span>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        <RiskBadge riskState={clientRiskState} />
-                        {clientSnapshot?.manual_risk_flag ? (
-                          <TagInfoBadge
-                            label="Manual flag"
-                            variant="danger"
-                            title="Manual at-risk flag"
-                            description="A PT manually marked this client as at risk, independent of the automatic risk signals."
-                          />
-                        ) : null}
-                      </div>
-                    </div>
                     <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
                         Goal
@@ -5162,14 +5212,18 @@ export function PtClientDetailPage({
                     lastSetByWorkoutExercise={lastSetByWorkoutExercise}
                     onTemplateChange={setSelectedTemplateId}
                     onDateChange={setScheduledDate}
-                    onAssign={handleAssignWorkout}
+                    onAssign={() => void handleAssignWorkout()}
                     onProgramChange={setSelectedProgramId}
                     onProgramDateChange={setProgramStartDate}
                     onApplyProgram={handleApplyProgram}
-                    onPauseProgram={handlePauseProgram}
+                    onPauseProgram={() => setConfirmAction("pause-program")}
                     onResumeProgram={handleResumeProgram}
-                    onSwitchProgramMidCycle={handleSwitchProgramMidCycle}
-                    onUnassignProgram={handleUnassignProgram}
+                    onSwitchProgramMidCycle={() =>
+                      setConfirmAction("switch-program")
+                    }
+                    onUnassignProgram={() =>
+                      setConfirmAction("unassign-program")
+                    }
                     onOpenOverride={handleOpenOverride}
                     onEdit={openEditDialog}
                     onDelete={(id) => {
@@ -5183,6 +5237,9 @@ export function PtClientDetailPage({
                     }}
                     onStatusChange={handleStatusUpdate}
                     canEditClients={canMutateActiveClient}
+                    isHistoricalClientRelationship={
+                      isHistoricalClientRelationship
+                    }
                   />
                 </TabsContent>
                 <TabsContent value="nutrition">
@@ -5192,6 +5249,9 @@ export function PtClientDetailPage({
                     todayKey={todayKey}
                     enabled={isNutritionTab}
                     canEditClients={canMutateActiveClient}
+                    isHistoricalClientRelationship={
+                      isHistoricalClientRelationship
+                    }
                   />
                 </TabsContent>
                 <TabsContent value="medical">
@@ -5279,86 +5339,58 @@ export function PtClientDetailPage({
                       }
                     >
                       <div className="space-y-4">
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                            <p className="text-xs text-muted-foreground">
-                              Template
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-foreground">
-                              {checkinAssignmentTemplateName}
-                            </p>
-                          </div>
-                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                            <p className="text-xs text-muted-foreground">
-                              Cadence
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-foreground">
-                              {checkinAssignmentTemplate
+                        <AssignmentMetaRow
+                          items={[
+                            {
+                              label: "Template",
+                              value: checkinAssignmentTemplateName,
+                            },
+                            {
+                              label: "Cadence",
+                              value: checkinAssignmentTemplate
                                 ? checkinAssignmentFrequencyLabel
-                                : "Not set"}
-                            </p>
-                          </div>
-                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                            <p className="text-xs text-muted-foreground">
-                              Start date
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-foreground">
-                              {checkinAssignmentStartLabel}
-                            </p>
-                          </div>
-                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                            <p className="text-xs text-muted-foreground">
-                              Next scheduled
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-foreground">
-                              {checkinAssignmentNextDueLabel}
-                            </p>
-                          </div>
-                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                            <p className="text-xs text-muted-foreground">
-                              Current status
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-foreground">
-                              {checkinAssignmentStatusLabel}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                                : "Not set",
+                            },
+                            {
+                              label: "Start date",
+                              value: checkinAssignmentStartLabel,
+                            },
+                            {
+                              label: "Next scheduled",
+                              value: checkinAssignmentNextDueLabel,
+                            },
+                          ]}
+                        />
+                        <AssignmentActionRow>
                           <p>
-                            Check-ins are cadence settings, not snapshots. Use
-                            the settings below to change the client's future
-                            check-ins.
+                            Check-ins use cadence settings. Future check-ins
+                            follow the selected template, frequency, and start
+                            date.
                           </p>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            disabled={
-                              !(
-                                canManageDelivery &&
-                                !isHistoricalClientRelationship
-                              )
-                            }
-                            onClick={() => {
-                              document
-                                .getElementById("client-checkin-template")
-                                ?.focus();
-                            }}
-                          >
-                            Edit check-in settings
-                          </Button>
-                        </div>
+                          {canManageDelivery &&
+                          !isHistoricalClientRelationship ? (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                document
+                                  .getElementById("client-checkin-template")
+                                  ?.focus();
+                              }}
+                            >
+                              Edit check-in settings
+                            </Button>
+                          ) : null}
+                        </AssignmentActionRow>
+                        {isHistoricalClientRelationship ? (
+                          <AssignmentReadOnlyNotice historical />
+                        ) : null}
                       </div>
                     </DashboardCard>
 
                     <DashboardCard
                       title="Check-in template"
                       subtitle="Assign a template for this client."
-                      action={
-                        <StatusPill
-                          status={checkinTemplateStatusKey}
-                          statusMap={checkinTemplateStatusMap}
-                        />
-                      }
                     >
                       {checkinTemplatesQuery.isLoading ? (
                         <div className="space-y-2">
@@ -5474,25 +5506,6 @@ export function PtClientDetailPage({
                               description="Assign a template to start scheduled check-ins."
                             />
                           ) : null}
-                          <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-                            <span className="font-semibold text-foreground">
-                              Resolution:
-                            </span>{" "}
-                            {checkinTemplateId
-                              ? "Client override"
-                              : defaultCheckinTemplate
-                                ? "Workspace default"
-                                : effectiveCheckinTemplate
-                                  ? "Latest active workspace template fallback"
-                                  : "No template resolved"}
-                          </div>
-                          <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-                            <span className="font-semibold text-foreground">
-                              Using:
-                            </span>{" "}
-                            {effectiveCheckinTemplate?.name ??
-                              "No template selected"}
-                          </div>
                           {checkinSettingsFeedback ? (
                             <div
                               className={cn(
@@ -5510,21 +5523,22 @@ export function PtClientDetailPage({
                               </p>
                             </div>
                           ) : null}
-                          <Button
-                            size="sm"
-                            onClick={handleSaveCheckinTemplate}
-                            disabled={
-                              checkinTemplateStatus === "saving" ||
-                              !(
-                                canManageDelivery &&
-                                !isHistoricalClientRelationship
-                              )
-                            }
-                          >
-                            {checkinTemplateStatus === "saving"
-                              ? "Saving..."
-                              : "Assign template"}
-                          </Button>
+                          {canManageDelivery &&
+                          !isHistoricalClientRelationship ? (
+                            <Button
+                              size="sm"
+                              onClick={handleSaveCheckinTemplate}
+                              disabled={checkinTemplateStatus === "saving"}
+                            >
+                              {checkinTemplateStatus === "saving"
+                                ? "Saving..."
+                                : "Assign template"}
+                            </Button>
+                          ) : (
+                            <AssignmentReadOnlyNotice
+                              historical={isHistoricalClientRelationship}
+                            />
+                          )}
                         </div>
                       )}
                     </DashboardCard>
@@ -6566,43 +6580,6 @@ export function PtClientDetailPage({
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={attentionFlagDialogOpen}
-        onOpenChange={setAttentionFlagDialogOpen}
-      >
-        <DialogContent className="sm:max-w-[460px]">
-          <DialogHeader>
-            <DialogTitle>Client attention reasons</DialogTitle>
-            <DialogDescription>
-              This client is currently flagged because one or more attention
-              conditions are active.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            {clientAttentionReasons.map((reason) => (
-              <div
-                key={reason.id}
-                className="rounded-lg border border-border/60 bg-muted/20 p-3"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 rounded-full border border-amber-400/30 bg-amber-500/10 p-1.5 text-amber-200">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-foreground">
-                      {reason.title}
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {reason.helper}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={profileEditOpen} onOpenChange={setProfileEditOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
@@ -6788,6 +6765,8 @@ function PtClientScheduleCard({
   const [nutritionAssignError, setNutritionAssignError] = useState<
     string | null
   >(null);
+  const [nutritionUnassignDialogOpen, setNutritionUnassignDialogOpen] =
+    useState(false);
   const [nutritionDayOpen, setNutritionDayOpen] = useState(false);
   const [nutritionDayDate, setNutritionDayDate] = useState<string | null>(null);
   const [nutritionDayMeals, setNutritionDayMeals] = useState<
@@ -8339,13 +8318,6 @@ function PtClientCheckinsTab({
     <Card className="border-border/70 bg-card/80 xl:col-start-1">
       <CardHeader>
         <CardTitle>Check-ins</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Review queue with urgency, submission timing, and next actions for
-          each cycle.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {CHECKIN_ASSIGNMENT_NOTICE}
-        </p>
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? (
@@ -9046,6 +9018,7 @@ function PtClientPlanTab({
   onEditLoads,
   onStatusChange,
   canEditClients,
+  isHistoricalClientRelationship,
 }: {
   templatesQuery: QueryResult<
     Array<{ id: string; name: string | null; workout_type_tag: string | null }>
@@ -9086,6 +9059,7 @@ function PtClientPlanTab({
   onEditLoads: (id: string) => void;
   onStatusChange: (id: string, status: "completed" | "skipped") => void;
   canEditClients: boolean;
+  isHistoricalClientRelationship: boolean;
 }) {
   const overrideByDate = useMemo(() => {
     const map = new Map<string, ProgramOverrideRow>();
@@ -9099,14 +9073,26 @@ function PtClientPlanTab({
     <div className="space-y-6 xl:col-start-1">
       <div className="grid items-stretch gap-6 lg:grid-cols-2">
         <Card className="h-full border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle>Program</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Assign a multi-week program and materialize the next 14 days.
-            </p>
-          </CardHeader>
+          <AssignmentCardHeader
+            title="Program"
+            description="Assign or replace a multi-week program and materialize the next 14 days."
+            status={
+              activeProgram ? (
+                <StatusPill status="active" />
+              ) : pausedProgram ? (
+                <StatusPill status="paused" />
+              ) : (
+                <StatusPill status="not assigned" />
+              )
+            }
+          />
           <CardContent className="space-y-4">
             <AssignmentSnapshotCallout />
+            {!canEditClients ? (
+              <AssignmentReadOnlyNotice
+                historical={isHistoricalClientRelationship}
+              />
+            ) : null}
             {programTemplatesQuery.isLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-full" />
@@ -9164,115 +9150,151 @@ function PtClientPlanTab({
                     }
                   />
                 </div>
-                <Button
-                  className="w-full"
-                  disabled={
-                    programStatus === "saving" ||
-                    !selectedProgramId ||
-                    !programStartDate ||
-                    !canEditClients
-                  }
-                  onClick={onApplyProgram}
-                >
-                  {programStatus === "saving"
-                    ? "Assigning..."
-                    : "Assign program (next 14 days)"}
-                </Button>
+                {canEditClients ? (
+                  <Button
+                    className="w-full"
+                    disabled={
+                      programStatus === "saving" ||
+                      !selectedProgramId ||
+                      !programStartDate
+                    }
+                    onClick={onApplyProgram}
+                  >
+                    {programStatus === "saving"
+                      ? "Assigning..."
+                      : activeProgram || pausedProgram
+                        ? "Replace program (next 14 days)"
+                        : "Assign program (next 14 days)"}
+                  </Button>
+                ) : null}
                 {programMessage ? (
                   <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
                     {programMessage}
                   </div>
                 ) : null}
                 {activeProgram ? (
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                    <div className="flex items-center justify-between">
-                      <span>Active program</span>
-                      <StatusPill status="active" />
-                    </div>
-                    <div className="mt-2 text-sm text-foreground">
-                      {activeProgram.program_template?.name ?? "Program"}
-                    </div>
-                    <div className="mt-1">
-                      Start date {activeProgram.start_date ?? "--"}
-                    </div>
-                    <div className="mt-3 grid gap-2">
-                      <Button
-                        className="w-full"
-                        variant="secondary"
-                        disabled={
-                          unassignStatus === "saving" ||
-                          programStatus === "saving" ||
-                          !canEditClients
-                        }
-                        onClick={onPauseProgram}
-                      >
-                        {programStatus === "saving"
-                          ? "Updating..."
-                          : "Pause program"}
-                      </Button>
-                      <Button
-                        className="w-full"
-                        variant="ghost"
-                        disabled={
-                          unassignStatus === "saving" ||
-                          programStatus === "saving" ||
-                          !canEditClients
-                        }
-                        onClick={onUnassignProgram}
-                      >
-                        {unassignStatus === "saving"
-                          ? "Unassigning..."
-                          : "Unassign program"}
-                      </Button>
-                    </div>
+                  <div className="space-y-3">
+                    <AssignmentMetaRow
+                      items={[
+                        {
+                          label: "Current program",
+                          value:
+                            activeProgram.program_template?.name ?? "Program",
+                          helper: "Active assignment",
+                        },
+                        {
+                          label: "Effective date",
+                          value: activeProgram.start_date ?? "--",
+                          helper: "Future workouts follow this assigned block.",
+                        },
+                      ]}
+                    />
+                    {canEditClients ? (
+                      <>
+                        <AssignmentActionRow>
+                          <p>
+                            Pause keeps this program available to resume later.
+                            Completed workouts stay in history.
+                          </p>
+                          <Button
+                            className="w-full sm:w-auto"
+                            variant="secondary"
+                            disabled={
+                              unassignStatus === "saving" ||
+                              programStatus === "saving"
+                            }
+                            onClick={onPauseProgram}
+                          >
+                            {programStatus === "saving"
+                              ? "Updating..."
+                              : "Pause program"}
+                          </Button>
+                        </AssignmentActionRow>
+                        <AssignmentActionRow danger>
+                          <p>
+                            Remove future scheduled workouts from this program.
+                            Completed workout history is preserved.
+                          </p>
+                          <Button
+                            className="w-full text-destructive hover:text-destructive sm:w-auto"
+                            variant="ghost"
+                            disabled={
+                              unassignStatus === "saving" ||
+                              programStatus === "saving"
+                            }
+                            onClick={onUnassignProgram}
+                          >
+                            {unassignStatus === "saving"
+                              ? "Unassigning..."
+                              : "Unassign program"}
+                          </Button>
+                        </AssignmentActionRow>
+                      </>
+                    ) : null}
                   </div>
                 ) : pausedProgram ? (
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                    <div className="flex items-center justify-between">
-                      <span>Paused program</span>
-                      <StatusPill status="paused" />
-                    </div>
-                    <div className="mt-2 text-sm text-foreground">
-                      {pausedProgram.program_template?.name ?? "Program"}
-                    </div>
-                    <div className="mt-1">
-                      Start date {pausedProgram.start_date ?? "--"}
-                    </div>
-                    <div className="mt-3 grid gap-2">
-                      <Button
-                        className="w-full"
-                        variant="secondary"
-                        disabled={programStatus === "saving" || !canEditClients}
-                        onClick={onResumeProgram}
-                      >
-                        {programStatus === "saving"
-                          ? "Updating..."
-                          : "Resume program"}
-                      </Button>
-                      <Button
-                        className="w-full"
-                        variant="ghost"
-                        disabled={
-                          unassignStatus === "saving" ||
-                          programStatus === "saving" ||
-                          !canEditClients
-                        }
-                        onClick={onUnassignProgram}
-                      >
-                        {unassignStatus === "saving"
-                          ? "Unassigning..."
-                          : "Unassign program"}
-                      </Button>
-                    </div>
+                  <div className="space-y-3">
+                    <AssignmentMetaRow
+                      items={[
+                        {
+                          label: "Current program",
+                          value:
+                            pausedProgram.program_template?.name ?? "Program",
+                          helper: "Paused assignment",
+                        },
+                        {
+                          label: "Effective date",
+                          value: pausedProgram.start_date ?? "--",
+                          helper: "Resume to continue future scheduling.",
+                        },
+                      ]}
+                    />
+                    {canEditClients ? (
+                      <>
+                        <AssignmentActionRow>
+                          <p>Resume this paused program for future workouts.</p>
+                          <Button
+                            className="w-full sm:w-auto"
+                            variant="secondary"
+                            disabled={programStatus === "saving"}
+                            onClick={onResumeProgram}
+                          >
+                            {programStatus === "saving"
+                              ? "Updating..."
+                              : "Resume program"}
+                          </Button>
+                        </AssignmentActionRow>
+                        <AssignmentActionRow danger>
+                          <p>
+                            Remove the paused assignment. Completed workout
+                            history is preserved.
+                          </p>
+                          <Button
+                            className="w-full text-destructive hover:text-destructive sm:w-auto"
+                            variant="ghost"
+                            disabled={
+                              unassignStatus === "saving" ||
+                              programStatus === "saving"
+                            }
+                            onClick={onUnassignProgram}
+                          >
+                            {unassignStatus === "saving"
+                              ? "Unassigning..."
+                              : "Unassign program"}
+                          </Button>
+                        </AssignmentActionRow>
+                      </>
+                    ) : null}
                   </div>
                 ) : null}
                 {activeProgram &&
                 selectedProgramId &&
-                selectedProgramId !== activeProgram.program_template_id ? (
+                selectedProgramId !== activeProgram.program_template_id &&
+                canEditClients ? (
                   <Button
                     className="w-full"
                     variant="secondary"
-                    disabled={programStatus === "saving" || !canEditClients}
+                    disabled={programStatus === "saving"}
                     onClick={onSwitchProgramMidCycle}
                   >
                     {programStatus === "saving"
@@ -9286,14 +9308,17 @@ function PtClientPlanTab({
         </Card>
 
         <Card className="h-full border-border/70 bg-card/80">
-          <CardHeader>
-            <CardTitle>Schedule workout</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Assign a one-off template to this client.
-            </p>
-          </CardHeader>
+          <AssignmentCardHeader
+            title="Schedule workout"
+            description="Assign or replace one workout for a specific date."
+          />
           <CardContent className="space-y-4">
             <AssignmentSnapshotCallout />
+            {!canEditClients ? (
+              <AssignmentReadOnlyNotice
+                historical={isHistoricalClientRelationship}
+              />
+            ) : null}
             {templatesQuery.isLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-full" />
@@ -9340,20 +9365,39 @@ function PtClientPlanTab({
                     onChange={(event) => onDateChange(event.target.value)}
                   />
                 </div>
-                <Button
-                  className="w-full"
-                  disabled={
-                    assignStatus === "saving" ||
-                    !selectedTemplateId ||
-                    !scheduledDate ||
-                    !canEditClients
-                  }
-                  onClick={onAssign}
-                >
-                  {assignStatus === "saving"
-                    ? "Assigning..."
-                    : "Assign workout"}
-                </Button>
+                <AssignmentMetaRow
+                  items={[
+                    {
+                      label: "Template source",
+                      value:
+                        templatesQuery.data?.find(
+                          (template) => template.id === selectedTemplateId,
+                        )?.name ?? "No template selected",
+                      helper: "Template edits affect future assignments only.",
+                    },
+                    {
+                      label: "Effective date",
+                      value: scheduledDate || "--",
+                      helper:
+                        "One effective workout is allowed per client/date.",
+                    },
+                  ]}
+                />
+                {canEditClients ? (
+                  <Button
+                    className="w-full"
+                    disabled={
+                      assignStatus === "saving" ||
+                      !selectedTemplateId ||
+                      !scheduledDate
+                    }
+                    onClick={onAssign}
+                  >
+                    {assignStatus === "saving"
+                      ? "Assigning..."
+                      : "Assign workout"}
+                  </Button>
+                ) : null}
                 {assignMessage ? (
                   <div
                     className={cn(
@@ -9422,56 +9466,63 @@ function PtClientPlanTab({
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={!canOverride || !canEditClients}
-                      onClick={() =>
-                        onOpenOverride(workout.scheduled_date ?? "")
-                      }
-                    >
-                      Override
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={!canEditClients}
-                      onClick={() => onEditLoads(workout.id)}
-                    >
-                      Edit loads
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={!canEditClients}
-                      onClick={() => onEdit(workout)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={!canEditClients}
-                      onClick={() => onDelete(workout.id)}
-                    >
-                      Delete
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={!canEditClients}
-                      onClick={() => onStatusChange(workout.id, "completed")}
-                    >
-                      Mark completed
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={!canEditClients}
-                      onClick={() => onStatusChange(workout.id, "skipped")}
-                    >
-                      Skip
-                    </Button>
+                    {canEditClients ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={!canOverride}
+                          onClick={() =>
+                            onOpenOverride(workout.scheduled_date ?? "")
+                          }
+                        >
+                          Override
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onEditLoads(workout.id)}
+                        >
+                          Edit loads
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onEdit(workout)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onDelete(workout.id)}
+                        >
+                          Delete
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() =>
+                            onStatusChange(workout.id, "completed")
+                          }
+                        >
+                          Mark completed
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onStatusChange(workout.id, "skipped")}
+                        >
+                          Skip
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {isHistoricalClientRelationship
+                          ? HISTORICAL_CLIENT_RELATIONSHIP_COPY
+                          : "Assignment history is preserved for reference."}
+                      </span>
+                    )}
                   </div>
                   {isRestDay ? (
                     <div className="mt-3 text-xs text-muted-foreground">
@@ -9521,9 +9572,10 @@ function PtClientPlanTab({
             })}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-            No workouts scheduled for the next 14 days.
-          </div>
+          <EmptyState
+            title="No workouts scheduled"
+            description="Planned workouts for the next 14 days will appear here."
+          />
         )}
       </DashboardCard>
     </div>
@@ -9536,12 +9588,14 @@ function PtClientNutritionTab({
   todayKey,
   enabled,
   canEditClients,
+  isHistoricalClientRelationship,
 }: {
   clientId: string | null;
   workspaceId: string | null;
   todayKey: string;
   enabled: boolean;
   canEditClients: boolean;
+  isHistoricalClientRelationship: boolean;
 }) {
   const queryClient = useQueryClient();
   const [selectedNutritionProgramId, setSelectedNutritionProgramId] =
@@ -9557,6 +9611,8 @@ function PtClientNutritionTab({
   const [nutritionAssignError, setNutritionAssignError] = useState<
     string | null
   >(null);
+  const [nutritionUnassignDialogOpen, setNutritionUnassignDialogOpen] =
+    useState(false);
 
   const nutritionProgramsQuery = useQuery({
     queryKey: ["pt-client-nutrition-programs", workspaceId],
@@ -9665,12 +9721,8 @@ function PtClientNutritionTab({
 
   const handleNutritionUnassign = async () => {
     if (!canEditClients || !clientId || !activeNutritionPlanQuery.data?.id) {
-      return;
+      return false;
     }
-    const confirmed = window.confirm(
-      "This will remove the current coach nutrition assignment for this client. Snapshot history will be preserved.",
-    );
-    if (!confirmed) return;
 
     setNutritionUnassignStatus("saving");
     setNutritionAssignError(null);
@@ -9683,7 +9735,7 @@ function PtClientNutritionTab({
     if (error) {
       setNutritionUnassignStatus("idle");
       setNutritionAssignError(error.message);
-      return;
+      return false;
     }
 
     await Promise.all([
@@ -9708,17 +9760,76 @@ function PtClientNutritionTab({
     ]);
 
     setNutritionUnassignStatus("idle");
+    return true;
   };
 
   return (
     <div className="space-y-6 xl:col-start-1">
+      <Dialog
+        open={nutritionUnassignDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && nutritionUnassignStatus !== "saving") {
+            setNutritionUnassignDialogOpen(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Remove nutrition assignment?</DialogTitle>
+            <DialogDescription>
+              The client will no longer see this nutrition plan as active.
+              Historical records are preserved.
+            </DialogDescription>
+          </DialogHeader>
+          {nutritionAssignError ? (
+            <Alert tone="danger">
+              <AlertTitle>Nutrition removal failed</AlertTitle>
+              <AlertDescription>{nutritionAssignError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={nutritionUnassignStatus === "saving"}
+              onClick={() => setNutritionUnassignDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
+              disabled={nutritionUnassignStatus === "saving"}
+              onClick={async () => {
+                const removed = await handleNutritionUnassign();
+                if (removed) {
+                  setNutritionUnassignDialogOpen(false);
+                }
+              }}
+            >
+              {nutritionUnassignStatus === "saving"
+                ? "Removing..."
+                : "Remove assignment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card className="border-border/70 bg-card/80">
-        <CardHeader>
-          <CardTitle>Current assignment</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Review the active nutrition state before making a new assignment.
-          </p>
-        </CardHeader>
+        <AssignmentCardHeader
+          title="Current nutrition assignment"
+          description="Review the active nutrition snapshot before assigning a replacement."
+          status={
+            activeNutritionPlanQuery.data ? (
+              <StatusPill
+                status={activeNutritionPlanQuery.data.status ?? "active"}
+              />
+            ) : (
+              <StatusPill status="not assigned" />
+            )
+          }
+        />
         <CardContent>
           {activeNutritionPlanQuery.isLoading ? (
             <div className="space-y-3">
@@ -9726,61 +9837,82 @@ function PtClientNutritionTab({
               <Skeleton className="h-10 w-full" />
             </div>
           ) : activeNutritionPlanQuery.error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              {getFriendlyErrorMessage()}
-            </div>
+            <Alert tone="danger">
+              <AlertTitle>Unable to load nutrition assignment</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p>{getFriendlyErrorMessage()}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void activeNutritionPlanQuery.refetch()}
+                >
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
           ) : activeNutritionPlanQuery.data ? (
             <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs text-muted-foreground">Program</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {activeNutritionPlanQuery.data.nutrition_template?.name ??
-                      "Nutrition program"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs text-muted-foreground">Status</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {activeNutritionPlanQuery.data.status ?? "Active"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs text-muted-foreground">Start date</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {activeNutritionPlanQuery.data.start_date ?? "--"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs text-muted-foreground">Coverage</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {activeNutritionPlanQuery.data.end_date
+              <AssignmentSnapshotCallout />
+              <AssignmentMetaRow
+                items={[
+                  {
+                    label: "Nutrition program",
+                    value:
+                      activeNutritionPlanQuery.data.nutrition_template?.name ??
+                      "Nutrition program",
+                    helper: "Current assigned snapshot",
+                  },
+                  {
+                    label: "Start date",
+                    value: activeNutritionPlanQuery.data.start_date ?? "--",
+                    helper: activeNutritionPlanQuery.data.end_date
+                      ? `Ends ${activeNutritionPlanQuery.data.end_date}`
+                      : "Active until removed or replaced.",
+                  },
+                  {
+                    label: "Coverage",
+                    value: activeNutritionPlanQuery.data.end_date
                       ? `${activeNutritionPlanQuery.data.start_date ?? "--"} to ${activeNutritionPlanQuery.data.end_date}`
                       : activeNutritionPlanQuery.data.nutrition_template
                             ?.duration_weeks
                         ? `${activeNutritionPlanQuery.data.nutrition_template.duration_weeks} week plan`
-                        : "Active assignment"}
+                        : "Active assignment",
+                    helper: "The client sees this plan as active.",
+                  },
+                  {
+                    label: "Client impact",
+                    value: "Visible in client nutrition",
+                    helper: "Historical records are preserved when removed.",
+                  },
+                ]}
+              />
+              {!canEditClients ? (
+                <AssignmentReadOnlyNotice
+                  historical={isHistoricalClientRelationship}
+                />
+              ) : null}
+              {canEditClients ? (
+                <AssignmentActionRow danger>
+                  <p className="text-xs text-muted-foreground">
+                    Remove the current assignment without deleting the nutrition
+                    template or snapshot history.
                   </p>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground">
-                  Remove the current assignment without deleting the nutrition
-                  template or snapshot history.
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={
-                    nutritionUnassignStatus === "saving" || !canEditClients
-                  }
-                  onClick={handleNutritionUnassign}
-                >
-                  {nutritionUnassignStatus === "saving"
-                    ? "Removing..."
-                    : "Remove assignment"}
-                </Button>
-              </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={nutritionUnassignStatus === "saving"}
+                    onClick={() => {
+                      setNutritionAssignError(null);
+                      setNutritionUnassignDialogOpen(true);
+                    }}
+                  >
+                    {nutritionUnassignStatus === "saving"
+                      ? "Removing..."
+                      : "Remove assignment"}
+                  </Button>
+                </AssignmentActionRow>
+              ) : null}
             </div>
           ) : (
             <EmptyState
@@ -9792,14 +9924,22 @@ function PtClientNutritionTab({
       </Card>
 
       <Card className="border-border/70 bg-card/80">
-        <CardHeader>
-          <CardTitle>Assign nutrition program</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Assign a multi-week nutrition program to this client.
-          </p>
-        </CardHeader>
+        <AssignmentCardHeader
+          title="Assign nutrition program"
+          description="Assign or replace the client's active nutrition snapshot."
+          status={
+            <StatusPill
+              status={selectedNutritionProgramId ? "ready" : "idle"}
+            />
+          }
+        />
         <CardContent className="space-y-4">
           <AssignmentSnapshotCallout />
+          {!canEditClients ? (
+            <AssignmentReadOnlyNotice
+              historical={isHistoricalClientRelationship}
+            />
+          ) : null}
           {nutritionProgramsQuery.isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-10 w-full" />
@@ -9807,10 +9947,20 @@ function PtClientNutritionTab({
               <Skeleton className="h-10 w-full" />
             </div>
           ) : nutritionProgramsQuery.error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-              {getErrorDetails(nutritionProgramsQuery.error).code}:{" "}
-              {getErrorDetails(nutritionProgramsQuery.error).message}
-            </div>
+            <Alert tone="danger">
+              <AlertTitle>Unable to load nutrition programs</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p>{getFriendlyErrorMessage()}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void nutritionProgramsQuery.refetch()}
+                >
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
           ) : (
             <>
               <div className="space-y-2">
@@ -9855,64 +10005,67 @@ function PtClientNutritionTab({
                   }
                 />
               </div>
-              <Button
-                className="w-full"
-                disabled={
-                  nutritionAssignStatus === "saving" ||
-                  !selectedNutritionProgramId ||
-                  !nutritionProgramStartDate ||
-                  !clientId ||
-                  !canEditClients
-                }
-                onClick={async () => {
-                  if (!canEditClients) return;
-                  if (
-                    !clientId ||
+              {canEditClients ? (
+                <Button
+                  className="w-full"
+                  disabled={
+                    nutritionAssignStatus === "saving" ||
                     !selectedNutritionProgramId ||
-                    !nutritionProgramStartDate
-                  ) {
-                    setNutritionAssignError(
-                      "Select a nutrition program and start date.",
+                    !nutritionProgramStartDate ||
+                    !clientId
+                  }
+                  onClick={async () => {
+                    if (!canEditClients) return;
+                    if (
+                      !clientId ||
+                      !selectedNutritionProgramId ||
+                      !nutritionProgramStartDate
+                    ) {
+                      setNutritionAssignError(
+                        "Select a nutrition program and start date.",
+                      );
+                      return;
+                    }
+                    setNutritionAssignStatus("saving");
+                    setNutritionAssignError(null);
+                    const { error } = await supabase.rpc(
+                      "assign_nutrition_template_to_client",
+                      {
+                        p_client_id: clientId,
+                        p_template_id: selectedNutritionProgramId,
+                        p_start_date: nutritionProgramStartDate,
+                      },
                     );
-                    return;
-                  }
-                  setNutritionAssignStatus("saving");
-                  setNutritionAssignError(null);
-                  const { error } = await supabase.rpc(
-                    "assign_nutrition_template_to_client",
-                    {
-                      p_client_id: clientId,
-                      p_template_id: selectedNutritionProgramId,
-                      p_start_date: nutritionProgramStartDate,
-                    },
-                  );
-                  if (error) {
+                    if (error) {
+                      setNutritionAssignStatus("idle");
+                      setNutritionAssignError(error.message);
+                      return;
+                    }
+                    await Promise.all([
+                      queryClient.invalidateQueries({
+                        queryKey: [
+                          "pt-client-nutrition-next-7",
+                          clientId,
+                          todayKey,
+                        ],
+                      }),
+                      queryClient.invalidateQueries({
+                        queryKey: ["pt-client-nutrition-week", clientId],
+                      }),
+                      queryClient.invalidateQueries({
+                        queryKey: ["pt-client-active-nutrition-plan", clientId],
+                      }),
+                    ]);
                     setNutritionAssignStatus("idle");
-                    setNutritionAssignError(error.message);
-                    return;
-                  }
-                  await Promise.all([
-                    queryClient.invalidateQueries({
-                      queryKey: [
-                        "pt-client-nutrition-next-7",
-                        clientId,
-                        todayKey,
-                      ],
-                    }),
-                    queryClient.invalidateQueries({
-                      queryKey: ["pt-client-nutrition-week", clientId],
-                    }),
-                    queryClient.invalidateQueries({
-                      queryKey: ["pt-client-active-nutrition-plan", clientId],
-                    }),
-                  ]);
-                  setNutritionAssignStatus("idle");
-                }}
-              >
-                {nutritionAssignStatus === "saving"
-                  ? "Assigning..."
-                  : "Assign nutrition program"}
-              </Button>
+                  }}
+                >
+                  {nutritionAssignStatus === "saving"
+                    ? "Assigning..."
+                    : activeNutritionPlanQuery.data
+                      ? "Replace nutrition program"
+                      : "Assign nutrition program"}
+                </Button>
+              ) : null}
               <div className="rounded-lg border border-border/60 bg-muted/20 p-2 text-xs">
                 <p className="mb-2 font-semibold text-foreground">
                   Next 7 days preview
@@ -9990,10 +10143,20 @@ function PtClientLogsTab({
             <Skeleton className="h-10 w-full" />
           </div>
         ) : ptSessionsQuery.error ? (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-            {getErrorDetails(ptSessionsQuery.error).code}:{" "}
-            {getErrorDetails(ptSessionsQuery.error).message}
-          </div>
+          <Alert tone="danger">
+            <AlertTitle>Unable to load session logs</AlertTitle>
+            <AlertDescription className="space-y-3">
+              <p>{getFriendlyErrorMessage()}</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => void ptSessionsQuery.refetch()}
+              >
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
         ) : ptSessionsQuery.data && ptSessionsQuery.data.length > 0 ? (
           <div className="space-y-4 text-sm">
             <div className="grid gap-3 sm:grid-cols-3">

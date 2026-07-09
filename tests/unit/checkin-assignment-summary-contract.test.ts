@@ -12,16 +12,22 @@ describe("coach check-in assignment summary contract", () => {
     expect(clientDetailPage).toContain("Current check-in assignment");
     expect(clientDetailPage).toContain("checkinAssignmentState");
     expect(clientDetailPage).toContain("resolveClientCheckinPageState");
-    expect(clientDetailPage).toContain("No check-in assigned");
-    expect(clientDetailPage).toContain("Assigned, not open");
+    expect(clientDetailPage).toContain('label: "Not assigned"');
+    expect(clientDetailPage).toContain('label: "Assigned"');
   });
 
-  it("shows assigned template, cadence, start date, next due, and status", () => {
+  it("shows assigned template, cadence, start date, and next due", () => {
     expect(clientDetailPage).toContain("checkinAssignmentTemplateName");
     expect(clientDetailPage).toContain("checkinAssignmentFrequencyLabel");
     expect(clientDetailPage).toContain("checkinAssignmentStartLabel");
     expect(clientDetailPage).toContain("Next scheduled");
-    expect(clientDetailPage).toContain("Current status");
+    expect(clientDetailPage).not.toContain("Selected check-in form");
+    expect(clientDetailPage).not.toContain(
+      "Frequency drives future check-ins.",
+    );
+    expect(clientDetailPage).not.toContain("Anchor date for cadence.");
+    expect(clientDetailPage).not.toContain("Resolved from current settings.");
+    expect(clientDetailPage).not.toContain("Current client-facing state.");
   });
 
   it("gates the edit CTA to existing delivery-write permission", () => {

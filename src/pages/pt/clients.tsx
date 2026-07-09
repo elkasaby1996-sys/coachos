@@ -14,7 +14,6 @@ import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { PtHubClientTable } from "../../features/pt-hub/components/pt-hub-client-table";
@@ -234,46 +233,13 @@ export function PtClientsPage() {
       </div>
 
       <PtHubSectionCard title="Client List" contentClassName="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 lg:px-2">
-          <div
-            className="inline-flex rounded-xl border border-border/70 bg-background/50 p-1"
-            aria-label="Client relationship view"
-          >
-            <Button
-              type="button"
-              variant={clientListView === "active" ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={clientListView === "active"}
-              onClick={() => setClientListView("active")}
-              className="h-9 px-4"
-            >
-              Active
-            </Button>
-            <Button
-              type="button"
-              variant={clientListView === "archived" ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={clientListView === "archived"}
-              onClick={() => setClientListView("archived")}
-              className="h-9 px-4"
-            >
-              Archived
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-[minmax(320px,1fr)_minmax(270px,0.75fr)_150px] lg:items-end lg:gap-4 lg:px-2">
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="pt-clients-search"
-              className="text-xs font-semibold text-muted-foreground"
-            >
-              Search
-            </Label>
+        <div className="grid gap-3 lg:grid-cols-[minmax(320px,1fr)_minmax(240px,0.65fr)_150px_auto] lg:items-center lg:gap-4 lg:px-2">
+          <div>
             <div className="relative">
               <Search className="app-search-icon h-4 w-4" />
               <Input
                 id="pt-clients-search"
+                aria-label="Search clients"
                 className="app-search-input"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
@@ -281,15 +247,10 @@ export function PtClientsPage() {
               />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="pt-clients-lifecycle"
-              className="text-xs font-semibold text-muted-foreground"
-            >
-              Lifecycle
-            </Label>
+          <div>
             <Select
               id="pt-clients-lifecycle"
+              aria-label="Lifecycle"
               variant="filter"
               value={lifecycleFilter}
               onChange={(event) => setLifecycleFilter(event.target.value)}
@@ -303,15 +264,10 @@ export function PtClientsPage() {
               <option value="churned">Churned</option>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="pt-clients-segment"
-              className="text-xs font-semibold text-muted-foreground"
-            >
-              Segment
-            </Label>
+          <div>
             <Select
               id="pt-clients-segment"
+              aria-label="Segment"
               variant="filter"
               value={segmentFilter}
               onChange={(event) =>
@@ -326,6 +282,42 @@ export function PtClientsPage() {
               <option value="at_risk">At-risk clients</option>
               <option value="paused">Paused clients</option>
             </Select>
+          </div>
+          <div>
+            <div
+              id="pt-clients-relationship-view"
+              className="inline-flex h-11 items-center gap-1"
+              aria-label="Client relationship view"
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-pressed={clientListView === "active"}
+                onClick={() => setClientListView("active")}
+                className={`h-10 px-4 ${
+                  clientListView === "active"
+                    ? "border border-primary/25 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground"
+                    : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                }`}
+              >
+                Active
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-pressed={clientListView === "archived"}
+                onClick={() => setClientListView("archived")}
+                className={`h-10 px-4 ${
+                  clientListView === "archived"
+                    ? "border border-primary/25 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground"
+                    : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                }`}
+              >
+                Archived
+              </Button>
+            </div>
           </div>
         </div>
 

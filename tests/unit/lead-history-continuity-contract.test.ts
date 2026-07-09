@@ -68,8 +68,8 @@ describe("converted lead history continuity", () => {
 
   it("loads converted lead history through the lead chat helper", () => {
     expect(leadChatLib).toContain("ConvertedLeadHistoryMessage");
-    expect(leadChatLib).toContain(
-      '.rpc("converted_lead_history_for_conversation"',
+    expect(leadChatLib).toMatch(
+      /\.rpc\(\s*"converted_lead_history_for_conversation"/,
     );
     expect(leadChatLib).toContain(
       'queryKey: ["converted-lead-history", conversationId]',

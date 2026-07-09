@@ -47,9 +47,7 @@ describe("canonical route builders", () => {
   it("builds PT Hub settings routes", () => {
     expect(routes.ptHub()).toBe("/pt-hub");
     expect(routes.ptHubSettings()).toBe("/pt-hub/settings/account");
-    expect(routes.ptHubSettings("public-profile")).toBe(
-      "/pt-hub/settings/public-profile",
-    );
+    expect(routes.ptHubSettings("billing")).toBe("/pt-hub/settings/billing");
   });
 
   it("builds workspace and client routes without UUID-shaped path assumptions", () => {
@@ -83,9 +81,9 @@ describe("legacy workspace redirect builders", () => {
     expect(
       buildLegacyWorkspaceSettingsRedirectPath({
         workspace,
-        tab: "brand",
+        tab: "general",
         search: "?from=settings",
       }),
-    ).toBe("/w/4e8237f23fed/settings/brand?from=settings");
+    ).toBe("/w/4e8237f23fed/settings/general?from=settings");
   });
 });

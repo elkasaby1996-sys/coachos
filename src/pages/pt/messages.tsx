@@ -14,7 +14,6 @@ import { Input } from "../../components/ui/input";
 import {
   DashboardCard,
   EmptyState,
-  LifecycleBadge,
   Skeleton,
 } from "../../components/ui/coachos";
 import { supabase } from "../../lib/supabase";
@@ -764,11 +763,6 @@ export function PtMessagesPage() {
 
         <DashboardCard
           disableHoverMotion
-          action={
-            selectedClient ? (
-              <LifecycleBadge lifecycleState={selectedClient.lifecycle_state} />
-            ) : null
-          }
           title={
             selectedClient ? (
               <div className="flex min-w-0 items-center gap-2">

@@ -26,7 +26,7 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { LoadingPanel } from "../../components/common/action-feedback";
-import { Skeleton, StatCard, StatusPill } from "../../components/ui/coachos";
+import { Skeleton, StatusPill } from "../../components/ui/coachos";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import { formatRelativeTime } from "../../lib/relative-time";
@@ -908,12 +908,6 @@ export function ClientWorkoutsPage() {
   const partialError = activeSessionsQuery.error ?? sourceWorkspacesQuery.error;
   const hasAnyWorkouts = workouts.length > 0;
   const createdWorkoutId = createPersonalWorkoutMutation.data;
-  const workoutKpis = [
-    { label: "In progress", value: sections.inProgress.length },
-    { label: "Today", value: sections.today.length },
-    { label: "Upcoming", value: sections.upcoming.length },
-    { label: "Recently completed", value: sections.recentlyCompleted.length },
-  ];
   const completedPageCount = Math.max(
     1,
     Math.ceil(sections.recentlyCompleted.length / COMPLETED_WORKOUT_PAGE_SIZE),
@@ -990,19 +984,6 @@ export function ClientWorkoutsPage() {
           </div>
         }
       />
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {workoutKpis.map((item, index) => (
-          <StatCard
-            key={item.label}
-            label={item.label}
-            value={item.value}
-            accent={index === 0}
-            className="min-h-[8rem]"
-            disableHoverMotion
-          />
-        ))}
-      </div>
 
       <Dialog
         open={isCreateWorkoutOpen}

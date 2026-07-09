@@ -31,7 +31,7 @@ describe("assignment card error placement", () => {
   it("uses the same local assignment error mapper for one-off assignments and overrides", () => {
     const assignHandler = sliceBetween(
       clientDetailPage,
-      "const handleAssignWorkout = async () =>",
+      "const handleAssignWorkout = async (confirmedConflict = false) =>",
       "const handleApplyProgram = async () =>",
     );
     const overrideHandler = sliceBetween(
@@ -55,7 +55,7 @@ describe("assignment card error placement", () => {
     );
     const scheduleCard = sliceBetween(
       planTab,
-      "<CardTitle>Schedule workout</CardTitle>",
+      'title="Schedule workout"',
       'title="Schedule (next 14 days)"',
     );
 

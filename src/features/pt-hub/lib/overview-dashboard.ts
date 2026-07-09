@@ -482,8 +482,6 @@ function buildMetrics(params: {
       (params.stats?.applicationsPreviousWindow ?? 0),
   );
   const overdueCheckinCount = params.clientStats.overdueCheckinClients;
-  const onboardingInProgressCount =
-    params.clientStats.onboardingIncompleteClients;
 
   return [
     {
@@ -533,26 +531,6 @@ function buildMetrics(params: {
           : {
               value: "All clear",
               tone: getSemanticToneForStatus("All clear"),
-            },
-    },
-    {
-      id: "onboarding-in-progress",
-      label: "Onboarding in progress",
-      value: onboardingInProgressCount,
-      helper:
-        onboardingInProgressCount > 0
-          ? "Clients still entering service"
-          : "No setup blockers",
-      href: "/pt-hub/clients",
-      delta:
-        onboardingInProgressCount > 0
-          ? {
-              value: `${onboardingInProgressCount} waiting review`,
-              tone: getSemanticToneForStatus("Waiting review"),
-            }
-          : {
-              value: "No blockers",
-              tone: getSemanticToneForStatus("No blockers"),
             },
     },
   ] satisfies PtHubOverviewMetric[];
@@ -624,7 +602,7 @@ function buildActionItems(params: {
         : "Review overdue check-ins",
       badge: formatCount(params.clientStats.overdueCheckinClients, "client"),
       description: mostUrgentOverdueClient
-        ? `${params.clientStats.overdueCheckinClients} client(s) are overdue across your coaching spaces. Start in ${mostUrgentOverdueClient.workspaceName}.`
+        ? "Review the check-in and follow up before the next client touchpoint."
         : "Some clients are overdue for a check-in review or follow-up across your workspaces and need attention today.",
       href: mostUrgentOverdueClient
         ? `/pt/clients/${mostUrgentOverdueClient.id}`
@@ -646,7 +624,7 @@ function buildActionItems(params: {
         : "Check at-risk clients",
       badge: formatCount(params.clientStats.atRiskClients, "client"),
       description: mostUrgentAtRiskClient
-        ? `${params.clientStats.atRiskClients} client(s) need a closer look. Start in ${mostUrgentAtRiskClient.workspaceName}.`
+        ? "Review recent check-ins, replies, and activity before the risk spreads."
         : "These clients have missed check-ins, low replies, or recent inactivity.",
       href: mostUrgentAtRiskClient
         ? `/pt/clients/${mostUrgentAtRiskClient.id}`
@@ -671,7 +649,7 @@ function buildActionItems(params: {
         "client",
       ),
       description: mostUrgentOnboardingClient
-        ? `${params.clientStats.onboardingIncompleteClients} client(s) are still missing onboarding steps. Start in ${mostUrgentOnboardingClient.workspaceName}.`
+        ? "Finish the missing onboarding steps so plans and check-ins stay easy to manage."
         : "Some clients are still missing onboarding steps, which makes plans and check-ins harder to manage.",
       href: mostUrgentOnboardingClient
         ? `/pt/clients/${mostUrgentOnboardingClient.id}`
@@ -771,7 +749,7 @@ function buildActionItems(params: {
         : "Review client health",
       badge: formatCount(params.clientsNeedingAttentionCount, "client"),
       description: mostUrgentAttentionClient
-        ? `${params.clientsNeedingAttentionCount} client(s) still need a coach check. Start in ${mostUrgentAttentionClient.workspaceName}.`
+        ? "Run a quick operational check before it becomes urgent."
         : "There are no urgent lead or billing blockers, but some clients still deserve a quick operational check.",
       href: mostUrgentAttentionClient
         ? `/pt/clients/${mostUrgentAttentionClient.id}`

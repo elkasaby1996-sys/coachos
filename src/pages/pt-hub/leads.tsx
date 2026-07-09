@@ -672,16 +672,6 @@ export function PtHubLeadsPage() {
                           Retry failed
                         </span>
                       ) : null}
-                      <button
-                        type="button"
-                        className="inline-flex rounded-[10px] border border-border/70 bg-background/75 px-3 py-1.5 text-xs font-semibold text-foreground shadow-[inset_0_1px_0_oklch(var(--background)/0.7)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-primary/20 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          navigate(`/pt-hub/leads/${lead.id}`);
-                        }}
-                      >
-                        {lead.status === "converted" ? "View" : "Review"}
-                      </button>
                       <ChevronRight className="h-4 w-4 text-[var(--module-leads-text)] [stroke-width:1.7]" />
                     </div>
                   </div>

@@ -1,22 +1,22 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Archive,
-  Copy,
-  Layers3,
-  Pencil,
-  Search,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { Archive, Copy, Pencil, Search, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Badge } from "../../components/ui/badge";
-import { StatCard } from "../../components/ui/coachos/stat-card";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
 import { EmptyState } from "../../components/pt/dashboard/EmptyState";
@@ -58,6 +58,28 @@ const getErrorDetails = (error: unknown) => {
   return { code: "unknown", message: "Unknown error" };
 };
 
+const DELETE_PROTECTION_MESSAGE =
+  "Delete failed. This template is already assigned to a client and cannot be deleted. Existing client assignments prevent deletion. Historical records are preserved.";
+
+const isDeleteProtectionError = (error: unknown) => {
+  const details = getErrorDetails(error);
+  const message = details.message.toLowerCase();
+  return (
+    details.code === "23503" ||
+    details.code === "P0001" ||
+    message.includes("foreign key constraint") ||
+    message.includes("still referenced") ||
+    message.includes("cannot be deleted") ||
+    message.includes("already assigned")
+  );
+};
+
+const getProgramDeleteErrorMessage = (error: unknown) => {
+  if (isDeleteProtectionError(error)) return DELETE_PROTECTION_MESSAGE;
+  const details = getErrorDetails(error);
+  return `Delete failed. ${details.message}`;
+};
+
 const formatProgramTypeTag = (value: string | null | undefined) =>
   value && value.trim().length > 0 ? value.trim() : "Program";
 
@@ -75,6 +97,9 @@ export function PtProgramsPage() {
   const [actionMode, setActionMode] = useState<
     "duplicate" | "archive" | "delete" | null
   >(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProgramTemplateRow | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
@@ -111,14 +136,6 @@ export function PtProgramsPage() {
         : "Weeks TBD",
     }));
   }, [programsQuery.data]);
-  const activeProgramsCount = useMemo(
-    () => formattedPrograms.filter((program) => program.is_active).length,
-    [formattedPrograms],
-  );
-  const archivedProgramsCount = useMemo(
-    () => formattedPrograms.filter((program) => !program.is_active).length,
-    [formattedPrograms],
-  );
   const programTypeOptions = useMemo(() => {
     const seen = new Map<string, string>();
     formattedPrograms.forEach((program) => {
@@ -250,27 +267,10 @@ export function PtProgramsPage() {
 
   const handleDelete = async (program: ProgramTemplateRow) => {
     if (!workspaceId || !canManageDelivery) return;
-    const confirmed = window.confirm(
-      `Delete "${program.name ?? "Program"}"? This will permanently remove the program and its scheduled template days.`,
-    );
-    if (!confirmed) return;
 
     setActionId(program.id);
     setActionMode("delete");
     setActionError(null);
-
-    const { error: deleteDaysError } = await supabase
-      .from("program_template_days")
-      .delete()
-      .eq("program_template_id", program.id);
-
-    if (deleteDaysError) {
-      const details = getErrorDetails(deleteDaysError);
-      setActionError(`${details.code}: ${details.message}`);
-      setActionId(null);
-      setActionMode(null);
-      return;
-    }
 
     const { error: deleteProgramError } = await supabase
       .from("program_templates")
@@ -278,8 +278,7 @@ export function PtProgramsPage() {
       .eq("id", program.id);
 
     if (deleteProgramError) {
-      const details = getErrorDetails(deleteProgramError);
-      setActionError(`${details.code}: ${details.message}`);
+      setActionError(getProgramDeleteErrorMessage(deleteProgramError));
       setActionId(null);
       setActionMode(null);
       return;
@@ -290,22 +289,69 @@ export function PtProgramsPage() {
     });
     setActionId(null);
     setActionMode(null);
+    setDeleteTarget(null);
   };
 
   return (
     <div className="space-y-6">
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && actionMode !== "delete") {
+            setDeleteTarget(null);
+            setActionError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Delete program?</DialogTitle>
+            <DialogDescription>
+              This deletes{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name ?? "this program"}
+              </span>{" "}
+              from your library. Existing client assignments prevent deletion;
+              historical records are preserved.
+            </DialogDescription>
+          </DialogHeader>
+          {actionError ? (
+            <Alert tone="danger">
+              <AlertTitle>Delete failed</AlertTitle>
+              <AlertDescription>{actionError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={actionMode === "delete"}
+              onClick={() => {
+                setDeleteTarget(null);
+                setActionError(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
+              disabled={actionMode === "delete" || !deleteTarget}
+              onClick={() => {
+                if (deleteTarget) void handleDelete(deleteTarget);
+              }}
+            >
+              {actionMode === "delete" ? "Deleting..." : "Delete program"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <WorkspacePageHeader
         title="Programs"
         description="Design reusable multi-week training systems and keep edit actions close to the list."
       />
-
-      <div className="flex justify-end">
-        {canManageDelivery ? (
-          <Button onClick={() => navigate("/pt/programs/new")}>
-            New Program
-          </Button>
-        ) : null}
-      </div>
 
       {actionError ? (
         <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm">
@@ -313,37 +359,7 @@ export function PtProgramsPage() {
         </Card>
       ) : null}
 
-      <div className="page-kpi-block grid gap-4 md:grid-cols-3">
-        <StatCard
-          label="Reusable Programs"
-          value={formattedPrograms.length}
-          helper="Multi-week systems ready to reuse"
-          icon={Layers3}
-          accent
-          module="coaching"
-          className="h-full"
-        />
-        <StatCard
-          label="Active"
-          value={activeProgramsCount}
-          helper="Available for assignment and edits"
-          icon={Sparkles}
-          module="coaching"
-          iconClassName="text-[var(--state-success-text)]"
-          className="h-full"
-        />
-        <StatCard
-          label="Archived"
-          value={archivedProgramsCount}
-          helper="Stored for reference without clutter"
-          icon={Archive}
-          module="coaching"
-          iconClassName="text-muted-foreground"
-          className="h-full"
-        />
-      </div>
-
-      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem] xl:items-center">
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem_auto] xl:items-center">
         <div className="relative min-w-0">
           <Search className="app-search-icon h-4 w-4" />
           <Input
@@ -375,6 +391,14 @@ export function PtProgramsPage() {
           <option value="updated">Sort by updated</option>
           <option value="name">Sort by name</option>
         </Select>
+        {canManageDelivery ? (
+          <Button
+            className="w-full whitespace-nowrap xl:w-auto"
+            onClick={() => navigate("/pt/programs/new")}
+          >
+            New Program
+          </Button>
+        ) : null}
       </div>
 
       {workspaceLoading || programsQuery.isLoading ? (
@@ -464,7 +488,10 @@ export function PtProgramsPage() {
                           variant="ghost"
                           className="flex-1 text-destructive hover:text-destructive"
                           disabled={isBusy && actionMode === "delete"}
-                          onClick={() => handleDelete(program)}
+                          onClick={() => {
+                            setActionError(null);
+                            setDeleteTarget(program);
+                          }}
                         >
                           <Trash2 className="mr-1 h-3.5 w-3.5" />
                           {isBusy && actionMode === "delete"
@@ -489,12 +516,12 @@ export function PtProgramsPage() {
           />
         </DashboardCard>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-          <DashboardCard
-            title="Build your first reusable program"
-            subtitle="Programs become the repeatable training systems you assign, adapt, and archive over time."
-          >
-            <div className="grid gap-3 md:grid-cols-3">
+        <DashboardCard
+          title="Build your first reusable program"
+          subtitle="Programs become the repeatable training systems you assign, adapt, and archive over time."
+        >
+          <div className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Reusable block
@@ -531,23 +558,21 @@ export function PtProgramsPage() {
                   the active planning lane.
                 </div>
               </div>
-            </div>
-          </DashboardCard>
-
-          <DashboardCard
-            title="Create flow"
-            subtitle="Start deliberately so the first program already fits the long-term library."
-          >
-            <div className="space-y-4">
               <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
-                <div className="text-sm font-semibold text-foreground">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Recommended first step
+                </div>
+                <div className="mt-2 text-sm font-semibold text-foreground">
+                  Create the first block
                 </div>
                 <div className="mt-1 text-sm text-muted-foreground">
                   Create one repeatable training block with a clear purpose,
                   then duplicate it when you need a variation.
                 </div>
               </div>
+            </div>
+
+            <div className="grid gap-4">
               <EmptyState
                 title="No programs yet"
                 description="Create your first multi-week program to start assigning structured training blocks."
@@ -559,8 +584,8 @@ export function PtProgramsPage() {
                 }
               />
             </div>
-          </DashboardCard>
-        </div>
+          </div>
+        </DashboardCard>
       )}
     </div>
   );

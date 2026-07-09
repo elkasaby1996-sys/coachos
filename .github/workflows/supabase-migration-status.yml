@@ -1,0 +1,57 @@
+name: Supabase Migration Status
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-migration-status-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  migration-status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: supabase-staging
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Validate status secrets
+        run: |
+          required=(
+            SUPABASE_ACCESS_TOKEN
+            SUPABASE_PROJECT_ID
+            SUPABASE_DB_PASSWORD
+          )
+
+          missing=0
+          for key in "${required[@]}"; do
+            if [ -z "${!key}" ]; then
+              echo "Missing required secret: $key"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -eq 1 ]; then
+            echo "Supabase migration status secrets are incomplete."
+            exit 1
+          fi
+
+      - name: Link Supabase project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: List linked migration status
+        run: supabase migration list --linked --password "$SUPABASE_DB_PASSWORD"

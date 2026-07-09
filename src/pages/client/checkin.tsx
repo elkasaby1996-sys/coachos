@@ -12,6 +12,7 @@ import {
 } from "../../components/ui/coachos";
 import {
   PortalPageHeader,
+  EmptyStateBlock,
   SectionCard,
   StatusBanner,
   StepIndicator,
@@ -53,7 +54,6 @@ import {
   normalizeCheckinQuestionType,
 } from "../../lib/checkin-template";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
-import { getOnboardingStatusMeta } from "../../features/client-onboarding/lib/client-onboarding";
 
 type ClientRow = {
   id: string;
@@ -540,22 +540,11 @@ export function ClientCheckinPage() {
     !isLoading &&
     clientCheckinPageState.kind === "no-assignment" &&
     !!clientProfile?.workspace_id;
-  const onboardingStatusMeta = onboardingSummary
-    ? getOnboardingStatusMeta(onboardingSummary.onboarding.status)
-    : null;
   const onboardingNeedsActivation = Boolean(
     onboardingSummary &&
     onboardingSummary.onboarding.status !== "completed" &&
     missingTemplate,
   );
-  const missingTemplateTitle = onboardingNeedsActivation
-    ? "Your first check-in opens after onboarding activation."
-    : "Your coach hasn’t assigned a check-in yet.";
-  const missingTemplateDescription = onboardingNeedsActivation
-    ? (onboardingStatusMeta?.description ??
-      "Your coach will finish your first check-in setup after onboarding.")
-    : "Check back soon once your coach adds one.";
-  const assignedNotOpenTitle = "Check-in assigned";
   const assignedNotOpenDescription = clientCheckinPageState.nextDueDate
     ? `Your next check-in is scheduled for ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}. The form will unlock when that date arrives.`
     : "Your coach has set up check-ins, but there is no open check-in yet.";
@@ -1166,66 +1155,6 @@ export function ClientCheckinPage() {
     canProceed &&
     (checkinLocked ||
       uploadedRequiredPhotos === CHECKIN_REQUIRED_PHOTO_TYPES.length);
-  const summaryVariant =
-    missingTemplate || pageError
-      ? "error"
-      : checkinAssignedNotOpen
-        ? "info"
-        : checkinState === "reviewed"
-          ? "reviewed"
-          : checkinState === "submitted"
-            ? "locked"
-            : checkinState === "overdue"
-              ? "warning"
-              : checkinState === "upcoming"
-                ? "info"
-                : "info";
-  const summaryTitle = missingTemplate
-    ? missingTemplateTitle
-    : checkinAssignedNotOpen
-      ? assignedNotOpenTitle
-      : pageError
-        ? "Unable to load check-in"
-        : checkinState === "reviewed"
-          ? "Check-in reviewed"
-          : checkinState === "submitted"
-            ? "Check-in submitted"
-            : checkinState === "overdue"
-              ? "Check-in overdue"
-              : checkinState === "upcoming"
-                ? "Check-in window upcoming"
-                : "Check-in in progress";
-  const summaryDescription = missingTemplate
-    ? missingTemplateDescription
-    : checkinAssignedNotOpen
-      ? assignedNotOpenDescription
-      : pageError
-        ? "Please refresh the page or try again shortly."
-        : checkinState === "reviewed"
-          ? lockedSubmissionComplete
-            ? "Your coach reviewed this check-in. Responses are now locked for this cycle."
-            : `Your coach reviewed this check-in, but ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing from the submission.`
-          : checkinState === "submitted"
-            ? lockedSubmissionComplete
-              ? "Your responses are submitted and locked for this cycle."
-              : `This check-in was submitted with ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} still missing.`
-            : checkinState === "overdue"
-              ? "Finish this open check-in before moving on to the next cycle."
-              : checkinState === "upcoming"
-                ? `This check-in is scheduled for ${checkinDueDateLabel}. It will unlock on that date.`
-                : `${answeredRequiredQuestions}/${requiredQuestions.length} required questions answered and ${uploadedRequiredPhotos}/${CHECKIN_REQUIRED_PHOTO_TYPES.length} required photos ready.`;
-  const headerStateText = checkinAssignedNotOpen
-    ? clientCheckinPageState.nextDueDate
-      ? `Opens ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}`
-      : "Check-in assigned"
-    : checkinState === "reviewed"
-      ? `Reviewed ${checkinDueDateLabel}`
-      : checkinState === "submitted"
-        ? `Submitted ${checkinDueDateLabel}`
-        : checkinState === "upcoming"
-          ? `Opens ${checkinDueDateLabel}`
-          : `Due ${checkinDueDateLabel}`;
-
   useEffect(() => {
     if (checkinLocked) {
       setStep(steps.length - 1);
@@ -1248,25 +1177,10 @@ export function ClientCheckinPage() {
       <PortalPageHeader
         title="Check-ins"
         subtitle={`Stay aligned with your coach every ${checkinFrequencyLabel.toLowerCase().replace("-", " ")} cycle.`}
-        stateText={headerStateText}
-        actions={<StatusPill status={statusKey} statusMap={statusMap} />}
         className="mx-auto w-full max-w-5xl"
       />
 
       <div className="portal-form-shell space-y-5 lg:space-y-6">
-        <StatusBanner
-          variant={summaryVariant}
-          title={summaryTitle}
-          description={summaryDescription}
-          actions={
-            missingTemplate && onboardingNeedsActivation ? (
-              <Button onClick={() => navigate("/app/onboarding")}>
-                Open onboarding
-              </Button>
-            ) : undefined
-          }
-        />
-
         {staleCheckinWarning ? (
           <StatusBanner
             variant="warning"
@@ -1284,15 +1198,6 @@ export function ClientCheckinPage() {
             }
           />
         ) : null}
-
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">
-            Assigned and previous check-ins
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Choose an active cycle to complete or review recent submissions.
-          </p>
-        </div>
 
         <div className="grid gap-4 xl:grid-cols-2">
           <SurfaceCard>
@@ -1367,9 +1272,10 @@ export function ClientCheckinPage() {
                   );
                 })
               ) : (
-                <div className="rounded-[var(--radius-lg)] border border-dashed border-border/70 bg-background/35 px-4 py-6 text-sm text-muted-foreground">
-                  No active assignments yet.
-                </div>
+                <EmptyStateBlock
+                  title="No check-in schedule assigned"
+                  description="Your coach has not assigned a check-in schedule yet."
+                />
               )}
             </SurfaceCardContent>
           </SurfaceCard>
@@ -1429,9 +1335,10 @@ export function ClientCheckinPage() {
                   </div>
                 ))
               ) : (
-                <div className="rounded-[var(--radius-lg)] border border-dashed border-border/70 bg-background/35 px-4 py-6 text-sm text-muted-foreground">
-                  No previous check-ins yet.
-                </div>
+                <EmptyStateBlock
+                  title="No previous check-ins yet"
+                  description="Submitted and reviewed check-ins will appear here for reference."
+                />
               )}
             </SurfaceCardContent>
           </SurfaceCard>
@@ -1442,7 +1349,7 @@ export function ClientCheckinPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
                 <SurfaceCardTitle className="text-base">
-                  Selected cycle
+                  Check-in Form
                 </SurfaceCardTitle>
                 <SurfaceCardDescription>
                   {currentCheckin
@@ -1450,36 +1357,9 @@ export function ClientCheckinPage() {
                     : "Choose a check-in cycle to continue."}
                 </SurfaceCardDescription>
               </div>
-              {currentCheckin ? (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setStep(0)}
-                    disabled={checkinLocked || checkinIsUpcoming}
-                  >
-                    Questions
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setStep(1)}
-                    disabled={checkinLocked || checkinIsUpcoming}
-                  >
-                    Photos
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => setStep(2)}
-                    disabled={checkinIsUpcoming}
-                  >
-                    Review
-                  </Button>
-                </div>
-              ) : null}
             </div>
           </SurfaceCardHeader>
-          <SurfaceCardContent className="pt-4">
+          <SurfaceCardContent className="space-y-5 pt-4">
             {currentCheckin ? (
               <StepIndicator
                 steps={steps.map((label, index) => ({
@@ -1508,6 +1388,107 @@ export function ClientCheckinPage() {
                   : "Your check-in form will appear here once your coach assigns one."}
               </p>
             )}
+            {!checkinIsUpcoming && !checkinAssignedNotOpen && step === 2 ? (
+              <div className="space-y-5 border-t border-border/55 pt-5">
+                <div className="space-y-1">
+                  <SurfaceCardTitle className="text-base">
+                    Review and submit
+                  </SurfaceCardTitle>
+                  <SurfaceCardDescription>
+                    {checkinLocked
+                      ? "Submitted responses from this cycle."
+                      : "Make sure everything looks right."}
+                  </SurfaceCardDescription>
+                </div>
+                {isLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                  </div>
+                ) : missingTemplate ? (
+                  <EmptyState
+                    title="Your coach has not assigned a check-in schedule yet."
+                    description="Check back soon once your coach adds a schedule."
+                    {...(onboardingNeedsActivation
+                      ? {
+                          actionLabel: "Open onboarding",
+                          onAction: () => navigate("/app/onboarding"),
+                        }
+                      : {})}
+                  />
+                ) : (
+                  <div className="space-y-6">
+                    {checkinLocked && !lockedSubmissionComplete ? (
+                      <StatusBanner
+                        variant="warning"
+                        title="Reviewed with missing required items"
+                        description={`This submission is locked, but ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing when it was reviewed.`}
+                      />
+                    ) : null}
+
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        Responses
+                      </p>
+                      {questions.length === 0 ? (
+                        <EmptyState
+                          title="No questions to review"
+                          description="Your coach has not added questions yet."
+                        />
+                      ) : (
+                        questions.map((question) => {
+                          return (
+                            <SectionCard
+                              key={question.id}
+                              className="space-y-2 text-sm"
+                            >
+                              <p className="field-label">
+                                {getCheckinQuestionLabel(question)}
+                              </p>
+                              <p className="text-foreground">
+                                {getQuestionSummaryValue(answers[question.id])}
+                              </p>
+                            </SectionCard>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        Photos
+                      </p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {photoSlots.map((slot) => {
+                          const state = photos[slot.type];
+                          return (
+                            <SectionCard
+                              key={slot.type}
+                              className="space-y-2 text-sm"
+                            >
+                              <p className="field-label">{slot.label}</p>
+                              {state.previewUrl ? (
+                                <img
+                                  src={state.previewUrl}
+                                  alt={`${slot.label} preview`}
+                                  className="h-32 w-full rounded-xl border border-border object-cover"
+                                />
+                              ) : (
+                                <p className="text-xs text-muted-foreground">
+                                  {slot.required
+                                    ? "Required photo missing from submission"
+                                    : "Optional photo not added"}
+                                </p>
+                              )}
+                            </SectionCard>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
           </SurfaceCardContent>
         </SurfaceCard>
 
@@ -1518,19 +1499,6 @@ export function ClientCheckinPage() {
             description={`This cycle is scheduled for ${checkinDueDateLabel}. The questions, photos, and submission controls unlock on that date to keep the check-in tied to the right period.`}
           />
         ) : null}
-
-        {/* legacy placeholder removed during final onboarding integration
-        <EmptyState
-          title="Your coach hasn’t assigned a check-in yet."
-          description="Check back soon once your coach adds one."
-          {...(onboardingNeedsActivation
-            ? {
-                actionLabel: "Open onboarding",
-                onAction: () => navigate("/app/onboarding"),
-              }
-            : {})}
-        />
-      */}
 
         {checkinState === "reviewed" && currentCheckin?.pt_feedback ? (
           <DashboardCard
@@ -1556,8 +1524,8 @@ export function ClientCheckinPage() {
               </div>
             ) : missingTemplate ? (
               <EmptyState
-                title="Your coach hasn’t assigned a check-in yet."
-                description="Check back soon once your coach adds one."
+                title="Your coach has not assigned a check-in schedule yet."
+                description="Check back soon once your coach adds a schedule."
                 {...(onboardingNeedsActivation
                   ? {
                       actionLabel: "Open onboarding",
@@ -1567,8 +1535,8 @@ export function ClientCheckinPage() {
               />
             ) : !hasTemplate ? (
               <EmptyState
-                title="Your coach hasn’t assigned a check-in yet."
-                description="Check back soon once your coach adds one."
+                title="Your coach has not assigned a check-in schedule yet."
+                description="Check back soon once your coach adds a schedule."
                 {...(onboardingNeedsActivation
                   ? {
                       actionLabel: "Open onboarding",
@@ -1804,8 +1772,8 @@ export function ClientCheckinPage() {
               />
             ) : missingTemplate ? (
               <EmptyState
-                title="Your coach hasn’t assigned a check-in yet."
-                description="Check back soon once your coach adds one."
+                title="Your coach has not assigned a check-in schedule yet."
+                description="Check back soon once your coach adds a schedule."
                 {...(onboardingNeedsActivation
                   ? {
                       actionLabel: "Open onboarding",
@@ -1935,112 +1903,13 @@ export function ClientCheckinPage() {
           </DashboardCard>
         ) : null}
 
-        {!checkinIsUpcoming && !checkinAssignedNotOpen && step === 2 ? (
-          <DashboardCard
-            title="Review and submit"
-            subtitle={
-              checkinLocked
-                ? "Submitted responses from this cycle."
-                : "Make sure everything looks right."
-            }
-          >
-            {isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-24 w-full" />
-              </div>
-            ) : missingTemplate ? (
-              <EmptyState
-                title="Your coach hasn’t assigned a check-in yet."
-                description="Check back soon once your coach adds one."
-                {...(onboardingNeedsActivation
-                  ? {
-                      actionLabel: "Open onboarding",
-                      onAction: () => navigate("/app/onboarding"),
-                    }
-                  : {})}
-              />
-            ) : (
-              <div className="space-y-6">
-                {checkinLocked && !lockedSubmissionComplete ? (
-                  <StatusBanner
-                    variant="warning"
-                    title="Reviewed with missing required items"
-                    description={`This submission is locked, but ${missingRequiredAnswers} required response${missingRequiredAnswers === 1 ? "" : "s"} and ${missingRequiredPhotos} required photo${missingRequiredPhotos === 1 ? "" : "s"} were missing when it was reviewed.`}
-                  />
-                ) : null}
-
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-foreground">
-                    Responses
-                  </p>
-                  {questions.length === 0 ? (
-                    <EmptyState
-                      title="No questions to review"
-                      description="Your coach has not added questions yet."
-                    />
-                  ) : (
-                    questions.map((question) => {
-                      return (
-                        <SectionCard
-                          key={question.id}
-                          className="space-y-2 text-sm"
-                        >
-                          <p className="field-label">
-                            {getCheckinQuestionLabel(question)}
-                          </p>
-                          <p className="text-foreground">
-                            {getQuestionSummaryValue(answers[question.id])}
-                          </p>
-                        </SectionCard>
-                      );
-                    })
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-foreground">
-                    Photos
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {photoSlots.map((slot) => {
-                      const state = photos[slot.type];
-                      return (
-                        <SectionCard
-                          key={slot.type}
-                          className="space-y-2 text-sm"
-                        >
-                          <p className="field-label">{slot.label}</p>
-                          {state.previewUrl ? (
-                            <img
-                              src={state.previewUrl}
-                              alt={`${slot.label} preview`}
-                              className="h-32 w-full rounded-xl border border-border object-cover"
-                            />
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              {slot.required
-                                ? "Required photo missing from submission"
-                                : "Optional photo not added"}
-                            </p>
-                          )}
-                        </SectionCard>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </DashboardCard>
-        ) : null}
-
         {checkinAssignedNotOpen ? (
           <SectionCard className="mt-6 flex flex-col gap-3 border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-1 text-sm">
               <p className="font-semibold text-foreground">
                 {clientCheckinPageState.nextDueDate
                   ? `Scheduled for ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}`
-                  : "Check-in schedule pending"}
+                  : "No check-in schedule assigned"}
               </p>
               <p className="text-muted-foreground">
                 {assignedNotOpenDescription}

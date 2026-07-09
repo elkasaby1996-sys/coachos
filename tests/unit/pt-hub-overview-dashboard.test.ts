@@ -20,6 +20,10 @@ const overviewSectionsSource = readFileSync(
   "src/features/pt-hub/components/pt-hub-overview-sections.tsx",
   "utf8",
 );
+const overviewPageSource = readFileSync(
+  "src/pages/pt-hub/overview.tsx",
+  "utf8",
+);
 
 function createReadiness(
   overrides: Partial<PTProfileReadiness> = {},
@@ -263,6 +267,11 @@ describe("PT Hub overview dashboard model", () => {
     expect(overviewSectionsSource).toContain("aria-controls={checklistRowsId}");
   });
 
+  it("does not render the route shortcuts card on the overview page", () => {
+    expect(overviewPageSource).not.toContain("Route shortcuts");
+    expect(overviewPageSource).not.toContain("PtHubQuickActionsCard");
+  });
+
   it("keeps full checklist rows behind the expanded state", () => {
     expect(overviewSectionsSource).toContain(
       'aria-label="Full activation checklist"',
@@ -502,8 +511,10 @@ describe("PT Hub overview dashboard model", () => {
       "Active clients",
       "New leads",
       "Check-ins due",
-      "Onboarding in progress",
     ]);
+    expect(model.metrics.map((metric) => metric.id)).not.toContain(
+      "onboarding-in-progress",
+    );
     expect(model.activationChecklist?.nextItem?.id).toBe("profile");
     expect(model.actionItems.map((item) => item.id)).not.toContain(
       "profile-blockers",
@@ -616,8 +627,10 @@ describe("PT Hub overview dashboard model", () => {
       "Active clients",
       "New leads",
       "Check-ins due",
-      "Onboarding in progress",
     ]);
+    expect(model.metrics.map((metric) => metric.id)).not.toContain(
+      "onboarding-in-progress",
+    );
     expect(model.actionItems[0]?.id).toBe("unreplied-leads");
     expect(model.actionItems.map((item) => item.id)).toEqual(
       expect.arrayContaining([

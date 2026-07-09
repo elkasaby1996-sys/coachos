@@ -18,6 +18,7 @@ const ptHubLayout = readFileSync(
   "utf8",
 );
 const appRoutes = readFileSync("src/routes/app.tsx", "utf8");
+const appStyles = readFileSync("src/styles/style.css", "utf8");
 
 describe("PT Hub shared workspace contract", () => {
   it("models owned and shared workspace relations in the PT Hub type", () => {
@@ -56,6 +57,12 @@ describe("PT Hub shared workspace contract", () => {
     expect(workspaceCard).toContain("assigned clients");
   });
 
+  it("does not duplicate workspace relation and role as card tags", () => {
+    expect(workspaceCard).not.toContain("components/ui/badge");
+    expect(workspaceCard).not.toContain('Shared workspace" : "Owned');
+    expect(workspaceCard).not.toContain('<Badge variant="muted"');
+  });
+
   it("highlights accepted invite redirects on PT Hub workspaces", () => {
     expect(workspacesPage).toContain("acceptedWorkspace");
     expect(workspacesPage).toContain("Workspace added to your PT Hub");
@@ -79,5 +86,12 @@ describe("PT Hub shared workspace contract", () => {
     expect(ptHubLayout).toContain("Shared workspace ·");
     expect(ptLayout).toContain("usePtHubWorkspaces");
     expect(ptHubLayout).toContain("usePtHubWorkspaces");
+  });
+
+  it("keeps the workspace switcher menu on the header surface color system", () => {
+    expect(switcherMenu).toContain("app-workspace-switcher-menu w-72");
+    expect(appStyles).toContain(".app-workspace-switcher-menu");
+    expect(appStyles).toContain("--menu-surface-bg");
+    expect(appStyles).toContain("oklch(var(--bg-surface-elevated) / 0.86)");
   });
 });

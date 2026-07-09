@@ -12,6 +12,7 @@ import {
   ClientAccountOnboardingPage,
   ClientBaselinePage,
   ClientCheckinPage,
+  ClientCoachMarketplacePage,
   ClientHabitsPage,
   ClientHomePage,
   ClientLayout,
@@ -24,7 +25,6 @@ import {
   ClientSettingsPage,
   ClientWearablesPage,
   ClientProgressPage,
-  ClientWorkoutDetailPage,
   ClientWorkoutRunPage,
   ClientWorkoutSummaryPage,
   ClientWorkoutsPage,
@@ -88,7 +88,6 @@ import {
   TeamInviteAcceptancePage,
   TermsPage,
   WorkspaceSettingsAutomationsTab,
-  WorkspaceSettingsBrandTab,
   WorkspaceSettingsClientExperienceTab,
   WorkspaceSettingsDangerTab,
   WorkspaceSettingsDefaultsTab,
@@ -366,6 +365,13 @@ function PtClientDetailRoute() {
 function LegacyJoinRedirect() {
   const { code } = useParams<{ code: string }>();
   return <Navigate to={`/invite/${code ?? ""}`} replace />;
+}
+
+function ClientWorkoutDetailRedirect() {
+  const { assignedWorkoutId } = useParams<{ assignedWorkoutId: string }>();
+  return (
+    <Navigate to={`/app/workout-run/${assignedWorkoutId ?? ""}`} replace />
+  );
 }
 
 function PtHubAssetPreloader() {
@@ -744,7 +750,10 @@ export function App() {
             <Route path="settings" element={<PtHubSettingsLayoutPage />}>
               <Route index element={<Navigate to="account" replace />} />
               <Route path="account" element={<PtHubSettingsAccountTab />} />
-              <Route path="public-profile" element={<PtHubProfilePage />} />
+              <Route
+                path="public-profile"
+                element={<Navigate to="/pt-hub/profile" replace />}
+              />
               <Route
                 path="notifications"
                 element={<PtHubSettingsNotificationsTab />}
@@ -883,7 +892,10 @@ export function App() {
                   path="general"
                   element={<WorkspaceSettingsGeneralTab />}
                 />
-                <Route path="brand" element={<WorkspaceSettingsBrandTab />} />
+                <Route
+                  path="brand"
+                  element={<Navigate to="../general" replace />}
+                />
                 <Route
                   path="client-experience"
                   element={<WorkspaceSettingsClientExperienceTab />}
@@ -945,7 +957,7 @@ export function App() {
             />
             <Route
               path="workouts/:assignedWorkoutId"
-              element={<ClientWorkoutDetailPage />}
+              element={<ClientWorkoutDetailRedirect />}
             />
             <Route
               path="workout-run/:assignedWorkoutId"
@@ -972,10 +984,7 @@ export function App() {
               path="nutrition/new"
               element={<ClientNutritionCreatePlanPage />}
             />
-            <Route
-              path="find-coach"
-              element={<Navigate to="/app/home?module=find-coach" replace />}
-            />
+            <Route path="find-coach" element={<ClientCoachMarketplacePage />} />
             <Route path="medical" element={<ClientMedicalPage />} />
             <Route path="baseline" element={<ClientBaselinePage />} />
             <Route

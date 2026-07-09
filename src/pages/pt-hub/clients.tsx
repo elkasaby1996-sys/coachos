@@ -121,6 +121,7 @@ export function PtHubClientsPage() {
     lifecycle: lifecycleFilter,
     segment: segmentFilter,
     search: deferredSearchValue,
+    relationshipScope: "all",
   });
 
   const workspaces = useMemo(

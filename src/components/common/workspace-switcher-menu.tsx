@@ -86,7 +86,7 @@ export function WorkspaceSwitcherMenu({
       variant="menu"
       align="end"
       sideOffset={10}
-      className={cn("w-72", className)}
+      className={cn("app-workspace-switcher-menu w-72", className)}
     >
       <DropdownMenuLabel>{label}</DropdownMenuLabel>
       <DropdownMenuSeparator />

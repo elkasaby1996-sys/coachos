@@ -1,57 +1,64 @@
 import { ArrowUpRight } from "lucide-react";
-import {
-  getClientRiskState,
-  getClientRiskFlagMeta,
-  isClientAtRisk,
-  normalizeClientRiskFlags,
-} from "../../../lib/client-lifecycle";
+import type { BadgeVariant } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
-import {
-  LifecycleBadge,
-  RiskBadge,
-  TagInfoBadge,
-} from "../../../components/ui/coachos/status-pill";
+import { TagInfoBadge } from "../../../components/ui/coachos/status-pill";
 import { useWindowedRows } from "../../../hooks/use-windowed-rows";
+import {
+  getClientGlobalStatusDisplay,
+  type ClientAttentionReason,
+  type ClientStatusBadgeDisplay,
+  type StatusTone,
+} from "../../../lib/client-status-display";
 import { getSemanticToneClasses } from "../../../lib/semantic-status";
 import { useI18n } from "../../../lib/i18n-context";
 import type { PTClientSummary } from "../types";
 
-const statusBadgePriority: Record<string, number> = {
-  relationship: -1,
-  risk: 0,
-  low_adherence_trend: 1,
-  missed_checkins: 2,
-  overdue_checkins: 2,
-  no_recent_reply: 3,
-  onboarding: 4,
-  inactive_client: 5,
-  lifecycle: 10,
+const toneBadgeVariant: Record<StatusTone, BadgeVariant> = {
+  neutral: "neutral",
+  muted: "muted",
+  info: "info",
+  success: "success",
+  warning: "warning",
+  danger: "danger",
 };
 
-function getRelationshipStatusBadge(
-  relationshipStatus: PTClientSummary["relationshipStatus"],
+function getBadgeTitle(badge: ClientStatusBadgeDisplay) {
+  if (badge.kind === "relationship") {
+    return badge.key === "relationship:transferred_out"
+      ? "Transferred-out relationship"
+      : `${badge.label} relationship`;
+  }
+
+  if (badge.kind === "lifecycle") {
+    return `${badge.label} lifecycle`;
+  }
+
+  return "Needs attention";
+}
+
+function getAttentionDescription(
+  badge: ClientStatusBadgeDisplay,
+  attentionReasons: ClientAttentionReason[],
 ) {
-  if (relationshipStatus === "removed") {
-    return {
-      label: "Removed",
-      variant: "warning" as const,
-      title: "Removed relationship",
-      description:
-        "This client relationship is no longer active. History is preserved for reference.",
-    };
+  if (badge.kind !== "attention") {
+    return badge.description ?? badge.label;
   }
 
-  if (relationshipStatus === "transferred_out") {
-    return {
-      label: "Transferred out",
-      variant: "info" as const,
-      title: "Transferred-out relationship",
-      description:
-        "This client was transferred to another workspace. Source history is preserved for reference.",
-    };
+  if (attentionReasons.length === 0) {
+    return (
+      badge.description ??
+      "Attention signal detected, but the reason could not be resolved."
+    );
   }
 
-  return null;
+  return (
+    badge.description ??
+    attentionReasons.map((reason) => reason.label).join(", ")
+  );
+}
+
+function isNonInteractiveLifecycleBadge(badge: ClientStatusBadgeDisplay) {
+  return badge.kind === "lifecycle" && badge.key === "lifecycle:active";
 }
 
 export function PtHubClientTable({
@@ -88,118 +95,14 @@ export function PtHubClientTable({
             {t("ptHub.clients.table.coachingSpace", "Coaching space")}
           </span>
         ) : null}
-        <span>{t("ptHub.clients.table.lifecycle", "Lifecycle")}</span>
-        <span className="text-right">
-          {t("ptHub.clients.table.action", "Action")}
-        </span>
+        <span>{t("ptHub.clients.table.lifecycle", "Status")}</span>
+        <span aria-hidden="true" />
       </div>
       <div className="space-y-2">
         {visibleRows.map((client) => {
-          const riskFlags = normalizeClientRiskFlags(client.riskFlags);
-          const riskState = getClientRiskState(client);
-          const clientAtRisk = isClientAtRisk(client);
           const reason = client.pausedReason ?? client.churnReason;
-          const relationshipBadge = getRelationshipStatusBadge(
-            client.relationshipStatus,
-          );
-          const statusBadges = [
-            ...(relationshipBadge
-              ? [
-                  {
-                    key: "relationship",
-                    priority: statusBadgePriority.relationship,
-                    element: (
-                      <TagInfoBadge
-                        label={relationshipBadge.label}
-                        variant={relationshipBadge.variant}
-                        title={relationshipBadge.title}
-                        description={relationshipBadge.description}
-                      />
-                    ),
-                  },
-                ]
-              : []),
-            {
-              key: "lifecycle",
-              priority: statusBadgePriority.lifecycle,
-              element: (
-                <LifecycleBadge lifecycleState={client.lifecycleState} />
-              ),
-            },
-            ...(clientAtRisk
-              ? [
-                  {
-                    key: "risk",
-                    priority: statusBadgePriority.risk,
-                    element: <RiskBadge riskState={riskState} />,
-                  },
-                ]
-              : []),
-            ...(client.onboardingIncomplete && client.onboardingStatus
-              ? [
-                  {
-                    key: "onboarding",
-                    priority: statusBadgePriority.onboarding,
-                    element: (
-                      <TagInfoBadge
-                        label={client.onboardingStatus.replace(/_/g, " ")}
-                        variant="warning"
-                        title={t(
-                          "ptHub.clients.table.onboardingStatus",
-                          "Onboarding status",
-                        )}
-                        description={t(
-                          "ptHub.clients.table.onboardingStatusDescription",
-                          "This client still has onboarding work pending before coaching is fully settled.",
-                        )}
-                      />
-                    ),
-                  },
-                ]
-              : []),
-            ...(client.hasOverdueCheckin
-              ? [
-                  {
-                    key: "overdue_checkins",
-                    priority: statusBadgePriority.overdue_checkins,
-                    element: (
-                      <TagInfoBadge
-                        label={`${client.overdueCheckinsCount} ${t("ptHub.clients.table.overdue", "overdue")}`}
-                        variant="warning"
-                        title={t(
-                          "ptHub.clients.table.overdueCheckins",
-                          "Overdue check-ins",
-                        )}
-                        description={t(
-                          "ptHub.clients.table.overdueCheckinsDescription",
-                          "One or more scheduled check-ins still need a submission or review.",
-                        )}
-                      />
-                    ),
-                  },
-                ]
-              : []),
-            ...riskFlags.flatMap((flag) => {
-              const meta = getClientRiskFlagMeta(flag);
-              if (!meta) return [];
-              return [
-                {
-                  key: flag,
-                  priority: statusBadgePriority[flag] ?? 9,
-                  element: (
-                    <TagInfoBadge
-                      label={meta.shortLabel}
-                      variant={meta.variant}
-                      title={meta.label}
-                      description={meta.description}
-                    />
-                  ),
-                },
-              ];
-            }),
-          ]
-            .sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99))
-            .slice(0, 2);
+          const statusDisplay = getClientGlobalStatusDisplay(client);
+          const hasAttention = Boolean(statusDisplay.attentionBadge);
 
           return (
             <div
@@ -216,7 +119,7 @@ export function PtHubClientTable({
                     aria-hidden
                     className={`pt-hub-row-status-dot ${
                       getSemanticToneClasses(
-                        client.hasOverdueCheckin || clientAtRisk
+                        hasAttention
                           ? "danger"
                           : client.onboardingIncomplete
                             ? "warning"
@@ -246,19 +149,32 @@ export function PtHubClientTable({
                 </div>
               ) : null}
               <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap">
-                {statusBadges.map((badge) => (
+                {statusDisplay.globalBadges.map((badge) => (
                   <span key={badge.key} className="contents">
-                    {badge.element}
+                    <TagInfoBadge
+                      label={badge.label}
+                      variant={toneBadgeVariant[badge.tone]}
+                      title={getBadgeTitle(badge)}
+                      description={getAttentionDescription(
+                        badge,
+                        statusDisplay.attentionReasons,
+                      )}
+                      disabled={isNonInteractiveLifecycleBadge(badge)}
+                    />
                   </span>
                 ))}
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-stretch lg:justify-end">
                 <Button
                   variant="secondary"
                   size="sm"
+                  className="h-10 w-full rounded-2xl p-0 sm:w-10"
                   onClick={() => onOpen(client)}
+                  aria-label={t(
+                    "ptHub.clients.table.openClientAria",
+                    `Open ${client.displayName}`,
+                  )}
                 >
-                  {t("ptHub.clients.table.openClient", "Open client")}
                   <ArrowUpRight className="h-4 w-4 text-[var(--module-clients-text)] [stroke-width:1.7]" />
                 </Button>
               </div>

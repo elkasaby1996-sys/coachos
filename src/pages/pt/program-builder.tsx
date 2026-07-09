@@ -16,8 +16,11 @@ import {
   TabsTrigger,
 } from "../../components/ui/tabs";
 import { Badge } from "../../components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/skeleton";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { StickySaveBar } from "../../features/settings/components/settings-primitives";
+import { useDirtyNavigationGuard } from "../../features/settings/hooks/use-dirty-navigation-guard";
 import {
   ASSIGNMENT_SNAPSHOT_NOTICE,
   ASSIGNMENT_SNAPSHOT_WARNING_TITLE,
@@ -56,6 +59,12 @@ type ProgramDayState = {
 };
 
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const initialProgramForm = {
+  name: "",
+  programTypeTag: "",
+  description: "",
+  weeksCount: 4,
+};
 
 function AssignmentSnapshotCallout() {
   return (
@@ -78,6 +87,30 @@ const getErrorDetails = (error: unknown) => {
     };
   }
   return { code: "unknown", message: "Unknown error" };
+};
+
+const PROGRAM_LAYOUT_DELETE_PROTECTION_MESSAGE =
+  "Delete failed. This template is already assigned to a client and cannot be deleted. Existing client assignments prevent deletion. Historical records are preserved.";
+
+const isDeleteProtectionError = (error: unknown) => {
+  const details = getErrorDetails(error);
+  const message = details.message.toLowerCase();
+  return (
+    details.code === "23503" ||
+    details.code === "P0001" ||
+    message.includes("foreign key constraint") ||
+    message.includes("still referenced") ||
+    message.includes("cannot be deleted") ||
+    message.includes("already assigned")
+  );
+};
+
+const getProgramLayoutDeleteErrorMessage = (error: unknown) => {
+  if (isDeleteProtectionError(error)) {
+    return PROGRAM_LAYOUT_DELETE_PROTECTION_MESSAGE;
+  }
+  const details = getErrorDetails(error);
+  return `Delete failed. ${details.message}`;
 };
 
 const isUuid = (value: string | undefined | null) =>
@@ -110,6 +143,27 @@ const buildDaysMap = (
   return map;
 };
 
+const createProgramDirtySnapshot = (
+  form: typeof initialProgramForm,
+  daysMap: Record<string, ProgramDayState>,
+) =>
+  JSON.stringify({
+    form: {
+      name: form.name.trim(),
+      programTypeTag: form.programTypeTag.trim(),
+      description: form.description.trim(),
+      weeksCount: form.weeksCount,
+    },
+    days: Object.entries(daysMap)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => ({
+        key,
+        workoutTemplateId: value.workout_template_id ?? null,
+        isRest: value.is_rest,
+        notes: value.notes.trim(),
+      })),
+  });
+
 export function PtProgramBuilderPage() {
   const { id } = useParams();
   const templateId = isUuid(id) ? id : null;
@@ -120,15 +174,13 @@ export function PtProgramBuilderPage() {
   const { workspaceId } = useWorkspace();
   const { canManageDelivery } = useWorkspaceWriteAccess();
 
-  const [form, setForm] = useState({
-    name: "",
-    programTypeTag: "",
-    description: "",
-    weeksCount: 4,
-  });
+  const [form, setForm] = useState(initialProgramForm);
   const [activeWeek, setActiveWeek] = useState("week-1");
   const [daysMap, setDaysMap] = useState<Record<string, ProgramDayState>>(
     buildDaysMap(4, []),
+  );
+  const [savedProgramSnapshot, setSavedProgramSnapshot] = useState(() =>
+    createProgramDirtySnapshot(initialProgramForm, buildDaysMap(4, [])),
   );
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -189,13 +241,16 @@ export function PtProgramBuilderPage() {
     if (!templateQuery.data || !templateDaysQuery.data) return;
     const template = templateQuery.data;
     const weeksCount = template.weeks_count ?? 4;
-    setForm({
+    const nextForm = {
       name: template.name ?? "",
       programTypeTag: template.program_type_tag ?? "",
       description: template.description ?? "",
       weeksCount,
-    });
-    setDaysMap(buildDaysMap(weeksCount, templateDaysQuery.data));
+    };
+    const nextDaysMap = buildDaysMap(weeksCount, templateDaysQuery.data);
+    setForm(nextForm);
+    setDaysMap(nextDaysMap);
+    setSavedProgramSnapshot(createProgramDirtySnapshot(nextForm, nextDaysMap));
     setActiveWeek("week-1");
   }, [templateQuery.data, templateDaysQuery.data]);
 
@@ -246,6 +301,11 @@ export function PtProgramBuilderPage() {
       ),
     [form.weeksCount],
   );
+  const programDirtySnapshot = useMemo(
+    () => createProgramDirtySnapshot(form, daysMap),
+    [daysMap, form],
+  );
+  const hasUnsavedChanges = programDirtySnapshot !== savedProgramSnapshot;
 
   const updateDay = (
     week: number,
@@ -278,19 +338,40 @@ export function PtProgramBuilderPage() {
   };
 
   const handleSave = async () => {
-    if (!workspaceId || !canManageDelivery) return;
+    if (!workspaceId || !canManageDelivery) return false;
     if (!form.name.trim()) {
       setSaveError("Program name is required.");
-      return;
+      return false;
     }
     if (form.weeksCount < 1) {
       setSaveError("Weeks count must be at least 1.");
-      return;
+      return false;
     }
     setSaveStatus("saving");
     setSaveError(null);
 
     let programId = templateId;
+    if (!isNew && templateId) {
+      const { data: isProtected, error: protectionError } = await supabase.rpc(
+        "is_program_template_in_active_delivery",
+        {
+          p_program_template_id: templateId,
+        },
+      );
+
+      if (protectionError) {
+        setSaveError(getProgramLayoutDeleteErrorMessage(protectionError));
+        setSaveStatus("idle");
+        return false;
+      }
+
+      if (isProtected) {
+        setSaveError(PROGRAM_LAYOUT_DELETE_PROTECTION_MESSAGE);
+        setSaveStatus("idle");
+        return false;
+      }
+    }
+
     if (isNew) {
       const { data, error } = await supabase
         .from("program_templates")
@@ -308,7 +389,7 @@ export function PtProgramBuilderPage() {
         const details = getErrorDetails(error);
         setSaveError(`${details.code}: ${details.message}`);
         setSaveStatus("idle");
-        return;
+        return false;
       }
       programId = data.id;
     } else if (templateId) {
@@ -326,14 +407,14 @@ export function PtProgramBuilderPage() {
         const details = getErrorDetails(error);
         setSaveError(`${details.code}: ${details.message}`);
         setSaveStatus("idle");
-        return;
+        return false;
       }
     }
 
     if (!programId) {
       setSaveError("Unable to save program.");
       setSaveStatus("idle");
-      return;
+      return false;
     }
 
     const { error: deleteError } = await supabase
@@ -341,10 +422,9 @@ export function PtProgramBuilderPage() {
       .delete()
       .eq("program_template_id", programId);
     if (deleteError) {
-      const details = getErrorDetails(deleteError);
-      setSaveError(`${details.code}: ${details.message}`);
+      setSaveError(getProgramLayoutDeleteErrorMessage(deleteError));
       setSaveStatus("idle");
-      return;
+      return false;
     }
 
     const payload = weekOptions.flatMap((week) => {
@@ -376,7 +456,7 @@ export function PtProgramBuilderPage() {
         const details = getErrorDetails(insertError);
         setSaveError(`${details.code}: ${details.message}`);
         setSaveStatus("idle");
-        return;
+        return false;
       }
     }
 
@@ -391,15 +471,51 @@ export function PtProgramBuilderPage() {
         queryKey: ["program-template-days", programId],
       }),
     ]);
+    setSavedProgramSnapshot(programDirtySnapshot);
     if (isNew) {
       navigate(`/pt/programs/${programId}/edit?saved=1`);
-      return;
+      return true;
     }
     setSaveNotice(
       "Program saved. Your weekly structure is now in the library.",
     );
     setSaveStatus("idle");
+    return true;
   };
+
+  const handleDiscardProgramChanges = () => {
+    setSaveError(null);
+    setSaveNotice(null);
+    if (isNew) {
+      const nextDaysMap = buildDaysMap(initialProgramForm.weeksCount, []);
+      setForm(initialProgramForm);
+      setDaysMap(nextDaysMap);
+      setSavedProgramSnapshot(
+        createProgramDirtySnapshot(initialProgramForm, nextDaysMap),
+      );
+      setActiveWeek("week-1");
+      return;
+    }
+    if (!templateQuery.data || !templateDaysQuery.data) return;
+    const weeksCount = templateQuery.data.weeks_count ?? 4;
+    const nextForm = {
+      name: templateQuery.data.name ?? "",
+      programTypeTag: templateQuery.data.program_type_tag ?? "",
+      description: templateQuery.data.description ?? "",
+      weeksCount,
+    };
+    const nextDaysMap = buildDaysMap(weeksCount, templateDaysQuery.data);
+    setForm(nextForm);
+    setDaysMap(nextDaysMap);
+    setSavedProgramSnapshot(createProgramDirtySnapshot(nextForm, nextDaysMap));
+    setActiveWeek("week-1");
+  };
+
+  const { guardDialog } = useDirtyNavigationGuard({
+    isDirty: hasUnsavedChanges && saveStatus === "idle",
+    onSave: handleSave,
+    onDiscard: handleDiscardProgramChanges,
+  });
 
   if (id && !templateId && !isNew) {
     return (
@@ -440,6 +556,7 @@ export function PtProgramBuilderPage() {
 
   return (
     <div className="space-y-6">
+      {guardDialog}
       <WorkspacePageHeader
         title={isNew ? "New Program" : "Program Builder"}
         description="Configure weekly structure and day-by-day assignments."
@@ -450,12 +567,6 @@ export function PtProgramBuilderPage() {
               onClick={() => navigate("/pt/programs")}
             >
               Back to programs
-            </Button>
-            <Button
-              disabled={saveStatus === "saving" || !canManageDelivery}
-              onClick={handleSave}
-            >
-              {saveStatus === "saving" ? "Saving..." : "Save Program"}
             </Button>
           </>
         }
@@ -576,9 +687,10 @@ export function PtProgramBuilderPage() {
               />
             </div>
             {saveError ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive md:col-span-3">
-                {saveError}
-              </div>
+              <Alert tone="danger" className="md:col-span-3">
+                <AlertTitle>Program save failed</AlertTitle>
+                <AlertDescription>{saveError}</AlertDescription>
+              </Alert>
             ) : null}
           </CardContent>
         </Card>
@@ -786,6 +898,48 @@ export function PtProgramBuilderPage() {
           </Tabs>
         </CardContent>
       </Card>
+      <div className="flex flex-col gap-3 rounded-[20px] border border-border/70 bg-card/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">
+            {hasUnsavedChanges
+              ? "Unsaved program changes"
+              : "Program is up to date"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Save changes before assigning this program to clients.
+          </p>
+        </div>
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={handleDiscardProgramChanges}
+            disabled={!hasUnsavedChanges || saveStatus === "saving"}
+          >
+            Discard
+          </Button>
+          <Button
+            type="button"
+            className="w-full sm:w-auto"
+            onClick={() => void handleSave()}
+            disabled={
+              saveStatus === "saving" ||
+              !hasUnsavedChanges ||
+              !canManageDelivery
+            }
+          >
+            {saveStatus === "saving" ? "Saving..." : "Save changes"}
+          </Button>
+        </div>
+      </div>
+      <StickySaveBar
+        isDirty={hasUnsavedChanges && canManageDelivery}
+        isSaving={saveStatus === "saving"}
+        onSave={handleSave}
+        onDiscard={handleDiscardProgramChanges}
+        statusText="Unsaved program changes"
+      />
     </div>
   );
 }

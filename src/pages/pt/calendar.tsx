@@ -123,9 +123,12 @@ export function PtCalendarPage() {
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
+  const [deleteEventDialogOpen, setDeleteEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CoachEventRow | null>(
     null,
   );
+  const [deleteEventTarget, setDeleteEventTarget] =
+    useState<CoachEventRow | null>(null);
   const [eventMode, setEventMode] = useState<"create" | "edit">("create");
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [eventDate, setEventDate] = useState(todayKey);
@@ -294,8 +297,10 @@ export function PtCalendarPage() {
       await queryClient.invalidateQueries({
         queryKey: ["pt-calendar-events", workspaceId],
       });
+      setDeleteEventDialogOpen(false);
       setEventDetailsOpen(false);
       setSelectedEvent(null);
+      setDeleteEventTarget(null);
     },
   });
 
@@ -502,6 +507,7 @@ export function PtCalendarPage() {
                       key={day.key}
                       role="button"
                       tabIndex={0}
+                      aria-current={isToday ? "date" : undefined}
                       onClick={() => setSelectedDateKey(day.key)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
@@ -512,7 +518,6 @@ export function PtCalendarPage() {
                       className={cn(
                         "flex min-h-[176px] flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/40 p-4 text-left transition hover:border-border",
                         !day.inMonth && "opacity-50",
-                        isToday && "border-accent/60 bg-accent/10",
                         isSelected && "border-primary/40 bg-primary/[0.08]",
                         hasItems &&
                           !isToday &&
@@ -521,15 +526,15 @@ export function PtCalendarPage() {
                           "border-primary/30 bg-primary/[0.07]",
                         dayState === "overdue" &&
                           "border-destructive/35 bg-destructive/[0.06]",
+                        isToday &&
+                          "border-primary/60 bg-primary/[0.10] shadow-[0_20px_42px_-32px_rgba(37,99,235,0.7)] ring-2 ring-primary/30",
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span
                           className={cn(
                             "flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-sm font-semibold",
-                            isToday
-                              ? "border-primary/45 bg-primary/16 text-primary"
-                              : "border-border/70 bg-background/60 text-foreground",
+                            "border-border/70 bg-background/60 text-foreground",
                           )}
                         >
                           {day.key.slice(-2)}
@@ -738,7 +743,15 @@ export function PtCalendarPage() {
         </div>
       </div>
 
-      <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
+      <Dialog
+        open={eventDialogOpen}
+        onOpenChange={(open) => {
+          setEventDialogOpen(open);
+          if (!open) {
+            createEventMutation.reset();
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>
@@ -880,6 +893,11 @@ export function PtCalendarPage() {
               )}
             </div>
           </div>
+          {createEventMutation.error ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              Unable to save this event right now. Please try again.
+            </div>
+          ) : null}
           <DialogFooter>
             <Button
               variant="secondary"
@@ -889,7 +907,7 @@ export function PtCalendarPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => createEventMutation.mutateAsync()}
+              onClick={() => createEventMutation.mutate()}
               disabled={isSavingEvent}
             >
               {isSavingEvent
@@ -988,9 +1006,9 @@ export function PtCalendarPage() {
                   variant="secondary"
                   onClick={() => {
                     if (!selectedEvent) return;
-                    const confirmed = window.confirm("Delete this event?");
-                    if (!confirmed) return;
-                    deleteEventMutation.mutate(selectedEvent.id);
+                    setDeleteEventTarget(selectedEvent);
+                    setEventDetailsOpen(false);
+                    setDeleteEventDialogOpen(true);
                   }}
                   disabled={deleteEventMutation.isPending}
                 >
@@ -1003,6 +1021,58 @@ export function PtCalendarPage() {
               onClick={() => setEventDetailsOpen(false)}
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteEventDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !deleteEventMutation.isPending) {
+            setDeleteEventDialogOpen(false);
+            setDeleteEventTarget(null);
+            deleteEventMutation.reset();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Delete calendar event?</DialogTitle>
+            <DialogDescription>
+              This removes{" "}
+              <span className="font-medium text-foreground">
+                {deleteEventTarget?.title ?? "this event"}
+              </span>{" "}
+              from your calendar.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteEventMutation.error ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              Unable to delete this event right now. Please try again.
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={deleteEventMutation.isPending}
+              onClick={() => setDeleteEventDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
+              disabled={deleteEventMutation.isPending || !deleteEventTarget}
+              onClick={() => {
+                if (deleteEventTarget) {
+                  deleteEventMutation.mutate(deleteEventTarget.id);
+                }
+              }}
+            >
+              {deleteEventMutation.isPending ? "Deleting..." : "Delete event"}
             </Button>
           </DialogFooter>
         </DialogContent>

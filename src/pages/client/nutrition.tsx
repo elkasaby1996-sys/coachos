@@ -22,16 +22,12 @@ import { addDaysToDateString, getTodayInTimezone } from "../../lib/date-utils";
 import {
   buildUnifiedSourceLabel,
   classifyUnifiedSourceKind,
-  matchesUnifiedSourceFilter,
 } from "../../lib/source-labels";
 import { supabase } from "../../lib/supabase";
 import { useClientAssignmentRealtime } from "../../lib/client-assignment-realtime";
 import {
-  applyUnifiedNutritionFilter,
   groupUnifiedNutritionByDate,
-  unifiedNutritionFilters,
   type UnifiedNutritionDayRow,
-  type UnifiedNutritionFilterKey,
 } from "./nutrition-unified";
 
 type ClientProfileRow = {
@@ -140,9 +136,6 @@ const formatDate = (value: string) => {
   });
 };
 
-const formatDateRange = (startDate: string, endDate: string) =>
-  `${formatDate(startDate)} - ${formatDate(endDate)}`;
-
 type NutritionDayCardProps = {
   row: UnifiedNutritionDayRow;
   onOpen: (dayId: string) => void;
@@ -213,8 +206,6 @@ export function ClientNutritionPage() {
   const queryClient = useQueryClient();
   const { session } = useSessionAuth();
   const { activeClientId } = useBootstrapAuth();
-  const [activeFilter, setActiveFilter] =
-    useState<UnifiedNutritionFilterKey>("all");
   const [manageError, setManageError] = useState<string | null>(null);
 
   const clientQuery = useQuery({
@@ -425,29 +416,10 @@ export function ClientNutritionPage() {
     });
   }, [daysQuery.data, mealsByDayId, workspaceNameById]);
 
-  const filteredRows = useMemo(
-    () => applyUnifiedNutritionFilter(unifiedDayRows, activeFilter, todayKey),
-    [activeFilter, todayKey, unifiedDayRows],
-  );
-
   const groupedRows = useMemo(
-    () => groupUnifiedNutritionByDate(filteredRows, todayKey),
-    [filteredRows, todayKey],
+    () => groupUnifiedNutritionByDate(unifiedDayRows, todayKey),
+    [unifiedDayRows, todayKey],
   );
-
-  const activePlans = useMemo(() => {
-    return (plansQuery.data ?? []).filter((plan) => {
-      if (plan.status !== "active") return false;
-      const template = getSingleRelation(plan.nutrition_template);
-      const sourceKind = classifyUnifiedSourceKind({
-        workspaceId: template?.workspace_id ?? null,
-      });
-      if (activeFilter === "assigned" || activeFilter === "personal") {
-        return matchesUnifiedSourceFilter(sourceKind, activeFilter);
-      }
-      return true;
-    });
-  }, [activeFilter, plansQuery.data]);
 
   const usedPersonalTemplateIds = useMemo(() => {
     const used = new Set<string>();
@@ -552,17 +524,13 @@ export function ClientNutritionPage() {
       <PortalPageHeader
         title="Nutrition"
         subtitle="One nutrition experience across personal and coach-assigned plans."
-        stateText={`${filteredRows.length} day${filteredRows.length === 1 ? "" : "s"} in view`}
+        stateText={`${unifiedDayRows.length} day${unifiedDayRows.length === 1 ? "" : "s"} in view`}
+        className="w-full justify-end"
         actions={
-          <>
-            <Button variant="secondary" onClick={() => navigate("/app/home")}>
-              Home
-            </Button>
-            <Button onClick={() => navigate("/app/nutrition/new")}>
-              <Plus className="mr-1 h-4 w-4" />
-              Create plan
-            </Button>
-          </>
+          <Button onClick={() => navigate("/app/nutrition/new")}>
+            <Plus className="mr-1 h-4 w-4" />
+            Create plan
+          </Button>
         }
       />
 
@@ -575,20 +543,7 @@ export function ClientNutritionPage() {
       ) : null}
 
       <SectionCard className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {unifiedNutritionFilters.map((filter) => (
-            <Button
-              key={filter.key}
-              size="sm"
-              variant={activeFilter === filter.key ? "default" : "secondary"}
-              onClick={() => setActiveFilter(filter.key)}
-            >
-              {filter.label}
-            </Button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4">
           <SurfaceCard className="border-border/70 bg-card/55">
             <SurfaceCardHeader>
               <SurfaceCardTitle>Today</SurfaceCardTitle>
@@ -614,169 +569,8 @@ export function ClientNutritionPage() {
               )}
             </SurfaceCardContent>
           </SurfaceCard>
-
-          <SurfaceCard className="border-border/70 bg-card/55">
-            <SurfaceCardHeader>
-              <SurfaceCardTitle>Upcoming</SurfaceCardTitle>
-              <SurfaceCardDescription>
-                Scheduled nutrition days ahead.
-              </SurfaceCardDescription>
-            </SurfaceCardHeader>
-            <SurfaceCardContent className="space-y-3">
-              {groupedRows.upcoming.length === 0 ? (
-                <EmptyStateBlock
-                  title="No upcoming nutrition days"
-                  description="Upcoming personal and coach-assigned days will appear here."
-                  centered
-                />
-              ) : (
-                groupedRows.upcoming
-                  .slice(0, 6)
-                  .map((row) => (
-                    <NutritionDayCard
-                      key={row.id}
-                      row={row}
-                      onOpen={(dayId) => navigate(`/app/nutrition/${dayId}`)}
-                    />
-                  ))
-              )}
-            </SurfaceCardContent>
-          </SurfaceCard>
         </div>
       </SectionCard>
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <SectionCard className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight">
-              Active Plans
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Personal and coach-assigned plans are merged here.
-            </p>
-          </div>
-          {activePlans.length === 0 ? (
-            <EmptyStateBlock
-              title="No active plans"
-              description="Create a personal plan or wait for coach assignment."
-              centered
-            />
-          ) : (
-            <div className="space-y-3">
-              {activePlans.map((plan) => {
-                const template = getSingleRelation(plan.nutrition_template);
-                const sourceWorkspaceId = template?.workspace_id ?? null;
-                const sourceLabel = buildUnifiedSourceLabel({
-                  workspaceId: sourceWorkspaceId,
-                  workspaceName: sourceWorkspaceId
-                    ? (workspaceNameById.get(sourceWorkspaceId) ?? null)
-                    : null,
-                });
-                const sourceKind = classifyUnifiedSourceKind({
-                  workspaceId: sourceWorkspaceId,
-                });
-                const openDay =
-                  unifiedDayRows.find(
-                    (day) =>
-                      day.planId === plan.id &&
-                      (day.date >= todayKey || day.date === todayKey),
-                  ) ?? unifiedDayRows.find((day) => day.planId === plan.id);
-
-                return (
-                  <SurfaceCard
-                    key={plan.id}
-                    className="border-border/70 bg-card/55"
-                  >
-                    <SurfaceCardHeader className="gap-2">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <SurfaceCardTitle className="text-base">
-                          {template?.name ?? "Nutrition plan"}
-                        </SurfaceCardTitle>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="muted">{sourceLabel}</Badge>
-                          <StatusPill status="planned" />
-                        </div>
-                      </div>
-                      <SurfaceCardDescription>
-                        {formatDateRange(plan.start_date, plan.end_date)}
-                      </SurfaceCardDescription>
-                    </SurfaceCardHeader>
-                    <SurfaceCardContent className="flex flex-wrap items-center gap-2">
-                      {openDay ? (
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            navigate(`/app/nutrition/${openDay.id}`)
-                          }
-                        >
-                          Open day
-                        </Button>
-                      ) : null}
-                      {sourceKind === "personal" && template?.id ? (
-                        <>
-                          {usedPersonalTemplateIds.has(template.id) ? (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={archiveTemplateMutation.isPending}
-                              onClick={() =>
-                                archiveTemplateMutation.mutate(template.id)
-                              }
-                            >
-                              Archive
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="text-destructive hover:text-destructive"
-                              disabled={deleteTemplateMutation.isPending}
-                              onClick={() =>
-                                deleteTemplateMutation.mutate(template.id)
-                              }
-                            >
-                              <Trash2 className="mr-1 h-3.5 w-3.5" />
-                              Delete
-                            </Button>
-                          )}
-                        </>
-                      ) : null}
-                    </SurfaceCardContent>
-                  </SurfaceCard>
-                );
-              })}
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight">
-              Recent Activity
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Latest completed nutrition days and logging progress.
-            </p>
-          </div>
-          {groupedRows.recent.length === 0 ? (
-            <EmptyStateBlock
-              title="No recent nutrition history"
-              description="Completed days will appear here once you start logging."
-              centered
-            />
-          ) : (
-            <div className="space-y-3">
-              {groupedRows.recent.slice(0, 6).map((row) => (
-                <NutritionDayCard
-                  key={row.id}
-                  row={row}
-                  onOpen={(dayId) => navigate(`/app/nutrition/${dayId}`)}
-                />
-              ))}
-            </div>
-          )}
-        </SectionCard>
-      </div>
 
       <SectionCard className="space-y-4">
         <div>

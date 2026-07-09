@@ -7,12 +7,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import {
-  MessageCircleMore,
-  Search,
-  SendHorizontal,
-  Trash2,
-} from "lucide-react";
+import { Search, SendHorizontal, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -1087,11 +1082,6 @@ export function ClientMessagesPage() {
         <SurfaceCard className="xl:sticky xl:top-6">
           <SurfaceCardHeader>
             <SurfaceCardTitle>Inbox</SurfaceCardTitle>
-            <SurfaceCardDescription>
-              {unreadThreadCount > 0
-                ? `${unreadThreadCount} unread conversations`
-                : "All caught up"}
-            </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent className="space-y-4">
             <div className="relative">
@@ -1175,9 +1165,6 @@ export function ClientMessagesPage() {
                             {thread.preview}
                           </p>
                           <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                            <Badge variant="muted" className="text-[10px]">
-                              {thread.sourceLabel}
-                            </Badge>
                             <span>
                               {thread.timestamp
                                 ? formatRelativeTime(thread.timestamp)
@@ -1201,10 +1188,7 @@ export function ClientMessagesPage() {
         <SurfaceCard className="overflow-hidden">
           <SurfaceCardHeader className="border-b border-border/60 pb-4">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center text-primary">
-                  <MessageCircleMore className="h-5 w-5" />
-                </div>
+              <div className="flex min-w-0 items-center">
                 <div className="min-w-0">
                   <SurfaceCardTitle className="truncate text-lg">
                     {selectedThread?.title ?? "Select a conversation"}
@@ -1218,11 +1202,6 @@ export function ClientMessagesPage() {
               </div>
               {selectedThread ? (
                 <div className="flex items-center gap-2">
-                  {selectedThread.isArchived ? (
-                    <Badge variant="muted">Read-only</Badge>
-                  ) : (
-                    <Badge variant="neutral">Open</Badge>
-                  )}
                   {canHideSelectedThread ? (
                     <Button
                       size="sm"

@@ -67,14 +67,11 @@ const translations: Record<PtHubLanguage, Record<string, string>> = {
     "ptHub.nav.settings": "Settings",
     "ptHub.openNavigation": "Open PT Hub navigation",
     "ptHub.routes.overview.title": "Overview",
-    "ptHub.routes.overview.description":
-      "Run your coaching business from one dashboard.",
+    "ptHub.routes.overview.description": "",
     "ptHub.routes.profile.title": "Coach Profile",
-    "ptHub.routes.profile.description":
-      "Update the public trainer page clients will see.",
+    "ptHub.routes.profile.description": "",
     "ptHub.routes.packages.title": "Packages",
-    "ptHub.routes.packages.description":
-      "Manage package visibility and ordering for public lead intake.",
+    "ptHub.routes.packages.description": "",
     "ptHub.routes.profilePreview.title": "Profile Preview",
     "ptHub.routes.profilePreview.description":
       "Preview your public trainer page before sharing it.",
@@ -82,17 +79,13 @@ const translations: Record<PtHubLanguage, Record<string, string>> = {
     "ptHub.routes.leads.description":
       "Review new inquiries and follow up faster.",
     "ptHub.routes.clients.title": "Clients",
-    "ptHub.routes.clients.description":
-      "See every client across your coaching spaces.",
+    "ptHub.routes.clients.description": "",
     "ptHub.routes.workspaces.title": "Coaching Spaces",
-    "ptHub.routes.workspaces.description":
-      "Open, create, and manage your coaching spaces.",
+    "ptHub.routes.workspaces.description": "",
     "ptHub.routes.payments.title": "Payments",
-    "ptHub.routes.payments.description":
-      "Check billing, invoices, and revenue at a glance.",
+    "ptHub.routes.payments.description": "",
     "ptHub.routes.analytics.title": "Analytics",
-    "ptHub.routes.analytics.description":
-      "Track inquiries, conversions, and client growth.",
+    "ptHub.routes.analytics.description": "",
     "ptHub.routes.settings.title": "PT Hub Settings",
     "ptHub.routes.settings.description":
       "Manage account identity, security, billing, and notifications.",
@@ -136,7 +129,7 @@ const translations: Record<PtHubLanguage, Record<string, string>> = {
     "ptHub.clients.next": "Next",
     "ptHub.clients.table.client": "Client",
     "ptHub.clients.table.coachingSpace": "Coaching space",
-    "ptHub.clients.table.lifecycle": "Lifecycle",
+    "ptHub.clients.table.lifecycle": "Status",
     "ptHub.clients.table.action": "Action",
     "ptHub.clients.table.recentActivity": "Recent activity",
     "ptHub.clients.table.openClient": "Open client",
@@ -285,7 +278,7 @@ const translations: Record<PtHubLanguage, Record<string, string>> = {
     "ptHub.clients.next": "التالي",
     "ptHub.clients.table.client": "العميل",
     "ptHub.clients.table.coachingSpace": "مساحة التدريب",
-    "ptHub.clients.table.lifecycle": "مرحلة العميل",
+    "ptHub.clients.table.lifecycle": "الحالة",
     "ptHub.clients.table.action": "الإجراء",
     "ptHub.clients.table.recentActivity": "النشاط الأخير",
     "ptHub.clients.table.openClient": "فتح العميل",
@@ -436,7 +429,7 @@ const translations: Record<PtHubLanguage, Record<string, string>> = {
     "ptHub.clients.next": "Suivant",
     "ptHub.clients.table.client": "Client",
     "ptHub.clients.table.coachingSpace": "Espace coaching",
-    "ptHub.clients.table.lifecycle": "Cycle",
+    "ptHub.clients.table.lifecycle": "Statut",
     "ptHub.clients.table.action": "Action",
     "ptHub.clients.table.recentActivity": "Activite recente",
     "ptHub.clients.table.openClient": "Ouvrir client",
@@ -584,7 +577,7 @@ const translations: Record<PtHubLanguage, Record<string, string>> = {
     "ptHub.clients.next": "Siguiente",
     "ptHub.clients.table.client": "Cliente",
     "ptHub.clients.table.coachingSpace": "Espacio de coaching",
-    "ptHub.clients.table.lifecycle": "Ciclo",
+    "ptHub.clients.table.lifecycle": "Estado",
     "ptHub.clients.table.action": "Accion",
     "ptHub.clients.table.recentActivity": "Actividad reciente",
     "ptHub.clients.table.openClient": "Abrir cliente",

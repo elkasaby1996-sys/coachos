@@ -46,4 +46,35 @@ describe("NotificationItem", () => {
 
     expect(markup).toContain("section-accent-title");
   });
+
+  it("can suppress the title and action label for dense notification lists", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(NotificationItem, {
+        notification: baseNotification,
+        showActionLabel: false,
+        showTitle: false,
+        showTypeLabel: false,
+      }),
+    );
+
+    expect(markup).not.toContain("Message received");
+    expect(markup).toContain("New message from Omar Elkasaby");
+    expect(markup).not.toContain("Open update");
+  });
+
+  it("supports an embedded list-row surface for full-page notification lists", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(NotificationItem, {
+        notification: baseNotification,
+        showActionLabel: false,
+        showTitle: false,
+        showTypeLabel: false,
+        surface: "embedded",
+      }),
+    );
+
+    expect(markup).toContain("border-transparent");
+    expect(markup).not.toContain("rounded-2xl border px-3 py-3");
+    expect(markup).toContain("font-medium text-foreground");
+  });
 });

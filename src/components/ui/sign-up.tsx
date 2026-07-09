@@ -929,26 +929,31 @@ export function AuthComponent({
             0 0 0 3px oklch(var(--primary) / 0.08),
             0 14px 36px -26px oklch(var(--primary) / 0.7);
         }
+        .auth-flow-card .glass-input-single {
+          border-color: oklch(1 0 0 / 0.5);
+          background: transparent;
+          box-shadow:
+            inset 0 1px 0 oklch(1 0 0 / 0.18),
+            0 10px 28px -24px oklch(0 0 0 / 0.46);
+        }
+        .auth-flow-card .glass-input-wrap:focus-within .glass-input-single {
+          border-color: oklch(1 0 0 / 0.72);
+          background: transparent;
+          box-shadow:
+            inset 0 1px 0 oklch(1 0 0 / 0.24),
+            0 0 0 3px oklch(1 0 0 / 0.08),
+            0 14px 32px -26px oklch(0 0 0 / 0.48);
+        }
         .auth-flow-card-tall .glass-input-single {
           border-color: oklch(1 0 0 / 0.48);
-          background:
-            linear-gradient(
-              90deg,
-              oklch(1 0 0 / 0.16),
-              oklch(1 0 0 / 0.1)
-            );
+          background: transparent;
           box-shadow:
             inset 0 1px 0 oklch(1 0 0 / 0.22),
             0 12px 28px -26px oklch(0 0 0 / 0.42);
         }
         .auth-flow-card-tall .glass-input-wrap:focus-within .glass-input-single {
           border-color: oklch(1 0 0 / 0.7);
-          background:
-            linear-gradient(
-              90deg,
-              oklch(1 0 0 / 0.22),
-              oklch(1 0 0 / 0.13)
-            );
+          background: transparent;
           box-shadow:
             inset 0 1px 0 oklch(1 0 0 / 0.32),
             0 0 0 3px oklch(1 0 0 / 0.1),
