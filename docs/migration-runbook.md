@@ -75,13 +75,11 @@ where proname in ('pt_dashboard_summary', 'pt_clients_summary', 'assign_workout_
 
 1. Merge the migration PR into `main`.
 2. Trigger `Supabase Migration Status` manually from GitHub Actions to inspect the linked environment migration ledger. This workflow is read-only and runs `supabase migration list --linked`.
-3. Trigger `Supabase Manual Backup` manually from GitHub Actions. This workflow reads `SUPABASE_DB_URL` from GitHub Secrets, runs logical `supabase db dump` commands, and uploads a 7-day artifact. It does not push/apply migrations.
-4. Download the backup artifact immediately and store it privately with the release evidence. Do not commit backup files to the repository.
-5. Trigger `Supabase Deploy Staging` manually from GitHub Actions after review and backup confirmation. This workflow runs lint, build, and unit tests before `supabase db push`.
-6. Confirm the staging database and app behavior.
-7. Trigger `Supabase Deploy Production` manually from GitHub Actions. Each status/deploy workflow reads `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, and `SUPABASE_DB_PASSWORD` from its GitHub environment.
+3. Trigger `Supabase Deploy Staging` manually from GitHub Actions after review. This workflow runs lint, build, and unit tests before `supabase db push`.
+4. Confirm the staging database and app behavior.
+5. Trigger `Supabase Deploy Production` manually from GitHub Actions. Each status/deploy workflow reads `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, and `SUPABASE_DB_PASSWORD` from its GitHub environment.
    Deploy workflows also deploy the `open-wearables` Edge Function after migrations. Before running them, make sure the target Supabase project has the required function secrets set: `OPEN_WEARABLES_API_URL`, `OPEN_WEARABLES_API_KEY`, and `ALLOWED_WEARABLE_REDIRECT_ORIGINS`.
-8. Re-run post-deploy checks after production push.
+6. Re-run post-deploy checks after production push.
 
 ## Post-Deploy
 
