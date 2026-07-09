@@ -37,13 +37,20 @@ npm run supabase:db:test
 
 ## Pre-Deploy
 
-1. Confirm backups/snapshots are available.
+1. Confirm backups/snapshots are available. On the Supabase Free plan, managed
+   backups are not available as launch safety proof. Run the manual logical
+   backup workflow before hosted migration deploy and confirm the release owner
+   has downloaded and stored the artifact privately.
 2. Review migration SQL for:
    - explicit schema qualification (`public.table`)
    - lock-heavy operations
    - backwards compatibility
 3. Validate migration on staging first.
 4. Prepare rollback SQL or compensating migration.
+
+Logical backup scope: the manual workflow dumps database roles, schema, and table
+data. Supabase Storage objects are not covered by this database dump and must be
+backed up separately if they are part of the release risk.
 
 ## Deploy
 

@@ -1,0 +1,49 @@
+name: Supabase Manual Backup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-manual-backup-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  logical-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Validate backup secret
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "Missing required secret: SUPABASE_DB_URL"
+            exit 1
+          fi
+
+      - name: Create logical backup
+        run: |
+          mkdir -p backup
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-logical-backup-${{ github.run_id }}
+          path: backup/
+          if-no-files-found: error
+          retention-days: 7
