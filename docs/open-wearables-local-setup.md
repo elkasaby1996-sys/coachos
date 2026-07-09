@@ -53,6 +53,8 @@ Before deploying from GitHub Actions, configure these secrets in the target GitH
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_PROJECT_ID`
 - `SUPABASE_DB_PASSWORD`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
 Then set these Supabase Edge Function secrets on the target Supabase project:
 
