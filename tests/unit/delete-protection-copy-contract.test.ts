@@ -29,7 +29,9 @@ describe("delete protection copy parity", () => {
     expect(workoutTemplatesPage).toContain(
       "Existing client assignments prevent deletion. Historical records are preserved.",
     );
-    expect(workoutTemplatesPage).toContain("<AlertTitle>Delete failed</AlertTitle>");
+    expect(workoutTemplatesPage).toContain(
+      "<AlertTitle>Delete failed</AlertTitle>",
+    );
     expect(workoutTemplatesPage).not.toContain("window.confirm");
   });
 

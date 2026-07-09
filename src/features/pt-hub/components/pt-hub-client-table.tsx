@@ -51,7 +51,10 @@ function getAttentionDescription(
     );
   }
 
-  return badge.description ?? attentionReasons.map((reason) => reason.label).join(", ");
+  return (
+    badge.description ??
+    attentionReasons.map((reason) => reason.label).join(", ")
+  );
 }
 
 function isNonInteractiveLifecycleBadge(badge: ClientStatusBadgeDisplay) {

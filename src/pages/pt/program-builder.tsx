@@ -901,7 +901,9 @@ export function PtProgramBuilderPage() {
       <div className="flex flex-col gap-3 rounded-[20px] border border-border/70 bg-card/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-foreground">
-            {hasUnsavedChanges ? "Unsaved program changes" : "Program is up to date"}
+            {hasUnsavedChanges
+              ? "Unsaved program changes"
+              : "Program is up to date"}
           </p>
           <p className="text-xs text-muted-foreground">
             Save changes before assigning this program to clients.

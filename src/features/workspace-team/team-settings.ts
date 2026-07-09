@@ -109,9 +109,7 @@ function shouldReplaceMember(
   return false;
 }
 
-export function dedupeWorkspaceTeamMembers(
-  members: WorkspaceTeamMemberRow[],
-) {
+export function dedupeWorkspaceTeamMembers(members: WorkspaceTeamMemberRow[]) {
   const deduped = new Map<string, WorkspaceTeamMemberRow>();
 
   for (const member of members) {

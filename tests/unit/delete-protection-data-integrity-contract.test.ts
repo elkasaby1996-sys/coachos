@@ -24,7 +24,9 @@ describe("assigned template delete protection data integrity", () => {
       "create or replace function public.is_workout_template_in_active_delivery",
     );
     expect(migration).toContain("from public.assigned_workouts aw");
-    expect(migration).toContain("aw.workout_template_id = p_workout_template_id");
+    expect(migration).toContain(
+      "aw.workout_template_id = p_workout_template_id",
+    );
     expect(migration).toContain("aw.status = 'planned'");
     expect(migration).toContain("from public.client_program_overrides cpo");
     expect(migration).toContain(
@@ -45,7 +47,9 @@ describe("assigned template delete protection data integrity", () => {
     expect(migration).toContain("from public.client_programs cp");
     expect(migration).toContain("cp.is_active = true");
     expect(migration).toContain("aw.program_id = p_program_template_id");
-    expect(migration).toContain("prevent_assigned_program_template_delete_trigger");
+    expect(migration).toContain(
+      "prevent_assigned_program_template_delete_trigger",
+    );
     expect(migration).toContain("prevent_assigned_program_day_delete_trigger");
     expect(migration).toContain("prevent_assigned_program_day_update_trigger");
   });
@@ -61,7 +65,9 @@ describe("assigned template delete protection data integrity", () => {
   });
 
   it("does not delete program child rows before deleting the parent template", () => {
-    const handleDeleteStart = programsPage.indexOf("const handleDelete = async");
+    const handleDeleteStart = programsPage.indexOf(
+      "const handleDelete = async",
+    );
     const handleDeleteEnd = programsPage.indexOf("return (", handleDeleteStart);
     const handleDelete = programsPage.slice(handleDeleteStart, handleDeleteEnd);
 
@@ -80,7 +86,10 @@ describe("assigned template delete protection data integrity", () => {
     const protectionCheckIndex = programBuilderPage.indexOf(
       '"is_program_template_in_active_delivery"',
     );
-    const updateIndex = programBuilderPage.indexOf('.from("program_templates")', protectionCheckIndex);
+    const updateIndex = programBuilderPage.indexOf(
+      '.from("program_templates")',
+      protectionCheckIndex,
+    );
     expect(protectionCheckIndex).toBeGreaterThan(-1);
     expect(updateIndex).toBeGreaterThan(protectionCheckIndex);
   });

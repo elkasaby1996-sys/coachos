@@ -206,13 +206,7 @@ function getStepCompletion(
   };
 }
 
-function InfoHint({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function InfoHint({ label, children }: { label: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const hintId = useId();
 
@@ -979,14 +973,8 @@ export function PtHubProfileEditor({
                     </span>
                   </span>
                 )}
-                <span
-                  className={cn(
-                    "relative z-10 min-w-0 text-center",
-                  )}
-                >
-                  <span
-                    className="block text-xs font-semibold sm:text-sm"
-                  >
+                <span className={cn("relative z-10 min-w-0 text-center")}>
+                  <span className="block text-xs font-semibold sm:text-sm">
                     {step.label}
                   </span>
                 </span>

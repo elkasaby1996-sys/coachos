@@ -20,7 +20,10 @@ const overviewSectionsSource = readFileSync(
   "src/features/pt-hub/components/pt-hub-overview-sections.tsx",
   "utf8",
 );
-const overviewPageSource = readFileSync("src/pages/pt-hub/overview.tsx", "utf8");
+const overviewPageSource = readFileSync(
+  "src/pages/pt-hub/overview.tsx",
+  "utf8",
+);
 
 function createReadiness(
   overrides: Partial<PTProfileReadiness> = {},

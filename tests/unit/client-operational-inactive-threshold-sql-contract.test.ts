@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 
 const readRepoFile = (...parts: string[]) => {
   const path = resolve(process.cwd(), ...parts);
-  return existsSync(path) ? readFileSync(path, "utf8").replace(/\r\n/g, "\n") : "";
+  return existsSync(path)
+    ? readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+    : "";
 };
 
 const migration = readRepoFile(

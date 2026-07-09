@@ -24,9 +24,11 @@ describe("form save dirty-state consistency", () => {
     expect(checkinTemplatesSource).toContain("StickySaveBar");
     expect(checkinTemplatesSource).toContain("handleDiscardTemplateChanges");
     expect(checkinTemplatesSource).toContain("guardDialog");
-    expect(checkinTemplatesSource).toContain('statusText="Unsaved template changes"');
+    expect(checkinTemplatesSource).toContain(
+      'statusText="Unsaved template changes"',
+    );
     expect(checkinTemplatesSource).toContain("!hasUnsavedChanges");
-    expect(checkinTemplatesSource).toContain("saveState !== \"idle\"");
+    expect(checkinTemplatesSource).toContain('saveState !== "idle"');
   });
 
   it("keeps check-in template save payloads intact while removing the duplicate header save button", () => {
@@ -34,9 +36,11 @@ describe("form save dirty-state consistency", () => {
       /<WorkspacePageHeader[\s\S]*?\/>\n\n {6}<div className="page-kpi-block/,
     )?.[0];
 
-    expect(checkinTemplatesSource).toContain(".from(\"checkin_templates\")");
-    expect(checkinTemplatesSource).toContain(".from(\"checkin_questions\")");
-    expect(checkinTemplatesSource).toContain("saveQuestions(createdTemplate.id");
+    expect(checkinTemplatesSource).toContain('.from("checkin_templates")');
+    expect(checkinTemplatesSource).toContain('.from("checkin_questions")');
+    expect(checkinTemplatesSource).toContain(
+      "saveQuestions(createdTemplate.id",
+    );
     expect(checkinTemplatesSource).toContain("saveQuestions(clonedTemplate.id");
     expect(headerSource).not.toContain("onClick={handleSaveTemplate}");
   });
@@ -47,14 +51,16 @@ describe("form save dirty-state consistency", () => {
     expect(programBuilderSource).toContain("programDirtySnapshot");
     expect(programBuilderSource).toContain("savedProgramSnapshot");
     expect(programBuilderSource).toContain("handleDiscardProgramChanges");
-    expect(programBuilderSource).toContain('statusText="Unsaved program changes"');
+    expect(programBuilderSource).toContain(
+      'statusText="Unsaved program changes"',
+    );
     expect(programBuilderSource).toContain("!hasUnsavedChanges");
-    expect(programBuilderSource).toContain("saveStatus === \"saving\"");
+    expect(programBuilderSource).toContain('saveStatus === "saving"');
   });
 
   it("keeps program builder save payloads and success redirect semantics intact", () => {
-    expect(programBuilderSource).toContain(".from(\"program_templates\")");
-    expect(programBuilderSource).toContain(".from(\"program_template_days\")");
+    expect(programBuilderSource).toContain('.from("program_templates")');
+    expect(programBuilderSource).toContain('.from("program_template_days")');
     expect(programBuilderSource).toContain("/edit?saved=1");
     expect(programBuilderSource).toContain("Program saved");
     expect(programBuilderSource).toContain(

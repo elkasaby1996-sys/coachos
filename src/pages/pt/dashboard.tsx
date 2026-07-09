@@ -30,10 +30,7 @@ import {
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { StatCard } from "../../components/pt/dashboard/StatCard";
 import { StatusPill } from "../../components/pt/dashboard/StatusPill";
-import {
-  EmptyState,
-  TagInfoBadge,
-} from "../../components/ui/coachos";
+import { EmptyState, TagInfoBadge } from "../../components/ui/coachos";
 import {
   Card,
   CardContent,
@@ -256,12 +253,7 @@ export function PtDashboardPage() {
     };
 
     void loadDashboard();
-  }, [
-    cachedWorkspaceId,
-    refreshWorkspace,
-    user?.id,
-    workspaceLoading,
-  ]);
+  }, [cachedWorkspaceId, refreshWorkspace, user?.id, workspaceLoading]);
 
   useEffect(() => {
     if (workspaceError) {
@@ -911,7 +903,6 @@ export function PtDashboardPage() {
                 />
               )}
             </DashboardCard>
-
           </div>
         </StaggerItem>
 

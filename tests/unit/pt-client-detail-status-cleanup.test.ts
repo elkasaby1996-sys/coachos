@@ -22,7 +22,9 @@ describe("pt client detail status cleanup", () => {
     expect(source).toContain('disabled={badge.kind === "lifecycle"}');
     expect(source).not.toContain("function ClientDetailStatusSummary");
     expect(source).not.toContain("getClientDetailStatusLabel");
-    expect(source).not.toContain('className="rounded-xl border border-border/60 bg-background/45 px-3 py-2"');
+    expect(source).not.toContain(
+      'className="rounded-xl border border-border/60 bg-background/45 px-3 py-2"',
+    );
     expect(source).not.toContain("<LifecycleBadge");
   });
 

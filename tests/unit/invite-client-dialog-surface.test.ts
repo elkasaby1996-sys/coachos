@@ -9,7 +9,7 @@ const source = readFileSync(
 
 describe("InviteClientDialog surface", () => {
   it("uses the neutral app modal surface without the secure badge", () => {
-    expect(source).toContain('bg-[var(--bg-surface-elevated)]');
+    expect(source).toContain("bg-[var(--bg-surface-elevated)]");
     expect(source).toContain("bg-background/70");
     expect(source).not.toContain("Sparkles");
     expect(source).not.toContain("Badge");

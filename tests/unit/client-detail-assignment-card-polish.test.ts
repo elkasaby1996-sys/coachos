@@ -45,7 +45,7 @@ describe("client detail assignment card polish", () => {
       'description="Assign or replace one workout for a specific date."',
     );
     expect(scheduleWorkoutCard).not.toContain("one effective workout");
-    expect(scheduleWorkoutCard).not.toContain('status={');
+    expect(scheduleWorkoutCard).not.toContain("status={");
     expect(scheduleWorkoutCard).not.toContain('status="idle"');
   });
 
@@ -97,7 +97,9 @@ describe("client detail assignment card polish", () => {
     expect(clientDetailPage).toContain(
       '"Assignment history is preserved for reference."',
     );
-    expect(clientDetailPage).toContain("historical={isHistoricalClientRelationship}");
+    expect(clientDetailPage).toContain(
+      "historical={isHistoricalClientRelationship}",
+    );
     expect(clientDetailPage).toContain(
       "canEditClients={canMutateActiveClient}",
     );

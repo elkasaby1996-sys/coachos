@@ -3,10 +3,7 @@ import {
   normalizeClientRiskFlags,
 } from "./client-lifecycle";
 
-export type ClientRelationshipStatus =
-  | "active"
-  | "removed"
-  | "transferred_out";
+export type ClientRelationshipStatus = "active" | "removed" | "transferred_out";
 
 export type ClientLifecycleStatus =
   | "invited"
@@ -118,100 +115,103 @@ const relationshipBadgeMeta: Record<
   },
 };
 
-const lifecycleBadgeMeta: Record<ClientLifecycleStatus, ClientStatusBadgeDisplay> =
-  {
-    invited: {
-      key: "lifecycle:invited",
-      label: "Invited",
-      tone: "warning",
-      kind: "lifecycle",
-      description:
-        "The client has been invited into the workspace but has not started coaching yet.",
-    },
-    onboarding: {
-      key: "lifecycle:onboarding",
-      label: "Onboarding",
-      tone: "warning",
-      kind: "lifecycle",
-      description:
-        "The client is still completing onboarding steps before normal coaching begins.",
-    },
-    active: {
-      key: "lifecycle:active",
-      label: "Active",
-      tone: "success",
-      kind: "lifecycle",
-      description: "The client is actively being coached right now.",
-    },
-    paused: {
-      key: "lifecycle:paused",
-      label: "Paused",
-      tone: "warning",
-      kind: "lifecycle",
-      description:
-        "Coaching is temporarily paused. Check the saved pause reason for more context.",
-    },
-    completed: {
-      key: "lifecycle:completed",
-      label: "Completed",
-      tone: "neutral",
-      kind: "lifecycle",
-      description: "The planned coaching journey has been completed.",
-    },
-    churned: {
-      key: "lifecycle:churned",
-      label: "Churned",
-      tone: "neutral",
-      kind: "lifecycle",
-      description:
-        "The coaching relationship ended before a successful completion.",
-    },
-  };
-
-const attentionReasonMeta: Record<AttentionReasonCode, ClientAttentionReason> = {
-  manual_at_risk: {
-    code: "manual_at_risk",
-    label: "Manually flagged by coach",
-    severity: "high",
-    priority: 1,
+const lifecycleBadgeMeta: Record<
+  ClientLifecycleStatus,
+  ClientStatusBadgeDisplay
+> = {
+  invited: {
+    key: "lifecycle:invited",
+    label: "Invited",
+    tone: "warning",
+    kind: "lifecycle",
+    description:
+      "The client has been invited into the workspace but has not started coaching yet.",
   },
-  checkin_overdue: {
-    code: "checkin_overdue",
-    label: "Overdue check-in",
-    severity: "high",
-    priority: 2,
+  onboarding: {
+    key: "lifecycle:onboarding",
+    label: "Onboarding",
+    tone: "warning",
+    kind: "lifecycle",
+    description:
+      "The client is still completing onboarding steps before normal coaching begins.",
   },
-  missed_checkins: {
-    code: "missed_checkins",
-    label: "Missed latest check-in",
-    severity: "high",
-    priority: 3,
+  active: {
+    key: "lifecycle:active",
+    label: "Active",
+    tone: "success",
+    kind: "lifecycle",
+    description: "The client is actively being coached right now.",
   },
-  no_recent_reply: {
-    code: "no_recent_reply",
-    label: "No recent client reply",
-    severity: "medium",
-    priority: 4,
+  paused: {
+    key: "lifecycle:paused",
+    label: "Paused",
+    tone: "warning",
+    kind: "lifecycle",
+    description:
+      "Coaching is temporarily paused. Check the saved pause reason for more context.",
   },
-  low_adherence: {
-    code: "low_adherence",
-    label: "Adherence trending down",
-    severity: "medium",
-    priority: 5,
+  completed: {
+    key: "lifecycle:completed",
+    label: "Completed",
+    tone: "neutral",
+    kind: "lifecycle",
+    description: "The planned coaching journey has been completed.",
   },
-  no_active_delivery: {
-    code: "no_active_delivery",
-    label: "No active delivery",
-    severity: "medium",
-    priority: 6,
-  },
-  inactive_client: {
-    code: "inactive_client",
-    label: "No recent client activity",
-    severity: "medium",
-    priority: 7,
+  churned: {
+    key: "lifecycle:churned",
+    label: "Churned",
+    tone: "neutral",
+    kind: "lifecycle",
+    description:
+      "The coaching relationship ended before a successful completion.",
   },
 };
+
+const attentionReasonMeta: Record<AttentionReasonCode, ClientAttentionReason> =
+  {
+    manual_at_risk: {
+      code: "manual_at_risk",
+      label: "Manually flagged by coach",
+      severity: "high",
+      priority: 1,
+    },
+    checkin_overdue: {
+      code: "checkin_overdue",
+      label: "Overdue check-in",
+      severity: "high",
+      priority: 2,
+    },
+    missed_checkins: {
+      code: "missed_checkins",
+      label: "Missed latest check-in",
+      severity: "high",
+      priority: 3,
+    },
+    no_recent_reply: {
+      code: "no_recent_reply",
+      label: "No recent client reply",
+      severity: "medium",
+      priority: 4,
+    },
+    low_adherence: {
+      code: "low_adherence",
+      label: "Adherence trending down",
+      severity: "medium",
+      priority: 5,
+    },
+    no_active_delivery: {
+      code: "no_active_delivery",
+      label: "No active delivery",
+      severity: "medium",
+      priority: 6,
+    },
+    inactive_client: {
+      code: "inactive_client",
+      label: "No recent client activity",
+      severity: "medium",
+      priority: 7,
+    },
+  };
 
 const riskFlagReasonMap = {
   missed_checkins: "missed_checkins",
@@ -227,9 +227,7 @@ function cloneBadge<T extends ClientStatusBadgeDisplay>(badge: T): T {
 function normalizeRelationshipStatus(
   value: string | null | undefined,
 ): ClientRelationshipStatus {
-  return value === "removed" || value === "transferred_out"
-    ? value
-    : "active";
+  return value === "removed" || value === "transferred_out" ? value : "active";
 }
 
 function addReason(
@@ -274,9 +272,9 @@ function hasExplicitNoActiveDelivery(summary: ClientStatusDisplaySummaryLike) {
     summary.hasCheckinCadence ??
     summary.has_checkin_assigned ??
     summary.hasCheckInAssigned ??
-    (summary.checkin_template_id ?? summary.checkinTemplateId
+    ((summary.checkin_template_id ?? summary.checkinTemplateId)
       ? true
-      : summary.checkin_frequency ?? summary.checkinFrequency
+      : (summary.checkin_frequency ?? summary.checkinFrequency)
         ? true
         : undefined);
 

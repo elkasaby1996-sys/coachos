@@ -202,7 +202,9 @@ describe("PT Hub publication simplification", () => {
     );
 
     expect(stepRailSource).toContain("<CheckCircle2");
-    expect(stepRailSource).toContain('className="relative z-10 h-4.5 w-4.5 shrink-0 text-success"');
+    expect(stepRailSource).toContain(
+      'className="relative z-10 h-4.5 w-4.5 shrink-0 text-success"',
+    );
     expect(stepRailSource).not.toContain(
       'isComplete\n                      ? "border-success/40 bg-success/12 text-success"',
     );
@@ -290,7 +292,9 @@ describe("PT Hub publication simplification", () => {
   it("uses the full profile preview inside the existing preview tab", () => {
     expect(profileEditorSource).toContain("getDraftProfilePreviewData");
     expect(profileEditorSource).toContain("usePtPackages");
-    expect(profileEditorSource).toContain("mapPublicPtPackageOptionsFromPackages");
+    expect(profileEditorSource).toContain(
+      "mapPublicPtPackageOptionsFromPackages",
+    );
     expect(profileEditorSource).toContain("<PtHubProfilePreview");
     expect(profileEditorSource).toContain("profile={previewData}");
     expect(profileEditorSource).toContain("packageOptions={packageOptions}");

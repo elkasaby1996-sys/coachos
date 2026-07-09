@@ -376,7 +376,10 @@ function PtHubActionCenterRow({
         aria-hidden
       >
         <StatusIcon
-          className={cn("h-3.5 w-3.5 [stroke-width:1.8]", isPrimary && "h-4 w-4")}
+          className={cn(
+            "h-3.5 w-3.5 [stroke-width:1.8]",
+            isPrimary && "h-4 w-4",
+          )}
         />
       </span>
       <span className="min-w-0 flex-1">
@@ -389,9 +392,7 @@ function PtHubActionCenterRow({
           {item.label}
         </span>
         {isPrimary ? (
-          <span
-            className="pt-hub-meta-text mt-1 block max-w-3xl text-[0.9rem] leading-5"
-          >
+          <span className="pt-hub-meta-text mt-1 block max-w-3xl text-[0.9rem] leading-5">
             {item.description}
           </span>
         ) : null}

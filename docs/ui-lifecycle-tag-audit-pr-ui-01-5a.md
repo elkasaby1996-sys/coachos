@@ -6,40 +6,40 @@ This is an audit and planning document only. It does not propose renaming stored
 
 RepSync currently uses several overlapping status families:
 
-| Family | Current values observed | Purpose today | Primary references |
-| --- | --- | --- | --- |
-| Relationship status | `active`, `removed`, `transferred_out` | Access, historical/read-only relationship state, transfer/reactivation semantics | `src/pages/pt/client-detail.tsx`, `src/features/pt-hub/lib/pt-hub.ts`, `src/lib/auth.tsx`, `src/lib/client-profile-selection.ts` |
-| Coaching lifecycle | `invited`, `onboarding`, `active`, `paused`, `completed`, `churned`, plus `unknown` display fallback | Coach-facing lifecycle journey | `src/lib/client-lifecycle.ts`, `src/components/ui/coachos/status-pill.tsx`, `src/features/pt-hub/components/pt-hub-client-table.tsx`, `src/pages/pt/client-detail.tsx` |
-| Risk state | `healthy`, `at_risk` | High-level attention state for coach | `src/lib/client-lifecycle.ts`, `RiskBadge`, `src/features/pt-hub/components/pt-hub-client-table.tsx` |
-| Risk flags | `missed_checkins`, `no_recent_reply`, `low_adherence_trend`, `inactive_client` | Specific coach-action signals | `src/lib/client-lifecycle.ts`, PT Hub table, client detail header |
-| PT Hub client segments | `all`, `onboarding_incomplete`, `checkin_overdue`, `at_risk`, `paused` | Filters/navigation segments; partly derived from risk/lifecycle/check-ins | `src/lib/client-lifecycle.ts`, `src/pages/pt-hub/clients.tsx`, `src/pages/pt/clients.tsx` |
-| Client onboarding status | `invited`, `in_progress`, `submitted`, `review_needed`, `partially_activated`, `completed` | Workspace onboarding workflow | `src/features/client-onboarding/types.ts`, `src/features/client-onboarding/lib/client-onboarding.ts`, `src/components/common/client-reminders.tsx`, client onboarding shell |
-| Check-in operational status | `upcoming`, `due`, `overdue`, `submitted`, `reviewed`; client page also maps `due` to open state | Check-in workflow state | `src/lib/checkin-review.ts`, `src/lib/client-checkin-state.ts`, `src/pages/client/checkin.tsx`, `src/pages/pt/client-detail.tsx` |
-| Lead status | `new`, `contacted`, `approved_pending_workspace`, `converted`, `declined`; older baseline schema also references legacy values such as `reviewed`, `consultation_booked`, `accepted`, `rejected`, `archived` | Lead pipeline workflow | `src/features/pt-hub/types.ts`, `src/features/pt-hub/components/pt-hub-lead-status-badge.tsx`, `src/pages/pt-hub/leads.tsx` |
-| Delivery/assignment status | Workout: `planned`, `in_progress`, `completed`, `skipped`, `rest`; Nutrition: `active`, `completed`, `cancelled`; Program/check-in assignment states such as assigned/not assigned | Domain-specific workflow state | `src/pages/pt/client-detail.tsx`, `src/pages/client/home.tsx`, `src/pages/client/checkin.tsx`, migrations |
-| Library/package/template status | `active`, `inactive`, `archived`, package `draft`, `active`, `archived` | Library and commerce workflow state | `src/pages/pt/programs.tsx`, `src/pages/pt/nutrition.tsx`, `src/pages/pt-hub/packages`, `src/features/pt-hub/types.ts` |
-| Generic status pill fallback | `pending`, `submitted`, `review_needed`, `partially_activated`, `rest`, `recovery`, `upcoming`, `reviewed`, `not logged`, plus any string formatted dynamically | Visual fallback for many unrelated concepts | `src/components/ui/coachos/status-pill.tsx`, `src/lib/semantic-status.ts` |
+| Family                          | Current values observed                                                                                                                                                                                      | Purpose today                                                                    | Primary references                                                                                                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Relationship status             | `active`, `removed`, `transferred_out`                                                                                                                                                                       | Access, historical/read-only relationship state, transfer/reactivation semantics | `src/pages/pt/client-detail.tsx`, `src/features/pt-hub/lib/pt-hub.ts`, `src/lib/auth.tsx`, `src/lib/client-profile-selection.ts`                                            |
+| Coaching lifecycle              | `invited`, `onboarding`, `active`, `paused`, `completed`, `churned`, plus `unknown` display fallback                                                                                                         | Coach-facing lifecycle journey                                                   | `src/lib/client-lifecycle.ts`, `src/components/ui/coachos/status-pill.tsx`, `src/features/pt-hub/components/pt-hub-client-table.tsx`, `src/pages/pt/client-detail.tsx`      |
+| Risk state                      | `healthy`, `at_risk`                                                                                                                                                                                         | High-level attention state for coach                                             | `src/lib/client-lifecycle.ts`, `RiskBadge`, `src/features/pt-hub/components/pt-hub-client-table.tsx`                                                                        |
+| Risk flags                      | `missed_checkins`, `no_recent_reply`, `low_adherence_trend`, `inactive_client`                                                                                                                               | Specific coach-action signals                                                    | `src/lib/client-lifecycle.ts`, PT Hub table, client detail header                                                                                                           |
+| PT Hub client segments          | `all`, `onboarding_incomplete`, `checkin_overdue`, `at_risk`, `paused`                                                                                                                                       | Filters/navigation segments; partly derived from risk/lifecycle/check-ins        | `src/lib/client-lifecycle.ts`, `src/pages/pt-hub/clients.tsx`, `src/pages/pt/clients.tsx`                                                                                   |
+| Client onboarding status        | `invited`, `in_progress`, `submitted`, `review_needed`, `partially_activated`, `completed`                                                                                                                   | Workspace onboarding workflow                                                    | `src/features/client-onboarding/types.ts`, `src/features/client-onboarding/lib/client-onboarding.ts`, `src/components/common/client-reminders.tsx`, client onboarding shell |
+| Check-in operational status     | `upcoming`, `due`, `overdue`, `submitted`, `reviewed`; client page also maps `due` to open state                                                                                                             | Check-in workflow state                                                          | `src/lib/checkin-review.ts`, `src/lib/client-checkin-state.ts`, `src/pages/client/checkin.tsx`, `src/pages/pt/client-detail.tsx`                                            |
+| Lead status                     | `new`, `contacted`, `approved_pending_workspace`, `converted`, `declined`; older baseline schema also references legacy values such as `reviewed`, `consultation_booked`, `accepted`, `rejected`, `archived` | Lead pipeline workflow                                                           | `src/features/pt-hub/types.ts`, `src/features/pt-hub/components/pt-hub-lead-status-badge.tsx`, `src/pages/pt-hub/leads.tsx`                                                 |
+| Delivery/assignment status      | Workout: `planned`, `in_progress`, `completed`, `skipped`, `rest`; Nutrition: `active`, `completed`, `cancelled`; Program/check-in assignment states such as assigned/not assigned                           | Domain-specific workflow state                                                   | `src/pages/pt/client-detail.tsx`, `src/pages/client/home.tsx`, `src/pages/client/checkin.tsx`, migrations                                                                   |
+| Library/package/template status | `active`, `inactive`, `archived`, package `draft`, `active`, `archived`                                                                                                                                      | Library and commerce workflow state                                              | `src/pages/pt/programs.tsx`, `src/pages/pt/nutrition.tsx`, `src/pages/pt-hub/packages`, `src/features/pt-hub/types.ts`                                                      |
+| Generic status pill fallback    | `pending`, `submitted`, `review_needed`, `partially_activated`, `rest`, `recovery`, `upcoming`, `reviewed`, `not logged`, plus any string formatted dynamically                                              | Visual fallback for many unrelated concepts                                      | `src/components/ui/coachos/status-pill.tsx`, `src/lib/semantic-status.ts`                                                                                                   |
 
 ## 2. Stored vs Computed Status Map
 
-| Value/source | Stored or computed | Notes |
-| --- | --- | --- |
-| `clients.relationship_status` | Stored | Locked semantics: `active`, `removed`, `transferred_out`. Controls active vs historical/read-only behavior. |
-| `clients.lifecycle_state` | Stored | Normalized by `client-lifecycle.ts`; used for filters and lifecycle badges. |
-| `clients.manual_risk_flag` | Stored | Manual coach override for at-risk state. |
-| `clients.status` | Stored legacy/general client status | Still mapped into `PTClientSummary.status`, but product meaning is less clear than `relationship_status` and `lifecycle_state`. |
-| `workspace_client_onboardings.status` | Stored | Client onboarding workflow status. Labels are client-facing in onboarding and coach-facing in PT surfaces. |
-| `checkins.submitted_at` / `reviewed_at` + due date | Stored timestamps, computed state | `getCheckinOperationalState` computes `upcoming`, `due`, `overdue`, `submitted`, `reviewed`. |
-| `assigned_workouts.status` and `day_type` | Stored | Domain workflow; used in client workouts, PT plan views, logs. |
-| `assigned_nutrition_plans.status` | Stored | `active`, `completed`, `cancelled`; current views query active only. |
-| `client_programs.is_active` / program assignment records | Stored booleans/rows | UI maps to active, paused, not assigned, assigned. |
-| `pt_hub_leads.status` | Stored | PT lead workflow status; should stay inside lead surfaces. |
-| `PTClientSummary.riskFlags` | Computed upstream/query summary | Includes `missed_checkins`, `no_recent_reply`, `low_adherence_trend`, `inactive_client`; displayed as individual risk chips in some surfaces. |
-| `PTClientSummary.hasOverdueCheckin` / `overdueCheckinsCount` | Computed summary | Used for PT Hub table badges, filters, analytics. |
-| `PTClientSummary.onboardingIncomplete` | Computed summary | Used as segment filter and sometimes a badge. |
-| `getClientRiskState` | Computed frontend | Returns `at_risk` if manual flag or any normalized risk flag exists; otherwise `healthy`. |
-| `matchesClientSegment` | Computed frontend | Keeps filter semantics for onboarding incomplete, overdue check-ins, at risk, paused. |
-| `StatusPill` fallback labels/tones | Computed frontend | Converts arbitrary strings into labels and semantic tones; useful but also enables taxonomy drift. |
+| Value/source                                                 | Stored or computed                  | Notes                                                                                                                                         |
+| ------------------------------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clients.relationship_status`                                | Stored                              | Locked semantics: `active`, `removed`, `transferred_out`. Controls active vs historical/read-only behavior.                                   |
+| `clients.lifecycle_state`                                    | Stored                              | Normalized by `client-lifecycle.ts`; used for filters and lifecycle badges.                                                                   |
+| `clients.manual_risk_flag`                                   | Stored                              | Manual coach override for at-risk state.                                                                                                      |
+| `clients.status`                                             | Stored legacy/general client status | Still mapped into `PTClientSummary.status`, but product meaning is less clear than `relationship_status` and `lifecycle_state`.               |
+| `workspace_client_onboardings.status`                        | Stored                              | Client onboarding workflow status. Labels are client-facing in onboarding and coach-facing in PT surfaces.                                    |
+| `checkins.submitted_at` / `reviewed_at` + due date           | Stored timestamps, computed state   | `getCheckinOperationalState` computes `upcoming`, `due`, `overdue`, `submitted`, `reviewed`.                                                  |
+| `assigned_workouts.status` and `day_type`                    | Stored                              | Domain workflow; used in client workouts, PT plan views, logs.                                                                                |
+| `assigned_nutrition_plans.status`                            | Stored                              | `active`, `completed`, `cancelled`; current views query active only.                                                                          |
+| `client_programs.is_active` / program assignment records     | Stored booleans/rows                | UI maps to active, paused, not assigned, assigned.                                                                                            |
+| `pt_hub_leads.status`                                        | Stored                              | PT lead workflow status; should stay inside lead surfaces.                                                                                    |
+| `PTClientSummary.riskFlags`                                  | Computed upstream/query summary     | Includes `missed_checkins`, `no_recent_reply`, `low_adherence_trend`, `inactive_client`; displayed as individual risk chips in some surfaces. |
+| `PTClientSummary.hasOverdueCheckin` / `overdueCheckinsCount` | Computed summary                    | Used for PT Hub table badges, filters, analytics.                                                                                             |
+| `PTClientSummary.onboardingIncomplete`                       | Computed summary                    | Used as segment filter and sometimes a badge.                                                                                                 |
+| `getClientRiskState`                                         | Computed frontend                   | Returns `at_risk` if manual flag or any normalized risk flag exists; otherwise `healthy`.                                                     |
+| `matchesClientSegment`                                       | Computed frontend                   | Keeps filter semantics for onboarding incomplete, overdue check-ins, at risk, paused.                                                         |
+| `StatusPill` fallback labels/tones                           | Computed frontend                   | Converts arbitrary strings into labels and semantic tones; useful but also enables taxonomy drift.                                            |
 
 ## 3. Surface-by-Surface Badge Usage
 
@@ -156,14 +156,17 @@ RepSync currently uses several overlapping status families:
 ### A. Relationship status
 
 Values:
+
 - `active`
 - `removed`
 - `transferred_out`
 
 Purpose:
+
 - Access, reactivation path, and historical/read-only state.
 
 Display rule:
+
 - Only show globally when not active.
 - For active relationships, relationship status is implicit.
 - For historical rows/details, relationship badge or banner is primary and should suppress active-coaching badges.
@@ -171,6 +174,7 @@ Display rule:
 ### B. Coaching lifecycle
 
 Values:
+
 - `invited`
 - `onboarding`
 - `active`
@@ -179,9 +183,11 @@ Values:
 - `churned`
 
 Purpose:
+
 - Coach-facing journey state.
 
 Display rule:
+
 - Show at most one lifecycle badge in global client rows.
 - In client detail, show lifecycle in one structured state area, not both header and first card.
 - Suppress or frame as historical for `removed` and `transferred_out`.
@@ -189,13 +195,16 @@ Display rule:
 ### C. Attention/risk
 
 Values/signals:
+
 - High-level: `at_risk`
 - Specific signals: `missed_checkins` / overdue check-in, `no_recent_reply`, `low_adherence_trend`, `inactive_client`
 
 Purpose:
+
 - Coach action needed.
 
 Display rule:
+
 - Show only if actionable.
 - Prefer one "Attention" badge/chip in global rows, with the most important reason in copy or tooltip.
 - Detail pages can show individual signals in a dedicated Attention section or dialog, not all in the header.
@@ -203,15 +212,18 @@ Display rule:
 ### D. Workflow/domain status
 
 Examples:
+
 - Check-in: `due`, `overdue`, `submitted`, `reviewed`, `upcoming`
 - Lead: `new`, `contacted`, `approved_pending_workspace`, `converted`, `declined`
 - Assignment: assigned/not assigned, active/paused program, active nutrition plan
 - Package/template: draft/active/archived/inactive
 
 Purpose:
+
 - Only within the relevant domain surface.
 
 Display rule:
+
 - Do not show workflow/domain badges in global client rows unless the row is specifically about that workflow.
 - Keep client-facing domain statuses in client app where they help the client act.
 
@@ -276,12 +288,14 @@ Display rule:
 ## 9. Client-Facing Versus Coach-Facing Labels
 
 Coach-facing only:
+
 - Lifecycle: invited, onboarding, active, paused, completed, churned.
 - Risk state: at risk, healthy.
 - Risk flags: no recent reply, low adherence trend, inactive client, missed check-ins.
 - Relationship state: removed, transferred out, archived/historical.
 
 Client-facing allowed:
+
 - Check-in due/overdue/submitted/reviewed/upcoming.
 - Workout planned/completed/rest/recovery where relevant.
 - Nutrition active/current plan copy.
@@ -289,6 +303,7 @@ Client-facing allowed:
 - Workspace state copy in plain language, not internal relationship labels.
 
 Ambiguous or duplicative labels:
+
 - `active` can mean active relationship, active lifecycle, active package/template, active nutrition plan.
 - `onboarding` can mean lifecycle or workspace onboarding workflow.
 - `submitted` can mean onboarding submitted, check-in submitted, baseline submitted, or lead submitted.
@@ -373,4 +388,3 @@ Ambiguous or duplicative labels:
   - Client detail active and historical relationships.
   - Client portal home/check-in for active workspace, no workspace, onboarding incomplete, due/overdue/submitted/reviewed check-ins.
   - Lead list/detail pipeline statuses.
-

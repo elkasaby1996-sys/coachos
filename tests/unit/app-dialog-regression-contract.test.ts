@@ -30,17 +30,21 @@ describe("app dialog regression contracts", () => {
     );
     const dialogConfig = clientDetailPage.slice(dialogStart, dialogEnd);
 
-    expect(dialogConfig).toContain("onConfirm: () => handleAssignWorkout(true)");
-    expect(clientDetailPage).toContain("onClick={() => setConfirmAction(null)}");
+    expect(dialogConfig).toContain(
+      "onConfirm: () => handleAssignWorkout(true)",
+    );
+    expect(clientDetailPage).toContain(
+      "onClick={() => setConfirmAction(null)}",
+    );
     expect(dialogConfig).not.toContain("setConfirmAction(null)");
   });
 
   it("keeps nutrition delete dialog state render-safe and preserves assigned-delete copy", () => {
     expect(nutritionPage).toContain(
-      'const [deleteTarget, setDeleteTarget] = useState<NutritionTemplate | null>',
+      "const [deleteTarget, setDeleteTarget] = useState<NutritionTemplate | null>",
     );
     expect(nutritionPage).toContain("open={Boolean(deleteTarget)}");
-    expect(nutritionPage).toContain("templateActionErrorSource === \"dialog\"");
+    expect(nutritionPage).toContain('templateActionErrorSource === "dialog"');
     expect(nutritionPage).toContain(
       "This nutrition program is already assigned to a client and cannot be deleted.",
     );

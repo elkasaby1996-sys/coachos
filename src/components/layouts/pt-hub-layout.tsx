@@ -697,9 +697,7 @@ export function PtHubLayout() {
 
                   <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 xl:flex-none xl:flex-nowrap">
                     {showProfileStatusPill ? (
-                      <div
-                        className={getPtHubStatusPillClassName(isLightMode)}
-                      >
+                      <div className={getPtHubStatusPillClassName(isLightMode)}>
                         <div
                           className={getPtHubStatusPillIconClassName({
                             isLightMode,

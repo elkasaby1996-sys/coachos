@@ -17,7 +17,9 @@ describe("PT check-ins queue surface", () => {
 
   it("uses a compact arrow action for opening check-ins", () => {
     expect(checkinsSource).toContain("ArrowUpRight");
-    expect(checkinsSource).toContain('aria-label={`${actionLabel} ${name} check-in`}');
+    expect(checkinsSource).toContain(
+      "aria-label={`${actionLabel} ${name} check-in`}",
+    );
     expect(checkinsSource).not.toContain(">{actionLabel}</Button>");
   });
 });

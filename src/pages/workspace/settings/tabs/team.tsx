@@ -676,10 +676,7 @@ function TeamMemberTable({
             {members.map((member) => {
               const isOwner = member.role === "owner" || !member.id;
               return (
-                <tr
-                  key={member.id ?? member.userId}
-                  className="bg-card/20"
-                >
+                <tr key={member.id ?? member.userId} className="bg-card/20">
                   <td className="px-4 py-3">
                     <p className="font-medium text-foreground">
                       {member.displayName ?? member.email ?? member.userId}

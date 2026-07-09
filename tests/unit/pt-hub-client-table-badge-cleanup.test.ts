@@ -10,8 +10,18 @@ import { I18nContext } from "../../src/lib/i18n-context";
 const readRepoFile = (...parts: string[]) =>
   readFileSync(resolve(process.cwd(), ...parts), "utf8").replace(/\r\n/g, "\n");
 
-const ptHubClientsPageSource = readRepoFile("src", "pages", "pt-hub", "clients.tsx");
-const workspaceClientsPageSource = readRepoFile("src", "pages", "pt", "clients.tsx");
+const ptHubClientsPageSource = readRepoFile(
+  "src",
+  "pages",
+  "pt-hub",
+  "clients.tsx",
+);
+const workspaceClientsPageSource = readRepoFile(
+  "src",
+  "pages",
+  "pt",
+  "clients.tsx",
+);
 const ptHubClientTableSource = readRepoFile(
   "src",
   "features",
@@ -30,9 +40,7 @@ const i18nValue = {
   t: (_key: string, fallback?: string) => fallback ?? _key,
 };
 
-function makeClient(
-  overrides: Partial<PTClientSummary> = {},
-): PTClientSummary {
+function makeClient(overrides: Partial<PTClientSummary> = {}): PTClientSummary {
   return {
     id: "client-1",
     urlKey: "client-one",
@@ -120,8 +128,8 @@ describe("PT Hub client table badge cleanup", () => {
   });
 
   it("uses the central attention badge description for PT Hub and workspace client rows", () => {
-    expect(ptHubClientTableSource).toContain(
-      "return badge.description ?? attentionReasons.map",
+    expect(ptHubClientTableSource).toMatch(
+      /return\s*\(\s*badge\.description\s*\?\?\s*attentionReasons\.map/s,
     );
     expect(ptHubClientTableSource).toContain(
       "Attention signal detected, but the reason could not be resolved.",
@@ -182,10 +190,10 @@ describe("PT Hub client table badge cleanup", () => {
   it("keeps PT Hub lifecycle and segment filter controls unchanged", () => {
     expect(ptHubClientsPageSource).toContain('relationshipScope: "all"');
     expect(ptHubClientsPageSource).toContain(
-      'value={lifecycleFilter}\n            onChange={(event) => setLifecycleFilter(event.target.value)}',
+      "value={lifecycleFilter}\n            onChange={(event) => setLifecycleFilter(event.target.value)}",
     );
     expect(ptHubClientsPageSource).toContain(
-      'value={segmentFilter}\n            onChange={(event) =>\n              setSegmentFilter(event.target.value as ClientSegmentKey)',
+      "value={segmentFilter}\n            onChange={(event) =>\n              setSegmentFilter(event.target.value as ClientSegmentKey)",
     );
     expect(ptHubClientsPageSource).toContain(
       '<option value="checkin_overdue">',
@@ -198,17 +206,15 @@ describe("PT Hub client table badge cleanup", () => {
     expect(workspaceClientsPageSource).toContain(
       "relationshipScope: clientListView",
     );
-    expect(workspaceClientsPageSource).toContain(
-      'setClientListView("active")',
-    );
+    expect(workspaceClientsPageSource).toContain('setClientListView("active")');
     expect(workspaceClientsPageSource).toContain(
       'setClientListView("archived")',
     );
     expect(workspaceClientsPageSource).toContain(
-      'value={lifecycleFilter}\n              onChange={(event) => setLifecycleFilter(event.target.value)}',
+      "value={lifecycleFilter}\n              onChange={(event) => setLifecycleFilter(event.target.value)}",
     );
     expect(workspaceClientsPageSource).toContain(
-      'value={segmentFilter}\n              onChange={(event) =>\n                setSegmentFilter(event.target.value as ClientSegmentKey)',
+      "value={segmentFilter}\n              onChange={(event) =>\n                setSegmentFilter(event.target.value as ClientSegmentKey)",
     );
   });
 });

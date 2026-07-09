@@ -116,16 +116,16 @@ describe("client status display taxonomy", () => {
       kind: "attention",
       tone: "danger",
     });
-    expect(display.attentionBadge?.reasons.map((reason) => reason.code)).toEqual(
-      [
-        "manual_at_risk",
-        "checkin_overdue",
-        "missed_checkins",
-        "no_recent_reply",
-        "low_adherence",
-        "inactive_client",
-      ],
-    );
+    expect(
+      display.attentionBadge?.reasons.map((reason) => reason.code),
+    ).toEqual([
+      "manual_at_risk",
+      "checkin_overdue",
+      "missed_checkins",
+      "no_recent_reply",
+      "low_adherence",
+      "inactive_client",
+    ]);
     expect(display.attentionBadge?.description).toBe(
       "Reasons: Manually flagged by coach; Overdue check-in; Missed latest check-in; No recent client reply; Adherence trending down; No recent client activity.",
     );
@@ -208,9 +208,9 @@ describe("client status display taxonomy", () => {
     });
 
     expect(healthyDisplay.attentionBadge).toBeUndefined();
-    expect(healthyDisplay.globalBadges.map((badge) => badge.label)).not.toContain(
-      "Healthy",
-    );
+    expect(
+      healthyDisplay.globalBadges.map((badge) => badge.label),
+    ).not.toContain("Healthy");
   });
 
   it("returns only Removed globally for a removed relationship", () => {

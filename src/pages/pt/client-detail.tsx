@@ -268,10 +268,7 @@ function ClientDetailInlineStatusBadges({
   return (
     <div className="client-detail-header-status-badges flex flex-wrap items-center gap-2">
       {statusDisplay.globalBadges.map((badge) => (
-        <span
-          key={badge.key}
-          className="inline-flex"
-        >
+        <span key={badge.key} className="inline-flex">
           <TagInfoBadge
             label={badge.label}
             variant={clientDetailStatusBadgeVariant[badge.tone]}
@@ -5240,7 +5237,9 @@ export function PtClientDetailPage({
                     }}
                     onStatusChange={handleStatusUpdate}
                     canEditClients={canMutateActiveClient}
-                    isHistoricalClientRelationship={isHistoricalClientRelationship}
+                    isHistoricalClientRelationship={
+                      isHistoricalClientRelationship
+                    }
                   />
                 </TabsContent>
                 <TabsContent value="nutrition">
@@ -5250,7 +5249,9 @@ export function PtClientDetailPage({
                     todayKey={todayKey}
                     enabled={isNutritionTab}
                     canEditClients={canMutateActiveClient}
-                    isHistoricalClientRelationship={isHistoricalClientRelationship}
+                    isHistoricalClientRelationship={
+                      isHistoricalClientRelationship
+                    }
                   />
                 </TabsContent>
                 <TabsContent value="medical">

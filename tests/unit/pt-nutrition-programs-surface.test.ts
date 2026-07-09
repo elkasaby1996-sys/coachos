@@ -32,8 +32,9 @@ describe("PT nutrition programs surface", () => {
   });
 
   it("does not render nutrition type chips on program cards", () => {
-    const cardTagBuilderStart =
-      nutritionProgramsSource.indexOf("const buildTemplateTags");
+    const cardTagBuilderStart = nutritionProgramsSource.indexOf(
+      "const buildTemplateTags",
+    );
     expect(cardTagBuilderStart).toBeGreaterThanOrEqual(0);
     const cardTagBuilderEnd = nutritionProgramsSource.indexOf(
       "const nutritionTypeOptions",

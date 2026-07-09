@@ -12,8 +12,6 @@ describe("PT Hub sidebar counts", () => {
       '"/pt-hub/clients": clientStats?.totalClients ?? 0',
     );
     expect(ptHubLayout).not.toContain("clientAttentionCount");
-    expect(ptHubLayout).not.toContain(
-      '(clientStats?.atRiskClients ?? 0) +',
-    );
+    expect(ptHubLayout).not.toContain("(clientStats?.atRiskClients ?? 0) +");
   });
 });

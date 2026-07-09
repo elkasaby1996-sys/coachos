@@ -22,7 +22,9 @@ describe("coach check-in assignment summary contract", () => {
     expect(clientDetailPage).toContain("checkinAssignmentStartLabel");
     expect(clientDetailPage).toContain("Next scheduled");
     expect(clientDetailPage).not.toContain("Selected check-in form");
-    expect(clientDetailPage).not.toContain("Frequency drives future check-ins.");
+    expect(clientDetailPage).not.toContain(
+      "Frequency drives future check-ins.",
+    );
     expect(clientDetailPage).not.toContain("Anchor date for cadence.");
     expect(clientDetailPage).not.toContain("Resolved from current settings.");
     expect(clientDetailPage).not.toContain("Current client-facing state.");
