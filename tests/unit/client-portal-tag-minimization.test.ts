@@ -17,7 +17,12 @@ const clientSurfaceSources = {
     "client-account-onboarding.tsx",
   ),
   layout: readRepoFile("src", "components", "layouts", "client-layout.tsx"),
-  reminders: readRepoFile("src", "components", "common", "client-reminders.tsx"),
+  reminders: readRepoFile(
+    "src",
+    "components",
+    "common",
+    "client-reminders.tsx",
+  ),
   portalUi: readRepoFile(
     "src",
     "components",
@@ -28,7 +33,8 @@ const clientSurfaceSources = {
   nutrition: readRepoFile("src", "pages", "client", "nutrition.tsx"),
 };
 
-const combinedClientSurfaceSource = Object.values(clientSurfaceSources).join("\n");
+const combinedClientSurfaceSource =
+  Object.values(clientSurfaceSources).join("\n");
 
 describe("client portal tag minimization", () => {
   it("keeps removed-only client home copy safe and relationship-neutral", () => {
@@ -55,7 +61,9 @@ describe("client portal tag minimization", () => {
     expect(clientSurfaceSources.checkin).not.toContain(
       "Your coach hasn’t assigned a check-in yet.",
     );
-    expect(clientSurfaceSources.checkin).not.toContain("No active assignments yet");
+    expect(clientSurfaceSources.checkin).not.toContain(
+      "No active assignments yet",
+    );
   });
 
   it("does not expose coach-only risk, lifecycle, or relationship labels", () => {

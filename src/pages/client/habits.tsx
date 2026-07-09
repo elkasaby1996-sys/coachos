@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -395,11 +394,6 @@ export function ClientHabitsPage() {
         title="Habits"
         subtitle="Log nutrition, recovery, and daily metrics."
         stateText={selectedDate || todayStr}
-        actions={
-          <Badge variant={isEditable ? "success" : "muted"}>
-            {isEditable ? "Open for edits" : "Locked"}
-          </Badge>
-        }
       />
 
       <SectionCard className="flex flex-wrap items-center justify-between gap-3">

@@ -25,7 +25,6 @@ import {
   ClientSettingsPage,
   ClientWearablesPage,
   ClientProgressPage,
-  ClientWorkoutDetailPage,
   ClientWorkoutRunPage,
   ClientWorkoutSummaryPage,
   ClientWorkoutsPage,
@@ -366,6 +365,13 @@ function PtClientDetailRoute() {
 function LegacyJoinRedirect() {
   const { code } = useParams<{ code: string }>();
   return <Navigate to={`/invite/${code ?? ""}`} replace />;
+}
+
+function ClientWorkoutDetailRedirect() {
+  const { assignedWorkoutId } = useParams<{ assignedWorkoutId: string }>();
+  return (
+    <Navigate to={`/app/workout-run/${assignedWorkoutId ?? ""}`} replace />
+  );
 }
 
 function PtHubAssetPreloader() {
@@ -951,7 +957,7 @@ export function App() {
             />
             <Route
               path="workouts/:assignedWorkoutId"
-              element={<ClientWorkoutDetailPage />}
+              element={<ClientWorkoutDetailRedirect />}
             />
             <Route
               path="workout-run/:assignedWorkoutId"

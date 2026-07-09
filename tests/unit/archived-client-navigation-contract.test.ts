@@ -81,10 +81,14 @@ describe("archived client history navigation contract", () => {
     expect(clientsPageSource).toContain(
       "lg:grid-cols-[minmax(320px,1fr)_minmax(240px,0.65fr)_150px_auto]",
     );
-    expect(clientsPageSource).toContain(
-      'htmlFor="pt-clients-relationship-view"',
-    );
     expect(clientsPageSource).toContain('id="pt-clients-relationship-view"');
+    expect(clientsPageSource).toContain(
+      'aria-label="Client relationship view"',
+    );
+    expect(clientsPageSource).toContain(
+      'aria-pressed={clientListView === "active"}',
+    );
+    expect(clientsPageSource).toContain("bg-primary text-primary-foreground");
     expect(clientsPageSource).not.toContain(
       "flex flex-wrap items-center justify-between gap-3 lg:px-2",
     );

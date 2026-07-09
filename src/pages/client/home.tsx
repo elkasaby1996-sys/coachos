@@ -1175,11 +1175,6 @@ function ClientWorkspaceHomePage() {
               <SurfaceCardTitle className="text-2xl">
                 Today&apos;s agenda
               </SurfaceCardTitle>
-              {todayWorkout ? (
-                <Badge variant="muted" className="w-fit">
-                  {todaySourceLabel}
-                </Badge>
-              ) : null}
             </div>
           </div>
         </SurfaceCardHeader>
@@ -1194,11 +1189,6 @@ function ClientWorkspaceHomePage() {
                   </p>
                 </div>
               </div>
-              {todayTemplateInfo.workoutType ? (
-                <Badge variant="muted" className="w-fit">
-                  {todayTemplateInfo.workoutType}
-                </Badge>
-              ) : null}
             </div>
 
             {todayWorkout?.coach_note ? (

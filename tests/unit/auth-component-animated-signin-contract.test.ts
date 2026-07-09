@@ -5,15 +5,15 @@ import { join } from "node:path";
 const source = readFileSync(
   join(process.cwd(), "src/components/ui/sign-up.tsx"),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const backdropSource = readFileSync(
   join(process.cwd(), "src/components/common/auth-backdrop.tsx"),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const globalsSource = readFileSync(
   join(process.cwd(), "src/styles/globals.css"),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 
 describe("animated auth component contract", () => {
   it("keeps 21st.dev-inspired polish inside the existing Repsync auth surface", () => {
@@ -57,6 +57,17 @@ describe("animated auth component contract", () => {
     expect(source).toContain("mask-composite: exclude");
     expect(source).not.toContain("rgba(56,189,248,0.22)");
     expect(source).not.toContain("rgba(255,255,255,0.26)");
+  });
+
+  it("keeps auth inputs transparent so they do not appear nested", () => {
+    expect(source).toContain(
+      ".auth-flow-card .glass-input-single {\n          border-color: oklch(1 0 0 / 0.5);\n          background: transparent;",
+    );
+    expect(source).toContain(
+      ".auth-flow-card .glass-input-wrap:focus-within .glass-input-single {\n          border-color: oklch(1 0 0 / 0.72);\n          background: transparent;",
+    );
+    expect(source).toContain("background: transparent !important;");
+    expect(source).toContain("box-shadow: none !important;");
   });
 
   it("keeps the auth footer pinned in a viewport shell without an after-footer band", () => {
