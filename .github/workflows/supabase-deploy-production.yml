@@ -19,6 +19,8 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
     steps:
       - name: Checkout
@@ -53,6 +55,8 @@ jobs:
             SUPABASE_ACCESS_TOKEN
             SUPABASE_PROJECT_ID
             SUPABASE_DB_PASSWORD
+            VITE_SUPABASE_URL
+            VITE_SUPABASE_ANON_KEY
           )
 
           missing=0
