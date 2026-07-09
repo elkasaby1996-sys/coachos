@@ -3,8 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
-  Apple,
-  Facebook,
   Globe,
   KeyRound,
   Loader2,
@@ -44,6 +42,11 @@ import {
   signUpWithEmailPassword,
   verifyPhoneOtp,
 } from "../../lib/auth-helpers";
+import {
+  betaSupportedOAuthProviders,
+  isBetaSupportedOAuthProvider,
+  type BetaSupportedOAuthProvider,
+} from "../../lib/auth-provider-visibility";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
@@ -330,7 +333,8 @@ export function InvitePage() {
   const rateLimitHint =
     error && isRateLimited(error) ? "Try again in a few minutes." : null;
 
-  const handleOAuth = async (provider: "google" | "apple" | "facebook") => {
+  const handleOAuth = async (provider: BetaSupportedOAuthProvider) => {
+    if (!isBetaSupportedOAuthProvider(provider)) return;
     setBusyAction(`oauth_${provider}`);
     setError(null);
     setNotice(null);
@@ -553,49 +557,28 @@ export function InvitePage() {
                   <p className="text-sm text-muted-foreground">
                     Use your existing account to continue quickly.
                   </p>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-10"
-                      onClick={() => void handleOAuth("google")}
-                      disabled={Boolean(busyAction)}
-                    >
-                      {busyAction === "oauth_google" ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Globe className="h-4 w-4" />
-                      )}
-                      Google
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-10"
-                      onClick={() => void handleOAuth("apple")}
-                      disabled={Boolean(busyAction)}
-                    >
-                      {busyAction === "oauth_apple" ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Apple className="h-4 w-4" />
-                      )}
-                      Apple
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-10"
-                      onClick={() => void handleOAuth("facebook")}
-                      disabled={Boolean(busyAction)}
-                    >
-                      {busyAction === "oauth_facebook" ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Facebook className="h-4 w-4" />
-                      )}
-                      Facebook
-                    </Button>
+                  <div className="grid gap-2">
+                    {betaSupportedOAuthProviders.map((provider) => (
+                      <Button
+                        key={provider}
+                        type="button"
+                        variant="secondary"
+                        className="h-10"
+                        onClick={() => void handleOAuth(provider)}
+                        disabled={Boolean(busyAction)}
+                      >
+                        {busyAction === `oauth_${provider}` ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Globe className="h-4 w-4" />
+                        )}
+                        Google
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="space-y-1 rounded-lg border border-border/60 bg-secondary/25 px-3 py-2 text-xs text-muted-foreground">
+                    <p>Apple sign-in is not available during beta.</p>
+                    <p>Facebook sign-in is not available during beta.</p>
                   </div>
                 </TabsContent>
 

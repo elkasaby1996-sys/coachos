@@ -247,12 +247,6 @@ export function ClientSignupPage() {
       }
       onEmailPasswordSubmit={handleEmailSignup}
       onGoogle={handleGoogle}
-      onApple={async () => {
-        return { notice: "Apple sign-up will be wired next." };
-      }}
-      onFacebook={async () => {
-        return { notice: "Facebook sign-up will be wired next." };
-      }}
       onPhone={async () => {
         return { notice: "Phone sign-up will be wired next." };
       }}

@@ -1,13 +1,6 @@
 name: Supabase Deploy Staging
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - "supabase/**"
-      - ".github/workflows/supabase-deploy-staging.yml"
-      - ".github/workflows/supabase-ci.yml"
-      - "package.json"
   workflow_dispatch:
 
 permissions:
@@ -30,6 +23,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm run test:unit
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
@@ -59,6 +70,9 @@ jobs:
 
       - name: Link staging project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Confirm hosted migration deployment
+        run: echo "Manual workflow dispatch confirmed. The next step applies pending migrations to the hosted staging Supabase project."
 
       - name: Push migrations to staging
         run: supabase db push --linked --password "$SUPABASE_DB_PASSWORD"
