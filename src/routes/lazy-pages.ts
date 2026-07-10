@@ -33,6 +33,57 @@ export const PricingPage = lazy(() =>
 export const DemoPage = lazy(() =>
   import("../pages/public/demo").then((m) => ({ default: m.DemoPage })),
 );
+export const CoachesPage = lazy(() =>
+  import("../pages/public/coaches").then((m) => ({
+    default: m.CoachesPage,
+  })),
+);
+export const ForCoachesPage = lazy(() =>
+  import("../pages/public/for-coaches").then((m) => ({
+    default: m.ForCoachesPage,
+  })),
+);
+export const ForClientsPage = lazy(() =>
+  import("../pages/public/for-clients").then((m) => ({
+    default: m.ForClientsPage,
+  })),
+);
+export const SwitchPage = lazy(() =>
+  import("../pages/public/switch").then((m) => ({ default: m.SwitchPage })),
+);
+export const CompareTrueCoachPage = lazy(() =>
+  import("../pages/public/compare-truecoach").then((m) => ({
+    default: m.CompareTrueCoachPage,
+  })),
+);
+export const CompareFitrPage = lazy(() =>
+  import("../pages/public/compare-fitr").then((m) => ({
+    default: m.CompareFitrPage,
+  })),
+);
+export const FaqPage = lazy(() =>
+  import("../pages/public/faq").then((m) => ({ default: m.FaqPage })),
+);
+export const SecurityPage = lazy(() =>
+  import("../pages/public/security").then((m) => ({
+    default: m.SecurityPage,
+  })),
+);
+export const RequestAccessPage = lazy(() =>
+  import("../pages/public/request-access").then((m) => ({
+    default: m.RequestAccessPage,
+  })),
+);
+export const CookiesPage = lazy(() =>
+  import("../pages/public/cookies").then((m) => ({
+    default: m.CookiesPage,
+  })),
+);
+export const MarketingNotFoundPage = lazy(() =>
+  import("../pages/public/marketing-not-found").then((m) => ({
+    default: m.MarketingNotFoundPage,
+  })),
+);
 export const AuthCallbackPage = lazy(() =>
   import("../pages/public/auth-callback").then((m) => ({
     default: m.AuthCallbackPage,

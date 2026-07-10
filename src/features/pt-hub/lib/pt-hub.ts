@@ -2288,7 +2288,7 @@ export function useCoachMarketplaceProfiles() {
           "user_id, full_name, display_name, slug, headline, searchable_headline, short_bio, specialties, certifications, coaching_style, coaching_modes, availability_modes, location_label, marketplace_visible, is_published, published_at, profile_photo_url, banner_image_url, social_links, testimonials, transformations, updated_at, created_at",
         )
         .eq("is_published", true)
-        .eq("marketplace_visible", true)
+        .order("published_at", { ascending: false, nullsFirst: false })
         .order("updated_at", { ascending: false, nullsFirst: false })
         .returns<PtHubProfileRow[]>();
 

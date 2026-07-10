@@ -28,14 +28,22 @@ import {
   ClientWorkoutRunPage,
   ClientWorkoutSummaryPage,
   ClientWorkoutsPage,
+  CoachesPage,
   ClientSignupPage,
+  CompareFitrPage,
+  CompareTrueCoachPage,
+  CookiesPage,
   AuthCallbackPage,
   DemoPage,
+  FaqPage,
+  ForClientsPage,
+  ForCoachesPage,
   ForgotPasswordPage,
   HealthPage,
   InvitePage,
   LegacySettingsRedirectPage,
   LoginPage,
+  MarketingNotFoundPage,
   MarketingHomePage,
   NoWorkspacePage,
   PricingPage,
@@ -82,9 +90,12 @@ import {
   PtWorkoutTemplatePreviewPage,
   PtWorkoutTemplatesPage,
   PtWorkspaceOnboardingPage,
+  RequestAccessPage,
   ResetPasswordPage,
+  SecurityPage,
   SignupRolePage,
   SupportPage,
+  SwitchPage,
   TeamInviteAcceptancePage,
   TermsPage,
   WorkspaceSettingsAutomationsTab,
@@ -367,6 +378,11 @@ function LegacyJoinRedirect() {
   return <Navigate to={`/invite/${code ?? ""}`} replace />;
 }
 
+function CoachMarketplaceProfileRedirect() {
+  const { ptSlug } = useParams<{ ptSlug: string }>();
+  return <Navigate to={`/p/${ptSlug ?? ""}`} replace />;
+}
+
 function ClientWorkoutDetailRedirect() {
   const { assignedWorkoutId } = useParams<{ assignedWorkoutId: string }>();
   return (
@@ -631,6 +647,19 @@ export function App() {
           <Route path="/product" element={<ProductPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/demo" element={<DemoPage />} />
+          <Route path="/coaches" element={<CoachesPage />} />
+          <Route
+            path="/coaches/:ptSlug"
+            element={<CoachMarketplaceProfileRedirect />}
+          />
+          <Route path="/for-coaches" element={<ForCoachesPage />} />
+          <Route path="/for-clients" element={<ForClientsPage />} />
+          <Route path="/switch" element={<SwitchPage />} />
+          <Route path="/compare/truecoach" element={<CompareTrueCoachPage />} />
+          <Route path="/compare/fitr" element={<CompareFitrPage />} />
+          <Route path="/faq" element={<FaqPage />} />
+          <Route path="/security" element={<SecurityPage />} />
+          <Route path="/request-access" element={<RequestAccessPage />} />
 
           {/* Public */}
           <Route path="/login" element={<LoginGate />} />
@@ -642,6 +671,10 @@ export function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
           <Route path="/signup" element={<SignupRolePage />} />
+          <Route
+            path="/signup/coach"
+            element={<Navigate to="/signup/pt" replace />}
+          />
           <Route path="/signup/pt" element={<PtSignupPage />} />
           <Route path="/signup/client" element={<ClientSignupPage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
@@ -667,6 +700,7 @@ export function App() {
           />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/cookies" element={<CookiesPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/health" element={<HealthPage />} />
 
@@ -994,7 +1028,7 @@ export function App() {
           </Route>
 
           {/* Fallback */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<MarketingNotFoundPage />} />
         </Routes>
       </AppShellTransition>
     </Suspense>

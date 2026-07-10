@@ -1,252 +1,145 @@
-import { FormEvent, ReactNode, useEffect, useId, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
 import {
-  BarChart3,
-  BellRing,
-  BriefcaseBusiness,
-  ClipboardCheck,
-  CreditCard,
-  FileText,
-  Menu,
-  UserRound,
-  UsersRound,
-  X,
-} from "lucide-react";
+  FormEvent,
+  ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+} from "react";
+import { Link } from "react-router-dom";
+import { useCoachMarketplaceProfiles } from "../../features/pt-hub/lib/pt-hub";
+import type {
+  PTAvailabilityMode,
+  PTCoachingMode,
+  PTPublicProfile,
+} from "../../features/pt-hub/types";
+import { routes } from "../../lib/routes";
+import { supabase } from "../../lib/supabase";
 import "../../styles/marketing-home.css";
 
 type SeoConfig = {
   title: string;
-  description?: string;
+  description: string;
+  canonicalPath?: string;
 };
 
-const navLinks = [
-  { label: "Product", href: "/product" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Demo", href: "/demo" },
-];
+type LeadFormMode = "request_access" | "switch";
 
-const footerProductLinks = [
-  { label: "Product", href: "/product" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Demo", href: "/demo" },
-  { label: "Public profiles", href: "/product#public-profile" },
-];
+type LeadFormState = {
+  name: string;
+  email: string;
+  role: string;
+  coachingBusiness: string;
+  clientsRange: string;
+  currentTools: string;
+  goal: string;
+  migrationNotes: string;
+  consent: boolean;
+  website: string;
+};
 
-const footerCompanyLinks = [
-  { label: "Support", href: "/support" },
-  { label: "Login", href: "/login" },
-  { label: "Start free", href: "/signup" },
-];
+const marketingOrigin =
+  typeof window === "undefined" ? "" : window.location.origin;
 
-const moduleCards = [
+const defaultLeadForm: LeadFormState = {
+  name: "",
+  email: "",
+  role: "coach",
+  coachingBusiness: "",
+  clientsRange: "",
+  currentTools: "",
+  goal: "",
+  migrationNotes: "",
+  consent: false,
+  website: "",
+};
+
+const coachingModeLabels: Record<PTCoachingMode, string> = {
+  one_on_one: "1:1 coaching",
+  programming: "Programming",
+  nutrition: "Nutrition",
+  accountability: "Accountability",
+};
+
+const availabilityModeLabels: Record<PTAvailabilityMode, string> = {
+  online: "Online",
+  in_person: "In person",
+};
+
+const lifecycleItems = [
   {
-    title: "Leads",
-    icon: UserRound,
-    description:
-      "Capture inquiries, understand where prospects are coming from, and move them toward the next step.",
+    title: "Before they join",
+    body: "Public profiles, applications, lead context, and a coach marketplace that make the first step feel clear.",
   },
   {
-    title: "Clients",
-    icon: UsersRound,
-    description:
-      "Manage client records, lifecycle, onboarding progress, notes, and coaching context.",
+    title: "Once they start",
+    body: "Baseline context, onboarding, programs, check-ins, messages, and next actions move into one rhythm.",
   },
   {
-    title: "Workspaces",
-    icon: BriefcaseBusiness,
-    description:
-      "Create structured coaching environments for delivery, branding, defaults, templates, and team workflows.",
+    title: "While you coach",
+    body: "Workouts, nutrition, habits, notes, progress, and conversations stay attached to the client relationship.",
   },
   {
-    title: "Check-ins",
-    icon: ClipboardCheck,
-    description:
-      "Run repeatable check-in cadences so clients stay accountable and coaches know what needs review.",
-  },
-  {
-    title: "Billing",
-    icon: CreditCard,
-    description:
-      "Track plans, payments, invoices, subscriptions, and revenue visibility.",
-  },
-  {
-    title: "Analytics",
-    icon: BarChart3,
-    description:
-      "Understand business performance, client adherence, delivery health, and operational trends.",
-  },
-  {
-    title: "Public Profile",
-    icon: FileText,
-    description:
-      "Turn your coaching presence into a client acquisition surface with profile content and lead capture.",
-  },
-  {
-    title: "Automations",
-    icon: BellRing,
-    description:
-      "Reduce manual follow-up with reminders, overdue nudges, onboarding prompts, and workspace rules.",
+    title: "Before they drift",
+    body: "Attention cues help coaches see missed check-ins, low follow-through, and clients who need a touchpoint.",
   },
 ];
 
-const productSections = [
+const productPillars = [
   {
-    id: "pt-hub",
-    eyebrow: "PT Hub",
-    title: "Manage the business layer.",
-    description:
-      "Manage your business account, public profile, leads, notifications, billing, and global settings from one control layer.",
+    title: "Acquire",
+    body: "Publish a coach profile, appear in the marketplace, and collect applications without rebuilding your website.",
   },
   {
-    id: "workspaces",
-    eyebrow: "Workspaces",
-    title: "Create focused delivery environments.",
-    description:
-      "Create coaching environments with their own client experience, branding, templates, defaults, automations, team access, and delivery settings.",
+    title: "Coach",
+    body: "Run programs, check-ins, habits, messages, client context, and notes from a focused workspace.",
   },
   {
-    id: "leads",
-    eyebrow: "Lead management",
-    title: "Keep prospect context organized.",
-    description:
-      "Capture new inquiries, keep prospect context organized, and move leads toward consultation, onboarding, or client conversion.",
-  },
-  {
-    id: "clients",
-    eyebrow: "Client management",
-    title: "Keep the coaching record connected.",
-    description:
-      "Track client records, lifecycle, onboarding, coaching notes, check-ins, and risk signals without losing context.",
-  },
-  {
-    id: "check-ins",
-    eyebrow: "Check-ins and delivery",
-    title: "Make accountability repeatable.",
-    description:
-      "Run repeatable check-in cadences, review client updates, spot missed submissions, and keep accountability consistent.",
-  },
-  {
-    id: "public-profile",
-    eyebrow: "Public profile",
-    title: "Give prospects a clear path.",
-    description:
-      "Publish a trainer profile with headline, bio, specialties, media, CTA, and lead form so prospects have a clear path to inquire.",
-  },
-  {
-    id: "billing",
-    eyebrow: "Billing and revenue",
-    title: "See payment context where it belongs.",
-    description:
-      "See subscription/payment context, invoices, revenue snapshots, and plan visibility where relevant.",
-  },
-  {
-    id: "analytics",
-    eyebrow: "Analytics and visibility",
-    title: "Understand what needs attention.",
-    description:
-      "Understand delivery performance, client adherence, revenue, and operational health from one place.",
-  },
-  {
-    id: "automations",
-    eyebrow: "Automations",
-    title: "Reduce manual follow-up.",
-    description:
-      "Create reminders, nudges, onboarding prompts, and workspace rules that reduce manual follow-up.",
-  },
-  {
-    id: "integrations",
-    eyebrow: "Integrations",
-    title: "Prepare for connected operations.",
-    description:
-      "Prepare for calendar, email, meeting links, file storage, payment, and future wearable/health integrations where supported or configured.",
+    title: "Retain",
+    body: "Keep attention on adherence, follow-ups, and relationship signals before clients become silent.",
   },
 ];
 
-const pricingFeatures = [
-  "Lead capture",
-  "Client management",
-  "Workspaces",
-  "Check-ins",
-  "Public profile",
-  "Billing visibility",
-  "Analytics",
-  "Automations",
-  "Team workflows where configured",
-  "Integrations where supported or planned",
-];
-
-const pricingFaq = [
+const faqs = [
   {
-    question: "Is pricing final?",
-    answer:
-      "Pricing is being finalized for early access. Demo requests help match the setup to your business.",
+    q: "Is RepSync only for workout programming?",
+    a: "No. Programming is part of the workflow, but RepSync is positioned around the whole coaching relationship: discovery, applications, onboarding, delivery, attention, and retention.",
   },
   {
-    question: "Can solo trainers use RepSync?",
-    answer:
-      "Yes. RepSync is designed for solo personal trainers and can scale toward teams.",
+    q: "Can clients find coaches publicly?",
+    a: "Yes. Coaches can publish a public profile from PT Hub, and published profiles appear in the public coach marketplace.",
   },
   {
-    question: "Can I manage online and hybrid clients?",
-    answer:
-      "Yes. RepSync supports structured client delivery for online and hybrid coaching workflows.",
+    q: "Does RepSync replace my existing website?",
+    a: "It can complement it. RepSync gives coaches a public profile and application flow while still letting them keep their own brand presence elsewhere.",
   },
   {
-    question: "Does RepSync replace spreadsheets?",
-    answer:
-      "RepSync is built to reduce scattered workflows across spreadsheets, forms, DMs, and separate billing tools.",
+    q: "Can I move from TrueCoach, Fitr, spreadsheets, or DMs?",
+    a: "The switch flow is designed to capture your current setup and migration needs. RepSync should be presented honestly as an early access product, not an instant one-click migration promise.",
+  },
+  {
+    q: "Is pricing public?",
+    a: "Pricing is not public yet. The site routes interested coaches to request early access so the team can qualify fit and explain the current product stage.",
+  },
+  {
+    q: "Does RepSync make compliance claims?",
+    a: "No. The public site avoids HIPAA, GDPR, SOC2, or medical claim language unless those programs are formally in place.",
   },
 ];
 
-const problemItems = [
-  {
-    title: "Leads live in DMs.",
-    detail: "A promising inquiry can disappear under client messages.",
-  },
-  {
-    title: "Check-ins live in forms.",
-    detail:
-      "Submissions arrive, but review status and follow-up context split apart.",
-  },
-  {
-    title: "Payments live elsewhere.",
-    detail:
-      "Revenue context is separate from the clients and packages it belongs to.",
-  },
-  {
-    title: "Client notes get scattered.",
-    detail: "Progress, preferences, and risk signals become harder to trust.",
-  },
-];
+function trackMarketingEvent(
+  name: string,
+  properties: Record<string, unknown> = {},
+) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("repsync:marketing-event", {
+      detail: { name, properties, path: window.location.pathname },
+    }),
+  );
+}
 
-const businessTypeOptions = [
-  "",
-  "Solo personal trainer",
-  "Online coach",
-  "Hybrid coach",
-  "Studio or coaching team",
-  "Other coaching business",
-];
-
-const clientCountOptions = [
-  "",
-  "0-10 clients",
-  "11-30 clients",
-  "31-75 clients",
-  "76+ clients",
-];
-
-const mainProblemOptions = [
-  "",
-  "Lead capture and follow-up",
-  "Client onboarding",
-  "Check-ins and accountability",
-  "Workspace and team operations",
-  "Billing visibility",
-  "Analytics and risk signals",
-];
-
-function usePageMetadata({ title, description }: SeoConfig) {
+function usePageMetadata({ title, description, canonicalPath }: SeoConfig) {
   useEffect(() => {
     document.title = title;
 
@@ -258,13 +151,19 @@ function usePageMetadata({ title, description }: SeoConfig) {
       return tag;
     };
 
-    if (description) {
-      ensureMeta('meta[name="description"]', () => {
-        const tag = document.createElement("meta");
-        tag.name = "description";
-        return tag;
-      }).content = description;
-    }
+    const ensureLink = (selector: string, create: () => HTMLLinkElement) => {
+      const existing = document.head.querySelector<HTMLLinkElement>(selector);
+      if (existing) return existing;
+      const tag = create();
+      document.head.appendChild(tag);
+      return tag;
+    };
+
+    ensureMeta('meta[name="description"]', () => {
+      const tag = document.createElement("meta");
+      tag.name = "description";
+      return tag;
+    }).content = description;
 
     ensureMeta('meta[property="og:title"]', () => {
       const tag = document.createElement("meta");
@@ -272,20 +171,42 @@ function usePageMetadata({ title, description }: SeoConfig) {
       return tag;
     }).content = title;
 
-    if (description) {
-      ensureMeta('meta[property="og:description"]', () => {
-        const tag = document.createElement("meta");
-        tag.setAttribute("property", "og:description");
-        return tag;
-      }).content = description;
-    }
-  }, [description, title]);
+    ensureMeta('meta[property="og:description"]', () => {
+      const tag = document.createElement("meta");
+      tag.setAttribute("property", "og:description");
+      return tag;
+    }).content = description;
+
+    ensureMeta('meta[name="twitter:card"]', () => {
+      const tag = document.createElement("meta");
+      tag.name = "twitter:card";
+      return tag;
+    }).content = "summary_large_image";
+
+    ensureMeta('meta[name="twitter:title"]', () => {
+      const tag = document.createElement("meta");
+      tag.name = "twitter:title";
+      return tag;
+    }).content = title;
+
+    ensureMeta('meta[name="twitter:description"]', () => {
+      const tag = document.createElement("meta");
+      tag.name = "twitter:description";
+      return tag;
+    }).content = description;
+
+    ensureLink('link[rel="canonical"]', () => {
+      const tag = document.createElement("link");
+      tag.rel = "canonical";
+      return tag;
+    }).href = `${marketingOrigin}${canonicalPath ?? window.location.pathname}`;
+  }, [canonicalPath, description, title]);
 }
 
 function BrandMark() {
   return (
-    <Link className="brand-mark" to="/" aria-label="RepSync home">
-      <span className="brand-symbol" aria-hidden="true">
+    <Link className="rs-brand" to="/" aria-label="RepSync home">
+      <span className="rs-brand__mark" aria-hidden="true">
         <svg viewBox="0 0 24 24" role="img">
           <path d="M5.6 9.2h2.1v5.6H5.6zM16.3 9.2h2.1v5.6h-2.1zM2.8 10.7h2.1v2.6H2.8zM19.1 10.7h2.1v2.6h-2.1zM8.5 11h7v2h-7z" />
         </svg>
@@ -295,1142 +216,1313 @@ function BrandMark() {
   );
 }
 
-function PublicHeader() {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open]);
-
-  const close = () => setOpen(false);
-
-  return (
-    <header className="site-nav" aria-label="Primary navigation">
-      <BrandMark />
-
-      <nav className="nav-links" aria-label="Site sections">
-        {navLinks.map((link) => (
-          <NavLink key={link.href} to={link.href}>
-            {link.label}
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="nav-actions">
-        <Link className="text-link" to="/login">
-          Login
-        </Link>
-        <Link className="pill-button small" to="/signup">
-          Start free
-        </Link>
-        <button
-          className="mobile-menu-trigger"
-          type="button"
-          aria-label={open ? "Close menu" : "Open menu"}
-          aria-expanded={open}
-          aria-controls="public-mobile-menu"
-          onClick={() => setOpen((value) => !value)}
-        >
-          {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
-        </button>
-      </div>
-
-      <div
-        id="public-mobile-menu"
-        className={`mobile-menu ${open ? "is-open" : ""}`}
-      >
-        <nav aria-label="Mobile site sections">
-          {navLinks.map((link) => (
-            <Link key={link.href} to={link.href} onClick={close}>
-              {link.label}
-            </Link>
-          ))}
-          <Link to="/login" onClick={close}>
-            Login
-          </Link>
-        </nav>
-        <Link className="pill-button" to="/signup" onClick={close}>
-          Start free
-        </Link>
-      </div>
-    </header>
-  );
-}
-
-function PublicFooter() {
-  return (
-    <footer className="site-footer">
-      <div className="footer-brand">
-        <BrandMark />
-        <p>
-          Coaching business software for leads, clients, workspaces, check-ins,
-          billing, analytics, and public profile presence.
-        </p>
-      </div>
-      <div className="footer-link-groups">
-        <FooterLinks title="Product" links={footerProductLinks} />
-        <FooterLinks title="Company" links={footerCompanyLinks} />
-        <FooterLinks
-          title="Legal"
-          links={[
-            { label: "Privacy", href: "/privacy" },
-            { label: "Terms", href: "/terms" },
-          ]}
-        />
-      </div>
-      <p className="footer-copyright">
-        © {new Date().getFullYear()} RepSync. All rights reserved.
-      </p>
-    </footer>
-  );
-}
-
-function FooterLinks({
-  title,
-  links,
-}: {
-  title: string;
-  links: Array<{ label: string; href: string }>;
-}) {
-  return (
-    <nav aria-label={title}>
-      <span>{title}</span>
-      {links.map((link) => (
-        <Link key={link.href} to={link.href}>
-          {link.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
-
-function PublicSiteLayout({
+function MarketingLayout({
   children,
   seo,
 }: {
   children: ReactNode;
   seo: SeoConfig;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
   usePageMetadata(seo);
 
+  useEffect(() => {
+    const syncScrolled = () => setScrolled(window.scrollY > 12);
+    syncScrolled();
+    window.addEventListener("scroll", syncScrolled, { passive: true });
+    return () => window.removeEventListener("scroll", syncScrolled);
+  }, []);
+
+  const closeMenu = () => setMenuOpen(false);
+
   return (
-    <div className="marketing-home-page">
-      <div className="site-shell">
-        <PublicHeader />
-        <main>{children}</main>
-        <PublicFooter />
-      </div>
+    <div className={`marketing-home-page ${menuOpen ? "menu-open" : ""}`}>
+      <a className="rs-skip-link" href="#main">
+        Skip to content
+      </a>
+
+      <header
+        className={`rs-site-header ${scrolled ? "is-scrolled" : ""}`}
+        aria-label="Primary navigation"
+      >
+        <BrandMark />
+
+        <nav className="rs-desktop-nav" aria-label="Site sections">
+          <Link to="/product">Product</Link>
+          <Link to="/for-coaches">For coaches</Link>
+          <Link to="/for-clients">For clients</Link>
+          <Link to="/#why">Why RepSync</Link>
+          <Link to="/switch">Switch</Link>
+        </nav>
+
+        <div className="rs-header-actions">
+          <Link className="rs-text-link" to="/login">
+            Log in
+          </Link>
+          <Link className="rs-button rs-button--small" to="/request-access">
+            Request early access
+          </Link>
+          <button
+            className="rs-menu-button"
+            type="button"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <span />
+            <span />
+          </button>
+        </div>
+
+        <nav
+          className={`rs-mobile-nav ${menuOpen ? "is-open" : ""}`}
+          id="mobile-menu"
+          aria-label="Mobile navigation"
+        >
+          <Link to="/product" onClick={closeMenu}>
+            Product
+          </Link>
+          <Link to="/for-coaches" onClick={closeMenu}>
+            For coaches
+          </Link>
+          <Link to="/for-clients" onClick={closeMenu}>
+            For clients
+          </Link>
+          <Link to="/coaches" onClick={closeMenu}>
+            Coach marketplace
+          </Link>
+          <Link to="/switch" onClick={closeMenu}>
+            Switch
+          </Link>
+          <Link to="/login" onClick={closeMenu}>
+            Log in
+          </Link>
+          <Link to="/request-access" onClick={closeMenu}>
+            Request early access
+          </Link>
+        </nav>
+      </header>
+
+      <main id="main">{children}</main>
+
+      <footer className="rs-site-footer">
+        <BrandMark />
+        <nav aria-label="Footer navigation">
+          <Link to="/product">Product</Link>
+          <Link to="/for-coaches">For coaches</Link>
+          <Link to="/for-clients">For clients</Link>
+          <Link to="/coaches">Coaches</Link>
+          <Link to="/compare/truecoach">TrueCoach</Link>
+          <Link to="/compare/fitr">Fitr</Link>
+          <Link to="/security">Security</Link>
+          <Link to="/faq">FAQ</Link>
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
+          <Link to="/cookies">Cookies</Link>
+        </nav>
+      </footer>
     </div>
   );
 }
 
-function SectionHeader({
+async function submitMarketingLead(mode: LeadFormMode, form: LeadFormState) {
+  const { data, error } = await supabase.functions.invoke(
+    "marketing-lead-submit",
+    {
+      body: {
+        type: mode,
+        name: form.name.trim(),
+        email: form.email.trim(),
+        role: form.role,
+        coaching_business: form.coachingBusiness.trim(),
+        clients_range: form.clientsRange,
+        current_tools: form.currentTools.trim(),
+        goal: form.goal.trim(),
+        migration_notes: form.migrationNotes.trim(),
+        consent: form.consent,
+        website: form.website,
+        page_path: window.location.pathname,
+      },
+    },
+  );
+  if (error) throw error;
+  return data;
+}
+
+function validateLeadForm(mode: LeadFormMode, form: LeadFormState) {
+  if (form.website.trim()) return "Thanks.";
+  if (form.name.trim().length < 2) return "Enter your name.";
+  if (!/\S+@\S+\.\S+/.test(form.email.trim())) {
+    return "Enter a valid email address.";
+  }
+  if (!form.coachingBusiness.trim()) {
+    return "Tell us about your coaching business.";
+  }
+  if (!form.clientsRange) return "Select your current client range.";
+  if (mode === "switch" && !form.currentTools.trim()) {
+    return "Tell us what you are switching from.";
+  }
+  if (!form.consent) return "Confirm we can contact you about RepSync.";
+  return null;
+}
+
+function LeadForm({ mode }: { mode: LeadFormMode }) {
+  const [form, setForm] = useState(defaultLeadForm);
+  const [status, setStatus] = useState<"idle" | "submitting" | "sent">("idle");
+  const [message, setMessage] = useState("");
+  const nameId = useId();
+  const emailId = useId();
+  const businessId = useId();
+  const clientsId = useId();
+  const toolsId = useId();
+  const goalId = useId();
+  const notesId = useId();
+  const consentId = useId();
+  const websiteId = useId();
+
+  const update = (key: keyof LeadFormState, value: string | boolean) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    if (message) setMessage("");
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const validationMessage = validateLeadForm(mode, form);
+    if (validationMessage) {
+      setMessage(validationMessage);
+      return;
+    }
+
+    setStatus("submitting");
+    trackMarketingEvent("marketing_lead_submit_started", { mode });
+
+    try {
+      await submitMarketingLead(mode, form);
+      setStatus("sent");
+      setMessage(
+        mode === "switch"
+          ? "Thanks. Your switch request has been received."
+          : "Thanks. Your early access request has been received.",
+      );
+      trackMarketingEvent("marketing_lead_submit_succeeded", { mode });
+    } catch (error) {
+      setStatus("idle");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.",
+      );
+      trackMarketingEvent("marketing_lead_submit_failed", { mode });
+    }
+  };
+
+  return (
+    <form className="rs-lead-form" onSubmit={handleSubmit} noValidate>
+      <div className="rs-form-grid">
+        <label>
+          <span>Name</span>
+          <input
+            id={nameId}
+            value={form.name}
+            onChange={(event) => update("name", event.target.value)}
+            autoComplete="name"
+            required
+          />
+        </label>
+        <label>
+          <span>Email</span>
+          <input
+            id={emailId}
+            type="email"
+            value={form.email}
+            onChange={(event) => update("email", event.target.value)}
+            autoComplete="email"
+            required
+          />
+        </label>
+      </div>
+
+      <label>
+        <span>Business or coaching offer</span>
+        <input
+          id={businessId}
+          value={form.coachingBusiness}
+          onChange={(event) => update("coachingBusiness", event.target.value)}
+          placeholder="Online strength coaching, hybrid PT studio, small team..."
+          required
+        />
+      </label>
+
+      <div className="rs-form-grid">
+        <label>
+          <span>Your role</span>
+          <select
+            value={form.role}
+            onChange={(event) => update("role", event.target.value)}
+          >
+            <option value="coach">Coach</option>
+            <option value="studio_owner">Studio owner</option>
+            <option value="operator">Operator</option>
+            <option value="client">Client</option>
+          </select>
+        </label>
+        <label>
+          <span>Current active clients</span>
+          <select
+            id={clientsId}
+            value={form.clientsRange}
+            onChange={(event) => update("clientsRange", event.target.value)}
+            required
+          >
+            <option value="">Select range</option>
+            <option value="0-10">0-10</option>
+            <option value="11-30">11-30</option>
+            <option value="31-75">31-75</option>
+            <option value="76+">76+</option>
+          </select>
+        </label>
+      </div>
+
+      <label>
+        <span>
+          {mode === "switch" ? "What are you switching from?" : "Current tools"}
+        </span>
+        <input
+          id={toolsId}
+          value={form.currentTools}
+          onChange={(event) => update("currentTools", event.target.value)}
+          placeholder="TrueCoach, Fitr, Trainerize, Notion, spreadsheets, DMs..."
+        />
+      </label>
+
+      <label>
+        <span>Main thing you want RepSync to solve</span>
+        <textarea
+          id={goalId}
+          value={form.goal}
+          onChange={(event) => update("goal", event.target.value)}
+          rows={4}
+        />
+      </label>
+
+      {mode === "switch" ? (
+        <label>
+          <span>Migration notes</span>
+          <textarea
+            id={notesId}
+            value={form.migrationNotes}
+            onChange={(event) => update("migrationNotes", event.target.value)}
+            rows={4}
+            placeholder="Tell us what data, clients, or workflows matter most."
+          />
+        </label>
+      ) : null}
+
+      <label className="rs-honeypot" htmlFor={websiteId}>
+        Website
+        <input
+          id={websiteId}
+          value={form.website}
+          onChange={(event) => update("website", event.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </label>
+
+      <label className="rs-consent">
+        <input
+          id={consentId}
+          type="checkbox"
+          checked={form.consent}
+          onChange={(event) => update("consent", event.target.checked)}
+        />
+        <span>
+          I agree RepSync can contact me about early access. Do not include
+          client health or medical information in this form.
+        </span>
+      </label>
+
+      <button className="rs-button" type="submit" disabled={status !== "idle"}>
+        {status === "submitting"
+          ? "Sending"
+          : status === "sent"
+            ? "Request sent"
+            : mode === "switch"
+              ? "Request switch help"
+              : "Request early access"}
+      </button>
+      <p className="rs-form-message" role="status" aria-live="polite">
+        {message}
+      </p>
+    </form>
+  );
+}
+
+function SectionIntro({
   eyebrow,
   title,
-  description,
+  body,
 }: {
   eyebrow: string;
   title: string;
-  description?: string;
+  body?: string;
 }) {
   return (
-    <div className="section-intro">
-      <p className="kicker">{eyebrow}</p>
+    <div className="rs-section__heading">
+      <p className="rs-eyebrow">{eyebrow}</p>
       <h2>{title}</h2>
-      {description ? <p>{description}</p> : null}
+      {body ? <p>{body}</p> : null}
     </div>
   );
 }
 
-function ProductPreviewMockup() {
-  const stats = [
-    ["Leads this week", "18"],
-    ["Active clients", "42"],
-    ["Missed check-ins", "5"],
-    ["Revenue snapshot", "Visible"],
-  ];
+function HomeContent() {
+  const marketplaceQuery = useCoachMarketplaceProfiles();
+  const featuredCoach = marketplaceQuery.data?.[0] ?? null;
 
   return (
-    <div className="product-frame product-preview-mockup">
-      <div className="frame-top">
-        <span />
-        <span />
-        <span />
-      </div>
-      <div className="mockup-header">
-        <div>
-          <p className="mini-kicker">PT Hub</p>
-          <strong>Today needs review</strong>
+    <>
+      <section className="rs-hero" id="home" aria-labelledby="hero-title">
+        <div className="rs-hero__visual" aria-hidden="true">
+          <div className="rs-hero__image-panel">
+            <img
+              src="/assets/feature-coach-dashboard.png"
+              alt=""
+              loading="eager"
+            />
+          </div>
         </div>
-        <span>Workspace activity</span>
-      </div>
-      <div className="mockup-grid" aria-label="RepSync product preview">
-        {stats.map(([label, value]) => (
-          <article key={label}>
-            <span>{label}</span>
-            <strong>{value}</strong>
+
+        <div className="rs-hero__content">
+          <p className="rs-eyebrow">
+            Coaching software for independent trainers and small teams
+          </p>
+          <h1 id="hero-title">
+            More than workout delivery. Run the whole coaching business.
+          </h1>
+          <p className="rs-hero__lede">
+            RepSync is the operating system for the coaching relationship:
+            public profiles, lead applications, client delivery, attention cues,
+            and the workspace coaches use to keep the week moving.
+          </p>
+          <div className="rs-hero__actions">
+            <Link className="rs-button" to="/request-access">
+              Request early access
+            </Link>
+            <Link className="rs-button rs-button--quiet" to="/product">
+              See product
+            </Link>
+            <Link className="rs-link-cta" to="/switch">
+              Switching from another coaching tool?
+            </Link>
+          </div>
+          <div className="rs-hero__signals" aria-label="RepSync product focus">
+            <span>Public coach profiles</span>
+            <span>Applications</span>
+            <span>PT Hub</span>
+            <span>Client portal</span>
+          </div>
+          <div className="rs-hero__marketplace-card">
+            <div className="rs-mini-directory">
+              <div>
+                <p className="rs-eyebrow">Live marketplace layer</p>
+                <h2>Published coach profiles become searchable listings.</h2>
+                <p>
+                  Clients browse the first layer, then open the full coach
+                  profile template to apply.
+                </p>
+              </div>
+              {featuredCoach ? (
+                <CoachCard profile={featuredCoach} />
+              ) : (
+                <div className="rs-mini-directory-empty">
+                  <h3>Coach listings appear here after publishing.</h3>
+                  <p>
+                    The marketplace uses the same content coaches launch from PT
+                    Hub.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-intro-strip" aria-label="RepSync lifecycle">
+        <p>
+          RepSync covers the relationship around the workout, not just the
+          workout itself.
+        </p>
+        <dl>
+          {lifecycleItems.slice(0, 3).map((item) => (
+            <div key={item.title}>
+              <dt>{item.title}</dt>
+              <dd>{item.body}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section className="rs-section" aria-labelledby="problem-title">
+        <SectionIntro
+          eyebrow="The problem"
+          title="The coaching business usually lives in five places."
+          body="A public Instagram page, applications in a form tool, workouts somewhere else, check-ins in messages, and client notes in a private document. RepSync brings the working relationship back into one system."
+        />
+        <div className="rs-feature-grid rs-feature-grid--four">
+          {lifecycleItems.map((item) => (
+            <article key={item.title}>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section
+        className="rs-section rs-product-section"
+        id="product"
+        aria-labelledby="product-title"
+      >
+        <SectionIntro
+          eyebrow="Product journey"
+          title="Acquire, coach, and retain from the same operating layer."
+          body="The public website creates demand. PT Hub turns that demand into a managed coaching workflow. The client portal keeps delivery clear."
+        />
+
+        <div className="rs-product-showcase">
+          <article className="rs-showcase-main">
+            <img
+              src="/assets/feature-client-management.png"
+              alt="RepSync client management dashboard with client status and coaching context."
+              loading="lazy"
+            />
+            <div>
+              <p className="rs-eyebrow">Coach workspace</p>
+              <h3>Know who needs attention before the week slips.</h3>
+              <p>
+                See client status, check-in context, messages, notes, and next
+                actions in one place.
+              </p>
+            </div>
           </article>
+
+          <div className="rs-showcase-stack">
+            <article>
+              <img
+                src="/assets/feature-public-profile.png"
+                alt="RepSync public coach profile with lead capture."
+                loading="lazy"
+              />
+              <h3>Public profiles that feel considered.</h3>
+              <p>
+                Give prospects a clear reason to trust you and a clear path to
+                apply.
+              </p>
+            </article>
+            <article>
+              <img
+                src="/assets/feature-client-home.png"
+                alt="RepSync client home showing workouts, nutrition, habits, and check-ins."
+                loading="lazy"
+              />
+              <h3>A client home that reduces confusion.</h3>
+              <p>
+                Clients see what to do next without digging through messages.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-section" id="why" aria-labelledby="why-title">
+        <SectionIntro
+          eyebrow="Why RepSync"
+          title="Premium enough for your brand. Practical enough for Monday."
+          body="The site avoids false proof, fake testimonials, and inflated claims. The pitch is simple: a calmer operating system for the whole coaching relationship."
+        />
+        <div className="rs-feature-grid">
+          {productPillars.map((pillar) => (
+            <article key={pillar.title}>
+              <span>{pillar.title}</span>
+              <h3>
+                {pillar.title === "Acquire"
+                  ? "Create a better first step."
+                  : pillar.title === "Coach"
+                    ? "Run the client week."
+                    : "Keep attention on drift."}
+              </h3>
+              <p>{pillar.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rs-section rs-workflow-section" id="workflow">
+        <div className="rs-workflow-copy">
+          <p className="rs-eyebrow">Client experience</p>
+          <h2>Clients should know what to do next.</h2>
+          <p>
+            RepSync is built around clarity: today, this week, check-in,
+            message, progress, and the next coaching touchpoint.
+          </p>
+        </div>
+        <div className="rs-workflow-map" aria-label="RepSync coaching workflow">
+          {[
+            ["01", "Apply", "A prospect opens a coach profile and applies."],
+            [
+              "02",
+              "Start",
+              "The coach reviews the lead and starts the relationship.",
+            ],
+            [
+              "03",
+              "Do the work",
+              "The client sees programs, habits, nutrition, and check-ins.",
+            ],
+            [
+              "04",
+              "Stay connected",
+              "The coach tracks attention, progress, and follow-up.",
+            ],
+          ].map(([number, title, detail], index) => (
+            <div
+              className={`rs-workflow-step ${index === 0 ? "is-active" : ""}`}
+              key={number}
+            >
+              <span>{number}</span>
+              <h3>{title}</h3>
+              <p>{detail}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rs-status-section" aria-labelledby="status-title">
+        <div>
+          <p className="rs-eyebrow">Honest product status</p>
+          <h2 id="status-title">Built for early access, shown clearly.</h2>
+          <p>
+            RepSync already includes the public marketplace, coach profiles,
+            applications, PT Hub, and client workspace foundations. The site
+            avoids making compliance, migration, or outcome claims that are not
+            formally supported.
+          </p>
+        </div>
+        <Link className="rs-button rs-button--quiet" to="/security">
+          Read security notes
+        </Link>
+      </section>
+
+      <FaqPreview />
+      <FinalCta />
+    </>
+  );
+}
+
+function FaqPreview() {
+  return (
+    <section className="rs-section" aria-labelledby="faq-preview-title">
+      <SectionIntro eyebrow="FAQ" title="Straight answers before the demo." />
+      <div className="rs-faq-list">
+        {faqs.slice(0, 3).map((item) => (
+          <details key={item.q}>
+            <summary>{item.q}</summary>
+            <p>{item.a}</p>
+          </details>
         ))}
       </div>
-      <div className="mockup-columns">
-        <article>
-          <p className="mini-kicker">Client risk signals</p>
-          <ul>
-            <li>Low adherence trend</li>
-            <li>No recent reply</li>
-            <li>Manual risk flag</li>
-          </ul>
-        </article>
-        <article>
-          <p className="mini-kicker">Next actions</p>
-          <ul>
-            <li>Review check-ins</li>
-            <li>Send overdue nudges</li>
-            <li>Prepare weekly summary</li>
-          </ul>
-        </article>
-      </div>
-    </div>
+      <Link className="rs-link-cta" to="/faq">
+        Read all FAQs
+      </Link>
+    </section>
   );
 }
 
-function CtaBand({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow: string;
-  title: string;
-  description?: string;
-}) {
+function FinalCta() {
   return (
-    <section className="final-cta-section" aria-labelledby="site-cta-title">
-      <p className="kicker">{eyebrow}</p>
-      <h2 id="site-cta-title">{title}</h2>
-      {description ? <p>{description}</p> : null}
-      <div className="final-actions">
-        <Link className="pill-button" to="/signup">
-          Start free
+    <section className="rs-demo-section" aria-labelledby="demo-title">
+      <div>
+        <p className="rs-eyebrow">Early access</p>
+        <h2 id="demo-title">Build the coaching business clients expect.</h2>
+        <p>
+          Request access and see how RepSync can present your brand, organize
+          your clients, and bring the week into focus.
+        </p>
+      </div>
+      <div className="rs-cta-actions">
+        <Link className="rs-button" to="/request-access">
+          Request early access
         </Link>
-        <Link className="pill-button secondary" to="/demo">
-          Book a demo
+        <Link className="rs-button rs-button--quiet" to="/coaches">
+          Browse coaches
         </Link>
       </div>
     </section>
   );
 }
 
-function ModuleCard({
-  title,
-  description,
-  icon: Icon,
-}: (typeof moduleCards)[number]) {
+export function MarketingHomePage() {
   return (
-    <article>
-      <span className="card-icon" aria-hidden="true">
-        <Icon />
-      </span>
-      <p className="mini-kicker">{title}</p>
-      <h3>{title}</h3>
-      <p>{description}</p>
+    <MarketingLayout
+      seo={{
+        title: "RepSync | More than workout delivery",
+        description:
+          "RepSync is a premium coaching operating system for public profiles, applications, client delivery, attention cues, and coach marketplace discovery.",
+        canonicalPath: "/",
+      }}
+    >
+      <HomeContent />
+    </MarketingLayout>
+  );
+}
+
+function getInitials(profile: PTPublicProfile) {
+  const source = profile.displayName || profile.fullName || "Coach";
+  return source
+    .split(/\s+/)
+    .map((part) => part.charAt(0))
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function profileMatchesSearch(profile: PTPublicProfile, searchValue: string) {
+  const query = searchValue.trim().toLowerCase();
+  if (!query) return true;
+
+  const haystack = [
+    profile.displayName,
+    profile.fullName,
+    profile.headline,
+    profile.searchableHeadline,
+    profile.shortBio,
+    profile.coachingStyle,
+    profile.locationLabel,
+    ...profile.specialties,
+    ...profile.certifications,
+    ...profile.coachingModes.map((mode) => coachingModeLabels[mode]),
+    ...profile.availabilityModes.map((mode) => availabilityModeLabels[mode]),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(query);
+}
+
+function CoachCard({ profile }: { profile: PTPublicProfile }) {
+  const profilePath = routes.publicProfile(profile.slug);
+  const applyPath = `${profilePath}#public-pt-apply-form`;
+  const specialties = profile.specialties.slice(0, 2);
+  const availability = profile.availabilityModes
+    .slice(0, 1)
+    .map((mode) => availabilityModeLabels[mode]);
+
+  return (
+    <article className="rs-coach-card">
+      <Link className="rs-coach-card__preview" to={profilePath}>
+        <div className="rs-coach-card__media">
+          {profile.bannerImageUrl ? (
+            <img src={profile.bannerImageUrl} alt="" loading="lazy" />
+          ) : (
+            <div className="rs-coach-card__fallback-banner" />
+          )}
+          <div className="rs-coach-card__media-fade" />
+        </div>
+        <div className="rs-coach-card__body">
+          <div className="rs-coach-card__identity">
+            <div className="rs-coach-avatar">
+              {profile.profilePhotoUrl ? (
+                <img
+                  src={profile.profilePhotoUrl}
+                  alt={`${profile.displayName} profile photo`}
+                  loading="lazy"
+                />
+              ) : (
+                <span>{getInitials(profile)}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="rs-coach-card__copy">
+            <h2>{profile.displayName || "Display name"}</h2>
+            <p className="rs-coach-card__headline">
+              {profile.headline || "Headline appears here"}
+            </p>
+            <p className="rs-coach-card__bio">
+              {profile.shortBio ||
+                "Add a short bio so prospects understand your coaching style, proof, and ideal client fit."}
+            </p>
+          </div>
+
+          <div className="rs-coach-tags">
+            {specialties.length > 0 ? (
+              specialties.map((specialty) => (
+                <span key={`${profile.userId}-${specialty}`}>{specialty}</span>
+              ))
+            ) : (
+              <span>Specialties will appear here</span>
+            )}
+            {availability.map((item) => (
+              <span key={`${profile.userId}-${item}`}>{item}</span>
+            ))}
+            {profile.locationLabel ? (
+              <span>{profile.locationLabel}</span>
+            ) : null}
+          </div>
+        </div>
+      </Link>
+
+      <div className="rs-coach-card__actions">
+        <Link className="rs-button" to={applyPath}>
+          Apply
+        </Link>
+        <Link className="rs-button rs-button--quiet" to={profilePath}>
+          View profile
+        </Link>
+      </div>
     </article>
   );
 }
 
-function ProductScreenshotFeature({
-  eyebrow,
-  title,
-  description,
-  src,
-  alt,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-  src: string;
-  alt: string;
-}) {
-  return (
-    <figure className="screenshot-card product-proof-card">
-      <img src={src} alt={alt} />
-      <figcaption>
-        <span>{title}</span>
-        <small>{eyebrow}</small>
-        {description}
-      </figcaption>
-    </figure>
+function CoachesContent() {
+  const [searchValue, setSearchValue] = useState("");
+  const profilesQuery = useCoachMarketplaceProfiles();
+  const profiles = useMemo(
+    () => profilesQuery.data ?? [],
+    [profilesQuery.data],
   );
-}
-
-function ExpectationList() {
-  return (
-    <div
-      className="expectation-list"
-      aria-label="What happens after a demo request"
-    >
-      <p className="mini-kicker">What happens next</p>
-      <ol>
-        <li>Share how you coach and what is scattered today.</li>
-        <li>Review whether PT Hub, Workspaces, and public profiles fit.</li>
-        <li>Leave with a clear early-access recommendation.</li>
-      </ol>
-    </div>
+  const filteredProfiles = useMemo(
+    () =>
+      profiles.filter((profile) => profileMatchesSearch(profile, searchValue)),
+    [profiles, searchValue],
   );
-}
 
-export function MarketingHomePage() {
   return (
-    <PublicSiteLayout
-      seo={{
-        title: "RepSync — Coaching business software for personal trainers",
-        description:
-          "Manage leads, clients, workspaces, check-ins, billing, and coaching delivery in one organized system.",
-      }}
-    >
-      <section
-        id="home"
-        className="gateway-section hero-section"
-        aria-labelledby="hero-title"
-      >
-        <div className="gateway-copy hero-copy">
-          <p className="kicker">For personal trainers and online coaches</p>
-          <h1 id="hero-title">
-            Run your coaching business from one clean operating system.
-          </h1>
-          <p className="gateway-lede">
-            RepSync helps you capture leads, manage clients, deliver check-ins,
-            organize workspaces, track billing, and understand what needs
-            attention without stitching together disconnected tools.
+    <>
+      <section className="rs-marketplace-hero" aria-labelledby="coaches-title">
+        <div className="rs-marketplace-hero__content">
+          <p className="rs-eyebrow">RepSync coach marketplace</p>
+          <h1 id="coaches-title">Find the coach your next phase needs.</h1>
+          <p className="rs-hero__lede">
+            Browse published RepSync coaches, review their profile, and apply
+            directly to their training from the same public profile they manage
+            in PT Hub.
           </p>
-          <div className="cta-actions left">
-            <Link className="pill-button" to="/signup">
-              Start free
-            </Link>
-            <Link className="pill-button secondary" to="/demo">
-              Book a demo
-            </Link>
+          <form
+            className="rs-coach-search"
+            role="search"
+            onSubmit={(event) => event.preventDefault()}
+          >
+            <label htmlFor="coach-search">Search coaches</label>
+            <input
+              id="coach-search"
+              type="search"
+              value={searchValue}
+              placeholder="Search goal, specialty, location"
+              onChange={(event) => setSearchValue(event.target.value)}
+            />
+          </form>
+          <div className="rs-hero__signals" aria-label="Marketplace filters">
+            <span>Online coaching</span>
+            <span>1:1 training</span>
+            <span>Nutrition</span>
+            <span>Accountability</span>
           </div>
-          <div className="trust-strip" aria-label="RepSync focus areas">
-            <span>PT Hub</span>
-            <span>Workspaces</span>
-            <span>Public profiles</span>
-          </div>
-        </div>
-
-        <div className="hero-showcase" aria-label="RepSync product preview">
-          <ProductPreviewMockup />
         </div>
       </section>
 
-      <section className="insight-section" aria-labelledby="problem-title">
-        <div className="feature-layout problem-story">
-          <div className="side-header">
-            <p className="kicker">The operating gap</p>
-            <h2 id="problem-title">
-              Coaching gets messy when every workflow lives somewhere else.
+      <section className="rs-section rs-coach-directory" aria-live="polite">
+        <div className="rs-directory-head">
+          <div>
+            <p className="rs-eyebrow">Published profiles</p>
+            <h2>
+              {profilesQuery.isLoading
+                ? "Loading coaches."
+                : `${filteredProfiles.length} coach${
+                    filteredProfiles.length === 1 ? "" : "es"
+                  } available.`}
             </h2>
-            <p>
-              The issue is not effort. It is context switching: prospects,
-              delivery, billing, and client signals all asking for attention in
-              different places.
-            </p>
           </div>
-          <div className="feature-copy">
-            {problemItems.map((item, index) => (
-              <div className="numbered-line" key={item.title}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <div>
-                  <h3>{item.title}</h3>
-                  <p>{item.detail}</p>
-                </div>
+          <p>
+            Every card links to the coach profile and application form created
+            from the same launch panel preview coaches publish from PT Hub.
+          </p>
+        </div>
+
+        {profilesQuery.isLoading ? (
+          <div className="rs-coach-grid-list">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div className="rs-coach-card rs-coach-card--loading" key={index}>
+                <div />
+                <span />
+                <span />
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="proof-strip flow-strip" aria-label="RepSync workflow">
-        <div>
-          <p className="kicker">Full coaching cycle</p>
-          <h2>One system for the full coaching cycle.</h2>
-          <p>
-            RepSync connects the front-office and delivery sides of coaching:
-            lead capture, client management, structured delivery, check-ins,
-            billing, and operational visibility.
-          </p>
-        </div>
-        <div className="lifecycle-flow">
-          {[
-            "Lead",
-            "Onboarding",
-            "Active client",
-            "Check-ins",
-            "Progress",
-            "Billing",
-            "Retention",
-          ].map((stage) => (
-            <span key={stage}>{stage}</span>
-          ))}
-        </div>
-      </section>
-
-      <section className="insight-section" aria-labelledby="modules-title">
-        <SectionHeader
-          eyebrow="Core modules"
-          title="Everything your coaching operation needs in one place."
-        />
-        <div className="module-board">
-          <article className="module-board-lead">
-            <p className="mini-kicker">Operating system</p>
-            <h3>From first inquiry to weekly delivery rhythm.</h3>
+        ) : profilesQuery.error ? (
+          <div className="rs-marketplace-state">
+            <h2>Unable to load coaches.</h2>
             <p>
-              RepSync is organized around the real shape of a coaching business:
-              acquisition in PT Hub, delivery in Workspaces, and attention
-              signals across both.
+              The marketplace data could not be reached. Try refreshing in a
+              moment.
             </p>
-          </article>
-          <div className="module-board-grid">
-            {moduleCards.map((card) => (
-              <ModuleCard key={card.title} {...card} />
+          </div>
+        ) : profiles.length === 0 ? (
+          <div className="rs-marketplace-state">
+            <h2>No coaches are listed yet.</h2>
+            <p>
+              Published PT Hub profiles will appear here automatically after a
+              coach launches their public profile.
+            </p>
+          </div>
+        ) : filteredProfiles.length === 0 ? (
+          <div className="rs-marketplace-state">
+            <h2>No matching coaches.</h2>
+            <p>
+              Try a different specialty, location, service type, or coaching
+              style.
+            </p>
+          </div>
+        ) : (
+          <div className="rs-coach-grid-list">
+            {filteredProfiles.map((profile) => (
+              <CoachCard key={profile.userId} profile={profile} />
             ))}
           </div>
-        </div>
+        )}
       </section>
+    </>
+  );
+}
 
-      <section className="use-case-section" aria-labelledby="how-title">
-        <div>
-          <p className="kicker">Workflow</p>
-          <h2 id="how-title">How RepSync works</h2>
-        </div>
-        <div className="feature-tabs">
-          {[
-            [
-              "Capture the lead",
-              "Prospects come through your profile, website, demo flow, or manual entry.",
-            ],
-            [
-              "Convert and onboard",
-              "Move qualified leads into structured onboarding with clear next steps.",
-            ],
-            [
-              "Deliver coaching",
-              "Use workspaces, check-ins, templates, and client experience settings to run delivery.",
-            ],
-            [
-              "Track what matters",
-              "Monitor check-ins, risk signals, client progress, billing, and business performance.",
-            ],
-          ].map(([title, description], index) => (
-            <article key={title}>
-              <p className="mini-kicker">Step {index + 1}</p>
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section
-        className="comparison-section"
-        aria-labelledby="architecture-title"
-      >
-        <SectionHeader
-          eyebrow="Product architecture"
-          title="Separate your business control center from client delivery."
-        />
-        <div className="split-card-grid">
-          <article className="price-card">
-            <p className="mini-kicker">PT Hub</p>
-            <h3>Business account layer</h3>
-            <p>
-              Your business account layer for profile, leads, notifications,
-              billing, and global settings.
-            </p>
-            <ul>
-              <li>Public profile</li>
-              <li>Leads</li>
-              <li>Account settings</li>
-              <li>Notifications</li>
-              <li>Billing</li>
-              <li>Global integrations</li>
-            </ul>
-          </article>
-          <article className="price-card">
-            <p className="mini-kicker">Workspace</p>
-            <h3>Client-delivery environment</h3>
-            <p>
-              Your client-delivery environment for coaching operations, brand
-              experience, templates, and automations.
-            </p>
-            <ul>
-              <li>Client experience</li>
-              <li>Check-ins</li>
-              <li>Brand settings</li>
-              <li>Team permissions</li>
-              <li>Defaults and templates</li>
-              <li>Workspace automations</li>
-            </ul>
-          </article>
-        </div>
-      </section>
-
-      <section className="use-case-section" aria-labelledby="client-title">
-        <div>
-          <p className="kicker">Client experience</p>
-          <h2 id="client-title">Give clients a clearer coaching experience.</h2>
-          <p className="gateway-lede">
-            RepSync is not only an admin tool. It helps trainers create a more
-            consistent client journey.
-          </p>
-        </div>
-        <div className="use-case-grid">
-          {[
-            "Onboarding flow",
-            "Welcome message",
-            "Training, nutrition, habits, check-ins",
-            "Files/resources",
-            "Messaging boundaries",
-            "Client home priorities",
-            "Branded workspace experience",
-          ].map((item) => (
-            <article key={item}>
-              <p className="mini-kicker">Experience</p>
-              <h3>{item}</h3>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section
-        className="screenshot-section"
-        aria-labelledby="proof-screens-title"
-      >
-        <SectionHeader
-          eyebrow="Product proof"
-          title="Real surfaces, not imagined dashboard art."
-          description="Existing RepSync screens show the public profile, coach operations, client management, and client home experience the website is describing."
-        />
-        <div className="screenshot-showcase compact-screens">
-          <ProductScreenshotFeature
-            eyebrow="Public profile"
-            title="Convert prospects into leads"
-            description="Trainer positioning, specialties, packages, and a lead path live on the public profile."
-            src="/assets/feature-public-profile.png?v=20260512-fresh"
-            alt="RepSync public trainer profile with profile content and lead capture."
-          />
-          <ProductScreenshotFeature
-            eyebrow="Client management"
-            title="Keep delivery context together"
-            description="Client records, status, onboarding, and coaching context stay connected to the workspace."
-            src="/assets/feature-client-management.png?v=20260512-fresh"
-            alt="RepSync client management screen showing active coaching clients."
-          />
-        </div>
-      </section>
-
-      <section className="insight-section" aria-labelledby="visibility-title">
-        <SectionHeader
-          eyebrow="Automation and visibility"
-          title="Know what needs attention before it becomes a problem."
-        />
-        <div className="insight-grid feature-card-grid">
-          {[
-            "Missed check-ins",
-            "No recent reply",
-            "Low adherence trend",
-            "Inactivity signal",
-            "Overdue nudges",
-            "Onboarding reminders",
-            "Manual risk flag",
-            "Weekly summaries",
-          ].map((item) => (
-            <article key={item}>
-              <p className="mini-kicker">Attention signal</p>
-              <h3>{item}</h3>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section
-        id="pricing"
-        className="final-section"
-        aria-labelledby="pricing-title"
-      >
-        <div className="pricing-shell">
-          <div className="pricing-header">
-            <p className="kicker">Early access</p>
-            <h2 id="pricing-title">
-              Built for solo trainers and growing coaching teams.
-            </h2>
-            <p className="pricing-copy">
-              Pricing is being finalized for early users. Join early access or
-              book a demo to see whether RepSync fits your coaching setup.
-            </p>
-            <div className="final-actions">
-              <Link className="pill-button" to="/demo">
-                Book a demo
-              </Link>
-              <Link className="pill-button secondary" to="/signup">
-                Start free
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <CtaBand
-        eyebrow="Clean operations"
-        title="Build a cleaner coaching operation."
-        description="Bring leads, clients, check-ins, workspaces, billing, and visibility into one organized system."
-      />
-    </PublicSiteLayout>
+export function CoachesPage() {
+  return (
+    <MarketingLayout
+      seo={{
+        title: "Find a Coach | RepSync",
+        description:
+          "Browse published RepSync coaches and apply directly to their training through their public coach profile.",
+        canonicalPath: "/coaches",
+      }}
+    >
+      <CoachesContent />
+    </MarketingLayout>
   );
 }
 
 export function ProductPage() {
   return (
-    <PublicSiteLayout
+    <MarketingLayout
       seo={{
-        title: "Product — RepSync",
+        title: "Product | RepSync",
         description:
-          "Explore RepSync’s tools for lead capture, client management, workspaces, check-ins, billing, analytics, and automations.",
+          "See how RepSync connects coach profiles, marketplace applications, PT Hub delivery, client workspaces, and retention attention cues.",
+        canonicalPath: "/product",
       }}
     >
-      <section
-        className="gateway-section hero-section"
-        aria-labelledby="product-title"
-      >
-        <div className="gateway-copy hero-copy">
-          <p className="kicker">Product overview</p>
-          <h1 id="product-title">
-            The operating layer for modern coaching businesses.
-          </h1>
-          <p className="gateway-lede">
-            RepSync brings acquisition, client management, delivery, billing,
-            and visibility into one connected workflow for personal trainers and
-            online coaches.
-          </p>
-          <div className="cta-actions left">
-            <Link className="pill-button" to="/signup">
-              Start free
-            </Link>
-            <Link className="pill-button secondary" to="/demo">
-              Book a demo
-            </Link>
-          </div>
-        </div>
-        <ProductPreviewMockup />
+      <section className="rs-page-hero">
+        <p className="rs-eyebrow">Product</p>
+        <h1>One system for the whole coaching relationship.</h1>
+        <p className="rs-hero__lede">
+          RepSync connects the public acquisition layer with the private
+          coaching workspace and the client portal.
+        </p>
       </section>
-
-      <section
-        className="screenshot-section"
-        aria-labelledby="product-screens-title"
-      >
-        <SectionHeader
-          eyebrow="What buyers can inspect"
-          title="The product story is split across business control and client delivery."
-          description="PT Hub is where the trainer manages the business layer. Workspaces are where the coaching experience, defaults, templates, and delivery rhythm become operational."
-        />
-        <div className="screenshot-showcase product-screens">
-          <ProductScreenshotFeature
-            eyebrow="Coach dashboard"
-            title="Visibility for today's decisions"
-            description="A coach can scan check-ins, client activity, messages, and operational attention signals."
-            src="/assets/feature-coach-dashboard.png?v=20260512-fresh"
-            alt="RepSync coach dashboard showing client activity, adherence, messages, and review queues."
-          />
-          <ProductScreenshotFeature
-            eyebrow="Client portal"
-            title="A clearer client home"
-            description="Clients see the next workout, nutrition, habits, check-ins, messages, and reminders without admin clutter."
-            src="/assets/feature-client-home.png?v=20260512-fresh"
-            alt="RepSync client home screen showing training, nutrition, habits, reminders, and progress."
-          />
-        </div>
-      </section>
-
-      <section className="resources-section product-detail-section">
-        <SectionHeader
-          eyebrow="Product areas"
-          title="A deeper look at the workflow."
-          description="Each product area supports a specific part of the coaching operating model. Integrations are described as planned or supported where configured, not promised as universally live."
-        />
-        <div className="feature-tabs">
-          {productSections.map((section) => (
-            <article key={section.id} id={section.id}>
-              <p className="mini-kicker">{section.eyebrow}</p>
-              <h3>{section.title}</h3>
-              <p>{section.description}</p>
+      <section className="rs-section">
+        <div className="rs-feature-grid">
+          {productPillars.map((pillar) => (
+            <article key={pillar.title}>
+              <span>{pillar.title}</span>
+              <h3>{pillar.body.split(".")[0]}.</h3>
+              <p>{pillar.body}</p>
             </article>
           ))}
         </div>
       </section>
+      <section className="rs-section rs-product-section">
+        <div className="rs-product-showcase">
+          <article className="rs-showcase-main">
+            <img src="/assets/feature-coach-dashboard.png" alt="" />
+            <div>
+              <p className="rs-eyebrow">PT Hub</p>
+              <h3>The control room for coaching operations.</h3>
+              <p>
+                Leads, clients, workspace health, packages, profile publishing,
+                and follow-up context are grouped for operators.
+              </p>
+            </div>
+          </article>
+          <div className="rs-showcase-stack">
+            <article>
+              <img src="/assets/feature-public-profile.png" alt="" />
+              <h3>Profile and marketplace</h3>
+              <p>Publish a profile and make it discoverable.</p>
+            </article>
+            <article>
+              <img src="/assets/feature-client-home.png" alt="" />
+              <h3>Client portal</h3>
+              <p>
+                Give clients a cleaner view of the work and the next action.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+      <FinalCta />
+    </MarketingLayout>
+  );
+}
 
-      <CtaBand
-        eyebrow="Next step"
-        title="See how RepSync fits your coaching workflow."
-        description="Walk through PT Hub, workspaces, public profiles, client delivery, billing visibility, and analytics in one demo."
-      />
-    </PublicSiteLayout>
+export function ForCoachesPage() {
+  return (
+    <MarketingLayout
+      seo={{
+        title: "For Coaches | RepSync",
+        description:
+          "RepSync helps coaches publish profiles, manage applications, deliver coaching, and keep client attention organized.",
+        canonicalPath: "/for-coaches",
+      }}
+    >
+      <section className="rs-page-hero">
+        <p className="rs-eyebrow">For coaches</p>
+        <h1>Look premium before the call. Stay organized after the sale.</h1>
+        <p className="rs-hero__lede">
+          RepSync gives independent trainers and small teams a public profile,
+          lead flow, client workspace, and operating layer built for repeated
+          coaching work.
+        </p>
+      </section>
+      <section className="rs-section">
+        <div className="rs-feature-grid rs-feature-grid--four">
+          {lifecycleItems.map((item) => (
+            <article key={item.title}>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+      <FinalCta />
+    </MarketingLayout>
+  );
+}
+
+export function ForClientsPage() {
+  return (
+    <MarketingLayout
+      seo={{
+        title: "For Clients | RepSync",
+        description:
+          "RepSync helps coaching clients find coaches, apply from public profiles, and understand the next action once coaching starts.",
+        canonicalPath: "/for-clients",
+      }}
+    >
+      <section className="rs-page-hero">
+        <p className="rs-eyebrow">For clients</p>
+        <h1>Find a coach, apply clearly, and know what to do next.</h1>
+        <p className="rs-hero__lede">
+          The public marketplace helps clients discover coaches. The client
+          portal keeps workouts, check-ins, messages, and progress easier to
+          follow.
+        </p>
+        <div className="rs-hero__actions">
+          <Link className="rs-button" to="/coaches">
+            Browse coaches
+          </Link>
+          <Link className="rs-button rs-button--quiet" to="/product">
+            See product
+          </Link>
+        </div>
+      </section>
+      <section className="rs-section">
+        <div className="rs-feature-grid">
+          {["Choose", "Apply", "Follow through"].map((title, index) => (
+            <article key={title}>
+              <span>0{index + 1}</span>
+              <h3>{title}</h3>
+              <p>
+                {index === 0
+                  ? "Review coach profiles, specialties, location, and coaching style."
+                  : index === 1
+                    ? "Send the coach useful context through their profile application."
+                    : "Use a client home built around today's training, check-ins, and messages."}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </MarketingLayout>
+  );
+}
+
+export function SwitchPage() {
+  return (
+    <MarketingLayout
+      seo={{
+        title: "Switch to RepSync",
+        description:
+          "Tell RepSync what you are switching from and what workflows matter most so the early access team can help you evaluate fit.",
+        canonicalPath: "/switch",
+      }}
+    >
+      <section className="rs-form-page">
+        <div>
+          <p className="rs-eyebrow">Switch</p>
+          <h1>Moving coaching systems should start with the workflow.</h1>
+          <p className="rs-hero__lede">
+            Tell us what you use now, what feels messy, and what needs to move.
+            We will treat migration honestly and avoid promising unsupported
+            import paths.
+          </p>
+        </div>
+        <LeadForm mode="switch" />
+      </section>
+    </MarketingLayout>
+  );
+}
+
+export function CompareTrueCoachPage() {
+  return (
+    <ComparePage competitor="TrueCoach" canonicalPath="/compare/truecoach" />
+  );
+}
+
+export function CompareFitrPage() {
+  return <ComparePage competitor="Fitr" canonicalPath="/compare/fitr" />;
+}
+
+function ComparePage({
+  competitor,
+  canonicalPath,
+}: {
+  competitor: "TrueCoach" | "Fitr";
+  canonicalPath: string;
+}) {
+  return (
+    <MarketingLayout
+      seo={{
+        title: `RepSync vs ${competitor}`,
+        description: `Compare RepSync's whole-coaching operating system positioning with ${competitor}.`,
+        canonicalPath,
+      }}
+    >
+      <section className="rs-page-hero">
+        <p className="rs-eyebrow">Compare</p>
+        <h1>RepSync vs {competitor}</h1>
+        <p className="rs-hero__lede">
+          {competitor} is known in coaching software. RepSync is positioned
+          around the broader business relationship: public discovery,
+          applications, delivery, client attention, and retention.
+        </p>
+      </section>
+      <section className="rs-section">
+        <div className="rs-comparison-grid">
+          <article>
+            <h3>{competitor}</h3>
+            <p>
+              Often considered for coaching delivery workflows, programming, and
+              client management.
+            </p>
+          </article>
+          <article>
+            <h3>RepSync</h3>
+            <p>
+              Designed to connect acquisition, coach profiles, applications,
+              delivery, and attention cues from the start.
+            </p>
+          </article>
+          <article>
+            <h3>Best fit</h3>
+            <p>
+              Coaches who want a premium public front door and a calmer
+              operating system, not only workout delivery.
+            </p>
+          </article>
+        </div>
+      </section>
+      <FinalCta />
+    </MarketingLayout>
+  );
+}
+
+export function FaqPage() {
+  return (
+    <MarketingLayout
+      seo={{
+        title: "FAQ | RepSync",
+        description:
+          "Answers about RepSync early access, coach marketplace profiles, switching tools, pricing, and product status.",
+        canonicalPath: "/faq",
+      }}
+    >
+      <section className="rs-page-hero">
+        <p className="rs-eyebrow">FAQ</p>
+        <h1>Useful answers. No inflated claims.</h1>
+      </section>
+      <section className="rs-section">
+        <div className="rs-faq-list">
+          {faqs.map((item) => (
+            <details key={item.q}>
+              <summary>{item.q}</summary>
+              <p>{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+    </MarketingLayout>
+  );
+}
+
+export function SecurityPage() {
+  return (
+    <MarketingLayout
+      seo={{
+        title: "Security | RepSync",
+        description:
+          "RepSync security notes for early access: account-based access, Supabase-backed data, and no unsupported compliance claims.",
+        canonicalPath: "/security",
+      }}
+    >
+      <section className="rs-page-hero">
+        <p className="rs-eyebrow">Security</p>
+        <h1>Clear security language for an early access product.</h1>
+        <p className="rs-hero__lede">
+          RepSync uses account authentication, workspace scoping, and
+          Supabase-backed persistence. The public site does not claim HIPAA,
+          GDPR, SOC2, or medical compliance programs unless they are formally in
+          place.
+        </p>
+      </section>
+      <section className="rs-section">
+        <div className="rs-feature-grid">
+          {[
+            [
+              "Access control",
+              "Private app areas require authenticated accounts and role-based route guards.",
+            ],
+            [
+              "Data boundaries",
+              "Workspace data is scoped in the application and database layer.",
+            ],
+            [
+              "Responsible forms",
+              "Marketing forms ask for business context, not client health or medical data.",
+            ],
+          ].map(([title, body]) => (
+            <article key={title}>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </MarketingLayout>
+  );
+}
+
+export function RequestAccessPage() {
+  return (
+    <MarketingLayout
+      seo={{
+        title: "Request Early Access | RepSync",
+        description:
+          "Request early access to RepSync for your coaching business or small coaching team.",
+        canonicalPath: "/request-access",
+      }}
+    >
+      <section className="rs-form-page">
+        <div>
+          <p className="rs-eyebrow">Request early access</p>
+          <h1>Tell us how your coaching business works.</h1>
+          <p className="rs-hero__lede">
+            RepSync is best presented honestly: a premium operating system for
+            coaches who want public discovery, client delivery, and retention
+            attention in one place.
+          </p>
+        </div>
+        <LeadForm mode="request_access" />
+      </section>
+    </MarketingLayout>
+  );
+}
+
+export function CookiesPage() {
+  return (
+    <MarketingLayout
+      seo={{
+        title: "Cookies | RepSync",
+        description:
+          "RepSync cookie notice for the public marketing website and application.",
+        canonicalPath: "/cookies",
+      }}
+    >
+      <section className="rs-page-hero">
+        <p className="rs-eyebrow">Cookies</p>
+        <h1>Cookie notice</h1>
+        <p className="rs-hero__lede">
+          RepSync may use essential cookies for authentication and basic product
+          operation. If analytics or marketing pixels are enabled, they should
+          be disclosed here before launch.
+        </p>
+      </section>
+      <section className="rs-section">
+        <div className="rs-feature-grid">
+          <article>
+            <h3>Essential cookies</h3>
+            <p>Used for login, session handling, and basic app operation.</p>
+          </article>
+          <article>
+            <h3>Analytics</h3>
+            <p>
+              Marketing analytics should only be enabled with the correct notice
+              and consent model for the market.
+            </p>
+          </article>
+          <article>
+            <h3>Contact</h3>
+            <p>Use the support route for cookie or privacy questions.</p>
+          </article>
+        </div>
+      </section>
+    </MarketingLayout>
+  );
+}
+
+export function MarketingNotFoundPage() {
+  return (
+    <MarketingLayout
+      seo={{
+        title: "Page not found | RepSync",
+        description: "The RepSync page you requested could not be found.",
+      }}
+    >
+      <section className="rs-page-hero">
+        <p className="rs-eyebrow">404</p>
+        <h1>This page is not in the coaching plan.</h1>
+        <p className="rs-hero__lede">
+          The page may have moved, or the link may be outdated.
+        </p>
+        <div className="rs-hero__actions">
+          <Link className="rs-button" to="/">
+            Go home
+          </Link>
+          <Link className="rs-button rs-button--quiet" to="/coaches">
+            Browse coaches
+          </Link>
+        </div>
+      </section>
+    </MarketingLayout>
   );
 }
 
 export function PricingPage() {
-  return (
-    <PublicSiteLayout
-      seo={{
-        title: "Pricing — RepSync",
-        description:
-          "View RepSync pricing or request early access for your coaching business.",
-      }}
-    >
-      <section
-        className="gateway-section hero-section pricing-hero"
-        aria-labelledby="pricing-page-title"
-      >
-        <div className="gateway-copy hero-copy">
-          <p className="kicker">Early access pricing</p>
-          <h1 id="pricing-page-title">
-            Simple pricing for growing coaching businesses.
-          </h1>
-          <p className="gateway-lede">
-            RepSync is currently being prepared for early users. Book a demo or
-            join early access to find the right setup for your coaching
-            business.
-          </p>
-          <div className="cta-actions left">
-            <Link className="pill-button" to="/demo">
-              Book a demo
-            </Link>
-            <Link className="pill-button secondary" to="/signup">
-              Join early access
-            </Link>
-          </div>
-        </div>
-        <article className="price-card early-access-card">
-          <p className="mini-kicker">Early access</p>
-          <h3>RepSync coaching OS</h3>
-          <p>
-            Pricing is being finalized with early users. The demo flow helps
-            match RepSync to your business size, client volume, and delivery
-            model.
-          </p>
-          <ul>
-            {pricingFeatures.slice(0, 8).map((feature) => (
-              <li key={feature}>{feature}</li>
-            ))}
-          </ul>
-          <Link className="pill-button" to="/demo">
-            Book a demo
-          </Link>
-        </article>
-      </section>
-
-      <section className="comparison-section">
-        <div className="pricing-shell pricing-includes">
-          <div>
-            <p className="kicker">Included</p>
-            <h2>What early users are evaluating.</h2>
-            <p className="pricing-copy">
-              RepSync is being matched to real coaching setups before final
-              public pricing is published. The demo is used to understand client
-              volume, delivery model, team needs, and billing context.
-            </p>
-          </div>
-          <div
-            className="feature-checklist"
-            aria-label="RepSync included areas"
-          >
-            {pricingFeatures.map((feature) => (
-              <span key={feature}>{feature}</span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section
-        className="trial-band pricing-expectations"
-        aria-labelledby="pricing-next-title"
-      >
-        <div>
-          <p className="kicker">After you request access</p>
-          <h2 id="pricing-next-title">
-            No fake plan limits. No surprise pricing table.
-          </h2>
-          <p>
-            RepSync is not publishing final limits until early users validate
-            the right packaging. You will see what is available now, what is
-            planned, and where your current tools fit.
-          </p>
-        </div>
-        <ExpectationList />
-      </section>
-
-      <section className="use-case-section" aria-labelledby="who-title">
-        <div>
-          <p className="kicker">Fit</p>
-          <h2 id="who-title">Who it is for</h2>
-        </div>
-        <div className="use-case-grid">
-          {[
-            "Solo personal trainers moving beyond spreadsheets.",
-            "Online coaches managing structured client delivery.",
-            "Hybrid coaches who need consistent onboarding and check-ins.",
-            "Growing teams that need shared visibility and workspace rules.",
-          ].map((item) => (
-            <article key={item}>
-              <p className="mini-kicker">Use case</p>
-              <h3>{item}</h3>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="faq-section" aria-labelledby="pricing-faq-title">
-        <SectionHeader eyebrow="FAQ" title="Pricing questions" />
-        <div className="faq-grid">
-          {pricingFaq.map((item) => (
-            <article key={item.question}>
-              <h3>{item.question}</h3>
-              <p>{item.answer}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <CtaBand
-        eyebrow="Early access"
-        title="Find the right RepSync setup."
-        description="Book a demo and we will map RepSync to your coaching business without inventing fixed plan limits before pricing is finalized."
-      />
-    </PublicSiteLayout>
-  );
+  return <RequestAccessPage />;
 }
-
-type DemoFormState = {
-  fullName: string;
-  email: string;
-  businessType: string;
-  clients: string;
-  currentTools: string;
-  mainProblem: string;
-  message: string;
-  company: string;
-};
-
-const initialDemoForm: DemoFormState = {
-  fullName: "",
-  email: "",
-  businessType: "",
-  clients: "",
-  currentTools: "",
-  mainProblem: "",
-  message: "",
-  company: "",
-};
 
 export function DemoPage() {
-  const [form, setForm] = useState(initialDemoForm);
-  const [errors, setErrors] = useState<
-    Partial<Record<keyof DemoFormState, string>>
-  >({});
-  const [status, setStatus] = useState<
-    "idle" | "submitting" | "success" | "error"
-  >("idle");
-  const formId = useId();
-
-  const updateField = (field: keyof DemoFormState, value: string) => {
-    setForm((current) => ({ ...current, [field]: value }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
-    if (status !== "idle") setStatus("idle");
-  };
-
-  const validate = () => {
-    const nextErrors: Partial<Record<keyof DemoFormState, string>> = {};
-    if (!form.fullName.trim()) nextErrors.fullName = "Full name is required.";
-    if (!/\S+@\S+\.\S+/.test(form.email.trim())) {
-      nextErrors.email = "Enter a valid email address.";
-    }
-    if (!form.businessType.trim()) {
-      nextErrors.businessType = "Business type is required.";
-    }
-    return nextErrors;
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const nextErrors = validate();
-    setErrors(nextErrors);
-
-    if (Object.keys(nextErrors).length > 0) {
-      setStatus("idle");
-      return;
-    }
-
-    setStatus("submitting");
-
-    try {
-      if (form.company.trim()) {
-        setStatus("success");
-        return;
-      }
-
-      // TODO: Wire this form to the production demo-request endpoint once one exists.
-      await new Promise((resolve) => window.setTimeout(resolve, 450));
-      setStatus("success");
-      setForm(initialDemoForm);
-    } catch {
-      setStatus("error");
-    }
-  };
-
-  return (
-    <PublicSiteLayout
-      seo={{
-        title: "Book a Demo — RepSync",
-        description:
-          "Request a RepSync demo and see how it can support your coaching workflow.",
-      }}
-    >
-      <section
-        className="gateway-section hero-section demo-hero"
-        aria-labelledby="demo-title"
-      >
-        <div className="gateway-copy hero-copy">
-          <p className="kicker">Demo request</p>
-          <h1 id="demo-title">See RepSync around your coaching setup.</h1>
-          <p className="gateway-lede">
-            Tell us how you coach today and what feels scattered. The demo flow
-            is built to understand your lead capture, client delivery,
-            workspaces, check-ins, billing, and visibility needs.
-          </p>
-          <div className="trust-strip" aria-label="Demo topics">
-            <span>PT Hub</span>
-            <span>Workspaces</span>
-            <span>Client delivery</span>
-          </div>
-          <ExpectationList />
-        </div>
-
-        <form
-          className="demo-form price-card"
-          onSubmit={handleSubmit}
-          noValidate
-        >
-          <Field
-            id={`${formId}-full-name`}
-            label="Full name"
-            value={form.fullName}
-            error={errors.fullName}
-            autoComplete="name"
-            onChange={(value) => updateField("fullName", value)}
-            required
-          />
-          <Field
-            id={`${formId}-email`}
-            label="Email"
-            type="email"
-            value={form.email}
-            error={errors.email}
-            autoComplete="email"
-            onChange={(value) => updateField("email", value)}
-            required
-          />
-          <SelectField
-            id={`${formId}-business-type`}
-            label="Business type"
-            value={form.businessType}
-            error={errors.businessType}
-            options={businessTypeOptions}
-            onChange={(value) => updateField("businessType", value)}
-            required
-          />
-          <SelectField
-            id={`${formId}-clients`}
-            label="Number of clients"
-            value={form.clients}
-            options={clientCountOptions}
-            onChange={(value) => updateField("clients", value)}
-          />
-          <Field
-            id={`${formId}-tools`}
-            label="Current tools"
-            value={form.currentTools}
-            placeholder="Forms, spreadsheets, DMs, billing tools..."
-            onChange={(value) => updateField("currentTools", value)}
-          />
-          <SelectField
-            id={`${formId}-problem`}
-            label="Main problem"
-            value={form.mainProblem}
-            options={mainProblemOptions}
-            onChange={(value) => updateField("mainProblem", value)}
-          />
-          <Field
-            id={`${formId}-message`}
-            label="Message"
-            value={form.message}
-            onChange={(value) => updateField("message", value)}
-            multiline
-          />
-          <p className="form-helper">
-            This form is validated in the browser while the production
-            demo-request endpoint is being connected.
-          </p>
-          <label
-            className="honeypot"
-            htmlFor={`${formId}-company`}
-            aria-hidden="true"
-          >
-            Company
-            <input
-              id={`${formId}-company`}
-              value={form.company}
-              tabIndex={-1}
-              aria-hidden="true"
-              autoComplete="off"
-              onChange={(event) => updateField("company", event.target.value)}
-            />
-          </label>
-
-          {status === "success" ? (
-            <div className="form-notice success" role="status">
-              Thanks. Your details passed validation. The production
-              demo-request endpoint still needs to be connected before this can
-              be sent to the RepSync team.
-            </div>
-          ) : null}
-          {status === "error" ? (
-            <div className="form-notice error" role="alert">
-              Something went wrong while sending your request. Please try again.
-            </div>
-          ) : null}
-          <button
-            className="pill-button"
-            type="submit"
-            disabled={status === "submitting"}
-          >
-            {status === "submitting" ? "Sending..." : "Book a demo"}
-          </button>
-        </form>
-      </section>
-    </PublicSiteLayout>
-  );
-}
-
-function Field({
-  id,
-  label,
-  value,
-  onChange,
-  error,
-  type = "text",
-  placeholder,
-  autoComplete,
-  required,
-  multiline,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string;
-  type?: string;
-  placeholder?: string;
-  autoComplete?: string;
-  required?: boolean;
-  multiline?: boolean;
-}) {
-  const errorId = `${id}-error`;
-
-  return (
-    <div className="demo-field">
-      <label htmlFor={id}>
-        {label}
-        {required ? <span aria-hidden="true"> *</span> : null}
-      </label>
-      {multiline ? (
-        <textarea
-          id={id}
-          value={value}
-          rows={4}
-          placeholder={placeholder}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? errorId : undefined}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      ) : (
-        <input
-          id={id}
-          type={type}
-          value={value}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? errorId : undefined}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      )}
-      {error ? (
-        <span id={errorId} className="field-error" role="alert">
-          {error}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-function SelectField({
-  id,
-  label,
-  value,
-  onChange,
-  error,
-  options,
-  required,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string;
-  options: string[];
-  required?: boolean;
-}) {
-  const errorId = `${id}-error`;
-
-  return (
-    <div className="demo-field">
-      <label htmlFor={id}>
-        {label}
-        {required ? <span aria-hidden="true"> *</span> : null}
-      </label>
-      <select
-        id={id}
-        value={value}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? errorId : undefined}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {options.map((option, index) => (
-          <option key={`${label}-${option || "empty"}`} value={option}>
-            {index === 0 ? `Select ${label.toLowerCase()}` : option}
-          </option>
-        ))}
-      </select>
-      {error ? (
-        <span id={errorId} className="field-error" role="alert">
-          {error}
-        </span>
-      ) : null}
-    </div>
-  );
+  return <RequestAccessPage />;
 }
