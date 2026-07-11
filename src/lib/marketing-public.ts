@@ -171,7 +171,18 @@ export type ProductPreviewGroup = {
   key: "acquire" | "coach" | "retain";
   title: string;
   caption: string;
+  screenTitle: string;
+  screenSubtitle: string;
   facts: string[];
+  metrics: Array<{
+    label: string;
+    value: string;
+  }>;
+  timeline: Array<{
+    label: string;
+    detail: string;
+    tone?: "clear" | "warning" | "action";
+  }>;
 };
 
 export const productPreviewGroups: ProductPreviewGroup[] = [
@@ -179,33 +190,105 @@ export const productPreviewGroups: ProductPreviewGroup[] = [
     key: "acquire",
     title: "Acquire",
     caption: "Public profile, application, lead conversation, and approval.",
+    screenTitle: "Published profile to lead approval",
+    screenSubtitle: "Seeded public profile and application workflow",
     facts: [
       "Profile: Published",
       "Application: Submitted",
       "Conversation: Open",
       "Approval: Ready for workspace",
     ],
+    metrics: [
+      { label: "Applications", value: "4" },
+      { label: "Awaiting reply", value: "2" },
+      { label: "Ready to approve", value: "1" },
+    ],
+    timeline: [
+      {
+        label: "Public profile",
+        detail: "Strength coaching application is live",
+        tone: "clear",
+      },
+      {
+        label: "Lead conversation",
+        detail: "Coach asked about equipment and schedule",
+        tone: "action",
+      },
+      {
+        label: "Approval",
+        detail: "Assign to Hybrid Strength workspace",
+        tone: "warning",
+      },
+    ],
   },
   {
     key: "coach",
     title: "Coach",
     caption: "Programs, nutrition, habits, messaging, and recurring check-ins.",
+    screenTitle: "PT Hub weekly coaching overview",
+    screenSubtitle: "Seeded clients, delivery queue, and check-in workload",
     facts: [
       "Program: Strength base",
       "Nutrition: Assigned",
       "Habits: 4 active",
       "Check-in: Friday recurring",
     ],
+    metrics: [
+      { label: "Active clients", value: "18" },
+      { label: "Check-ins due", value: "6" },
+      { label: "Unread replies", value: "3" },
+    ],
+    timeline: [
+      {
+        label: "Maya Chen",
+        detail: "Program block 2, nutrition assigned, Friday check-in",
+        tone: "clear",
+      },
+      {
+        label: "Omar Patel",
+        detail: "No reply after coach message",
+        tone: "action",
+      },
+      {
+        label: "Nina Brooks",
+        detail: "Habit adherence dropped this week",
+        tone: "warning",
+      },
+    ],
   },
   {
     key: "retain",
     title: "Retain",
     caption: "Client attention, lifecycle, overdue actions, and analytics.",
+    screenTitle: "Client attention without lifecycle confusion",
+    screenSubtitle: "Seeded retention signals and next coach actions",
     facts: [
       "Lifecycle: Active",
       "Attention: At risk",
       "Reason: Missed latest check-in",
       "Next step: Coach follow-up",
+    ],
+    metrics: [
+      { label: "Clear", value: "12" },
+      { label: "Needs attention", value: "4" },
+      { label: "Manual flags", value: "2" },
+    ],
+    timeline: [
+      {
+        label: "Lifecycle: Active",
+        detail: "Attention: At risk. Reason: Missed latest check-in",
+        tone: "warning",
+      },
+      {
+        label: "Lifecycle: Onboarding",
+        detail: "Attention: Clear. Next step: Complete intake",
+        tone: "clear",
+      },
+      {
+        label: "Lifecycle: Active",
+        detail: "Attention: Coach flag. Reason: Overdue work",
+        tone: "action",
+      },
     ],
   },
 ];
@@ -313,7 +396,7 @@ export type MarketingRouteMetadata = {
 
 export const marketingRouteMetadata: Record<string, MarketingRouteMetadata> = {
   "/": {
-    title: "RepSync | More than workout delivery",
+    title: "RepSync | Run the whole coaching business",
     description:
       "RepSync is a coaching operating system for public profiles, applications, client delivery, attention cues, and workspace visibility.",
     canonicalPath: "/",

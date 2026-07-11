@@ -249,7 +249,7 @@ function BrandMark() {
           <path d="M5.6 9.2h2.1v5.6H5.6zM16.3 9.2h2.1v5.6h-2.1zM2.8 10.7h2.1v2.6H2.8zM19.1 10.7h2.1v2.6h-2.1zM8.5 11h7v2h-7z" />
         </svg>
       </span>
-      <span>RepSync</span>
+      <span>R E P S Y N C</span>
     </Link>
   );
 }
@@ -272,6 +272,44 @@ function MarketingLayout({
     window.addEventListener("scroll", syncScrolled, { passive: true });
     return () => window.removeEventListener("scroll", syncScrolled);
   }, []);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const targets = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        [
+          "#main section",
+          ".rs-feature-grid article",
+          ".rs-preview-card",
+          ".rs-workflow-step",
+          ".rs-attention-grid article",
+          ".rs-workspace-roles article",
+          ".rs-faq-list details",
+        ].join(","),
+      ),
+    );
+
+    targets.forEach((target, index) => {
+      target.classList.add("rs-reveal");
+      target.style.setProperty("--rs-reveal-delay", `${(index % 5) * 55}ms`);
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      { rootMargin: "0px 0px -12% 0px", threshold: 0.12 },
+    );
+
+    targets.forEach((target) => observer.observe(target));
+
+    return () => observer.disconnect();
+  }, [children]);
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -462,6 +500,8 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (status !== "idle") return;
+
     const validationMessage = validateLeadForm(mode, form);
     if (validationMessage) {
       setMessage(validationMessage);
@@ -491,6 +531,9 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
     }
   };
 
+  const isSubmitting = status === "submitting";
+  const isSent = status === "sent";
+
   return (
     <form className="rs-lead-form" onSubmit={handleSubmit} noValidate>
       <div className="rs-form-grid">
@@ -501,6 +544,7 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
             value={form.firstName}
             onChange={(event) => update("firstName", event.target.value)}
             autoComplete="given-name"
+            aria-invalid={message === "Enter your first name."}
             required
           />
         </label>
@@ -511,6 +555,7 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
             value={form.lastName}
             onChange={(event) => update("lastName", event.target.value)}
             autoComplete="family-name"
+            aria-invalid={message === "Enter your last name."}
             required
           />
         </label>
@@ -525,6 +570,7 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
             value={form.email}
             onChange={(event) => update("email", event.target.value)}
             autoComplete="email"
+            aria-invalid={message === "Enter a valid email address."}
             required
           />
         </label>
@@ -534,7 +580,8 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
             id={businessId}
             value={form.businessName}
             onChange={(event) => update("businessName", event.target.value)}
-            placeholder="Optional"
+            placeholder={mode === "switch" ? "Required for switch planning" : "Optional"}
+            aria-invalid={message === "Enter your business name."}
           />
         </label>
       </div>
@@ -546,6 +593,7 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
             id={modelId}
             value={form.coachingModel}
             onChange={(event) => update("coachingModel", event.target.value)}
+            aria-invalid={message === "Select your coaching model."}
             required
           >
             <option value="">Select model</option>
@@ -561,6 +609,7 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
             id={clientsId}
             value={form.clientsRange}
             onChange={(event) => update("clientsRange", event.target.value)}
+            aria-invalid={message === "Select your current client range."}
             required
           >
             <option value="">Select range</option>
@@ -579,6 +628,7 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
           value={form.currentPlatform}
           onChange={(event) => update("currentPlatform", event.target.value)}
           placeholder="TrueCoach, Fitr, Trainerize, Notion, spreadsheets, DMs..."
+          aria-invalid={message === "Tell us what you are switching from."}
           required={mode === "switch"}
         />
       </label>
@@ -589,6 +639,7 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
           id={reasonId}
           value={form.primaryReason}
           onChange={(event) => update("primaryReason", event.target.value)}
+          aria-invalid={message === "Select your primary reason."}
           required
         >
           <option value="">Select reason</option>
@@ -610,6 +661,7 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
                 onChange={(event) =>
                   update("switchingTimeline", event.target.value)
                 }
+                aria-invalid={message === "Select your switching timeline."}
                 required
               >
                 <option value="">Select timeline</option>
@@ -624,6 +676,7 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
                 id={teamSizeId}
                 value={form.teamSize}
                 onChange={(event) => update("teamSize", event.target.value)}
+                aria-invalid={message === "Select your team size."}
                 required
               >
                 <option value="">Select team size</option>
@@ -641,6 +694,7 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
               onChange={(event) => update("dataToMove", event.target.value)}
               rows={3}
               placeholder="Clients, programs, check-ins, habits, notes, archived records..."
+              aria-invalid={message === "Tell us what needs to move."}
               required
             />
           </label>
@@ -687,6 +741,7 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
           type="checkbox"
           checked={form.consent}
           onChange={(event) => update("consent", event.target.checked)}
+          aria-invalid={message === "Confirm we can contact you about RepSync."}
         />
         <span>
           I agree RepSync can contact me about early access. Do not include
@@ -695,9 +750,9 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
       </label>
 
       <button className="rs-button" type="submit" disabled={status !== "idle"}>
-        {status === "submitting"
+        {isSubmitting
           ? "Sending"
-            : status === "sent"
+            : isSent
               ? "Request sent"
               : mode === "switch"
                 ? "Plan your switch"
@@ -759,7 +814,31 @@ function ProductPreviewFrame({
       <div className="rs-preview-card__screen" role="img" aria-label={group.caption}>
         <div className="rs-preview-card__header">
           <p className="rs-eyebrow">{group.title}</p>
-          <strong>{group.caption}</strong>
+          <strong>{group.screenTitle}</strong>
+          <span>{group.screenSubtitle}</span>
+        </div>
+        <div className="rs-preview-metrics" aria-hidden="true">
+          {group.metrics.map((metric) => (
+            <div key={metric.label}>
+              <strong>{metric.value}</strong>
+              <span>{metric.label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="rs-preview-timeline">
+          {group.timeline.map((item) => (
+            <div
+              className="rs-preview-timeline__item"
+              data-tone={item.tone ?? "clear"}
+              key={`${item.label}-${item.detail}`}
+            >
+              <span />
+              <div>
+                <strong>{item.label}</strong>
+                <p>{item.detail}</p>
+              </div>
+            </div>
+          ))}
         </div>
         <div className="rs-preview-card__rows">
           {group.facts.map((fact, index) => (
@@ -818,6 +897,87 @@ function DifferentiationSection() {
       />
       <div className="rs-feature-grid rs-feature-grid--four">
         {differentiators.map(([title, body]) => (
+          <article key={title}>
+            <h3>{title}</h3>
+            <p>{body}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ClientAttentionSection() {
+  return (
+    <section className="rs-section rs-attention-section" aria-labelledby="attention-title">
+      <div className="rs-section__heading">
+        <p className="rs-eyebrow">Client attention</p>
+        <h2 id="attention-title">Lifecycle and attention stay separate.</h2>
+        <p>
+          Lifecycle describes where the client is in the relationship. Attention
+          explains whether a coach needs to act, and why.
+        </p>
+      </div>
+      <div className="rs-attention-grid">
+        {[
+          ["Lifecycle", "Active", "Relationship state"],
+          ["Attention", "At risk", "Missed latest check-in"],
+          ["Lifecycle", "Onboarding", "Complete intake next"],
+          ["Attention", "Clear", "No coach action needed"],
+        ].map(([label, value, detail]) => (
+          <article key={`${label}-${value}`}>
+            <span>{label}</span>
+            <h3>{value}</h3>
+            <p>{detail}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function WorkspaceSection() {
+  return (
+    <section className="rs-section rs-workspace-section" aria-labelledby="workspace-title">
+      <div>
+        <p className="rs-eyebrow">Small-team workspace</p>
+        <h2 id="workspace-title">Give coaches the right view of shared work.</h2>
+        <p>
+          RepSync markets owner, assistant coach, and viewer distinctions only
+          where the product has workspace role and route-guard support.
+        </p>
+      </div>
+      <div className="rs-workspace-roles">
+        {[
+          ["Owner", "Manages workspace settings, clients, leads, and team access."],
+          ["Assistant coach", "Works assigned clients without owning every business control."],
+          ["Viewer", "Reviews workspace context with read-oriented access patterns."],
+        ].map(([role, description]) => (
+          <article key={role}>
+            <h3>{role}</h3>
+            <p>{description}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TrustSection() {
+  return (
+    <section className="rs-section" aria-labelledby="trust-title">
+      <SectionIntro
+        eyebrow="Trust"
+        title="Trust language stays factual until formal claims exist."
+        body="No fictional testimonials, no unsupported certifications, and no legal compliance claims. The site points to verified product architecture instead."
+      />
+      <div className="rs-feature-grid rs-feature-grid--four">
+        {[
+          ["Role-based workspace access", "Owner, assistant coach, and viewer distinctions shape access."],
+          ["Client-scoped visibility", "Private coaching data is kept behind authenticated routes and workspace scope."],
+          ["Supabase authentication", "Accounts, protected routes, and persistence use the configured Supabase stack."],
+          ["Controlled public profiles", "Coach profiles are public only when published through the PT Hub flow."],
+        ].map(([title, body]) => (
           <article key={title}>
             <h3>{title}</h3>
             <p>{body}</p>
@@ -950,11 +1110,12 @@ function HomeContent() {
 
       <section className="rs-intro-strip" aria-label="RepSync lifecycle">
         <p>
-          RepSync covers the relationship around the workout, not just the
-          workout itself.
+          Public profile, applications, conversations, onboarding, delivery,
+          check-ins, attention, analytics, and team permissions connect in one
+          coaching operating layer.
         </p>
         <dl>
-          {lifecycleItems.slice(0, 3).map((item) => (
+          {productPillars.map((item) => (
             <div key={item.title}>
               <dt>{item.title}</dt>
               <dd>{item.body}</dd>
@@ -994,6 +1155,7 @@ function HomeContent() {
       </section>
 
       <DifferentiationSection />
+      <ClientAttentionSection />
 
       <section className="rs-section rs-workflow-section" id="workflow">
         <div className="rs-workflow-copy">
@@ -1035,6 +1197,8 @@ function HomeContent() {
         </div>
       </section>
 
+      <WorkspaceSection />
+      <TrustSection />
       <SwitchingSection />
       <AvailabilitySection />
 
@@ -1598,6 +1762,110 @@ export function RequestAccessPage() {
           </p>
         </div>
         <LeadForm mode="request_access" />
+      </section>
+    </MarketingLayout>
+  );
+}
+
+export function PrivacyPage() {
+  return (
+    <MarketingLayout seo={getMarketingSeo("/privacy")}>
+      <section className="rs-page-hero">
+        <p className="rs-eyebrow">Privacy</p>
+        <h1>Privacy Policy</h1>
+        <p className="rs-hero__lede">
+          This structure needs legal review before production. It describes the
+          product areas where RepSync may process account, workspace, coaching,
+          training, and check-in data.
+        </p>
+        <p className="rs-last-reviewed">Last updated: Legal review pending</p>
+      </section>
+      <section className="rs-section">
+        <div className="rs-feature-grid">
+          {[
+            [
+              "Information we collect",
+              "Account profile details, authentication data, workspace settings, programs, check-ins, notes, and operational logs needed to operate and support the app.",
+            ],
+            [
+              "How information is used",
+              "Data is used to authenticate users, show the right workspace content, support coach-client collaboration, and operate product features.",
+            ],
+            [
+              "Data storage and security",
+              "Role-based policies restrict access to the people and workspaces that need the information.",
+            ],
+            [
+              "Third-party services",
+              "RepSync may rely on configured infrastructure, authentication, hosting, analytics, messaging, storage, or payment providers where needed.",
+            ],
+            [
+              "User rights",
+              "Users may request access, correction, deletion, or export where available and legally required.",
+            ],
+            [
+              "Contact",
+              "Contact support@repsync.com for privacy questions or data requests.",
+            ],
+          ].map(([title, body]) => (
+            <article key={title}>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </MarketingLayout>
+  );
+}
+
+export function TermsPage() {
+  return (
+    <MarketingLayout seo={getMarketingSeo("/terms")}>
+      <section className="rs-page-hero">
+        <p className="rs-eyebrow">Terms</p>
+        <h1>Terms of Service</h1>
+        <p className="rs-hero__lede">
+          This structure needs legal review before production. It outlines
+          expected areas for service use, accounts, payments, acceptable use,
+          and limitations.
+        </p>
+        <p className="rs-last-reviewed">Last updated: Legal review pending</p>
+      </section>
+      <section className="rs-section">
+        <div className="rs-feature-grid">
+          {[
+            [
+              "Use of the service",
+              "Use RepSync lawfully, keep account access protected, and do not interfere with service operation.",
+            ],
+            [
+              "Accounts",
+              "Users are responsible for keeping account access secure and ensuring workspace members have appropriate permissions.",
+            ],
+            [
+              "Payments",
+              "Payment and subscription terms should reflect the final billing setup once pricing and provider configuration are confirmed.",
+            ],
+            [
+              "Acceptable use",
+              "Do not misuse platform resources, attempt unauthorized access, or upload content that violates law or rights of others.",
+            ],
+            [
+              "Disclaimers",
+              "RepSync is provided as-is. Review outputs before relying on them for training, wellness, or health-related decisions.",
+            ],
+            [
+              "Contact",
+              "Contact support@repsync.com for terms or account questions.",
+            ],
+          ].map(([title, body]) => (
+            <article key={title}>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </article>
+          ))}
+        </div>
       </section>
     </MarketingLayout>
   );
