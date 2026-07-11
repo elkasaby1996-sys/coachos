@@ -10,13 +10,23 @@ type LeadType = "request_access" | "switch";
 
 type LeadPayload = {
   type?: LeadType;
+  first_name?: string;
+  last_name?: string;
   name?: string;
   email?: string;
-  role?: string;
+  business_name?: string;
   coaching_business?: string;
+  coaching_model?: string;
   clients_range?: string;
+  current_platform?: string;
   current_tools?: string;
+  primary_reason?: string;
   goal?: string;
+  message?: string;
+  switching_timeline?: string;
+  team_size?: string;
+  data_to_move?: string;
+  migration_concerns?: string;
   migration_notes?: string;
   consent?: boolean;
   website?: string;
@@ -56,27 +66,55 @@ function validatePayload(payload: LeadPayload) {
   }
 
   const type = payload.type;
-  const name = cleanText(payload.name, 120);
+  const firstName = cleanText(payload.first_name, 80);
+  const lastName = cleanText(payload.last_name, 80);
+  const fallbackName = cleanText(payload.name, 160);
+  const name = `${firstName} ${lastName}`.trim() || fallbackName;
   const email = cleanText(payload.email, 180).toLowerCase();
-  const coachingBusiness = cleanText(payload.coaching_business, 220);
+  const businessName = cleanText(
+    payload.business_name ?? payload.coaching_business,
+    220,
+  );
+  const coachingModel = cleanText(payload.coaching_model, 80);
   const clientsRange = cleanText(payload.clients_range, 40);
-  const currentTools = cleanText(payload.current_tools, 220);
+  const currentPlatform = cleanText(
+    payload.current_platform ?? payload.current_tools,
+    220,
+  );
+  const primaryReason = cleanText(payload.primary_reason ?? payload.goal, 160);
 
   if (type !== "request_access" && type !== "switch") {
     return { ok: false as const, error: "Lead type is invalid" };
   }
-  if (name.length < 2) return { ok: false as const, error: "Name is required" };
+  if (firstName.length < 2) {
+    return { ok: false as const, error: "First name is required" };
+  }
+  if (lastName.length < 2) {
+    return { ok: false as const, error: "Last name is required" };
+  }
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     return { ok: false as const, error: "Email is invalid" };
   }
-  if (!coachingBusiness) {
-    return { ok: false as const, error: "Coaching business is required" };
+  if (!coachingModel) {
+    return { ok: false as const, error: "Coaching model is required" };
   }
   if (!clientsRange) {
     return { ok: false as const, error: "Client range is required" };
   }
-  if (type === "switch" && !currentTools) {
-    return { ok: false as const, error: "Current tools are required" };
+  if (!primaryReason) {
+    return { ok: false as const, error: "Primary reason is required" };
+  }
+  if (type === "switch" && !currentPlatform) {
+    return { ok: false as const, error: "Current platform is required" };
+  }
+  if (type === "switch" && !cleanText(payload.switching_timeline, 80)) {
+    return { ok: false as const, error: "Switching timeline is required" };
+  }
+  if (type === "switch" && !cleanText(payload.team_size, 80)) {
+    return { ok: false as const, error: "Team size is required" };
+  }
+  if (type === "switch" && !cleanLongText(payload.data_to_move, 1800)) {
+    return { ok: false as const, error: "Data to move is required" };
   }
   if (payload.consent !== true) {
     return { ok: false as const, error: "Consent is required" };
@@ -87,13 +125,23 @@ function validatePayload(payload: LeadPayload) {
     spam: false as const,
     row: {
       type,
+      first_name: firstName,
+      last_name: lastName,
       name,
       email,
-      role: cleanText(payload.role, 80),
-      coaching_business: coachingBusiness,
+      business_name: businessName,
+      coaching_business: businessName,
+      coaching_model: coachingModel,
       clients_range: clientsRange,
-      current_tools: currentTools,
-      goal: cleanLongText(payload.goal, 1800),
+      current_platform: currentPlatform,
+      current_tools: currentPlatform,
+      primary_reason: primaryReason,
+      goal: primaryReason,
+      message: cleanLongText(payload.message, 1800),
+      switching_timeline: cleanText(payload.switching_timeline, 80),
+      team_size: cleanText(payload.team_size, 80),
+      data_to_move: cleanLongText(payload.data_to_move, 1800),
+      migration_concerns: cleanLongText(payload.migration_concerns, 1800),
       migration_notes: cleanLongText(payload.migration_notes, 1800),
       consent: true,
       page_path: cleanText(payload.page_path, 220),
@@ -124,12 +172,16 @@ async function notifyLead(row: Record<string, unknown>) {
         `Type: ${row.type}`,
         `Name: ${row.name}`,
         `Email: ${row.email}`,
-        `Role: ${row.role}`,
-        `Business: ${row.coaching_business}`,
+        `Business: ${row.business_name}`,
+        `Coaching model: ${row.coaching_model}`,
         `Clients: ${row.clients_range}`,
-        `Current tools: ${row.current_tools}`,
-        `Goal: ${row.goal}`,
-        `Migration notes: ${row.migration_notes}`,
+        `Current platform: ${row.current_platform}`,
+        `Primary reason: ${row.primary_reason}`,
+        `Timeline: ${row.switching_timeline}`,
+        `Team size: ${row.team_size}`,
+        `Data to move: ${row.data_to_move}`,
+        `Migration concerns: ${row.migration_concerns}`,
+        `Message: ${row.message}`,
         `Page: ${row.page_path}`,
       ].join("\n"),
     }),
