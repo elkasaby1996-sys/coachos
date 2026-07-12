@@ -17,13 +17,17 @@ type LeadPayload = {
   business_name?: string;
   coaching_business?: string;
   coaching_model?: string;
+  active_clients_range?: string;
   clients_range?: string;
   current_platform?: string;
+  current_platform_other?: string;
   current_tools?: string;
   primary_reason?: string;
   goal?: string;
+  migration_needs?: string[];
   message?: string;
   switching_timeline?: string;
+  team_size_range?: string;
   team_size?: string;
   data_to_move?: string;
   migration_concerns?: string;
@@ -31,6 +35,11 @@ type LeadPayload = {
   consent?: boolean;
   website?: string;
   page_path?: string;
+  referrer?: string;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -60,6 +69,57 @@ function cleanLongText(value: unknown, maxLength: number) {
   return value.trim().slice(0, maxLength);
 }
 
+function cleanStringArray(value: unknown, allowed: Set<string>, maxItems: number) {
+  if (!Array.isArray(value)) return [] as string[];
+  return Array.from(
+    new Set(
+      value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter((item) => allowed.has(item)),
+    ),
+  ).slice(0, maxItems);
+}
+
+const allowedPlatforms = new Set([
+  "truecoach",
+  "fitr",
+  "trainerize",
+  "spreadsheets",
+  "multiple_tools",
+  "none",
+  "other",
+]);
+const allowedCoachingModels = new Set(["online", "hybrid", "in_person", "mixed"]);
+const allowedClientRanges = new Set(["0_5", "6_20", "21_50", "51_plus"]);
+const allowedTeamSizes = new Set(["solo", "2_3", "4_10", "11_plus"]);
+const allowedTimelines = new Set([
+  "immediately",
+  "within_30_days",
+  "within_90_days",
+  "later",
+  "exploring",
+]);
+const allowedMigrationNeeds = new Set([
+  "client_information",
+  "active_programs",
+  "program_templates",
+  "nutrition",
+  "habits",
+  "checkins",
+  "documents",
+  "historical_data",
+  "team_setup",
+  "other",
+]);
+const allowedGoals = new Set([
+  "lead_to_client",
+  "client_attention",
+  "team_workspace",
+  "delivery_clarity",
+  "migration_planning",
+]);
+
 function validatePayload(payload: LeadPayload) {
   if (payload.website && payload.website.trim()) {
     return { ok: true as const, spam: true as const };
@@ -76,12 +136,23 @@ function validatePayload(payload: LeadPayload) {
     220,
   );
   const coachingModel = cleanText(payload.coaching_model, 80);
-  const clientsRange = cleanText(payload.clients_range, 40);
+  const clientsRange = cleanText(
+    payload.active_clients_range ?? payload.clients_range,
+    40,
+  );
   const currentPlatform = cleanText(
     payload.current_platform ?? payload.current_tools,
-    220,
+    80,
   );
+  const currentPlatformOther = cleanText(payload.current_platform_other, 160);
   const primaryReason = cleanText(payload.primary_reason ?? payload.goal, 160);
+  const switchingTimeline = cleanText(payload.switching_timeline, 80);
+  const teamSizeRange = cleanText(payload.team_size_range ?? payload.team_size, 80);
+  const migrationNeeds = cleanStringArray(
+    payload.migration_needs,
+    allowedMigrationNeeds,
+    10,
+  );
 
   if (type !== "request_access" && type !== "switch") {
     return { ok: false as const, error: "Lead type is invalid" };
@@ -98,23 +169,44 @@ function validatePayload(payload: LeadPayload) {
   if (!coachingModel) {
     return { ok: false as const, error: "Coaching model is required" };
   }
+  if (!allowedCoachingModels.has(coachingModel)) {
+    return { ok: false as const, error: "Coaching model is invalid" };
+  }
   if (!clientsRange) {
     return { ok: false as const, error: "Client range is required" };
+  }
+  if (!allowedClientRanges.has(clientsRange)) {
+    return { ok: false as const, error: "Client range is invalid" };
   }
   if (!primaryReason) {
     return { ok: false as const, error: "Primary reason is required" };
   }
+  if (!allowedGoals.has(primaryReason)) {
+    return { ok: false as const, error: "Primary reason is invalid" };
+  }
   if (type === "switch" && !currentPlatform) {
     return { ok: false as const, error: "Current platform is required" };
   }
-  if (type === "switch" && !cleanText(payload.switching_timeline, 80)) {
+  if (type === "switch" && !allowedPlatforms.has(currentPlatform)) {
+    return { ok: false as const, error: "Current platform is invalid" };
+  }
+  if (type === "switch" && currentPlatform === "other" && !currentPlatformOther) {
+    return { ok: false as const, error: "Other platform is required" };
+  }
+  if (type === "switch" && !switchingTimeline) {
     return { ok: false as const, error: "Switching timeline is required" };
   }
-  if (type === "switch" && !cleanText(payload.team_size, 80)) {
+  if (type === "switch" && !allowedTimelines.has(switchingTimeline)) {
+    return { ok: false as const, error: "Switching timeline is invalid" };
+  }
+  if (type === "switch" && !teamSizeRange) {
     return { ok: false as const, error: "Team size is required" };
   }
-  if (type === "switch" && !cleanLongText(payload.data_to_move, 1800)) {
-    return { ok: false as const, error: "Data to move is required" };
+  if (type === "switch" && !allowedTeamSizes.has(teamSizeRange)) {
+    return { ok: false as const, error: "Team size is invalid" };
+  }
+  if (type === "switch" && migrationNeeds.length === 0) {
+    return { ok: false as const, error: "Migration needs are required" };
   }
   if (payload.consent !== true) {
     return { ok: false as const, error: "Consent is required" };
@@ -125,6 +217,7 @@ function validatePayload(payload: LeadPayload) {
     spam: false as const,
     row: {
       type,
+      form_type: type,
       first_name: firstName,
       last_name: lastName,
       name,
@@ -132,19 +225,29 @@ function validatePayload(payload: LeadPayload) {
       business_name: businessName,
       coaching_business: businessName,
       coaching_model: coachingModel,
+      active_clients_range: clientsRange,
       clients_range: clientsRange,
       current_platform: currentPlatform,
+      current_platform_other: currentPlatformOther,
       current_tools: currentPlatform,
       primary_reason: primaryReason,
       goal: primaryReason,
+      migration_needs: migrationNeeds,
       message: cleanLongText(payload.message, 1800),
-      switching_timeline: cleanText(payload.switching_timeline, 80),
-      team_size: cleanText(payload.team_size, 80),
-      data_to_move: cleanLongText(payload.data_to_move, 1800),
+      switching_timeline: switchingTimeline,
+      team_size_range: teamSizeRange,
+      team_size: teamSizeRange,
+      data_to_move: migrationNeeds.join(", "),
       migration_concerns: cleanLongText(payload.migration_concerns, 1800),
       migration_notes: cleanLongText(payload.migration_notes, 1800),
       consent: true,
+      consent_at: new Date().toISOString(),
       page_path: cleanText(payload.page_path, 220),
+      referrer: cleanText(payload.referrer, 500),
+      utm_source: cleanText(payload.utm_source, 120),
+      utm_medium: cleanText(payload.utm_medium, 120),
+      utm_campaign: cleanText(payload.utm_campaign, 120),
+      utm_content: cleanText(payload.utm_content, 120),
     },
   };
 }
@@ -167,7 +270,10 @@ async function notifyLead(row: Record<string, unknown>) {
     body: JSON.stringify({
       from,
       to,
-      subject: `New RepSync ${row.type} lead: ${row.name}`,
+      subject:
+        row.type === "switch"
+          ? `New RepSync switch request - ${row.current_platform || "unknown platform"} - ${row.clients_range || "client range unknown"}`
+          : `New RepSync early access request - ${row.clients_range || "client range unknown"}`,
       text: [
         `Type: ${row.type}`,
         `Name: ${row.name}`,
@@ -176,13 +282,15 @@ async function notifyLead(row: Record<string, unknown>) {
         `Coaching model: ${row.coaching_model}`,
         `Clients: ${row.clients_range}`,
         `Current platform: ${row.current_platform}`,
+        `Other platform: ${row.current_platform_other}`,
         `Primary reason: ${row.primary_reason}`,
         `Timeline: ${row.switching_timeline}`,
-        `Team size: ${row.team_size}`,
-        `Data to move: ${row.data_to_move}`,
+        `Team size: ${row.team_size_range ?? row.team_size}`,
+        `Migration needs: ${Array.isArray(row.migration_needs) ? row.migration_needs.join(", ") : row.data_to_move}`,
         `Migration concerns: ${row.migration_concerns}`,
         `Message: ${row.message}`,
         `Page: ${row.page_path}`,
+        `Submitted: ${new Date().toISOString()}`,
       ].join("\n"),
     }),
   });
@@ -214,8 +322,8 @@ Deno.serve(async (req) => {
     );
     const row = {
       ...validation.row,
-      user_agent: cleanText(req.headers.get("User-Agent"), 500),
-      referrer: cleanText(req.headers.get("Referer"), 500),
+      referrer:
+        validation.row.referrer || cleanText(req.headers.get("Referer"), 500),
       metadata: {
         origin: cleanText(req.headers.get("Origin"), 220),
       },
@@ -235,9 +343,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, id: data.id });
   } catch (error) {
     console.error("marketing-lead-submit failed", error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
+    return jsonResponse({ error: "Submission could not be processed" }, 500);
   }
 });

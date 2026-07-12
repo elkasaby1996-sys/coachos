@@ -12,6 +12,89 @@ import {
 } from "../../features/pt-hub/lib/pt-hub";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 
+function setPublicProfileMeta(params: {
+  title: string;
+  description: string;
+  canonicalPath: string;
+  robots: string;
+  imageUrl?: string | null;
+}) {
+  const ensureMeta = (selector: string, create: () => HTMLMetaElement) => {
+    const existing = document.head.querySelector<HTMLMetaElement>(selector);
+    if (existing) return existing;
+    const tag = create();
+    document.head.appendChild(tag);
+    return tag;
+  };
+  const ensureLink = (selector: string, create: () => HTMLLinkElement) => {
+    const existing = document.head.querySelector<HTMLLinkElement>(selector);
+    if (existing) return existing;
+    const tag = create();
+    document.head.appendChild(tag);
+    return tag;
+  };
+
+  const origin = window.location.origin;
+  const imageUrl = params.imageUrl || `${origin}/og-repsync.png`;
+  document.documentElement.lang = "en";
+  document.title = params.title;
+  ensureMeta('meta[name="description"]', () => {
+    const tag = document.createElement("meta");
+    tag.name = "description";
+    return tag;
+  }).content = params.description;
+  ensureMeta('meta[name="robots"]', () => {
+    const tag = document.createElement("meta");
+    tag.name = "robots";
+    return tag;
+  }).content = params.robots;
+  ensureMeta('meta[property="og:title"]', () => {
+    const tag = document.createElement("meta");
+    tag.setAttribute("property", "og:title");
+    return tag;
+  }).content = params.title;
+  ensureMeta('meta[property="og:description"]', () => {
+    const tag = document.createElement("meta");
+    tag.setAttribute("property", "og:description");
+    return tag;
+  }).content = params.description;
+  ensureMeta('meta[property="og:url"]', () => {
+    const tag = document.createElement("meta");
+    tag.setAttribute("property", "og:url");
+    return tag;
+  }).content = `${origin}${params.canonicalPath}`;
+  ensureMeta('meta[property="og:image"]', () => {
+    const tag = document.createElement("meta");
+    tag.setAttribute("property", "og:image");
+    return tag;
+  }).content = imageUrl;
+  ensureMeta('meta[name="twitter:card"]', () => {
+    const tag = document.createElement("meta");
+    tag.name = "twitter:card";
+    return tag;
+  }).content = "summary_large_image";
+  ensureMeta('meta[name="twitter:title"]', () => {
+    const tag = document.createElement("meta");
+    tag.name = "twitter:title";
+    return tag;
+  }).content = params.title;
+  ensureMeta('meta[name="twitter:description"]', () => {
+    const tag = document.createElement("meta");
+    tag.name = "twitter:description";
+    return tag;
+  }).content = params.description;
+  ensureMeta('meta[name="twitter:image"]', () => {
+    const tag = document.createElement("meta");
+    tag.name = "twitter:image";
+    return tag;
+  }).content = imageUrl;
+  ensureLink('link[rel="canonical"]', () => {
+    const tag = document.createElement("link");
+    tag.rel = "canonical";
+    return tag;
+  }).href = `${origin}${params.canonicalPath}`;
+}
+
 export function PublicCoachProfilePage() {
   const { slug, ptSlug } = useParams<{ slug: string; ptSlug: string }>();
   const resolvedSlug = ptSlug ?? slug;
@@ -29,6 +112,43 @@ export function PublicCoachProfilePage() {
     setSuccess(false);
     setError(null);
   }, [resolvedSlug]);
+
+  useEffect(() => {
+    if (profileQuery.isLoading) {
+      setPublicProfileMeta({
+        title: "Loading coach profile | RepSync",
+        description: "Loading a RepSync public coach profile.",
+        canonicalPath: resolvedSlug ? `/p/${resolvedSlug}` : "/coaches",
+        robots: "noindex,nofollow",
+      });
+      return;
+    }
+
+    if (profileQuery.error || !profileQuery.data) {
+      setPublicProfileMeta({
+        title: "Coach profile unavailable | RepSync",
+        description:
+          "This RepSync public coach profile is unavailable, unpublished, or no longer valid.",
+        canonicalPath: resolvedSlug ? `/p/${resolvedSlug}` : "/coaches",
+        robots: "noindex,nofollow",
+      });
+      return;
+    }
+
+    const profile = profileQuery.data;
+    const displayName = profile.displayName || profile.fullName || "RepSync coach";
+    const description =
+      profile.headline?.trim() ||
+      profile.shortBio?.trim() ||
+      `View ${displayName}'s published RepSync coach profile and application.`;
+    setPublicProfileMeta({
+      title: `${displayName} | RepSync Coach Profile`,
+      description: description.slice(0, 155),
+      canonicalPath: `/p/${profile.slug}`,
+      robots: "index,follow",
+      imageUrl: profile.bannerImageUrl || profile.profilePhotoUrl,
+    });
+  }, [profileQuery.data, profileQuery.error, profileQuery.isLoading, resolvedSlug]);
 
   if (profileQuery.isLoading) {
     return (
