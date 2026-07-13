@@ -41,7 +41,7 @@ jobs:
           supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only
 
       - name: Upload backup artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: supabase-logical-backup-${{ github.run_id }}
           path: backup/
