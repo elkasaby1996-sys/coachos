@@ -647,6 +647,7 @@ export function App() {
           <Route path="/product" element={<ProductPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/demo" element={<DemoPage />} />
+          <Route path="/book-demo" element={<DemoPage />} />
           <Route path="/coaches" element={<CoachesPage />} />
           <Route
             path="/coaches/:ptSlug"

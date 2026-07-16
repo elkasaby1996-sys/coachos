@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useCoachMarketplaceProfiles } from "../../features/pt-hub/lib/pt-hub";
 import type {
   PTAvailabilityMode,
@@ -53,6 +53,8 @@ type SeoConfig = {
 };
 
 type LeadFormMode = "request_access" | "switch";
+
+type DemoStep = "context" | "calendar" | "confirmation";
 
 type LeadFormState = {
   firstName: string;
@@ -109,6 +111,37 @@ const defaultLeadForm: LeadFormState = {
   consent: false,
   website: "",
 };
+
+const demoSlots = [
+  {
+    id: "tue-1000",
+    label: "Tuesday",
+    time: "10:00",
+    detail: "45 min product walkthrough",
+    available: true,
+  },
+  {
+    id: "wed-1430",
+    label: "Wednesday",
+    time: "14:30",
+    detail: "Coach workflow review",
+    available: true,
+  },
+  {
+    id: "thu-0900",
+    label: "Thursday",
+    time: "09:00",
+    detail: "Unavailable",
+    available: false,
+  },
+  {
+    id: "fri-1600",
+    label: "Friday",
+    time: "16:00",
+    detail: "Switch planning demo",
+    available: true,
+  },
+] as const;
 
 const currentPlatformOptions = [
   ["truecoach", "TrueCoach"],
@@ -235,7 +268,7 @@ const faqs = [
   },
   {
     q: "Is pricing public?",
-    a: "Pricing is not public yet. The site routes interested coaches to request early access so the team can qualify fit and explain the current product stage.",
+    a: "Pricing is not public yet. The site routes interested coaches to book a demo so the team can qualify fit and explain the current product stage.",
   },
   {
     q: "Does RepSync make compliance claims?",
@@ -365,7 +398,8 @@ function usePageMetadata({
       const tag = document.createElement("meta");
       tag.setAttribute("property", "og:url");
       return tag;
-    }).content = `${marketingOrigin}${canonicalPath ?? window.location.pathname}`;
+    }).content =
+      `${marketingOrigin}${canonicalPath ?? window.location.pathname}`;
 
     ensureMeta('meta[property="og:image"]', () => {
       const tag = document.createElement("meta");
@@ -561,6 +595,7 @@ function MarketingLayout({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
 
   usePageMetadata(seo);
 
@@ -576,15 +611,7 @@ function MarketingLayout({
 
     const targets = Array.from(
       document.querySelectorAll<HTMLElement>(
-        [
-          "#main section",
-          ".rs-feature-grid article",
-          ".rs-preview-card",
-          ".rs-workflow-step",
-          ".rs-attention-grid article",
-          ".rs-workspace-roles article",
-          ".rs-faq-list details",
-        ].join(","),
+        ["#main > section:not(:first-child)", ".rs-workflow-step"].join(","),
       ),
     );
 
@@ -610,6 +637,35 @@ function MarketingLayout({
   }, [children]);
 
   const closeMenu = () => setMenuOpen(false);
+  const navItems = [
+    {
+      label: "Product",
+      to: "/product",
+      active: location.pathname === "/product",
+    },
+    {
+      label: "For coaches",
+      to: "/for-coaches",
+      active: location.pathname === "/for-coaches",
+    },
+    {
+      label: "For clients",
+      to: "/for-clients",
+      active: location.pathname === "/for-clients",
+    },
+    {
+      label: "Why RepSync",
+      to: "/#why",
+      active: location.pathname === "/" && location.hash === "#why",
+    },
+    {
+      label: "Switch",
+      to: "/switch",
+      active:
+        location.pathname === "/switch" ||
+        location.pathname.startsWith("/compare/"),
+    },
+  ] as const;
 
   return (
     <div className={`marketing-home-page ${menuOpen ? "menu-open" : ""}`}>
@@ -657,11 +713,16 @@ function MarketingLayout({
         <BrandMark />
 
         <nav className="rs-desktop-nav" aria-label="Site sections">
-          <Link to="/product">Product</Link>
-          <Link to="/for-coaches">For coaches</Link>
-          <Link to="/for-clients">For clients</Link>
-          <Link to="/#why">Why RepSync</Link>
-          <Link to="/switch">Switch</Link>
+          {navItems.map((item) => (
+            <Link
+              className={item.active ? "is-current" : undefined}
+              aria-current={item.active ? "page" : undefined}
+              to={item.to}
+              key={item.to}
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <div className="rs-header-actions">
@@ -669,7 +730,7 @@ function MarketingLayout({
             Log in
           </Link>
           <MarketingCta intent="primary" className="rs-button rs-button--small">
-            Request early access
+            Book a demo
           </MarketingCta>
           <button
             className="rs-menu-button"
@@ -689,26 +750,33 @@ function MarketingLayout({
           id="mobile-menu"
           aria-label="Mobile navigation"
         >
-          <Link to="/product" onClick={closeMenu}>
-            Product
-          </Link>
-          <Link to="/for-coaches" onClick={closeMenu}>
-            For coaches
-          </Link>
-          <Link to="/for-clients" onClick={closeMenu}>
-            For clients
-          </Link>
+          {navItems.slice(0, 3).map((item) => (
+            <Link
+              className={item.active ? "is-current" : undefined}
+              aria-current={item.active ? "page" : undefined}
+              to={item.to}
+              onClick={closeMenu}
+              key={item.to}
+            >
+              {item.label}
+            </Link>
+          ))}
           <Link to="/coaches" onClick={closeMenu}>
             Coach marketplace
           </Link>
-          <Link to="/switch" onClick={closeMenu}>
+          <Link
+            className={navItems[4].active ? "is-current" : undefined}
+            aria-current={navItems[4].active ? "page" : undefined}
+            to="/switch"
+            onClick={closeMenu}
+          >
             Switch
           </Link>
           <Link to="/login" onClick={closeMenu}>
             Log in
           </Link>
-          <Link to="/request-access" onClick={closeMenu}>
-            Request early access
+          <Link to="/book-demo" onClick={closeMenu}>
+            Book a demo
           </Link>
           <Link to="/compare/truecoach" onClick={closeMenu}>
             Moving from TrueCoach
@@ -732,35 +800,35 @@ function MarketingLayout({
         <nav className="rs-site-footer__nav" aria-label="Footer navigation">
           {(
             [
-            {
-              label: "Product",
-              links: [
-                ["Product", "/product"],
-                ["For coaches", "/for-coaches"],
-                ["For clients", "/for-clients"],
-                ["Coach marketplace", "/coaches"],
-                ["Request access", "/request-access"],
-              ],
-            },
-            {
-              label: "Switch",
-              links: [
-                ["Plan your switch", "/switch"],
-                ["TrueCoach", "/compare/truecoach"],
-                ["Fitr", "/compare/fitr"],
-              ],
-            },
-            {
-              label: "Trust",
-              links: [
-                ["Security", "/security"],
-                ["FAQ", "/faq"],
-                ["Privacy", "/privacy"],
-                ["Terms", "/terms"],
-                ["Cookies", "/cookies"],
-              ],
-            },
-          ] as Array<{ label: string; links: Array<[string, string]> }>
+              {
+                label: "Product",
+                links: [
+                  ["Product", "/product"],
+                  ["For coaches", "/for-coaches"],
+                  ["For clients", "/for-clients"],
+                  ["Coach marketplace", "/coaches"],
+                  ["Book a demo", "/book-demo"],
+                ],
+              },
+              {
+                label: "Switch",
+                links: [
+                  ["Plan your switch", "/switch"],
+                  ["TrueCoach", "/compare/truecoach"],
+                  ["Fitr", "/compare/fitr"],
+                ],
+              },
+              {
+                label: "Trust",
+                links: [
+                  ["Security", "/security"],
+                  ["FAQ", "/faq"],
+                  ["Privacy", "/privacy"],
+                  ["Terms", "/terms"],
+                  ["Cookies", "/cookies"],
+                ],
+              },
+            ] as Array<{ label: string; links: Array<[string, string]> }>
           ).map((group) => (
             <div className="rs-site-footer__group" key={group.label}>
               <p>{group.label}</p>
@@ -816,15 +884,25 @@ async function submitMarketingLead(mode: LeadFormMode, form: LeadFormState) {
         migration_notes: [
           form.migrationNeeds.join(", "),
           form.migrationConcerns.trim(),
-        ].filter(Boolean).join("\n\n"),
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
         consent: form.consent,
         website: form.website,
         page_path: window.location.pathname,
         referrer: document.referrer,
-        utm_source: new URLSearchParams(window.location.search).get("utm_source"),
-        utm_medium: new URLSearchParams(window.location.search).get("utm_medium"),
-        utm_campaign: new URLSearchParams(window.location.search).get("utm_campaign"),
-        utm_content: new URLSearchParams(window.location.search).get("utm_content"),
+        utm_source: new URLSearchParams(window.location.search).get(
+          "utm_source",
+        ),
+        utm_medium: new URLSearchParams(window.location.search).get(
+          "utm_medium",
+        ),
+        utm_campaign: new URLSearchParams(window.location.search).get(
+          "utm_campaign",
+        ),
+        utm_content: new URLSearchParams(window.location.search).get(
+          "utm_content",
+        ),
       },
     },
   );
@@ -924,10 +1002,12 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
       setMessage(
         mode === "switch"
           ? "Thanks. Your switch request has been received."
-          : "Thanks. Your early access request has been received.",
+          : "Thanks. Your demo request has been received.",
       );
       trackMarketingEvent(
-        mode === "switch" ? "switch_form_submitted" : "request_access_form_submitted",
+        mode === "switch"
+          ? "switch_form_submitted"
+          : "request_access_form_submitted",
         {
           page: window.location.pathname,
           platform: form.currentPlatform || undefined,
@@ -1265,11 +1345,11 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
       <button className="rs-button" type="submit" disabled={status !== "idle"}>
         {isSubmitting
           ? "Sending"
-            : isSent
-              ? "Request sent"
-              : mode === "switch"
-                ? "Plan your switch"
-                : "Request early access"}
+          : isSent
+            ? "Request sent"
+            : mode === "switch"
+              ? "Plan your switch"
+              : "Send demo context"}
       </button>
       <p
         className="rs-form-message"
@@ -1280,6 +1360,345 @@ function LeadForm({ mode }: { mode: LeadFormMode }) {
         {message}
       </p>
     </form>
+  );
+}
+
+function validateDemoContext(form: LeadFormState) {
+  if (form.website.trim()) return "Thanks.";
+  if (form.firstName.trim().length < 2) return "Enter your first name.";
+  if (form.lastName.trim().length < 2) return "Enter your last name.";
+  if (!/\S+@\S+\.\S+/.test(form.email.trim())) {
+    return "Enter a valid email address.";
+  }
+  if (!form.coachingModel) return "Select your coaching model.";
+  if (!form.activeClientsRange) return "Select your active client range.";
+  if (!form.primaryReason) return "Select your demo focus.";
+  if (!form.consent) return "Confirm we can contact you about RepSync.";
+  return null;
+}
+
+function BookDemoFlow() {
+  const [form, setForm] = useState(defaultLeadForm);
+  const [step, setStep] = useState<DemoStep>("context");
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "loading">(
+    "idle",
+  );
+  const [message, setMessage] = useState("");
+  const firstNameId = useId();
+  const lastNameId = useId();
+  const emailId = useId();
+  const businessId = useId();
+  const modelId = useId();
+  const clientsId = useId();
+  const reasonId = useId();
+  const notesId = useId();
+  const consentId = useId();
+  const websiteId = useId();
+
+  const update = (
+    key: keyof LeadFormState,
+    value: string | boolean | string[],
+  ) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    if (message) setMessage("");
+  };
+
+  const handleContextSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (status !== "idle") return;
+
+    const validationMessage = validateDemoContext(form);
+    if (validationMessage) {
+      setMessage(validationMessage);
+      return;
+    }
+
+    setStatus("submitting");
+    window.setTimeout(() => {
+      trackMarketingEvent("demo_context_submitted", {
+        page: window.location.pathname,
+        active_clients_range: form.activeClientsRange,
+        primary_reason: form.primaryReason,
+      });
+      setStep("calendar");
+      setMessage("Context saved. Choose an available demo time.");
+      setStatus("idle");
+    }, 500);
+  };
+
+  const handleConfirmSlot = () => {
+    if (!selectedSlot) {
+      setMessage("Choose an available demo time.");
+      return;
+    }
+    setStatus("loading");
+    window.setTimeout(() => {
+      setStatus("idle");
+      setStep("confirmation");
+      setMessage("Demo time held. RepSync will confirm by email.");
+      trackMarketingEvent("demo_slot_selected", {
+        page: window.location.pathname,
+        selected_slot: selectedSlot,
+      });
+    }, 650);
+  };
+
+  const selectedSlotDetails = demoSlots.find(
+    (slot) => slot.id === selectedSlot,
+  );
+  const isBusy = status !== "idle";
+
+  return (
+    <div className="rs-booking-flow">
+      <ol className="rs-booking-steps" aria-label="Demo booking progress">
+        {[
+          ["context", "Context"],
+          ["calendar", "Calendar"],
+          ["confirmation", "Confirmation"],
+        ].map(([id, label]) => (
+          <li className={step === id ? "is-active" : ""} key={id}>
+            {label}
+          </li>
+        ))}
+      </ol>
+
+      {step === "context" ? (
+        <form
+          className="rs-lead-form"
+          onSubmit={handleContextSubmit}
+          noValidate
+          aria-describedby="demo-form-status"
+        >
+          <div className="rs-form-grid">
+            <label htmlFor={firstNameId}>
+              <span>First name</span>
+              <input
+                id={firstNameId}
+                value={form.firstName}
+                onChange={(event) => update("firstName", event.target.value)}
+                autoComplete="given-name"
+                required
+              />
+            </label>
+            <label htmlFor={lastNameId}>
+              <span>Last name</span>
+              <input
+                id={lastNameId}
+                value={form.lastName}
+                onChange={(event) => update("lastName", event.target.value)}
+                autoComplete="family-name"
+                required
+              />
+            </label>
+          </div>
+          <div className="rs-form-grid">
+            <label htmlFor={emailId}>
+              <span>Email</span>
+              <input
+                id={emailId}
+                type="email"
+                value={form.email}
+                onChange={(event) => update("email", event.target.value)}
+                autoComplete="email"
+                required
+              />
+            </label>
+            <label htmlFor={businessId}>
+              <span>Business name</span>
+              <input
+                id={businessId}
+                value={form.businessName}
+                onChange={(event) => update("businessName", event.target.value)}
+                autoComplete="organization"
+              />
+            </label>
+          </div>
+          <div className="rs-form-grid">
+            <label htmlFor={modelId}>
+              <span>Coaching model</span>
+              <select
+                id={modelId}
+                value={form.coachingModel}
+                onChange={(event) =>
+                  update("coachingModel", event.target.value)
+                }
+                required
+              >
+                <option value="">Select model</option>
+                {coachingModelOptions.map(([value, label]) => (
+                  <option value={value} key={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor={clientsId}>
+              <span>Active clients</span>
+              <select
+                id={clientsId}
+                value={form.activeClientsRange}
+                onChange={(event) =>
+                  update("activeClientsRange", event.target.value)
+                }
+                required
+              >
+                <option value="">Select range</option>
+                {activeClientRangeOptions.map(([value, label]) => (
+                  <option value={value} key={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label htmlFor={reasonId}>
+            <span>Demo focus</span>
+            <select
+              id={reasonId}
+              value={form.primaryReason}
+              onChange={(event) => update("primaryReason", event.target.value)}
+              required
+            >
+              <option value="">Select focus</option>
+              {primaryGoalOptions.map(([value, label]) => (
+                <option value={value} key={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor={notesId}>
+            <span>What should we prepare?</span>
+            <textarea
+              id={notesId}
+              value={form.message}
+              onChange={(event) => update("message", event.target.value)}
+              rows={4}
+              placeholder="Current tools, client workflow, team setup, or switching questions."
+            />
+          </label>
+          <label className="rs-hidden-field" htmlFor={websiteId}>
+            Website
+            <input
+              id={websiteId}
+              value={form.website}
+              onChange={(event) => update("website", event.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </label>
+          <label className="rs-consent">
+            <input
+              id={consentId}
+              type="checkbox"
+              checked={form.consent}
+              onChange={(event) => update("consent", event.target.checked)}
+            />
+            <span>
+              I agree RepSync can contact me about this demo and have read the{" "}
+              <Link to="/privacy">privacy notice</Link>.
+            </span>
+          </label>
+          <button className="rs-button" type="submit" disabled={isBusy}>
+            {status === "submitting"
+              ? "Saving context"
+              : "Continue to calendar"}
+          </button>
+          <p
+            className="rs-form-message"
+            id="demo-form-status"
+            role="status"
+            aria-live="polite"
+          >
+            {message}
+          </p>
+        </form>
+      ) : null}
+
+      {step === "calendar" ? (
+        <div
+          className="rs-calendar-panel"
+          aria-labelledby="demo-calendar-title"
+        >
+          <div>
+            <p className="rs-eyebrow">Calendar</p>
+            <h2 id="demo-calendar-title">Choose a demo time.</h2>
+            <p>
+              This placeholder calendar shows the intended scheduling state. No
+              external scheduling service is connected in this local build.
+            </p>
+          </div>
+          <div className="rs-slot-grid">
+            {demoSlots.map((slot) => (
+              <button
+                className={selectedSlot === slot.id ? "is-selected" : ""}
+                type="button"
+                key={slot.id}
+                disabled={!slot.available || isBusy}
+                onClick={() => {
+                  setSelectedSlot(slot.id);
+                  setMessage("");
+                }}
+                aria-pressed={selectedSlot === slot.id}
+              >
+                <span>{slot.label}</span>
+                <strong>{slot.time}</strong>
+                <small>{slot.detail}</small>
+              </button>
+            ))}
+          </div>
+          <div className="rs-calendar-actions">
+            <button
+              className="rs-button rs-button--quiet"
+              type="button"
+              onClick={() => setStep("context")}
+              disabled={isBusy}
+            >
+              Edit context
+            </button>
+            <button
+              className="rs-button"
+              type="button"
+              onClick={handleConfirmSlot}
+              disabled={isBusy}
+            >
+              {status === "loading" ? "Holding time" : "Confirm demo"}
+            </button>
+          </div>
+          <p className="rs-form-message" role="status" aria-live="polite">
+            {message}
+          </p>
+        </div>
+      ) : null}
+
+      {step === "confirmation" ? (
+        <div
+          className="rs-confirmation-panel"
+          aria-labelledby="demo-confirmed-title"
+        >
+          <p className="rs-eyebrow">Demo held</p>
+          <h2 id="demo-confirmed-title">
+            Your RepSync demo is ready to confirm.
+          </h2>
+          <p>
+            We have the coaching context and selected time
+            {selectedSlotDetails
+              ? `: ${selectedSlotDetails.label} at ${selectedSlotDetails.time}`
+              : "."}
+            . A RepSync team member will confirm the calendar invite by email.
+          </p>
+          <div className="rs-confirmation-summary">
+            <span>{form.businessName || "Coaching business"}</span>
+            <span>{form.email}</span>
+            <span>{selectedSlotDetails?.detail ?? "Product walkthrough"}</span>
+          </div>
+          <Link className="rs-link-cta" to="/product">
+            Review the product chapters
+          </Link>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -1329,7 +1748,11 @@ function ProductPreviewFrame({
         <span />
         <span />
       </div>
-      <div className="rs-preview-card__screen" role="img" aria-label={group.caption}>
+      <div
+        className="rs-preview-card__screen"
+        role="img"
+        aria-label={group.caption}
+      >
         <div className="rs-preview-card__header">
           <p className="rs-eyebrow">{group.title}</p>
           <strong>{group.screenTitle}</strong>
@@ -1388,22 +1811,10 @@ function ProductEvidenceGrid() {
 
 function DifferentiationSection() {
   const differentiators = [
-    [
-      "Lead-to-client continuity",
-      "Profile to approval.",
-    ],
-    [
-      "Specific client attention",
-      "Know who needs you.",
-    ],
-    [
-      "Business and coaching delivery together",
-      "Leads and delivery.",
-    ],
-    [
-      "Controlled coaching workspaces",
-      "Scoped team access.",
-    ],
+    ["Lead-to-client continuity", "Profile to approval."],
+    ["Specific client attention", "Know who needs you."],
+    ["Business and coaching delivery together", "Leads and delivery."],
+    ["Controlled coaching workspaces", "Scoped team access."],
   ];
 
   return (
@@ -1426,7 +1837,10 @@ function DifferentiationSection() {
 
 function ClientAttentionSection() {
   return (
-    <section className="rs-section rs-attention-section" aria-labelledby="attention-title">
+    <section
+      className="rs-section rs-attention-section"
+      aria-labelledby="attention-title"
+    >
       <div className="rs-section__heading">
         <p className="rs-eyebrow">Client attention</p>
         <h2 id="attention-title">Lifecycle and attention stay separate.</h2>
@@ -1451,10 +1865,15 @@ function ClientAttentionSection() {
 
 function WorkspaceSection() {
   return (
-    <section className="rs-section rs-workspace-section" aria-labelledby="workspace-title">
+    <section
+      className="rs-section rs-workspace-section"
+      aria-labelledby="workspace-title"
+    >
       <div>
         <p className="rs-eyebrow">Small-team workspace</p>
-        <h2 id="workspace-title">Give coaches the right view of shared work.</h2>
+        <h2 id="workspace-title">
+          Give coaches the right view of shared work.
+        </h2>
       </div>
       <div className="rs-workspace-roles">
         {[
@@ -1499,22 +1918,16 @@ function TrustSection() {
 
 function SwitchingSection() {
   const steps = [
-    [
-      "Review",
-      "Map the current setup.",
-    ],
-    [
-      "Prepare",
-      "Decide what moves.",
-    ],
-    [
-      "Launch",
-      "Invite and confirm.",
-    ],
+    ["Review", "Map the current setup."],
+    ["Prepare", "Decide what moves."],
+    ["Launch", "Invite and confirm."],
   ];
 
   return (
-    <section className="rs-section rs-switch-section" aria-labelledby="switch-title">
+    <section
+      className="rs-section rs-switch-section"
+      aria-labelledby="switch-title"
+    >
       <SectionIntro
         eyebrow="Switching"
         title="Switch tools without losing coaching momentum."
@@ -1551,9 +1964,7 @@ function AvailabilitySection() {
       <div>
         <p className="rs-eyebrow">Controlled early access</p>
         <h2 id="status-title">Available for controlled early access.</h2>
-        <p>
-          Marketed capabilities come from the central availability list.
-        </p>
+        <p>Marketed capabilities come from the central availability list.</p>
         <div className="rs-availability-list">
           {features.map((feature) => (
             <span key={feature.key} data-status={feature.status}>
@@ -1572,32 +1983,35 @@ function AvailabilitySection() {
 }
 
 function HomeContent() {
-
   return (
     <>
       <section className="rs-hero" id="home" aria-labelledby="hero-title">
         <div className="rs-hero__visual" aria-hidden="true">
           <div className="rs-hero__image-panel">
+            <div className="rs-hero__visual-label">
+              <span>PT Hub</span>
+              <span>Live coaching workload</span>
+            </div>
             <ProductPreviewFrame group={getPreviewGroup("coach")} featured />
           </div>
         </div>
 
         <div className="rs-hero__content">
           <p className="rs-eyebrow">
-            Coaching software for independent trainers and small teams
+            RepSync for independent trainers and small teams
           </p>
-          <h1 id="hero-title">
-            More than workout delivery. Run the whole coaching business.
-          </h1>
+          <h1 id="hero-title">Run the whole coaching business.</h1>
           <p className="rs-hero__lede">
-            RepSync connects public profiles, applications, delivery, attention
-            cues, and the workspace that keeps the week moving.
+            More than workout delivery. RepSync connects public profiles,
+            applications, delivery, attention cues, and the workspace that keeps
+            the week moving.
           </p>
           <div className="rs-hero__actions">
-            <MarketingCta intent="primary">
-              Request early access
-            </MarketingCta>
-            <MarketingCta intent="product" className="rs-button rs-button--quiet">
+            <MarketingCta intent="primary">Book a demo</MarketingCta>
+            <MarketingCta
+              intent="product"
+              className="rs-button rs-button--quiet"
+            >
               See the product
             </MarketingCta>
             <MarketingCta intent="switch" className="rs-link-cta">
@@ -1628,15 +2042,21 @@ function HomeContent() {
         </dl>
       </section>
 
-      <section className="rs-section rs-band-secondary" aria-labelledby="problem-title">
+      <section
+        className="rs-section rs-band-secondary"
+        aria-labelledby="problem-title"
+      >
         <SectionIntro
           eyebrow="The problem"
           title="The coaching business usually lives in five places."
           body="RepSync brings public presence, applications, delivery, check-ins, and client context back into one system."
         />
-        <div className="rs-feature-grid rs-feature-grid--four">
-          {lifecycleItems.map((item) => (
+        <div className="rs-feature-grid rs-feature-grid--four rs-feature-grid--editorial">
+          {lifecycleItems.map((item, index) => (
             <article key={item.title}>
+              <span aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </span>
               <h3>{item.title}</h3>
               <p>{item.body}</p>
             </article>
@@ -1661,22 +2081,19 @@ function HomeContent() {
       <DifferentiationSection />
       <ClientAttentionSection />
 
-      <section className="rs-section rs-workflow-section rs-band-sage" id="workflow">
+      <section
+        className="rs-section rs-workflow-section rs-band-sage"
+        id="workflow"
+      >
         <div className="rs-workflow-copy">
           <p className="rs-eyebrow">Client experience</p>
           <h2>Clients should know what to do next.</h2>
-          <p>
-            Today, this week, check-in, message, progress, next touchpoint.
-          </p>
+          <p>Today, this week, check-in, message, progress, next touchpoint.</p>
         </div>
         <div className="rs-workflow-map" aria-label="RepSync coaching workflow">
           {[
             ["01", "Apply", "A prospect opens a coach profile and applies."],
-            [
-              "02",
-              "Start",
-              "The coach reviews and approves the fit.",
-            ],
+            ["02", "Start", "The coach reviews and approves the fit."],
             [
               "03",
               "Do the work",
@@ -1734,17 +2151,15 @@ function FinalCta() {
   return (
     <section className="rs-demo-section" aria-labelledby="demo-title">
       <div>
-        <p className="rs-eyebrow">Early access</p>
+        <p className="rs-eyebrow">Demo</p>
         <h2 id="demo-title">Build the coaching business clients expect.</h2>
         <p>
-          Request access and see how RepSync can present your brand, organize
-          your clients, and bring the week into focus.
+          Book a demo and see how RepSync can present your brand, organize your
+          clients, and bring the week into focus.
         </p>
       </div>
       <div className="rs-cta-actions">
-        <MarketingCta intent="primary">
-          Request early access
-        </MarketingCta>
+        <MarketingCta intent="primary">Book a demo</MarketingCta>
         <MarketingCta intent="switch" className="rs-button rs-button--quiet">
           Plan your switch
         </MarketingCta>
@@ -1755,9 +2170,7 @@ function FinalCta() {
 
 export function MarketingHomePage() {
   return (
-    <MarketingLayout
-      seo={getMarketingSeo("/")}
-    >
+    <MarketingLayout seo={getMarketingSeo("/")}>
       <HomeContent />
     </MarketingLayout>
   );
@@ -2021,7 +2434,7 @@ export function ProductPage() {
           business from the coaching.
         </p>
         <div className="rs-hero__actions">
-          <AudienceCta to="/request-access" label="Request early access" audience="product" />
+          <AudienceCta to="/book-demo" label="Book a demo" audience="product" />
           <AudienceCta
             to="/switch"
             label="Plan your switch"
@@ -2055,10 +2468,15 @@ export function ProductPage() {
         />
       ))}
 
-      <section className="rs-section rs-workspace-section" aria-labelledby="product-team-title">
+      <section
+        className="rs-section rs-workspace-section"
+        aria-labelledby="product-team-title"
+      >
         <div>
           <p className="rs-eyebrow">Small-team workspaces</p>
-          <h2 id="product-team-title">Structured for one coach. Ready for a small team.</h2>
+          <h2 id="product-team-title">
+            Structured for one coach. Ready for a small team.
+          </h2>
           <p>
             RepSync describes owner, assistant coach, viewer, assigned-client
             access, shared client communication, and workspace-scoped delivery
@@ -2096,13 +2514,16 @@ export function ForCoachesPage() {
       <StructuredData id="coach-faq" data={buildFaqData(coachFaqItems)} />
       <section className="rs-page-hero">
         <p className="rs-eyebrow">FOR COACHES</p>
-        <h1>Run a more organized coaching business without making coaching feel corporate.</h1>
+        <h1>
+          Run a more organized coaching business without making coaching feel
+          corporate.
+        </h1>
         <p className="rs-hero__lede">
           RepSync connects the work before a client joins, the weekly coaching
           relationship, and the decisions that keep clients moving.
         </p>
         <div className="rs-hero__actions">
-          <AudienceCta to="/request-access" label="Request early access" audience="coach" />
+          <AudienceCta to="/book-demo" label="Book a demo" audience="coach" />
           <AudienceCta
             to="/switch"
             label="Plan your switch"
@@ -2162,9 +2583,11 @@ export function ForCoachesPage() {
         <div className="rs-feature-grid">
           {coachFeatures
             .filter((feature) =>
-              ["program_delivery", "nutrition_habits_checkins", "messaging"].includes(
-                feature.id,
-              ),
+              [
+                "program_delivery",
+                "nutrition_habits_checkins",
+                "messaging",
+              ].includes(feature.id),
             )
             .map((feature) => (
               <FeatureCard feature={feature} key={feature.id} />
@@ -2196,7 +2619,10 @@ export function ForCoachesPage() {
 
       <section className="rs-section rs-fit-section">
         <div>
-          <SectionIntro eyebrow="Fit checklist" title="RepSync is a good fit when..." />
+          <SectionIntro
+            eyebrow="Fit checklist"
+            title="RepSync is a good fit when..."
+          />
           <ul>
             {coachFitItems.map((item) => (
               <li key={item}>{item}</li>
@@ -2257,7 +2683,11 @@ export function ForClientsPage() {
           messages without searching through several different apps.
         </p>
         <div className="rs-hero__actions">
-          <AudienceCta to="/login" label="I have an invitation" audience="client" />
+          <AudienceCta
+            to="/login"
+            label="I have an invitation"
+            audience="client"
+          />
           <AudienceCta
             to="/login"
             label="Log in"
@@ -2323,7 +2753,11 @@ export function ForClientsPage() {
           body="RepSync describes in-app messages and recurring check-ins only; it does not claim attachments, video calls, WhatsApp sync, or automatic email sequences."
         />
         <div className="rs-feature-grid">
-          {["Upcoming or available check-ins", "Coach messages", "Progress and wearable context"].map((title) => (
+          {[
+            "Upcoming or available check-ins",
+            "Coach messages",
+            "Progress and wearable context",
+          ].map((title) => (
             <article key={title}>
               <h3>{title}</h3>
               <p>
@@ -2406,7 +2840,11 @@ function availabilityText(status: MarketingFeature["availability"]) {
   return "Not currently available";
 }
 
-function AvailabilityPill({ status }: { status: MarketingFeature["availability"] }) {
+function AvailabilityPill({
+  status,
+}: {
+  status: MarketingFeature["availability"];
+}) {
   return (
     <span className="rs-product-availability" data-status={status}>
       {availabilityText(status)}
@@ -2463,8 +2901,15 @@ function ProductCategorySection({
   }, [category]);
 
   return (
-    <section className="rs-section rs-product-category" aria-labelledby={`${category}-title`}>
-      <SectionIntro eyebrow={copy.eyebrow} title={copy.title} body={copy.body} />
+    <section
+      className="rs-section rs-product-category"
+      aria-labelledby={`${category}-title`}
+    >
+      <SectionIntro
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        body={copy.body}
+      />
       <div className="rs-product-category__grid">
         <div className="rs-feature-grid">
           {features.map((feature) => (
@@ -2487,11 +2932,18 @@ function ProductOperatingModel() {
     ["Check in", "Check-in", "Recurring review cadence"],
     ["Identify attention", "Attention signal", "Reason for coach review"],
     ["Retain", "Lifecycle", "Relationship state and next action"],
-    ["Review performance", "PT Hub", "Leads, clients, and workspace visibility"],
+    [
+      "Review performance",
+      "PT Hub",
+      "Leads, clients, and workspace visibility",
+    ],
   ];
 
   return (
-    <section className="rs-section rs-operating-model" aria-labelledby="product-operating-model-title">
+    <section
+      className="rs-section rs-operating-model"
+      aria-labelledby="product-operating-model-title"
+    >
       <SectionIntro
         eyebrow="Product operating model"
         title="One relationship, seven connected moments."
@@ -2522,7 +2974,10 @@ function VerifiedAvailabilitySection() {
   }, []);
 
   return (
-    <section className="rs-section rs-verified-availability" aria-labelledby="verified-availability-title">
+    <section
+      className="rs-section rs-verified-availability"
+      aria-labelledby="verified-availability-title"
+    >
       <SectionIntro
         eyebrow="Verified availability"
         title="Marketed capabilities come from one central configuration."
@@ -2554,7 +3009,10 @@ function VerifiedAvailabilitySection() {
 function ProductFaqSection() {
   return (
     <section className="rs-section">
-      <SectionIntro eyebrow="FAQ" title="Product questions, answered plainly." />
+      <SectionIntro
+        eyebrow="FAQ"
+        title="Product questions, answered plainly."
+      />
       <div className="rs-faq-list">
         {productFaqItems.map((item) => (
           <details key={item.q}>
@@ -2570,7 +3028,10 @@ function ProductFaqSection() {
 function CoachFaqSection() {
   return (
     <section className="rs-section">
-      <SectionIntro eyebrow="FAQ" title="Questions coaches ask before switching." />
+      <SectionIntro
+        eyebrow="FAQ"
+        title="Questions coaches ask before switching."
+      />
       <div className="rs-faq-list">
         {coachFaqItems.map((item) => (
           <details key={item.q}>
@@ -2850,7 +3311,10 @@ function MigrationMatrixSection() {
 function SwitchFaqSection() {
   return (
     <section className="rs-section">
-      <SectionIntro eyebrow="Switching FAQ" title="Honest answers before the move." />
+      <SectionIntro
+        eyebrow="Switching FAQ"
+        title="Honest answers before the move."
+      />
       <div className="rs-faq-list">
         {switchFaqItems.map((item) => (
           <details key={item.q}>
@@ -2863,13 +3327,7 @@ function SwitchFaqSection() {
   );
 }
 
-function AvailabilityBadge({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: string;
-}) {
+function AvailabilityBadge({ label, tone }: { label: string; tone: string }) {
   return (
     <span className="rs-availability-badge" data-tone={tone}>
       {label}
@@ -2906,21 +3364,23 @@ function ComparisonCategorySection({
           <div className="rs-comparison-table__row" role="row" key={feature.id}>
             <span role="cell">
               <strong>{feature.label}</strong>
-              {feature.description ? <small>{feature.description}</small> : null}
+              {feature.description ? (
+                <small>{feature.description}</small>
+              ) : null}
             </span>
             <span role="cell">
               <AvailabilityBadge
                 label={availabilityLabels[feature.repSync.availability]}
                 tone={feature.repSync.availability}
               />
-              {feature.repSync.note ? <small>{feature.repSync.note}</small> : null}
+              {feature.repSync.note ? (
+                <small>{feature.repSync.note}</small>
+              ) : null}
             </span>
             <span role="cell">
               <AvailabilityBadge
                 label={
-                  competitorAvailabilityLabels[
-                    feature.competitor.availability
-                  ]
+                  competitorAvailabilityLabels[feature.competitor.availability]
                 }
                 tone={feature.competitor.availability}
               />
@@ -2957,9 +3417,7 @@ export function SwitchPage() {
   }, []);
 
   return (
-    <MarketingLayout
-      seo={getMarketingSeo("/switch")}
-    >
+    <MarketingLayout seo={getMarketingSeo("/switch")}>
       <StructuredData
         id="switch-breadcrumbs"
         data={buildBreadcrumbData([
@@ -3024,7 +3482,10 @@ export function SwitchPage() {
         </div>
       </section>
 
-      <section className="rs-section rs-workflow-section" aria-labelledby="switch-process-title">
+      <section
+        className="rs-section rs-workflow-section"
+        aria-labelledby="switch-process-title"
+      >
         <div className="rs-workflow-copy">
           <p className="rs-eyebrow">Switching process</p>
           <h2 id="switch-process-title">Move deliberately.</h2>
@@ -3066,20 +3527,14 @@ export function SwitchPage() {
 }
 
 export function CompareTrueCoachPage() {
-  return (
-    <ComparePage competitor="truecoach" />
-  );
+  return <ComparePage competitor="truecoach" />;
 }
 
 export function CompareFitrPage() {
   return <ComparePage competitor="fitr" />;
 }
 
-function ComparePage({
-  competitor,
-}: {
-  competitor: ComparisonCompetitor;
-}) {
+function ComparePage({ competitor }: { competitor: ComparisonCompetitor }) {
   const comparison = getComparisonPageData(competitor);
   const categories = getComparisonCategories(comparison.features);
 
@@ -3091,9 +3546,7 @@ function ComparePage({
   }, [comparison.canonicalPath, comparison.competitor]);
 
   return (
-    <MarketingLayout
-      seo={getMarketingSeo(comparison.canonicalPath)}
-    >
+    <MarketingLayout seo={getMarketingSeo(comparison.canonicalPath)}>
       <StructuredData
         id={`${comparison.competitor}-breadcrumbs`}
         data={buildBreadcrumbData([
@@ -3112,9 +3565,7 @@ function ComparePage({
       <section className="rs-page-hero">
         <p className="rs-eyebrow">{comparison.heroEyebrow}</p>
         <h1>{comparison.heroTitle}</h1>
-        <p className="rs-hero__lede">
-          {comparison.heroBody}
-        </p>
+        <p className="rs-hero__lede">{comparison.heroBody}</p>
         <p className="rs-last-reviewed">
           Last reviewed: {comparison.lastReviewed}
         </p>
@@ -3150,7 +3601,10 @@ function ComparePage({
         </div>
       </section>
 
-      <section className="rs-section" aria-labelledby="comparison-summary-title">
+      <section
+        className="rs-section"
+        aria-labelledby="comparison-summary-title"
+      >
         <SectionIntro
           eyebrow="Short comparison summary"
           title={`How to read this ${comparison.competitorName} comparison.`}
@@ -3183,7 +3637,10 @@ function ComparePage({
         <p className="rs-trademark-note">{comparison.trademarkDisclaimer}</p>
       </section>
 
-      <section className="rs-section" aria-labelledby="comparison-emphasis-title">
+      <section
+        className="rs-section"
+        aria-labelledby="comparison-emphasis-title"
+      >
         <SectionIntro
           eyebrow="What RepSync emphasizes"
           title="Lead continuity, delivery clarity, and client attention."
@@ -3207,7 +3664,10 @@ function ComparePage({
       </section>
 
       <section className="rs-section">
-        <SectionIntro eyebrow="FAQ" title="Platform-specific switching questions." />
+        <SectionIntro
+          eyebrow="FAQ"
+          title="Platform-specific switching questions."
+        />
         <div className="rs-faq-list">
           {comparison.faqs.map((item) => (
             <details key={item.q}>
@@ -3244,17 +3704,17 @@ function ComparePage({
           </Link>
           <Link
             className="rs-button rs-button--quiet"
-            to="/request-access"
+            to="/book-demo"
             onClick={() =>
               trackMarketingEvent("comparison_cta_clicked", {
                 page: comparison.canonicalPath,
                 platform: comparison.competitor,
-                cta_label: "Request early access",
-                cta_destination: "/request-access",
+                cta_label: "Book a demo",
+                cta_destination: "/book-demo",
               })
             }
           >
-            Request early access
+            Book a demo
           </Link>
         </div>
       </section>
@@ -3287,14 +3747,20 @@ export function FaqPage() {
       <section className="rs-section">
         <div className="rs-faq-groups">
           {publicFaqGroups.map((group) => (
-            <section key={group.category} aria-labelledby={`faq-${group.category}`}>
+            <section
+              key={group.category}
+              aria-labelledby={`faq-${group.category}`}
+            >
               <div className="rs-section__heading">
                 <p className="rs-eyebrow">{group.category}</p>
                 <h2 id={`faq-${group.category}`}>{group.category}</h2>
               </div>
               <div className="rs-faq-list">
                 {group.items.map((item) => (
-                  <details id={item.q.toLowerCase().replace(/[^a-z0-9]+/g, "-")} key={item.q}>
+                  <details
+                    id={item.q.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
+                    key={item.q}
+                  >
                     <summary>{item.q}</summary>
                     <p>{item.a}</p>
                     {item.href ? (
@@ -3420,25 +3886,26 @@ export function SecurityPage() {
   );
 }
 
-export function RequestAccessPage() {
+export function BookDemoPage() {
   return (
-    <MarketingLayout
-      seo={getMarketingSeo("/request-access")}
-    >
+    <MarketingLayout seo={getMarketingSeo("/book-demo")}>
       <section className="rs-form-page">
         <div>
-          <p className="rs-eyebrow">Request early access</p>
-          <h1>Tell us how your coaching business works.</h1>
+          <p className="rs-eyebrow">Book a demo</p>
+          <h1>See the coaching journey from inquiry to check-in.</h1>
           <p className="rs-hero__lede">
-            RepSync is best presented honestly: a premium operating system for
-            coaches who want public discovery, client delivery, and retention
-            attention in one place.
+            Share your coaching context, choose an available placeholder time,
+            and RepSync will confirm the calendar invite by email.
           </p>
         </div>
-        <LeadForm mode="request_access" />
+        <BookDemoFlow />
       </section>
     </MarketingLayout>
   );
+}
+
+export function RequestAccessPage() {
+  return <BookDemoPage />;
 }
 
 export function PrivacyPage() {
@@ -3483,13 +3950,15 @@ export function PrivacyPage() {
         <p className="rs-eyebrow">Privacy</p>
         <h1>Privacy Policy</h1>
         <p className="rs-hero__lede">
-          This is a conservative draft privacy notice for RepSync public and
-          app surfaces. It needs human legal review before production launch.
+          This is a conservative draft privacy notice for RepSync public and app
+          surfaces. It needs human legal review before production launch.
         </p>
         <p className="rs-last-reviewed">
           Effective date: {legalSiteConfig.effectiveDate}. Version:{" "}
           {legalSiteConfig.version}. Legal approval:{" "}
-          {legalReviewRequired ? "Required before production launch" : "Approved"}
+          {legalReviewRequired
+            ? "Required before production launch"
+            : "Approved"}
         </p>
       </section>
       <section className="rs-section">
@@ -3502,7 +3971,10 @@ export function PrivacyPage() {
           ))}
         </div>
         <div className="rs-section-actions">
-          <a className="rs-link-cta" href={`mailto:${legalSiteConfig.privacyEmail}`}>
+          <a
+            className="rs-link-cta"
+            href={`mailto:${legalSiteConfig.privacyEmail}`}
+          >
             Contact privacy
           </a>
           <Link className="rs-link-cta" to="/cookies">
@@ -3562,7 +4034,9 @@ export function TermsPage() {
         <p className="rs-last-reviewed">
           Effective date: {legalSiteConfig.effectiveDate}. Version:{" "}
           {legalSiteConfig.version}. Legal approval:{" "}
-          {legalReviewRequired ? "Required before production launch" : "Approved"}
+          {legalReviewRequired
+            ? "Required before production launch"
+            : "Approved"}
         </p>
       </section>
       <section className="rs-section">
@@ -3575,7 +4049,10 @@ export function TermsPage() {
           ))}
         </div>
         <div className="rs-section-actions">
-          <a className="rs-link-cta" href={`mailto:${legalSiteConfig.contactEmail}`}>
+          <a
+            className="rs-link-cta"
+            href={`mailto:${legalSiteConfig.contactEmail}`}
+          >
             Contact support
           </a>
           <Link className="rs-link-cta" to="/privacy">
@@ -3612,7 +4089,11 @@ export function CookiesPage() {
           accept it.
         </p>
         <div className="rs-hero__actions">
-          <button className="rs-button" type="button" onClick={openCookiePreferences}>
+          <button
+            className="rs-button"
+            type="button"
+            onClick={openCookiePreferences}
+          >
             Manage preferences
           </button>
         </div>
@@ -3628,7 +4109,10 @@ export function CookiesPage() {
           ))}
         </div>
         <div className="rs-section-actions">
-          <a className="rs-link-cta" href={`mailto:${legalSiteConfig.privacyEmail}`}>
+          <a
+            className="rs-link-cta"
+            href={`mailto:${legalSiteConfig.privacyEmail}`}
+          >
             Contact privacy
           </a>
           <Link className="rs-link-cta" to="/privacy">
@@ -3668,9 +4152,9 @@ export function MarketingNotFoundPage() {
 }
 
 export function PricingPage() {
-  return <RequestAccessPage />;
+  return <BookDemoPage />;
 }
 
 export function DemoPage() {
-  return <RequestAccessPage />;
+  return <BookDemoPage />;
 }

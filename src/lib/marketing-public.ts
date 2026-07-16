@@ -197,7 +197,7 @@ export function getMarketingCtaDestination(
   if (intent === "primary") {
     return marketingSignupMode === "direct_signup"
       ? "/signup/pt"
-      : "/request-access";
+      : "/book-demo";
   }
   if (intent === "switch") return "/switch";
   if (intent === "product") return "/product";
@@ -333,7 +333,8 @@ export const productPreviewGroups: ProductPreviewGroup[] = [
     title: "PT Hub",
     caption: "Marketing demonstration preview of PT Hub operating visibility.",
     screenTitle: "PT Hub operating view",
-    screenSubtitle: "Leads, active clients, overdue check-ins, attention, and workspace performance",
+    screenSubtitle:
+      "Leads, active clients, overdue check-ins, attention, and workspace performance",
     facts: [
       "New leads visible",
       "Active clients grouped by workspace",
@@ -366,9 +367,11 @@ export const productPreviewGroups: ProductPreviewGroup[] = [
   {
     key: "public_profile",
     title: "Profile",
-    caption: "Marketing demonstration preview of a published public coach profile.",
+    caption:
+      "Marketing demonstration preview of a published public coach profile.",
     screenTitle: "Public coach profile",
-    screenSubtitle: "Published profile, coaching modes, specialties, and application CTA",
+    screenSubtitle:
+      "Published profile, coaching modes, specialties, and application CTA",
     facts: [
       "Profile: Published",
       "Mode: Online and in-person",
@@ -508,7 +511,8 @@ export const productPreviewGroups: ProductPreviewGroup[] = [
     title: "Program",
     caption: "Marketing demonstration preview of assigned training work.",
     screenTitle: "Program assignment",
-    screenSubtitle: "Reusable templates stay distinct from assigned client work",
+    screenSubtitle:
+      "Reusable templates stay distinct from assigned client work",
     facts: [
       "Template: Strength base",
       "Assignment: Client-specific block",
@@ -611,7 +615,8 @@ export const productPreviewGroups: ProductPreviewGroup[] = [
   {
     key: "client_attention",
     title: "Attention",
-    caption: "Marketing demonstration preview of lifecycle and attention states.",
+    caption:
+      "Marketing demonstration preview of lifecycle and attention states.",
     screenTitle: "Client attention",
     screenSubtitle: "Lifecycle stays separate from coach attention reasons",
     facts: [
@@ -648,7 +653,8 @@ export const productPreviewGroups: ProductPreviewGroup[] = [
     title: "Client home",
     caption: "Marketing demonstration preview of the private client home.",
     screenTitle: "Today in coaching",
-    screenSubtitle: "Workout, nutrition, habits, check-in, messages, and progress",
+    screenSubtitle:
+      "Workout, nutrition, habits, check-in, messages, and progress",
     facts: [
       "Workout: Lower strength",
       "Nutrition: Protein target",
@@ -681,7 +687,8 @@ export const productPreviewGroups: ProductPreviewGroup[] = [
   {
     key: "team_permissions",
     title: "Team",
-    caption: "Marketing demonstration preview of workspace roles and assignment scope.",
+    caption:
+      "Marketing demonstration preview of workspace roles and assignment scope.",
     screenTitle: "Workspace team access",
     screenSubtitle: "Owner, assistant coach, viewer, and assigned-client scope",
     facts: [
@@ -719,7 +726,8 @@ export const marketingProductFeatures: MarketingFeature[] = [
   {
     id: "public_profile",
     title: "Public coach profile",
-    shortDescription: "Publish coaching information and an application path from PT Hub.",
+    shortDescription:
+      "Publish coaching information and an application path from PT Hub.",
     longDescription:
       "Coaches can present services, specialties, coaching modes, and a public application route without exposing private workspace data.",
     availability: marketingFeatureAvailability.publicCoachProfiles.status,
@@ -731,7 +739,8 @@ export const marketingProductFeatures: MarketingFeature[] = [
   {
     id: "application_lead",
     title: "Application to lead workflow",
-    shortDescription: "Turn profile interest into a lead record, conversation, and decision.",
+    shortDescription:
+      "Turn profile interest into a lead record, conversation, and decision.",
     longDescription:
       "RepSync supports public application submission, lead review, lead messaging, approval or decline, and workspace assignment after approval.",
     availability: marketingFeatureAvailability.leadWorkflow.status,
@@ -742,7 +751,8 @@ export const marketingProductFeatures: MarketingFeature[] = [
   {
     id: "onboarding_setup",
     title: "Client onboarding setup",
-    shortDescription: "Configure the client's starting setup from one connected workspace.",
+    shortDescription:
+      "Configure the client's starting setup from one connected workspace.",
     longDescription:
       "Accepted clients can be invited into a workspace, then set up with program, nutrition, habits, and check-in cadence. RepSync does not market every step as fully automated.",
     availability: marketingFeatureAvailability.coachClientAccounts.status,
@@ -753,7 +763,8 @@ export const marketingProductFeatures: MarketingFeature[] = [
   {
     id: "program_delivery",
     title: "Programs and assigned work",
-    shortDescription: "Create coaching work and attach current assignments to clients.",
+    shortDescription:
+      "Create coaching work and attach current assignments to clients.",
     longDescription:
       "Reusable templates and assigned client content are presented as distinct concepts so marketing does not imply unsupported automatic updates to existing assignments.",
     availability: marketingFeatureAvailability.programs.status,
@@ -775,7 +786,8 @@ export const marketingProductFeatures: MarketingFeature[] = [
   {
     id: "messaging",
     title: "Lead and client messaging",
-    shortDescription: "Keep conversations connected to the right coaching relationship.",
+    shortDescription:
+      "Keep conversations connected to the right coaching relationship.",
     longDescription:
       "RepSync markets in-app lead and client messaging only. Attachments, voice notes, video calls, WhatsApp sync, email sequences, and push notifications are not marketed as available.",
     availability: marketingFeatureAvailability.messaging.status,
@@ -785,7 +797,8 @@ export const marketingProductFeatures: MarketingFeature[] = [
   {
     id: "client_attention",
     title: "Client lifecycle and attention",
-    shortDescription: "See who needs attention and why without turning risk into a lifecycle state.",
+    shortDescription:
+      "See who needs attention and why without turning risk into a lifecycle state.",
     longDescription:
       "Lifecycle values are invited, onboarding, active, paused, completed, and churned. Attention reasons include missed latest check-in, no recent reply, adherence trending down, client inactivity, overdue action, and manual coach flag.",
     availability: marketingFeatureAvailability.clientAttentionSignals.status,
@@ -796,7 +809,8 @@ export const marketingProductFeatures: MarketingFeature[] = [
   {
     id: "pt_hub_analytics",
     title: "PT Hub visibility",
-    shortDescription: "Review leads, active clients, overdue work, at-risk clients, and workspace performance.",
+    shortDescription:
+      "Review leads, active clients, overdue work, at-risk clients, and workspace performance.",
     longDescription:
       "PT Hub analytics and operational views help coaches review the business and the coaching workload together without invented public performance claims.",
     availability: marketingFeatureAvailability.ptHubAnalytics.status,
@@ -818,7 +832,8 @@ export const marketingProductFeatures: MarketingFeature[] = [
   {
     id: "team_permissions",
     title: "Small-team workspaces",
-    shortDescription: "Structure owner, assistant coach, viewer, and assigned-client access.",
+    shortDescription:
+      "Structure owner, assistant coach, viewer, and assigned-client access.",
     longDescription:
       "Workspace roles and assigned-client scope support small-team collaboration without marketing enterprise permission builders or unlimited staffing models.",
     availability: marketingFeatureAvailability.teamRolesPermissions.status,
@@ -829,7 +844,8 @@ export const marketingProductFeatures: MarketingFeature[] = [
   {
     id: "whoop_context",
     title: "WHOOP context",
-    shortDescription: "Wearable context is marked coming soon rather than sold as broad wearable support.",
+    shortDescription:
+      "Wearable context is marked coming soon rather than sold as broad wearable support.",
     availability: marketingFeatureAvailability.whoopData.status,
     audiences: ["coach", "client"],
     category: "client_experience",
@@ -838,7 +854,8 @@ export const marketingProductFeatures: MarketingFeature[] = [
   {
     id: "public_marketplace",
     title: "Coach marketplace",
-    shortDescription: "Published profiles can appear in a public coach directory while the marketplace remains beta-positioned.",
+    shortDescription:
+      "Published profiles can appear in a public coach directory while the marketplace remains beta-positioned.",
     availability: marketingFeatureAvailability.publicMarketplace.status,
     audiences: ["coach", "client"],
     category: "acquire",
@@ -945,7 +962,8 @@ export const trustClaims: TrustClaim[] = [
     description:
       "Formal security certification claims should not appear until human-approved evidence exists.",
     status: "not_applicable",
-    evidenceReference: "No SOC 2, ISO 27001, HIPAA, or penetration-test evidence in repo.",
+    evidenceReference:
+      "No SOC 2, ISO 27001, HIPAA, or penetration-test evidence in repo.",
     public: false,
   },
 ];
@@ -1099,8 +1117,8 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "Is RepSync available now?",
-        a: "RepSync is presented as controlled early access. Request access so the team can qualify fit and explain current availability.",
-        href: "/request-access",
+        a: "RepSync is presented as controlled early access. Book a demo so the team can qualify fit and explain current availability.",
+        href: "/book-demo",
       },
       {
         q: "How does early access work?",
@@ -1464,7 +1482,10 @@ const fitrEvidence: Record<string, ComparisonEvidence> = {
 
 const repSyncComparisonBase: Array<
   Omit<ComparisonFeature, "competitor"> & {
-    competitorByPage: Record<ComparisonCompetitor, ComparisonFeature["competitor"]>;
+    competitorByPage: Record<
+      ComparisonCompetitor,
+      ComparisonFeature["competitor"]
+    >;
   }
 > = [
   {
@@ -1745,7 +1766,7 @@ export const comparisonPages: Record<ComparisonCompetitor, ComparisonPageData> =
         "Compare how each product fits your coaching operation, not just the workout builder.",
       primaryCta: "Plan your switch from TrueCoach",
       secondaryCta: "Explore RepSync",
-      lastReviewed: "2026-07-12",
+      lastReviewed: "2026-07-16",
       trademarkDisclaimer,
       summary: [
         "TrueCoach has official materials for workout delivery, nutrition, habits, messaging, public profiles, payments, wearables, and team accounts.",
@@ -1789,7 +1810,7 @@ export const comparisonPages: Record<ComparisonCompetitor, ComparisonPageData> =
         "Compare the coaching workflow, client journey, and business operating model.",
       primaryCta: "Plan your switch from FITR",
       secondaryCta: "Explore RepSync",
-      lastReviewed: "2026-07-12",
+      lastReviewed: "2026-07-16",
       trademarkDisclaimer,
       summary: [
         "FITR official materials describe programming, client management, communication, progress tracking, marketing/storefront features, payments, teams, mobile apps, and program types.",
@@ -1894,11 +1915,17 @@ export const marketingRouteMetadata: Record<string, MarketingRouteMetadata> = {
       "Learn how RepSync separates public profile information from private coaching data with authentication, workspace roles, client boundaries, and invite checks.",
     canonicalPath: "/security",
   },
-  "/request-access": {
-    title: "Request Early Access | RepSync",
+  "/book-demo": {
+    title: "Book a Demo | RepSync",
     description:
-      "Request early access to RepSync for your coaching business or small coaching team.",
-    canonicalPath: "/request-access",
+      "Book a RepSync demo for your coaching business or small coaching team.",
+    canonicalPath: "/book-demo",
+  },
+  "/request-access": {
+    title: "Book a Demo | RepSync",
+    description:
+      "Book a RepSync demo for your coaching business or small coaching team.",
+    canonicalPath: "/book-demo",
   },
   "/privacy": {
     title: "RepSync Privacy Notice",
