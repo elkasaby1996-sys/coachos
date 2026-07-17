@@ -3,8 +3,14 @@ import { expect, test } from "@playwright/test";
 const publicRoutes = [
   ["/", "More than workout delivery. Run the whole coaching business."],
   ["/product", "One system for the whole coaching relationship."],
-  ["/for-coaches", "Run a more organized coaching business without making coaching feel corporate."],
-  ["/for-clients", "Everything your coach needs you to see, in one clear place."],
+  [
+    "/for-coaches",
+    "Run a more organized coaching business without making coaching feel corporate.",
+  ],
+  [
+    "/for-clients",
+    "Everything your coach needs you to see, in one clear place.",
+  ],
   ["/switch", "Move the coaching business, not just the workout library."],
   ["/compare/truecoach", "Considering a move from TrueCoach?"],
   ["/compare/fitr", "Considering a move from FITR?"],
@@ -32,40 +38,43 @@ test.describe("public marketing site", () => {
     });
   }
 
-  test("shows readable homepage and product preview evidence", async ({
+  test("tells the coach-week story with product and human evidence", async ({
     page,
   }) => {
     await page.goto("/");
 
     await expect(
       page.getByRole("heading", {
-        name: "Built for the work around the workout.",
+        name: "Know the workload before it gets loud.",
       }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "Lifecycle and attention stay separate.",
+        name: "Give attention where it changes the week.",
       }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "Give coaches the right view of shared work.",
+        name: "Keep the conversation close to the work.",
       }),
     ).toBeVisible();
-    await expect(page.getByText("Programs, nutrition, habits").first()).toBeVisible();
-    await expect(page.getByText("Lifecycle: Active").first()).toBeVisible();
-    await expect(page.getByText("Attention: At risk").first()).toBeVisible();
-    await expect(page.getByText("Lifecycle: At risk")).toHaveCount(0);
+    await expect(page.getByText("Sample week").first()).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: "A coach's week" }),
+    ).toBeVisible();
+    await expect(page.getByText("32 sessions").first()).toBeVisible();
+    await expect(page.getByText("Maya L.").first()).toBeVisible();
+    await expect(page.locator(".rs-week-photo img")).toHaveCount(4);
   });
 
-  test("routes primary CTAs to early access and switching paths", async ({
+  test("routes primary CTAs to demo, product, and switching paths", async ({
     page,
   }) => {
     await page.goto("/");
 
     await expect(
-      page.getByRole("link", { name: "Request early access" }).first(),
-    ).toHaveAttribute("href", "/request-access");
+      page.getByRole("link", { name: "Book a demo" }).first(),
+    ).toHaveAttribute("href", "/book-demo");
     await expect(
       page.getByRole("link", { name: "Plan your switch" }).first(),
     ).toHaveAttribute("href", "/switch");
@@ -86,7 +95,9 @@ test.describe("public marketing site", () => {
     await page.goto("/switch");
     await expect(page.getByLabel("Switching timeline")).toBeVisible();
     await expect(page.getByLabel("Team size")).toBeVisible();
-    await expect(page.getByText("Migration needs", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Migration needs", { exact: true }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Plan your switch" }).click();
     await expect(page.getByRole("status")).toContainText(
       "Enter your first name.",
@@ -113,15 +124,15 @@ test.describe("public marketing site", () => {
     ).toBeVisible();
     await page.getByRole("button", { name: "Reject optional" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.evaluate(() => localStorage.getItem("repsync_analytics_consent"))).resolves.toBe(
-      "rejected",
-    );
+    await expect(
+      page.evaluate(() => localStorage.getItem("repsync_analytics_consent")),
+    ).resolves.toBe("rejected");
 
     await page.getByRole("button", { name: "Manage cookies" }).click();
     await page.getByRole("button", { name: "Accept analytics" }).click();
-    await expect(page.evaluate(() => localStorage.getItem("repsync_analytics_consent"))).resolves.toBe(
-      "accepted",
-    );
+    await expect(
+      page.evaluate(() => localStorage.getItem("repsync_analytics_consent")),
+    ).resolves.toBe("accepted");
   });
 
   test("renders complete trust, legal, FAQ, and cookie launch content", async ({
@@ -133,13 +144,19 @@ test.describe("public marketing site", () => {
     await expect(page.getByText("SOC 2")).toBeVisible();
 
     await page.goto("/faq");
-    await expect(page.getByRole("heading", { name: "Security and privacy" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Security and privacy" }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Reject optional" }).click();
     await page.getByText("How is access controlled?").click();
-    await expect(page.getByText("Private areas require authenticated accounts")).toBeVisible();
+    await expect(
+      page.getByText("Private areas require authenticated accounts"),
+    ).toBeVisible();
 
     await page.goto("/privacy");
-    await expect(page.getByText("Legal approval: Required before production launch")).toBeVisible();
+    await expect(
+      page.getByText("Legal approval: Required before production launch"),
+    ).toBeVisible();
     await expect(page.getByText("Marketing-form information")).toBeVisible();
 
     await page.goto("/terms");
@@ -147,8 +164,12 @@ test.describe("public marketing site", () => {
     await expect(page.getByText("migration completeness")).toBeVisible();
 
     await page.goto("/cookies");
-    await expect(page.getByRole("heading", { name: "Essential" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Essential" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Analytics", exact: true }),
+    ).toBeVisible();
   });
 
   test("renders complete product, coach, and client marketing evidence", async ({
@@ -156,10 +177,14 @@ test.describe("public marketing site", () => {
   }) => {
     await page.goto("/product");
     await expect(
-      page.getByRole("heading", { name: "One relationship, seven connected moments." }),
+      page.getByRole("heading", {
+        name: "One relationship, seven connected moments.",
+      }),
     ).toBeVisible();
     await expect(page.getByText("Public coach profile").first()).toBeVisible();
-    await expect(page.getByText("Not currently available").first()).toBeVisible();
+    await expect(
+      page.getByText("Not currently available").first(),
+    ).toBeVisible();
     await expect(page.getByText("Lifecycle: Active").first()).toBeVisible();
     await expect(page.getByText("Lifecycle: At risk")).toHaveCount(0);
 
@@ -167,12 +192,20 @@ test.describe("public marketing site", () => {
     await expect(
       page.getByRole("heading", { name: "RepSync is a good fit when..." }),
     ).toBeVisible();
-    await expect(page.getByText("You need automated billing immediately.")).toBeVisible();
+    await expect(
+      page.getByText("You need automated billing immediately."),
+    ).toBeVisible();
 
     await page.goto("/for-clients");
-    await expect(page.getByRole("link", { name: "I have an invitation" }).first()).toHaveAttribute("href", "/login");
-    await expect(page.getByRole("link", { name: "Log in" }).first()).toHaveAttribute("href", "/login");
-    await expect(page.getByRole("link", { name: "I am looking for a coach" }).first()).toHaveAttribute("href", "/coaches");
+    await expect(
+      page.getByRole("link", { name: "I have an invitation" }).first(),
+    ).toHaveAttribute("href", "/login");
+    await expect(
+      page.getByRole("link", { name: "Log in" }).first(),
+    ).toHaveAttribute("href", "/login");
+    await expect(
+      page.getByRole("link", { name: "I am looking for a coach" }).first(),
+    ).toHaveAttribute("href", "/coaches");
   });
 
   test("keeps product and audience pages responsive at key widths", async ({

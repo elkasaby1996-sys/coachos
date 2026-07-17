@@ -668,7 +668,9 @@ function MarketingLayout({
   ] as const;
 
   return (
-    <div className={`marketing-home-page ${menuOpen ? "menu-open" : ""}`}>
+    <div
+      className={`marketing-home-page ${location.pathname === "/" ? "marketing-home-page--week-story" : ""} ${menuOpen ? "menu-open" : ""}`}
+    >
       <StructuredData
         id="organization"
         data={{
@@ -1982,31 +1984,80 @@ function AvailabilitySection() {
   );
 }
 
+const weekNavigation = [
+  ["Mon", "See the week", "#monday"],
+  ["Tue", "Find the signal", "#tuesday"],
+  ["Wed", "Deliver the work", "#wednesday"],
+  ["Thu", "Stay connected", "#thursday"],
+  ["Fri", "Close the loop", "#friday"],
+] as const;
+
 function HomeContent() {
+  const [activeDay, setActiveDay] = useState("monday");
+
+  useEffect(() => {
+    const chapters = weekNavigation
+      .map(([, , href]) => document.querySelector<HTMLElement>(href))
+      .filter((chapter): chapter is HTMLElement => Boolean(chapter));
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const current = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (current?.target.id) setActiveDay(current.target.id);
+      },
+      {
+        rootMargin: "-24% 0px -58% 0px",
+        threshold: [0.05, 0.2, 0.45],
+      },
+    );
+
+    chapters.forEach((chapter) => observer.observe(chapter));
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <>
-      <section className="rs-hero" id="home" aria-labelledby="hero-title">
-        <div className="rs-hero__visual" aria-hidden="true">
-          <div className="rs-hero__image-panel">
-            <div className="rs-hero__visual-label">
-              <span>PT Hub</span>
-              <span>Live coaching workload</span>
-            </div>
-            <ProductPreviewFrame group={getPreviewGroup("coach")} featured />
+    <div className="rs-week-home">
+      <nav className="rs-sync-rail-nav" aria-label="A coach's week">
+        <div className="rs-sync-rail-nav__inner">
+          <span className="rs-sync-rail-nav__identity" aria-hidden="true">
+            <strong>Week 01</strong>
+            <small>One calm rhythm</small>
+          </span>
+          <div className="rs-sync-rail-nav__track">
+            {weekNavigation.map(([day, label, href], index) => {
+              const dayId = href.slice(1);
+              const isActive = activeDay === dayId;
+
+              return (
+                <a
+                  className={isActive ? "is-active" : undefined}
+                  href={href}
+                  aria-current={isActive ? "step" : undefined}
+                  key={day}
+                >
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <strong>{day}</strong>
+                  <small>{label}</small>
+                </a>
+              );
+            })}
           </div>
         </div>
+      </nav>
 
-        <div className="rs-hero__content">
-          <p className="rs-eyebrow">
-            RepSync for independent trainers and small teams
+      <section className="rs-week-hero" id="home" aria-labelledby="hero-title">
+        <div className="rs-week-hero__copy">
+          <p className="rs-eyebrow">RepSync for independent trainers</p>
+          <h1 id="hero-title">
+            More than workout delivery. Run the whole coaching business.
+          </h1>
+          <p className="rs-week-hero__lede">
+            See what needs attention, what is moving, and where each client
+            needs you next.
           </p>
-          <h1 id="hero-title">Run the whole coaching business.</h1>
-          <p className="rs-hero__lede">
-            More than workout delivery. RepSync connects public profiles,
-            applications, delivery, attention cues, and the workspace that keeps
-            the week moving.
-          </p>
-          <div className="rs-hero__actions">
+          <div className="rs-week-hero__actions">
             <MarketingCta intent="primary">Book a demo</MarketingCta>
             <MarketingCta
               intent="product"
@@ -2014,117 +2065,317 @@ function HomeContent() {
             >
               See the product
             </MarketingCta>
-            <MarketingCta intent="switch" className="rs-link-cta">
-              Switching from another coaching tool?
+          </div>
+        </div>
+
+        <figure className="rs-week-hero__media">
+          <img
+            src="/assets/coach-week-hero.webp"
+            alt="Personal trainer preparing for a week of client sessions"
+          />
+          <figcaption>
+            <span>Monday / 07:42</span>
+            The work is already moving. RepSync puts it in order.
+          </figcaption>
+          <div
+            className="rs-week-hero__workload"
+            aria-label="Illustrative weekly workload"
+          >
+            <div>
+              <span>Sample week</span>
+              <strong>32 sessions</strong>
+            </div>
+            <div>
+              <span>Needs attention</span>
+              <strong>4 clients</strong>
+            </div>
+            <div>
+              <span>New applications</span>
+              <strong>3 ready</strong>
+            </div>
+          </div>
+        </figure>
+      </section>
+
+      <section
+        className="rs-week-chapter rs-week-chapter--monday"
+        id="monday"
+        aria-labelledby="monday-title"
+      >
+        <span className="rs-anchor-target" id="why" aria-hidden="true" />
+        <header className="rs-week-chapter__header">
+          <p className="rs-week-day">
+            <span>01</span> Monday
+          </p>
+          <div>
+            <p className="rs-eyebrow">See the week</p>
+            <h2 id="monday-title">Know the workload before it gets loud.</h2>
+            <p>
+              Leads, sessions, check-ins, and follow-ups arrive in one view, so
+              the week starts informed.
+            </p>
+          </div>
+        </header>
+        <div className="rs-week-proof rs-week-proof--product">
+          <ProductPreviewFrame group={getPreviewGroup("coach")} featured />
+          <aside
+            className="rs-week-proof__notes"
+            aria-label="Monday priorities"
+          >
+            {[
+              ["First", "Review four clients who need attention."],
+              ["Next", "Confirm this week's sessions and check-ins."],
+              ["Then", "Respond to three ready applications."],
+            ].map(([label, detail]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <p>{detail}</p>
+              </div>
+            ))}
+          </aside>
+        </div>
+      </section>
+
+      <section
+        className="rs-week-chapter rs-week-chapter--tuesday"
+        id="tuesday"
+        aria-labelledby="tuesday-title"
+      >
+        <header className="rs-week-chapter__header">
+          <p className="rs-week-day">
+            <span>02</span> Tuesday
+          </p>
+          <div>
+            <p className="rs-eyebrow">Find the signal</p>
+            <h2 id="tuesday-title">
+              Give attention where it changes the week.
+            </h2>
+            <p>
+              Client status and coach attention stay separate, making the next
+              useful action clear.
+            </p>
+          </div>
+        </header>
+        <div className="rs-week-attention">
+          <div className="rs-week-attention__list">
+            {[
+              ["Maya L.", "Check-in complete", "Review progress"],
+              ["Jordan R.", "Session missed", "Send a message"],
+              ["Amira S.", "Onboarding", "Confirm intake"],
+            ].map(([name, signal, action], index) => (
+              <article key={name}>
+                <span
+                  className="rs-week-signal"
+                  data-tone={index === 1 ? "clay" : "forest"}
+                />
+                <div>
+                  <h3>{name}</h3>
+                  <p>{signal}</p>
+                </div>
+                <strong>{action}</strong>
+              </article>
+            ))}
+          </div>
+          <figure className="rs-week-photo rs-week-photo--plan">
+            <img
+              src="/assets/coach-client-plan.webp"
+              alt="Coach and client reviewing the next phase of a training plan"
+              loading="lazy"
+            />
+            <figcaption>Context stays beside the conversation.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section
+        className="rs-week-chapter rs-week-chapter--wednesday"
+        id="wednesday"
+        aria-labelledby="wednesday-title"
+      >
+        <header className="rs-week-chapter__header">
+          <p className="rs-week-day">
+            <span>03</span> Wednesday
+          </p>
+          <div>
+            <p className="rs-eyebrow">Deliver the work</p>
+            <h2 id="wednesday-title">
+              Make the next step obvious to every client.
+            </h2>
+            <p>
+              Training, habits, nutrition, and check-ins arrive as one coherent
+              week.
+            </p>
+          </div>
+        </header>
+        <div className="rs-week-delivery">
+          <figure className="rs-week-photo rs-week-photo--delivery">
+            <img
+              src="/assets/coach-delivery.webp"
+              alt="Personal trainer guiding a client through a floor exercise"
+              loading="lazy"
+            />
+            <figcaption>Human coaching stays at the centre.</figcaption>
+          </figure>
+          <div className="rs-week-delivery__panel">
+            <ol className="rs-week-delivery__steps">
+              {[
+                ["Today", "Lower strength", "4 movements · 42 min"],
+                ["Daily", "Protein target", "Logged with the rest of the plan"],
+                ["Friday", "Weekly check-in", "Five focused questions"],
+              ].map(([when, title, detail]) => (
+                <li key={title}>
+                  <span>{when}</span>
+                  <div>
+                    <h3>{title}</h3>
+                    <p>{detail}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <MarketingCta intent="primary" className="rs-week-inline-cta">
+              Book a demo for your week
             </MarketingCta>
           </div>
-          <div className="rs-hero__signals" aria-label="RepSync product focus">
-            <span>Public coach profiles</span>
-            <span>Applications</span>
-            <span>PT Hub</span>
-            <span>Client portal</span>
+        </div>
+      </section>
+
+      <section
+        className="rs-week-chapter rs-week-chapter--thursday"
+        id="thursday"
+        aria-labelledby="thursday-title"
+      >
+        <header className="rs-week-chapter__header">
+          <p className="rs-week-day">
+            <span>04</span> Thursday
+          </p>
+          <div>
+            <p className="rs-eyebrow">Stay connected</p>
+            <h2 id="thursday-title">
+              Keep the conversation close to the work.
+            </h2>
+            <p>
+              Sessions, check-ins, and personal bests keep their context.
+              Follow-up starts informed.
+            </p>
+          </div>
+        </header>
+        <div className="rs-week-handoff">
+          <div
+            className="rs-week-handoff__thread"
+            aria-label="Client follow-up example"
+          >
+            <p>
+              <strong>Maya completed her check-in</strong>
+              <span>09:18</span>
+            </p>
+            <blockquote>
+              Energy is better this week. Friday's session felt strong.
+            </blockquote>
+            <div>
+              <span>Coach note</span>
+              <p>
+                Progress lower strength next week and keep Friday available.
+              </p>
+            </div>
+          </div>
+          <figure className="rs-week-photo rs-week-photo--review">
+            <img
+              src="/assets/coach-week-review.webp"
+              alt="Coach discussing progress with a client after training"
+              loading="lazy"
+            />
+            <figcaption>
+              Better context makes follow-up feel personal.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section
+        className="rs-week-chapter rs-week-chapter--friday"
+        id="friday"
+        aria-labelledby="friday-title"
+      >
+        <header className="rs-week-chapter__header">
+          <p className="rs-week-day">
+            <span>05</span> Friday
+          </p>
+          <div>
+            <p className="rs-eyebrow">Close the loop</p>
+            <h2 id="friday-title">
+              Finish with a business you can trust next week.
+            </h2>
+            <p>
+              Clear ownership and client-scoped access keep the team useful
+              without blurring the coaching relationship.
+            </p>
+          </div>
+        </header>
+        <div className="rs-week-friday">
+          <p className="rs-week-friday__statement">
+            Less time rebuilding context. More time being fully present with the
+            people you coach.
+          </p>
+          <figure className="rs-week-photo rs-week-photo--win">
+            <img
+              src="/assets/coach-client-win.webp"
+              alt="Coach and client celebrating progress after a gym session"
+              loading="lazy"
+            />
+            <figcaption>Friday / progress recognised in the moment.</figcaption>
+          </figure>
+          <dl>
+            <div>
+              <dt>Owner</dt>
+              <dd>Business settings, clients, leads, and team access.</dd>
+            </div>
+            <div>
+              <dt>Assistant coach</dt>
+              <dd>Only the client work they are responsible for.</dd>
+            </div>
+            <div>
+              <dt>Client</dt>
+              <dd>Their plan, progress, messages, and next action.</dd>
+            </div>
+          </dl>
+          <div className="rs-week-friday__links">
+            <Link to="/security">How RepSync handles access</Link>
+            <Link to="/switch">Plan a supported switch</Link>
           </div>
         </div>
       </section>
 
-      <section className="rs-intro-strip" aria-label="RepSync lifecycle">
-        <p>
-          From public profile to weekly delivery, RepSync keeps the coaching
-          relationship in one operating layer.
-        </p>
-        <dl>
-          {productPillars.map((item) => (
-            <div key={item.title}>
-              <dt>{item.title}</dt>
-              <dd>{item.body}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-
-      <section
-        className="rs-section rs-band-secondary"
-        aria-labelledby="problem-title"
-      >
-        <SectionIntro
-          eyebrow="The problem"
-          title="The coaching business usually lives in five places."
-          body="RepSync brings public presence, applications, delivery, check-ins, and client context back into one system."
-        />
-        <div className="rs-feature-grid rs-feature-grid--four rs-feature-grid--editorial">
-          {lifecycleItems.map((item, index) => (
-            <article key={item.title}>
-              <span aria-hidden="true">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section
-        className="rs-section rs-product-section rs-band-white"
-        id="product"
-        aria-labelledby="product-title"
-      >
-        <SectionIntro
-          eyebrow="Product journey"
-          title="Acquire, coach, and retain from the same operating layer."
-          body="Public demand, coach workflow, and client delivery stay connected."
-        />
-
-        <ProductEvidenceGrid />
-      </section>
-
-      <DifferentiationSection />
-      <ClientAttentionSection />
-
-      <section
-        className="rs-section rs-workflow-section rs-band-sage"
-        id="workflow"
-      >
-        <div className="rs-workflow-copy">
-          <p className="rs-eyebrow">Client experience</p>
-          <h2>Clients should know what to do next.</h2>
-          <p>Today, this week, check-in, message, progress, next touchpoint.</p>
-        </div>
-        <div className="rs-workflow-map" aria-label="RepSync coaching workflow">
-          {[
-            ["01", "Apply", "A prospect opens a coach profile and applies."],
-            ["02", "Start", "The coach reviews and approves the fit."],
-            [
-              "03",
-              "Do the work",
-              "The client sees programs, habits, nutrition, and check-ins.",
-            ],
-            [
-              "04",
-              "Stay connected",
-              "The coach tracks attention and follow-up.",
-            ],
-          ].map(([number, title, detail], index) => (
-            <div
-              className={`rs-workflow-step ${index === 0 ? "is-active" : ""}`}
-              key={number}
+      <section className="rs-week-close" aria-labelledby="week-close-title">
+        <div className="rs-week-close__copy">
+          <p className="rs-eyebrow">Next week</p>
+          <h2 id="week-close-title">Make the next week easier to coach.</h2>
+          <p>
+            See how RepSync puts your business, clients, and next actions into
+            one calm rhythm.
+          </p>
+          <div className="rs-week-close__actions">
+            <MarketingCta intent="primary">Book a demo</MarketingCta>
+            <MarketingCta
+              intent="switch"
+              className="rs-button rs-button--quiet"
             >
-              <span>{number}</span>
-              <h3>{title}</h3>
-              <p>{detail}</p>
-            </div>
+              Plan your switch
+            </MarketingCta>
+          </div>
+        </div>
+        <div className="rs-week-close__faq">
+          {faqs.slice(0, 2).map((item) => (
+            <details key={item.q}>
+              <summary>{item.q}</summary>
+              <p>{item.a}</p>
+            </details>
           ))}
+          <Link className="rs-link-cta" to="/faq">
+            Read all FAQs
+          </Link>
         </div>
       </section>
-
-      <WorkspaceSection />
-      <TrustSection />
-      <SwitchingSection />
-      <AvailabilitySection />
-
-      <FaqPreview />
-      <FinalCta />
-    </>
+    </div>
   );
 }
 

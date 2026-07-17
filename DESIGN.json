@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "name": "Human Precision",
+  "version": "1.0.0",
+  "status": "approved",
+  "source": "DESIGN.md",
+  "updated": "2026-07-18",
+  "identity": {
+    "narrative": "A coach's week",
+    "motif": "Sync Rail",
+    "attributes": ["precise", "editorial", "calm", "human"]
+  },
+  "assets": {
+    "photographyDirectory": "public/assets",
+    "fonts": ["Instrument Sans", "Source Serif 4"]
+  },
+  "implementation": {
+    "homepageRootClass": "marketing-home-page--week-story",
+    "stylesheet": "src/styles/marketing-home.css",
+    "component": "src/pages/public/marketing-content.tsx"
+  }
+}
