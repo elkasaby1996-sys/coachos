@@ -852,8 +852,8 @@ const productReferenceNav = [
   ["#onboard", "02 Onboard", <UserRound />],
   ["#deliver", "03 Deliver", <Dumbbell />],
   ["#communicate", "04 Communicate", <MessageSquare />],
-  ["#checkin", "05 Check in", <ClipboardCheck />],
-  ["#attention", "06 Identify Attention", <AlertTriangle />],
+  ["#checkin", "05 Check-ins", <ClipboardCheck />],
+  ["#attention", "06 Client Attention", <AlertTriangle />],
   ["#operate", "07 Operate", <Settings />],
   ["#experience", "08 Client Experience", <UserRound />],
   ["#team", "09 Team Access", <UsersRound />],
@@ -886,13 +886,15 @@ function ProductReferenceHero() {
   return (
     <section className="rs-product-ref-hero">
       <SyncRail />
-      <h1>
-        Architecting the <em>Perfect</em> Coaching Workflow.
-      </h1>
+      <p className="rs-product-ref-label">The product</p>
+      <h1>The Whole Coaching Relationship, Connected.</h1>
       <p>
-        RepSync is the operational backbone for elite personal trainers. From
-        the first inquiry to scaling a high-performance team, every touchpoint
-        is designed for precision, tactility, and human-first engagement.
+        RepSync connects the journey from public profile and application through
+        onboarding, coaching delivery, check-ins, communication, client
+        attention, and team access.
+      </p>
+      <p className="rs-product-ref-hero__note">
+        One operating model from first inquiry to ongoing coaching.
       </p>
     </section>
   );
@@ -926,17 +928,16 @@ function ProductReferenceAcquire() {
     <section className="rs-product-ref-section rs-product-ref-section--split" id="acquire">
       <div>
         <p className="rs-product-ref-label">01 Acquire</p>
-        <h2>Convert Visitors into Committed Clients.</h2>
+        <h2>Turn Interest into a Coaching Relationship.</h2>
         <p>
-          Your brand deserves more than a generic link-in-bio. Deploy
-          professional public profiles with integrated application pipelines
-          that qualify leads before they ever reach your inbox.
+          Publish a professional coach profile, collect applications, keep the
+          conversation attached to the lead, and decide who moves forward.
         </p>
         <ul className="rs-product-ref-checks">
           {[
-            "Customizable intake questionnaires",
-            "Automated qualification scoring",
-            "Branded application landing pages",
+            "Public coach profile and application",
+            "Lead context and conversations",
+            "Approval into the coaching workflow",
           ].map((item) => (
             <li key={item}>
               <CheckCircle2 size={16} aria-hidden="true" />
@@ -946,32 +947,46 @@ function ProductReferenceAcquire() {
         </ul>
       </div>
       <ProductMediaPlaceholder
-        title="Application pipeline UI"
-        body="Replace with a high-fidelity product screenshot showing a coach public profile, application intake, and qualified lead pipeline."
+        title="Public profile and lead pipeline"
+        body="Show the published profile, application context, lead record, and next decision in one focused product view."
       />
     </section>
   );
 }
 
 function ProductReferenceOnboard() {
+  const steps = [
+    ["Assign", "Place the client in the appropriate coaching workspace."],
+    ["Invite", "Give the client a secure route into RepSync."],
+    ["Configure", "Set the initial coaching plan and recurring workflow."],
+  ] as const;
+
   return (
     <section className="rs-product-ref-section rs-product-ref-section--center" id="onboard">
       <span className="rs-product-ref-vertical-rail" aria-hidden="true" />
       <p className="rs-product-ref-label">02 Onboard</p>
-      <h2>Frictionless Welcome.</h2>
+      <h2>Start Each Client with the Right Context.</h2>
       <p>
-        Automate contracts, payments, and diagnostic tests so your clients start
-        winning on day one.
+        Move an approved lead into the right workspace, invite the client, and
+        configure the starting plan, habits, and check-in cadence.
       </p>
+      <div className="rs-product-ref-mini-grid">
+        {steps.map(([title, body]) => (
+          <article key={title}>
+            <h3>{title}</h3>
+            <p>{body}</p>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
 
 function ProductReferenceDeliver() {
   const cards = [
-    [<Dumbbell />, "Smart Programming", "Library of 1,500+ HD movements with the ability to upload your own proprietary technique videos."],
-    [<Utensils />, "Dynamic Nutrition", "Calorie and macro targets that can be auto-adjusted based on workout volume or progress milestones."],
-    [<Network />, "Habit Stacking", "Configure daily reminders for non-negotiables like hydration, steps, and sleep quality."],
+    [<Dumbbell />, "Program delivery", "Assign a program, keep the client's current schedule clear, and retain the version delivered to that client."],
+    [<Utensils />, "Nutrition guidance", "Set coach-provided guidance and targets alongside the rest of the coaching plan."],
+    [<Network />, "Habit tracking", "Track the repeatable actions that support progress outside individual training sessions."],
   ] as const;
 
   return (
@@ -979,10 +994,10 @@ function ProductReferenceDeliver() {
       <span className="rs-product-ref-vertical-rail" aria-hidden="true" />
       <div className="rs-product-ref-section__center-copy">
         <p className="rs-product-ref-label">03 Deliver</p>
-        <h2>Program Design at Scale.</h2>
+        <h2>Deliver the Plan in One Coaching Workspace.</h2>
         <p>
-          Build complex training hierarchies, nutrition targets, and habit
-          triggers in seconds, not hours.
+          Keep training, nutrition guidance, and habits connected to the client
+          relationship instead of distributing them across separate tools.
         </p>
       </div>
       <div className="rs-product-ref-card-grid">
@@ -1003,15 +1018,19 @@ function ProductReferenceCommunicate() {
     <section className="rs-product-ref-section rs-product-ref-section--split" id="communicate">
       <div>
         <p className="rs-product-ref-label">04 Communicate</p>
-        <h2>Contextual Chat.</h2>
+        <h2>Keep Every Conversation in Context.</h2>
         <p>
-          Message clients with workout and nutrition data directly in the
-          thread. No more context switching.
+          Message clients from the same workspace that holds their plan,
+          check-ins, and coaching history.
+        </p>
+        <p className="rs-product-ref-section-note">
+          The conversation stays attached to the coaching relationship it
+          supports.
         </p>
       </div>
       <ProductMediaPlaceholder
-        title="Contextual chat UI"
-        body="Replace with a product screenshot showing messages beside workout, nutrition, and check-in context."
+        title="Coach-client messaging"
+        body="Show the current thread, unread state, and client relationship context without exposing private data."
         variant="chat"
       />
     </section>
@@ -1019,14 +1038,24 @@ function ProductReferenceCommunicate() {
 }
 
 function ProductReferenceCheckin() {
+  const stages = ["Opens", "Submitted", "Reviewed", "Follow-up"];
+
   return (
     <section className="rs-product-ref-section rs-product-ref-checkin" id="checkin">
-      <p className="rs-product-ref-label">05 Check in</p>
-      <h2>Deep Diagnostics.</h2>
+      <p className="rs-product-ref-label">05 Check-ins</p>
+      <h2>Structured Check-ins. Clear Follow-up.</h2>
       <p>
-        Weekly check-ins that aggregate biofeedback, performance, and subjective
-        well-being into a single readable scorecard.
+        Run check-ins on a recurring cadence, review the response, add feedback,
+        and see what still requires follow-up.
       </p>
+      <div className="rs-product-ref-stage-row">
+        {stages.map((stage, index) => (
+          <article key={stage}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <strong>{stage}</strong>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -1035,33 +1064,54 @@ function ProductReferenceAttention() {
   return (
     <section className="rs-product-ref-attention" id="attention">
       <div>
-        <p className="rs-product-ref-label">06 Identify Attention</p>
-        <h2>Predict Churn Before it Happens.</h2>
+        <p className="rs-product-ref-label">06 Client Attention</p>
+        <h2>See Who Needs Attention and Why.</h2>
         <p>
-          Do not wait for a client to stop paying. RepSync's proprietary
-          Attention Signals highlight missed check-ins and inactivity before
-          they become cancellations.
+          RepSync separates lifecycle from attention, so an active client can
+          still require review when a specific signal changes.
         </p>
         <div className="rs-product-ref-alerts">
           <article>
             <AlertTriangle size={18} aria-hidden="true" />
             <div>
-              <h3>Missed Check-in (2d ago)</h3>
-              <p>Sarah M. requires immediate outreach to maintain momentum.</p>
+              <h3>Lifecycle</h3>
+              <p>Active</p>
             </div>
           </article>
           <article>
             <AlertTriangle size={18} aria-hidden="true" />
             <div>
-              <h3>At Risk (Low Engagement)</h3>
-              <p>David K.'s app sessions have dropped 60% over the last week.</p>
+              <h3>Attention</h3>
+              <p>At risk</p>
+            </div>
+          </article>
+          <article>
+            <AlertTriangle size={18} aria-hidden="true" />
+            <div>
+              <h3>Reason</h3>
+              <p>Missed latest check-in</p>
+            </div>
+          </article>
+          <article>
+            <AlertTriangle size={18} aria-hidden="true" />
+            <div>
+              <h3>Signal</h3>
+              <p>No recent reply</p>
+            </div>
+          </article>
+          <article>
+            <AlertTriangle size={18} aria-hidden="true" />
+            <div>
+              <h3>Next step</h3>
+              <p>Review the conversation</p>
             </div>
           </article>
         </div>
       </div>
       <div className="rs-product-ref-pulse">
-        <span>Pulse Engine</span>
-        <strong>Tactile Intelligence.</strong>
+        <span>Specific signals.</span>
+        <strong>Human decisions.</strong>
+        <p>RepSync surfaces the reason. The coach decides what happens next.</p>
       </div>
     </section>
   );
@@ -1071,10 +1121,14 @@ function ProductReferenceOperate() {
   return (
     <section className="rs-product-ref-section rs-product-ref-section--center" id="operate">
       <p className="rs-product-ref-label">07 Operate</p>
-      <h2>Command Center.</h2>
+      <h2>See the Work That Needs a Decision.</h2>
       <p>
-        Revenue tracking, lead pipelines, and administrative workflows in one
-        unified view.
+        Review leads, active clients, overdue check-ins, client attention,
+        lifecycle, and workspace activity from PT Hub.
+      </p>
+      <p className="rs-product-ref-section-note">
+        The purpose is not another dashboard. It is a clearer starting point for
+        the next action.
       </p>
     </section>
   );
@@ -1084,23 +1138,23 @@ function ProductReferenceClientExperience() {
   return (
     <section className="rs-product-ref-section rs-product-ref-experience" id="experience">
       <ProductMediaPlaceholder
-        title="Client today view"
-        body="Replace with a real mobile app screenshot showing workout logged, daily plan, nutrition, check-in, and message context."
+        title="Client home"
+        body="Use a mobile client screenshot showing today's priorities and recent coaching context."
         variant="phone"
       />
       <div>
         <p className="rs-product-ref-label">08 Client Experience</p>
-        <h2>A Dashboard They Will Actually Use.</h2>
+        <h2>A Client Home Built Around What Comes Next.</h2>
         <p>
-          Engagement is the byproduct of clarity. The Today View strips away the
-          noise, focusing your clients on the three things that matter:
-          movement, fuel, and communication.
+          Clients see today's workout, nutrition guidance, habits, next
+          check-in, messages, and progress without the operational layer behind
+          it.
         </p>
         <article className="rs-product-ref-note">
-          <h3>Tactile Interactions</h3>
+          <h3>Focused by design</h3>
           <p>
-            Every completion, every check-in, and every message feels
-            intentional through haptic-inspired UI and smooth transitions.
+            The coach keeps the operational context. The client gets a clear
+            next action.
           </p>
         </article>
       </div>
@@ -1109,14 +1163,35 @@ function ProductReferenceClientExperience() {
 }
 
 function ProductReferenceTeamAccess() {
+  const roles = ["Owner", "Coach", "Assistant", "Viewer"];
+  const controls = [
+    "Workspace membership",
+    "Assigned-client visibility",
+    "Shared coaching communication",
+    "Protected owner actions",
+  ];
+
   return (
     <section className="rs-product-ref-section rs-product-ref-team" id="team">
       <p className="rs-product-ref-label">09 Team Access</p>
-      <h2>Scale Together.</h2>
+      <h2>Bring in Support Without Giving Away Control.</h2>
       <p>
-        Add assistant coaches, nutritionists, and VAs with granular permission
-        levels. Scale your impact without losing the human touch.
+        Add workspace members with role-based access, keep client visibility
+        tied to responsibility, and protect owner-level actions.
       </p>
+      <div className="rs-product-ref-role-row">
+        {roles.map((role) => (
+          <span key={role}>{role}</span>
+        ))}
+      </div>
+      <ul className="rs-product-ref-checks">
+        {controls.map((item) => (
+          <li key={item}>
+            <CheckCircle2 size={16} aria-hidden="true" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -1125,11 +1200,19 @@ function ProductReferenceCta() {
   return (
     <section className="rs-product-ref-cta">
       <SyncRail />
-      <h2>Ready to sync your workflow?</h2>
+      <p className="rs-product-ref-label">Final CTA</p>
+      <h2>See How RepSync Fits Your Coaching Operation.</h2>
+      <p>
+        Book a focused walkthrough based on your current platform, client
+        volume, team structure, and weekly coaching workflow.
+      </p>
       <div>
         <Link to="/book-demo">Book a demo</Link>
-        <Link to="/for-coaches">Talk to a Coach</Link>
+        <Link to="/for-coaches">Explore for coaches</Link>
       </div>
+      <p className="rs-product-ref-cta__note">
+        Focused on your operation, not a generic feature tour.
+      </p>
     </section>
   );
 }
