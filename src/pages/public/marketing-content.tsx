@@ -2,7 +2,6 @@ import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Activity,
   AlertTriangle,
   ArrowRight,
   BarChart3,
@@ -174,10 +173,7 @@ function usePublicSeo({ title, description, robots = "index,follow" }: SeoConfig
 function BrandMark() {
   return (
     <Link className="rs-stitch-brand" to="/" aria-label="RepSync home">
-      <span className="rs-stitch-brand__mark" aria-hidden="true">
-        <Activity size={19} strokeWidth={2.2} />
-      </span>
-      <span>RepSync</span>
+      <span>R E P S Y N C</span>
     </Link>
   );
 }
@@ -203,13 +199,55 @@ function SyncRail({ orientation = "h" }: { orientation?: "h" | "v" }) {
   return <span className={`rs-sync-rail rs-sync-rail--${orientation}`} aria-hidden="true" />;
 }
 
-function PublicLayout({ children }: { children: ReactNode }) {
+function PublicHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  return (
+    <header className="rs-stitch-header">
+      <BrandMark />
+      <button
+        className="rs-stitch-menu"
+        type="button"
+        aria-controls="rs-stitch-nav"
+        aria-expanded={menuOpen}
+        onClick={() => setMenuOpen((open) => !open)}
+      >
+        <span />
+        <span />
+        <span className="sr-only">Toggle navigation</span>
+      </button>
+      <nav
+        className={`rs-stitch-nav ${menuOpen ? "is-open" : ""}`}
+        id="rs-stitch-nav"
+        aria-label="Public navigation"
+      >
+        {navItems.map((item) => (
+          <Link
+            key={item.to}
+            className={location.pathname === item.to ? "is-active" : ""}
+            to={item.to}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+      <div className={`rs-stitch-actions ${menuOpen ? "is-open" : ""}`}>
+        <SiteLink to="/login" variant="text">
+          Log in
+        </SiteLink>
+        <SiteLink to="/book-demo">Book a demo</SiteLink>
+      </div>
+    </header>
+  );
+}
+
+function PublicLayout({ children }: { children: ReactNode }) {
+  const location = useLocation();
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -237,41 +275,7 @@ function PublicLayout({ children }: { children: ReactNode }) {
       <a className="rs-stitch-skip" href="#main">
         Skip to content
       </a>
-      <header className="rs-stitch-header">
-        <BrandMark />
-        <button
-          className="rs-stitch-menu"
-          type="button"
-          aria-controls="rs-stitch-nav"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          <span />
-          <span />
-          <span className="sr-only">Toggle navigation</span>
-        </button>
-        <nav
-          className={`rs-stitch-nav ${menuOpen ? "is-open" : ""}`}
-          id="rs-stitch-nav"
-          aria-label="Public navigation"
-        >
-          {navItems.map((item) => (
-            <Link
-              key={item.to}
-              className={location.pathname === item.to ? "is-active" : ""}
-              to={item.to}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <div className={`rs-stitch-actions ${menuOpen ? "is-open" : ""}`}>
-          <SiteLink to="/login" variant="text">
-            Log in
-          </SiteLink>
-          <SiteLink to="/book-demo">Book a demo</SiteLink>
-        </div>
-      </header>
+      <PublicHeader />
       <main id="main">{children}</main>
       <footer className="rs-stitch-footer">
         <div>
@@ -681,10 +685,97 @@ export function ProductPage() {
       "An architectural walkthrough of the RepSync ecosystem, from client acquisition to automated revenue tracking for high-performance coaches.",
   });
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const revealTargets = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".rs-product-reference__main > section, .rs-product-ref-media, .rs-product-ref-card-grid article",
+      ),
+    );
+
+    if (reduceMotion) {
+      revealTargets.forEach((target) => target.classList.add("is-visible"));
+      return;
+    }
+
+    revealTargets.forEach((target) => target.classList.add("rs-product-ref-reveal"));
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      { rootMargin: "0px 0px -12% 0px", threshold: 0.08 },
+    );
+
+    revealTargets.forEach((target) => observer.observe(target));
+
+    const navItems = Array.from(
+      document.querySelectorAll<HTMLAnchorElement>(".rs-product-ref-side nav a"),
+    );
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>(".rs-product-reference__main section[id]"),
+    );
+
+    const scrollToHash = (
+      hash: string,
+      behavior: ScrollBehavior = reduceMotion ? "auto" : "smooth",
+    ) => {
+      const target = document.querySelector<HTMLElement>(hash);
+      if (!target) return;
+      target.scrollIntoView({ block: "start", behavior });
+    };
+
+    const updateActiveNav = () => {
+      const scrollMarker = window.scrollY + window.innerHeight * 0.34;
+      let current = "acquire";
+
+      sections.forEach((section) => {
+        if (section.offsetTop <= scrollMarker) {
+          current = section.id;
+        }
+      });
+
+      navItems.forEach((item) => {
+        item.classList.toggle("is-active", item.hash === `#${current}`);
+      });
+    };
+
+    const navClickHandlers = navItems.map((item) => {
+      const handleClick = (event: MouseEvent) => {
+        const hash = item.hash;
+        if (!hash) return;
+        event.preventDefault();
+        window.history.pushState(null, "", hash);
+        scrollToHash(hash);
+      };
+
+      item.addEventListener("click", handleClick);
+      return () => item.removeEventListener("click", handleClick);
+    });
+
+    updateActiveNav();
+    window.addEventListener("scroll", updateActiveNav, { passive: true });
+
+    if (window.location.hash) {
+      requestAnimationFrame(() => scrollToHash(window.location.hash, "auto"));
+    }
+
+    return () => {
+      observer.disconnect();
+      navClickHandlers.forEach((removeClickHandler) => removeClickHandler());
+      window.removeEventListener("scroll", updateActiveNav);
+    };
+  }, []);
+
   return (
-    <div className="rs-product-deep rs-product-reference">
-      <ProductIntro />
-      <ProductReferenceTopNav />
+    <div className="rs-stitch-site rs-product-deep rs-product-reference">
+      <PublicHeader />
       <div className="rs-product-reference__shell">
         <ProductReferenceSideNav />
         <main className="rs-product-reference__main" id="main">
@@ -767,27 +858,6 @@ const productReferenceNav = [
   ["#experience", "08 Client Experience", <UserRound />],
   ["#team", "09 Team Access", <UsersRound />],
 ] as const;
-
-function ProductReferenceTopNav() {
-  return (
-    <header className="rs-product-ref-top">
-      <div className="rs-product-ref-top__brand">
-        <Link to="/">RepSync</Link>
-        <nav aria-label="Product navigation">
-          <Link to="/product">Platform</Link>
-          <Link className="is-active" to="/product">
-            Experience
-          </Link>
-          <Link to="/pricing">Pricing</Link>
-        </nav>
-      </div>
-      <div className="rs-product-ref-top__actions">
-        <Link to="/for-coaches">For Coaches</Link>
-        <Link to="/book-demo">Book a demo</Link>
-      </div>
-    </header>
-  );
-}
 
 function ProductReferenceSideNav() {
   return (
@@ -1465,61 +1535,455 @@ export function ForCoachesPage() {
       "Run the business around your coaching with RepSync lead continuity, delivery workflows, attention signals, and team workspaces.",
   });
 
+  const audienceTypes = [
+    "Independent online coach",
+    "Hybrid coach",
+    "In-person coach",
+    "Coach with an assistant",
+    "Small coaching team",
+  ];
+
+  const leadJourney = [
+    "Public profile",
+    "Application",
+    "Conversation",
+    "Approval",
+    "Workspace",
+    "Onboarding",
+    "Active coaching",
+  ];
+
+  const deliveryBlocks = [
+    {
+      title: "Assign the plan without losing the client-specific version.",
+      body: "Build reusable coaching material, assign the appropriate plan, and keep the client's delivered work clear as coaching continues.",
+      icon: <Dumbbell />,
+    },
+    {
+      title: "Keep the actions outside training visible.",
+      body: "Nutrition guidance and habits remain part of the same coaching relationship rather than living in separate documents or message threads.",
+      icon: <Utensils />,
+    },
+    {
+      title: "Make reflection and follow-up part of delivery.",
+      body: "Run recurring check-ins, review the response, and continue the conversation with the client context still visible.",
+      icon: <ClipboardCheck />,
+    },
+  ];
+
+  const attentionSignals = [
+    "Missed latest check-in",
+    "No recent reply",
+    "Adherence trending down",
+    "Client inactivity",
+    "Overdue action",
+    "Manual coach flag",
+  ];
+
+  const visibilityItems = [
+    "New leads",
+    "Lead progress",
+    "Response activity",
+    "Active clients",
+    "Overdue check-ins",
+    "Clients requiring attention",
+    "Lifecycle distribution",
+    "Workspace activity",
+  ];
+
+  const strongFit = [
+    "Leads currently sit outside the coaching platform.",
+    "Public profile and application activity are disconnected from delivery.",
+    "Check-ins are central to the coaching service.",
+    "Client context is spread across several tools.",
+    "Specific client-attention reasons are useful.",
+    "An assistant or small team needs controlled access.",
+    "The client experience should better reflect the coaching brand.",
+    "Business visibility and delivery currently live in separate systems.",
+  ];
+
+  const weakerFit = [
+    "Automated billing is required immediately.",
+    "A native iOS or Android application is mandatory.",
+    "Fully automated migration of all historical data is required.",
+    "Enterprise-scale permission complexity is required.",
+    "A large public coach marketplace is required today.",
+    "Program commerce is the primary business model.",
+  ];
+
   return (
     <PublicLayout>
       <section className="rs-stitch-page-hero">
         <div className="rs-stitch-reveal is-visible">
-          <p className="rs-stitch-kicker">For coaches</p>
+          <p className="rs-stitch-kicker">
+            For independent coaches and small coaching teams
+          </p>
           <h1>Run the business around your coaching.</h1>
           <p>
-            Manage the journey from first inquiry to active coaching without
-            splitting leads, delivery, check-ins, communication, and client
-            attention.
+            RepSync connects the journey from public profile and application to
+            active delivery, recurring check-ins, communication, and client
+            attention without splitting the relationship across separate systems.
           </p>
           <div className="rs-stitch-hero__actions">
             <SiteLink to="/book-demo">Book a demo</SiteLink>
-            <SiteLink to="/switch" variant="secondary">
-              Plan your switch
+            <SiteLink to="/product" variant="secondary">
+              Explore the product
             </SiteLink>
           </div>
+          <p className="rs-coaches-hero-note">
+            Moving from another platform? <Link to="/switch">Plan your switch.</Link>
+          </p>
+          <p className="rs-coaches-hero-note">
+            PT Hub gives you the operational view. Workspaces hold the coaching
+            relationships behind it.
+          </p>
         </div>
         <ProductPreview
           image={stitchImages.coaches}
-          alt="RepSync for coaches Stitch concept with coach-focused operations layout."
-          caption="UI-04: coach business workflow and attention model"
+          alt="Placeholder for RepSync coach operations media showing PT Hub and workspace views."
+          caption="Coach business workflow and attention model"
+          mediaTitle="Coach operations walkthrough"
+          mediaSpec="Use a 12-15 second silent product video or animated UI capture showing a public profile, application, lead approval, workspace setup, check-ins, messages, and client attention signals."
         />
       </section>
-      <section className="rs-stitch-section rs-stitch-section--sage">
-        <div className="rs-stitch-container">
-          <SectionIntro
-            eyebrow="Where operations break"
-            title="The friction is usually between intake and impact."
-          />
-          <OperationsCards />
-        </div>
-      </section>
+
       <section className="rs-stitch-section">
         <div className="rs-stitch-container">
           <SectionIntro
-            eyebrow="Business visibility"
-            title="The metrics that move the coaching relationship."
-            body="RepSync emphasizes lead conversion, roster health, delivery workload, check-in urgency, and team visibility."
+            eyebrow="Audience"
+            title="Built for the way coaching actually runs."
+            body="Whether delivery happens online, in person, or across both, the operational work between sessions still needs a clear home."
           />
-          <div className="rs-stitch-metrics">
-            {[
-              ["24.8%", "Lead conversion context"],
-              ["42", "Active leads in motion"],
-              ["03", "Urgent check-ins flagged"],
-            ].map(([value, label]) => (
-              <article className="rs-stitch-metric rs-stitch-reveal" key={label}>
-                <strong>{value}</strong>
-                <span>{label}</span>
+          <div className="rs-coaches-audience rs-stitch-reveal">
+            {audienceTypes.map((type) => (
+              <span key={type}>{type}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-stitch-section rs-stitch-section--sage">
+        <div className="rs-stitch-container">
+          <SectionIntro
+            eyebrow="Fragmented operation"
+            title="The operation breaks where the tools change."
+            body="A prospect starts in a message, fills out a separate form, becomes a row in a spreadsheet, and eventually appears in a delivery platform. Each handoff creates another place to check and another chance to lose context."
+          />
+          <div className="rs-coaches-flow rs-stitch-reveal">
+            <article>
+              <p className="rs-stitch-kicker">Before</p>
+              <div className="rs-coaches-flow__path">
+                {["DMs", "Forms", "Spreadsheets", "Workout platform", "Messaging app", "Manual reminders"].map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
+              </div>
+            </article>
+            <article>
+              <p className="rs-stitch-kicker">With RepSync</p>
+              <div className="rs-coaches-flow__path">
+                {["Profile", "Application", "Lead", "Client", "Coaching", "Attention"].map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
+              </div>
+            </article>
+          </div>
+          <p className="rs-coaches-section-note rs-stitch-reveal">
+            RepSync does not generate leads for you. It gives the relationship a
+            structured place to begin and continue.
+          </p>
+        </div>
+      </section>
+
+      <section className="rs-stitch-section">
+        <div className="rs-stitch-container">
+          <div className="rs-coaches-split">
+            <div className="rs-stitch-reveal">
+              <SyncRail />
+              <p className="rs-stitch-kicker">01 / Before coaching starts</p>
+              <h2>Keep the context when a prospect becomes a client.</h2>
+              <p>
+                Publish a professional profile, collect an application, qualify
+                the lead, approve the relationship, and move the client into the
+                right workspace without starting from zero.
+              </p>
+              <p className="rs-coaches-section-note">
+                The handoff from lead to client should not erase the conversation
+                that came before it.
+              </p>
+              <SiteLink to="/product" variant="secondary">
+                Explore acquisition and onboarding
+              </SiteLink>
+            </div>
+            <div className="rs-coaches-journey rs-stitch-reveal">
+              {leadJourney.map((item, index) => (
+                <article key={item}>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <strong>{item}</strong>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-stitch-band">
+        <div className="rs-stitch-container">
+          <SectionIntro
+            eyebrow="02 / The weekly work"
+            title="One workspace for the work around each client."
+            body="Programs, nutrition guidance, habits, check-ins, messages, and client context stay attached to the same coaching relationship."
+          />
+          <div className="rs-stitch-card-grid">
+            {deliveryBlocks.map((block) => (
+              <article className="rs-stitch-card rs-stitch-reveal" key={block.title}>
+                <span className="rs-stitch-card__icon" aria-hidden="true">
+                  {block.icon}
+                </span>
+                <h3>{block.title}</h3>
+                <p>{block.body}</p>
+              </article>
+            ))}
+            <article className="rs-stitch-card rs-stitch-reveal">
+              <span className="rs-stitch-card__icon" aria-hidden="true">
+                <MessageSquare />
+              </span>
+              <h3>Continue the thread after every action.</h3>
+              <p>
+                Messages stay beside delivery, check-ins, and client history, so
+                follow-up is not detached from the work being coached.
+              </p>
+            </article>
+          </div>
+          <div className="rs-coaches-section-action rs-stitch-reveal">
+            <SiteLink to="/product" variant="secondary">
+              Explore coaching delivery
+            </SiteLink>
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-stitch-band rs-stitch-band--dark">
+        <div className="rs-stitch-container">
+          <div className="rs-coaches-split rs-coaches-split--dark">
+            <div className="rs-stitch-reveal">
+              <SyncRail />
+              <p className="rs-stitch-kicker">03 / When support is needed</p>
+              <h2>Know where the client is and whether they need you.</h2>
+              <p>
+                Lifecycle answers where the client is in the coaching
+                relationship. Attention answers whether a current signal needs
+                review.
+              </p>
+              <div className="rs-coaches-lifecycle">
+                {["Invited", "Onboarding", "Active", "Paused", "Completed", "Churned"].map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
+              </div>
+              <SiteLink to="/product" variant="secondary">
+                Explore client attention
+              </SiteLink>
+            </div>
+            <div className="rs-coaches-attention rs-stitch-reveal">
+              <p className="rs-stitch-kicker">Attention signal</p>
+              <h3>Lifecycle: Active</h3>
+              <strong>Attention: At risk</strong>
+              <span>Reason: Missed latest check-in</span>
+              <ul>
+                {attentionSignals.map((signal) => (
+                  <li key={signal}>
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    {signal}
+                  </li>
+                ))}
+              </ul>
+              <p>
+                RepSync surfaces the reason. The coaching decision remains with
+                the coach.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-stitch-section">
+        <div className="rs-stitch-container">
+          <div className="rs-coaches-split">
+            <div className="rs-stitch-reveal">
+              <SyncRail />
+              <p className="rs-stitch-kicker">Client experience</p>
+              <h2>Your operation can be detailed. Their experience should not be.</h2>
+              <p>
+                Clients see their assigned work, nutrition guidance, habits,
+                next check-in, messages, and progress without seeing the
+                operational layer behind the coaching.
+              </p>
+              <p className="rs-coaches-section-note">
+                The coach keeps the context. The client gets a clear next action.
+              </p>
+              <SiteLink to="/for-clients" variant="secondary">
+                See the client experience
+              </SiteLink>
+            </div>
+            <ProductPreview
+              image={stitchImages.home}
+              alt="Placeholder for the RepSync client experience showing today's workout, habits, messages, and next check-in."
+              caption="Client-facing coaching view"
+              mediaTitle="Client daily view"
+              mediaSpec="Replace with a clean client-facing screenshot or short UI motion showing assigned workout, nutrition guidance, active habits, next check-in, recent messages, and progress."
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-stitch-section rs-stitch-section--sage">
+        <div className="rs-stitch-container">
+          <SectionIntro
+            eyebrow="04 / Operating structure"
+            title="Separate the business view from each coaching environment."
+            body="RepSync uses two clear scopes: PT Hub for the coach and business account, and workspaces for the environments in which client delivery happens."
+          />
+          <div className="rs-coaches-scope-grid">
+            <article className="rs-stitch-reveal">
+              <p className="rs-stitch-kicker">PT Hub</p>
+              <h3>Business and owner view</h3>
+              <p>
+                Review the operation across leads, clients, signals, public
+                presence, global preferences, and coaching spaces.
+              </p>
+            </article>
+            <article className="rs-stitch-reveal">
+              <p className="rs-stitch-kicker">Workspace</p>
+              <h3>Client-delivery environment</h3>
+              <p>
+                Configure how a specific coaching environment runs, including
+                client experience, team access, defaults, templates, and
+                workspace-specific behavior.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-stitch-section">
+        <div className="rs-stitch-container">
+          <SectionIntro
+            eyebrow="Team access"
+            title="Bring in support without giving everyone owner access."
+            body="A workspace can support collaboration while keeping access tied to role, assignment, and coaching responsibility."
+          />
+          <div className="rs-coaches-team-grid">
+            {["Owner", "Assistant coach", "Viewer"].map((role) => (
+              <article className="rs-stitch-card rs-stitch-reveal" key={role}>
+                <span className="rs-stitch-card__icon" aria-hidden="true">
+                  {role === "Owner" ? <LockKeyhole /> : role === "Assistant coach" ? <UsersRound /> : <UserRound />}
+                </span>
+                <h3>{role}</h3>
+                <ul>
+                  {[
+                    "Workspace membership",
+                    "Assigned-client visibility",
+                    "Shared client communication",
+                    "Controlled permissions",
+                  ].map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
               </article>
             ))}
           </div>
         </div>
       </section>
-      <FinalCta title="Find out if RepSync fits your coaching operation." />
+
+      <section className="rs-stitch-band">
+        <div className="rs-stitch-container">
+          <SectionIntro
+            eyebrow="05 / Across the operation"
+            title="See the work that needs a decision."
+            body="PT Hub should help answer what entered the pipeline, what moved forward, which clients are active, which check-ins are overdue, and where attention is required."
+          />
+          <div className="rs-coaches-check-grid rs-stitch-reveal">
+            {visibilityItems.map((item) => (
+              <span key={item}>
+                <CheckCircle2 size={16} aria-hidden="true" />
+                {item}
+              </span>
+            ))}
+          </div>
+          <p className="rs-coaches-section-note rs-stitch-reveal">
+            The purpose is not another dashboard. It is a clearer starting point
+            for the next coaching decision.
+          </p>
+        </div>
+      </section>
+
+      <section className="rs-stitch-section">
+        <div className="rs-stitch-container">
+          <SectionIntro
+            eyebrow="Product fit"
+            title="Know whether RepSync fits before the demo."
+            body="RepSync is designed for a specific operating model. Being clear about that makes the evaluation more useful."
+          />
+          <div className="rs-coaches-fit-grid">
+            <article className="rs-coaches-fit-card rs-stitch-reveal">
+              <p className="rs-stitch-kicker">RepSync is a strong fit when...</p>
+              <ul>
+                {strongFit.map((item) => (
+                  <li key={item}>
+                    <CheckCircle2 size={16} aria-hidden="true" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </article>
+            <article className="rs-coaches-fit-card rs-stitch-reveal">
+              <p className="rs-stitch-kicker">RepSync may not be the right fit yet when...</p>
+              <ul>
+                {weakerFit.map((item) => (
+                  <li key={item}>
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-stitch-section rs-stitch-section--sage">
+        <div className="rs-stitch-container">
+          <div className="rs-coaches-split">
+            <div className="rs-stitch-reveal">
+              <SyncRail />
+              <p className="rs-stitch-kicker">Switching</p>
+              <h2>Already coaching on another platform?</h2>
+              <p>
+                A useful transition plan accounts for active clients, current
+                programs, check-in routines, messages, team access, and what
+                should remain archived, not only the exercise library.
+              </p>
+              <div className="rs-stitch-hero__actions">
+                <SiteLink to="/switch">Plan your switch</SiteLink>
+                <SiteLink to="/compare/truecoach" variant="secondary">
+                  Moving from TrueCoach
+                </SiteLink>
+                <SiteLink to="/compare/fitr" variant="secondary">
+                  Moving from FITR
+                </SiteLink>
+              </div>
+            </div>
+            <p className="rs-coaches-switch-note rs-stitch-reveal">
+              Migration support depends on the source platform, the data type,
+              and the current RepSync import path.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <FinalCta
+        title="See how RepSync fits the way you coach."
+        body="Book a focused 25-minute walkthrough based on your current platform, client volume, team structure, and weekly coaching workflow."
+      />
     </PublicLayout>
   );
 }
@@ -1531,29 +1995,336 @@ export function ForClientsPage() {
       "RepSync gives coaching clients a focused daily view for workouts, nutrition, habits, messages, check-ins, and progress.",
   });
 
+  const todayItems = [
+    ["Today's workout", "See the session your coach has assigned.", <Dumbbell />],
+    ["Nutrition guidance", "Review the current guidance or targets.", <Utensils />],
+    ["Active habits", "See the actions you are working on.", <CheckCircle2 />],
+    ["Next check-in", "Know when it opens or is due.", <ClipboardCheck />],
+    ["Coach message", "Read the latest coaching context.", <MessageSquare />],
+  ] as const;
+
+  const checkInFlow = [
+    "Check-in opens",
+    "You complete it",
+    "Your coach reviews it",
+    "Feedback and next steps follow",
+  ];
+
+  const progressItems = [
+    "Completed sessions",
+    "Habit consistency",
+    "Check-in history",
+    "Coaching feedback",
+    "Supported wearable information, when enabled",
+  ];
+
+  const privacyItems = [
+    "You sign in to see your own coaching experience.",
+    "Your assigned plan, check-ins, and messages are not part of the coach's public profile.",
+    "Access by the coaching team is controlled through the coaching relationship.",
+    "Other clients are not part of your client view.",
+  ];
+
+  const joinPaths = [
+    {
+      title: "I have an invitation",
+      body: "Open the secure invitation link sent by your coach. Depending on your account, RepSync will guide you through account setup, client onboarding, or directly to your client home.",
+      action: "Continue with my invitation",
+      to: "/signup/client",
+      note: "Invitation expired? Ask your coach to send a new one.",
+      icon: <MousePointerClick />,
+    },
+    {
+      title: "I already have an account",
+      body: "Sign in to open your client home and continue with your current coaching relationship.",
+      action: "Log in",
+      to: "/login",
+      icon: <UserRound />,
+    },
+    {
+      title: "I am looking for a coach",
+      body: "Coach discovery is being prepared. Join the interest list to be notified when it opens.",
+      action: "Get discovery updates",
+      to: "/coaches",
+      icon: <UsersRound />,
+    },
+  ];
+
+  const faqs = [
+    [
+      "How do I join RepSync?",
+      "Most clients enter through an invitation from their coach. Open the secure invitation link, confirm or create your account, and complete any required setup.",
+    ],
+    [
+      "What happens if my invitation has expired?",
+      "Ask your coach to issue a new invitation. RepSync should not ask you to reuse an expired or invalid link.",
+    ],
+    [
+      "Can I use RepSync without a coach?",
+      "RepSync is currently designed around an active coaching relationship. Most client access begins with a coach invitation.",
+    ],
+    [
+      "Can another client see my information?",
+      "Your client area is intended for your own coaching relationship. Other clients are not shown your assigned plan, check-ins, or messages.",
+    ],
+    [
+      "Do I need to install an app?",
+      "RepSync is accessed through the web and is designed to work across desktop and mobile browsers.",
+    ],
+  ] as const;
+
   return (
     <PublicLayout>
-      <section className="rs-stitch-page-hero rs-stitch-page-hero--text">
+      <section className="rs-stitch-page-hero">
         <div className="rs-stitch-reveal is-visible">
-          <p className="rs-stitch-kicker">For clients</p>
-          <h1>A calmer daily coaching view.</h1>
+          <p className="rs-stitch-kicker">For coaching clients</p>
+          <h1>Your coaching, without the clutter.</h1>
           <p>
-            Clients should see what matters today: movement, fuel, habits,
-            messages, and check-ins, without needing to understand the business
-            system behind their coach.
+            See your training, nutrition guidance, habits, check-ins, messages,
+            and progress in one clear place so you always know what to do next.
           </p>
           <div className="rs-stitch-hero__actions">
-            <SiteLink to="/coaches">Browse coaches</SiteLink>
-            <SiteLink to="/signup/client" variant="secondary">
-              Client signup
+            <SiteLink to="/signup/client">I have an invitation</SiteLink>
+            <SiteLink to="/login" variant="secondary">
+              Log in
+            </SiteLink>
+          </div>
+          <p className="rs-clients-hero-note">
+            Looking for a coach? <Link to="/coaches">See availability.</Link>
+          </p>
+          <p className="rs-clients-hero-note">
+            Your assigned work, check-ins, messages, and next actions in one
+            focused view.
+          </p>
+        </div>
+        <ProductPreview
+          image={stitchImages.home}
+          alt="Placeholder for RepSync client home showing assigned work, check-ins, messages, and next actions."
+          caption="Focused client coaching view"
+          mediaTitle="Client home view"
+          mediaSpec="Replace with a client-facing screenshot or short UI motion showing today's workout, nutrition guidance, active habits, next check-in, coach message, and progress."
+        />
+      </section>
+
+      <section className="rs-stitch-section">
+        <div className="rs-stitch-container">
+          <SectionIntro
+            eyebrow="01 / Today"
+            title="Open RepSync and know what matters today."
+            body="Start with the next useful action, not a screen full of business administration."
+          />
+          <div className="rs-clients-today-grid">
+            {todayItems.map(([title, body, icon]) => (
+              <article className="rs-stitch-card rs-stitch-reveal" key={title}>
+                <span className="rs-stitch-card__icon" aria-hidden="true">
+                  {icon}
+                </span>
+                <h3>{title}</h3>
+                <p>{body}</p>
+              </article>
+            ))}
+          </div>
+          <p className="rs-clients-section-note rs-stitch-reveal">
+            Your home view should answer one question: what should I do next?
+          </p>
+        </div>
+      </section>
+
+      <section className="rs-stitch-band">
+        <div className="rs-stitch-container">
+          <div className="rs-clients-split">
+            <div className="rs-stitch-reveal">
+              <SyncRail />
+              <p className="rs-stitch-kicker">02 / Your plan</p>
+              <h2>Your plan, guidance, and next actions in one coaching space.</h2>
+              <p>
+                What your coach assigns stays clear. What you complete is easy
+                to see.
+              </p>
+            </div>
+            <div className="rs-clients-plan-stack">
+              <article className="rs-stitch-reveal">
+                <span className="rs-stitch-card__icon" aria-hidden="true">
+                  <Dumbbell />
+                </span>
+                <h3>Follow the training your coach has set for you.</h3>
+                <p>
+                  See scheduled sessions, exercise details, completion state, and
+                  what comes next without searching through separate documents or
+                  message threads.
+                </p>
+              </article>
+              <article className="rs-stitch-reveal">
+                <span className="rs-stitch-card__icon" aria-hidden="true">
+                  <Utensils />
+                </span>
+                <h3>Keep the actions outside training connected to the plan.</h3>
+                <p>
+                  View nutrition guidance and the habits your coach wants you to
+                  focus on alongside the rest of your coaching.
+                </p>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-stitch-band rs-stitch-band--dark">
+        <div className="rs-stitch-container">
+          <div className="rs-clients-split rs-clients-split--dark">
+            <div className="rs-stitch-reveal">
+              <SyncRail />
+              <p className="rs-stitch-kicker">03 / Stay connected</p>
+              <h2>Keep the coaching conversation moving between sessions.</h2>
+              <p>
+                Check-ins give you a structured place to reflect. Messages give
+                you a direct place to ask questions and continue the conversation.
+              </p>
+            </div>
+            <div className="rs-clients-checkin-flow rs-stitch-reveal">
+              {checkInFlow.map((item, index) => (
+                <article key={item}>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <strong>{item}</strong>
+                </article>
+              ))}
+            </div>
+          </div>
+          <div className="rs-clients-connection-grid">
+            <article className="rs-stitch-reveal">
+              <h3>Review with the coaching relationship attached.</h3>
+              <p>
+                See when a check-in is available, submit your responses, and
+                return to the coaching plan with the review attached to the
+                relationship.
+              </p>
+            </article>
+            <article className="rs-stitch-reveal">
+              <h3>Ask questions without separating the context.</h3>
+              <p>
+                Ask questions and share context without separating the
+                conversation from the rest of your coaching.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-stitch-section">
+        <div className="rs-stitch-container">
+          <div className="rs-clients-split">
+            <div className="rs-stitch-reveal">
+              <SyncRail />
+              <p className="rs-stitch-kicker">04 / Progress</p>
+              <h2>Progress makes more sense with context.</h2>
+              <p>
+                Review completed work, habits, check-ins, and the information
+                your coach uses to understand how the plan is going.
+              </p>
+            </div>
+            <div className="rs-clients-progress-list rs-stitch-reveal">
+              {progressItems.map((item) => (
+                <span key={item}>
+                  <TrendingUp size={16} aria-hidden="true" />
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+          <p className="rs-clients-section-note rs-stitch-reveal">
+            RepSync presents information for coaching context. It does not
+            provide medical diagnosis or emergency guidance.
+          </p>
+        </div>
+      </section>
+
+      <section className="rs-stitch-section rs-stitch-section--sage">
+        <div className="rs-stitch-container">
+          <SectionIntro
+            eyebrow="05 / Your information"
+            title="Your coaching information stays with your coaching relationship."
+            body="The public information about a coach is separate from the private information used to deliver your coaching."
+          />
+          <div className="rs-clients-privacy-grid rs-stitch-reveal">
+            {privacyItems.map((item) => (
+              <span key={item}>
+                <ShieldCheck size={17} aria-hidden="true" />
+                {item}
+              </span>
+            ))}
+          </div>
+          <div className="rs-clients-section-actions rs-stitch-reveal">
+            <SiteLink to="/security" variant="secondary">
+              Read about security
+            </SiteLink>
+            <SiteLink to="/privacy" variant="secondary">
+              Read the privacy policy
             </SiteLink>
           </div>
         </div>
       </section>
+
       <section className="rs-stitch-section">
         <div className="rs-stitch-container">
-          <OperationsCards />
+          <SectionIntro
+            eyebrow="How to join"
+            title="How do you want to enter RepSync?"
+            body="Use the path that matches your relationship with RepSync today."
+          />
+          <div className="rs-clients-join-grid">
+            {joinPaths.map((path) => (
+              <article className="rs-stitch-card rs-stitch-reveal" key={path.title}>
+                <span className="rs-stitch-card__icon" aria-hidden="true">
+                  {path.icon}
+                </span>
+                <h3>{path.title}</h3>
+                <p>{path.body}</p>
+                <SiteLink
+                  to={path.to}
+                  variant={path.title === "I have an invitation" ? "primary" : "secondary"}
+                >
+                  {path.action}
+                </SiteLink>
+                {path.note ? <p className="rs-clients-card-note">{path.note}</p> : null}
+              </article>
+            ))}
+          </div>
         </div>
+      </section>
+
+      <section className="rs-stitch-band">
+        <div className="rs-stitch-container">
+          <SectionIntro eyebrow="FAQ" title="Before you enter RepSync" />
+          <div className="rs-stitch-faq">
+            {faqs.map(([question, answer]) => (
+              <details className="rs-stitch-reveal" key={question}>
+                <summary>{question}</summary>
+                <p>{answer}</p>
+              </details>
+            ))}
+          </div>
+          <div className="rs-clients-section-actions rs-stitch-reveal">
+            <SiteLink to="/faq" variant="secondary">
+              View all client questions
+            </SiteLink>
+          </div>
+        </div>
+      </section>
+
+      <section className="rs-clients-final rs-stitch-reveal">
+        <SyncRail />
+        <p className="rs-stitch-kicker">Final actions</p>
+        <h2>Ready to return to your coaching?</h2>
+        <div className="rs-stitch-cta__actions">
+          <SiteLink to="/login">Log in</SiteLink>
+          <SiteLink to="/signup/client" variant="secondary">
+            I have an invitation
+          </SiteLink>
+        </div>
+        <p>
+          Are you a coach evaluating RepSync?{" "}
+          <Link to="/for-coaches">Explore RepSync for coaches.</Link>
+        </p>
       </section>
     </PublicLayout>
   );
