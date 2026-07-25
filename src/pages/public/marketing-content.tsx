@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
   BarChart3,
   CheckCircle2,
@@ -23,6 +24,7 @@ import {
   Utensils,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { AppFooter } from "../../components/common/app-footer";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
@@ -277,19 +279,10 @@ function PublicLayout({ children }: { children: ReactNode }) {
       </a>
       <PublicHeader />
       <main id="main">{children}</main>
-      <footer className="rs-stitch-footer">
-        <div>
-          <BrandMark />
-          <p>Precision through tactility for connected coaching operations.</p>
-        </div>
-        <nav aria-label="Footer navigation">
-          <Link to="/product">Product</Link>
-          <Link to="/for-coaches">For coaches</Link>
-          <Link to="/privacy">Privacy</Link>
-          <Link to="/terms">Terms</Link>
-          <Link to="/support">Support</Link>
-        </nav>
-      </footer>
+      <AppFooter
+        className="rs-marketing-app-footer"
+        contentClassName="rs-marketing-app-footer__content"
+      />
     </div>
   );
 }
@@ -691,7 +684,7 @@ export function ProductPage() {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const revealTargets = Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".rs-product-reference__main > section, .rs-product-ref-media, .rs-product-ref-card-grid article",
+        ".rs-product-reference__main > section, .rs-product-ref-mockup, .rs-product-ref-card-grid article, .rs-product-ref-mini-grid article, .rs-product-ref-stage-row article",
       ),
     );
 
@@ -780,6 +773,7 @@ export function ProductPage() {
         <ProductReferenceSideNav />
         <main className="rs-product-reference__main" id="main">
           <ProductReferenceHero />
+          <ProductReferenceModuleMap />
           <ProductReferenceAcquire />
           <ProductReferenceOnboard />
           <ProductReferenceDeliver />
@@ -883,6 +877,8 @@ function ProductReferenceSideNav() {
 }
 
 function ProductReferenceHero() {
+  const journey = ["Profile", "Apply", "Onboard", "Coach", "Check in", "Attention"];
+
   return (
     <section className="rs-product-ref-hero">
       <SyncRail />
@@ -896,26 +892,230 @@ function ProductReferenceHero() {
       <p className="rs-product-ref-hero__note">
         One operating model from first inquiry to ongoing coaching.
       </p>
+      <div className="rs-product-ref-journey" aria-label="RepSync relationship journey">
+        {journey.map((item, index) => (
+          <span key={item} style={{ "--step-index": index } as CSSProperties}>
+            {item}
+          </span>
+        ))}
+      </div>
     </section>
   );
 }
 
-function ProductMediaPlaceholder({
+function ProductReferenceModuleMap() {
+  const [activeModuleIndex, setActiveModuleIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const modules = [
+    {
+      href: "#acquire",
+      number: "01",
+      title: "Acquire",
+      body: "Profile, applications, lead context, and approval decisions.",
+      icon: <MousePointerClick />,
+    },
+    {
+      href: "#onboard",
+      number: "02",
+      title: "Onboard",
+      body: "Workspace assignment, secure invite, initial plan, and cadence.",
+      icon: <UserRound />,
+    },
+    {
+      href: "#deliver",
+      number: "03",
+      title: "Deliver",
+      body: "Training, nutrition guidance, habits, and assigned work.",
+      icon: <Dumbbell />,
+    },
+    {
+      href: "#communicate",
+      number: "04",
+      title: "Communicate",
+      body: "Coach-client messages tied to the active relationship.",
+      icon: <MessageSquare />,
+    },
+    {
+      href: "#checkin",
+      number: "05",
+      title: "Check-ins",
+      body: "Recurring responses, review state, feedback, and follow-up.",
+      icon: <ClipboardCheck />,
+    },
+    {
+      href: "#attention",
+      number: "06",
+      title: "Attention",
+      body: "Lifecycle, risk signals, reasons, and next coaching decisions.",
+      icon: <AlertTriangle />,
+    },
+    {
+      href: "#operate",
+      number: "07",
+      title: "Operate",
+      body: "The operational starting point for work that needs a decision.",
+      icon: <Settings />,
+    },
+    {
+      href: "#experience",
+      number: "08",
+      title: "Client Experience",
+      body: "A focused client home for today's plan, context, and progress.",
+      icon: <UserRound />,
+    },
+    {
+      href: "#team",
+      number: "09",
+      title: "Team Access",
+      body: "Role-based workspace membership and protected owner controls.",
+      icon: <UsersRound />,
+    },
+  ] as const;
+  const activeModule = modules[activeModuleIndex] ?? modules[0];
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isPaused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    const rotation = window.setInterval(() => {
+      setActiveModuleIndex((currentIndex) => (currentIndex + 1) % modules.length);
+    }, 3800);
+
+    return () => window.clearInterval(rotation);
+  }, [isPaused, modules.length]);
+
+  const showPreviousModule = () => {
+    setActiveModuleIndex((currentIndex) =>
+      currentIndex === 0 ? modules.length - 1 : currentIndex - 1,
+    );
+  };
+
+  const showNextModule = () => {
+    setActiveModuleIndex((currentIndex) => (currentIndex + 1) % modules.length);
+  };
+
+  return (
+    <section className="rs-product-ref-modules" aria-labelledby="product-module-map">
+      <div className="rs-product-ref-modules__intro">
+        <p className="rs-product-ref-label">Operating system map</p>
+        <h2 id="product-module-map">Nine modules. One coaching relationship.</h2>
+        <p>
+          Each module owns a specific decision point in the coaching operation,
+          then passes context forward without fragmenting the relationship.
+        </p>
+      </div>
+      <div
+        className="rs-product-ref-module-carousel"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
+        <div className="rs-product-ref-module-carousel__viewport">
+          <div
+            className="rs-product-ref-module-carousel__track"
+            style={{ transform: `translateX(-${activeModuleIndex * 100}%)` }}
+          >
+            {modules.map((module) => (
+              <a className="rs-product-ref-module-slide" href={module.href} key={module.href}>
+                <span>{module.number}</span>
+                {module.icon}
+                <h3>{module.title}</h3>
+                <p>{module.body}</p>
+              </a>
+            ))}
+          </div>
+        </div>
+        <div className="rs-product-ref-module-carousel__controls">
+          <button aria-label="Show previous module" type="button" onClick={showPreviousModule}>
+            <ArrowLeft size={18} aria-hidden="true" />
+          </button>
+          <p aria-live="polite">
+            {activeModule.number} / {activeModule.title}
+          </p>
+          <button aria-label="Show next module" type="button" onClick={showNextModule}>
+            <ArrowRight size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="rs-product-ref-module-carousel__dots" role="tablist" aria-label="Product modules">
+          {modules.map((module, index) => (
+            <button
+              aria-current={activeModuleIndex === index ? "true" : undefined}
+              aria-label={`Show ${module.title}`}
+              key={module.href}
+              onClick={() => setActiveModuleIndex(index)}
+              type="button"
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProductProductMockup({
   title,
   body,
-  variant = "panel",
+  variant = "pipeline",
 }: {
   title: string;
   body: string;
-  variant?: "panel" | "phone" | "chat";
+  variant?: "pipeline" | "phone" | "chat";
 }) {
   return (
-    <div className={`rs-product-ref-media rs-product-ref-media--${variant}`} role="img" aria-label={body}>
-      <span className="rs-product-ref-media__icon" aria-hidden="true">
-        {variant === "chat" ? <MessageSquare size={34} /> : <LayoutDashboard size={34} />}
-      </span>
-      <div>
-        <p className="rs-product-ref-label">Media placeholder</p>
+    <div className={`rs-product-ref-mockup rs-product-ref-mockup--${variant}`} role="img" aria-label={body}>
+      <div className="rs-product-ref-mockup__bar" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+      {variant === "pipeline" ? (
+        <div className="rs-product-ref-pipeline-ui" aria-hidden="true">
+          <div>
+            <span>Public profile</span>
+            <strong>Coach application</strong>
+            <p>Goal, history, constraints, fit.</p>
+          </div>
+          <div>
+            <span>Lead record</span>
+            <strong>Maya R.</strong>
+            <p>Ready for review</p>
+          </div>
+          <div>
+            <span>Decision</span>
+            <strong>Approve</strong>
+            <p>Move into onboarding</p>
+          </div>
+        </div>
+      ) : null}
+      {variant === "chat" ? (
+        <div className="rs-product-ref-chat-ui" aria-hidden="true">
+          <div>
+            <strong>Jordan Lee</strong>
+            <span>Active client</span>
+          </div>
+          <p>Workout complete. Energy was better today.</p>
+          <p>Coach: Keep the same load and send your check-in tonight.</p>
+          <aside>
+            <span>Context attached</span>
+            <strong>Week 4 / Lower day</strong>
+          </aside>
+        </div>
+      ) : null}
+      {variant === "phone" ? (
+        <div className="rs-product-ref-phone-ui" aria-hidden="true">
+          <span>Today</span>
+          <strong>Next action</strong>
+          <p>Lower strength session</p>
+          <ul>
+            <li>Nutrition guidance</li>
+            <li>Habit: 8k steps</li>
+            <li>Check-in opens 6 PM</li>
+          </ul>
+        </div>
+      ) : null}
+      <div className="rs-product-ref-mockup__caption">
+        <p className="rs-product-ref-label">Product view</p>
         <h3>{title}</h3>
         <p>{body}</p>
       </div>
@@ -946,9 +1146,10 @@ function ProductReferenceAcquire() {
           ))}
         </ul>
       </div>
-      <ProductMediaPlaceholder
+      <ProductProductMockup
         title="Public profile and lead pipeline"
         body="Show the published profile, application context, lead record, and next decision in one focused product view."
+        variant="pipeline"
       />
     </section>
   );
@@ -1028,7 +1229,7 @@ function ProductReferenceCommunicate() {
           supports.
         </p>
       </div>
-      <ProductMediaPlaceholder
+      <ProductProductMockup
         title="Coach-client messaging"
         body="Show the current thread, unread state, and client relationship context without exposing private data."
         variant="chat"
@@ -1137,7 +1338,7 @@ function ProductReferenceOperate() {
 function ProductReferenceClientExperience() {
   return (
     <section className="rs-product-ref-section rs-product-ref-experience" id="experience">
-      <ProductMediaPlaceholder
+      <ProductProductMockup
         title="Client home"
         body="Use a mobile client screenshot showing today's priorities and recent coaching context."
         variant="phone"
@@ -1200,35 +1401,22 @@ function ProductReferenceCta() {
   return (
     <section className="rs-product-ref-cta">
       <SyncRail />
-      <p className="rs-product-ref-label">Final CTA</p>
+      <p className="rs-product-ref-label">Book a walkthrough</p>
       <h2>See How RepSync Fits Your Coaching Operation.</h2>
-      <p>
-        Book a focused walkthrough based on your current platform, client
-        volume, team structure, and weekly coaching workflow.
-      </p>
       <div>
         <Link to="/book-demo">Book a demo</Link>
         <Link to="/for-coaches">Explore for coaches</Link>
       </div>
-      <p className="rs-product-ref-cta__note">
-        Focused on your operation, not a generic feature tour.
-      </p>
     </section>
   );
 }
 
 function ProductReferenceFooter() {
   return (
-    <footer className="rs-product-ref-footer">
-      <Link to="/">RepSync</Link>
-      <nav aria-label="Product footer">
-        <Link to="/privacy">Privacy Policy</Link>
-        <Link to="/terms">Terms of Service</Link>
-        <Link to="/security">Security</Link>
-        <Link to="/support">Contact</Link>
-      </nav>
-      <p>(c) 2026 RepSync. Precision through Tactility.</p>
-    </footer>
+    <AppFooter
+      className="rs-marketing-app-footer rs-product-ref-footer"
+      contentClassName="rs-marketing-app-footer__content"
+    />
   );
 }
 
@@ -1713,13 +1901,6 @@ export function ForCoachesPage() {
               Explore the product
             </SiteLink>
           </div>
-          <p className="rs-coaches-hero-note">
-            Moving from another platform? <Link to="/switch">Plan your switch.</Link>
-          </p>
-          <p className="rs-coaches-hero-note">
-            PT Hub gives you the operational view. Workspaces hold the coaching
-            relationships behind it.
-          </p>
         </div>
         <ProductPreview
           image={stitchImages.coaches}
