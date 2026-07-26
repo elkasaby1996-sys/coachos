@@ -26,7 +26,9 @@ export function LoginPage() {
     (requestedRedirect.startsWith("/join/") ||
       requestedRedirect.startsWith("/invite/") ||
       requestedRedirect.startsWith("/team-invites/") ||
-      requestedRedirect.startsWith("/pt/onboarding/"))
+      requestedRedirect.startsWith("/pt/onboarding/") ||
+      requestedRedirect === "/pt-hub" ||
+      requestedRedirect.startsWith("/pt-hub/"))
       ? requestedRedirect
       : "/";
   const signupLink =

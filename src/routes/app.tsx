@@ -309,7 +309,9 @@ function LoginGate() {
     redirectParam &&
     (redirectParam.startsWith("/join/") ||
       redirectParam.startsWith("/invite/") ||
-      redirectParam.startsWith("/team-invites/"))
+      redirectParam.startsWith("/team-invites/") ||
+      redirectParam === "/pt-hub" ||
+      redirectParam.startsWith("/pt-hub/"))
       ? redirectParam
       : null;
 

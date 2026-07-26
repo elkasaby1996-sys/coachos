@@ -43,6 +43,7 @@ type DemoFormState = {
 
 const navItems = [
   { label: "Product", to: "/product" },
+  { label: "Marketplace", to: "/coaches" },
   { label: "Pricing", to: "/pricing" },
   { label: "Demo", to: "/demo" },
 ];

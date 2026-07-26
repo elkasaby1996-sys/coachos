@@ -53,7 +53,7 @@ export function AppFooter({
         )}
       >
         <span className="justify-self-center sm:justify-self-start">
-          © 2026 RepSync
+          &copy; 2026 RepSync
         </span>
         <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-self-center">
           <Link

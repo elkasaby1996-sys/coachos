@@ -212,8 +212,8 @@ export function PublicPtApplyForm({
     <div className="space-y-4">
       {success ? (
         <div className="rounded-2xl border border-success/20 bg-success/10 p-4 text-sm text-success">
-          Application sent. It has been delivered into the trainer&apos;s PT Hub
-          leads inbox.
+          Application sent. The coach can now review your goals, experience,
+          and coaching interest.
         </div>
       ) : null}
 
@@ -274,7 +274,7 @@ export function PublicPtApplyForm({
         {hasPackages ? (
           <div className="space-y-2">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-              Interested package
+              Which coaching option interests you?
             </p>
             <Select
               value={form.packageInterestId}
@@ -352,7 +352,7 @@ export function PublicPtApplyForm({
               trainingExperience: event.target.value,
             }))
           }
-          placeholder="Training experience"
+          placeholder="Tell us about your current training experience."
           disabled={preview}
         />
         <FieldCharacterMeta
@@ -412,7 +412,7 @@ export function PublicPtApplyForm({
           : submitting
             ? "Submitting..."
             : identity.isAuthenticated
-              ? "Apply to Work With Me"
+              ? "Send application"
               : "Sign in to apply"}
         <ArrowRight className="h-4 w-4" />
       </Button>

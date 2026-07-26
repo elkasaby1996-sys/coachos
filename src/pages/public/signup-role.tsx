@@ -89,7 +89,7 @@ export function SignupRolePage() {
             Sign up
           </h2>
           <p className="mx-auto mt-4 max-w-md text-sm font-medium leading-6 text-muted-foreground">
-            Pick the path that matches how you'll use Repsync.
+            Pick the path that matches how you'll use RepSync.
           </p>
         </div>
 

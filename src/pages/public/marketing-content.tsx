@@ -62,6 +62,7 @@ const stitchImages = {
 
 const navItems = [
   { label: "Product", to: "/product" },
+  { label: "Marketplace", to: "/coaches" },
   { label: "For coaches", to: "/for-coaches" },
   { label: "For clients", to: "/for-clients" },
   { label: "Switch", to: "/switch" },
@@ -337,7 +338,7 @@ function ProductPreview({
             <span />
           </div>
           <div>
-            <p className="rs-stitch-kicker">Media placeholder</p>
+            <p className="rs-stitch-kicker">Planned media</p>
             <h3>{mediaTitle}</h3>
             <p>{mediaSpec}</p>
           </div>
@@ -505,9 +506,6 @@ function FinalCta({
           Explore RepSync for coaches
         </SiteLink>
       </div>
-      <p className="rs-stitch-cta__footnote">
-        Focused on your workflow, not a generic feature tour.
-      </p>
     </section>
   );
 }
@@ -540,10 +538,6 @@ export function MarketingHomePage() {
                 Explore the product
               </SiteLink>
             </div>
-            <p className="rs-stitch-hero__client-link">
-              Using RepSync as a client?{" "}
-              <Link to="/for-clients">View the client experience.</Link>
-            </p>
           </div>
           <ProductPreview
             image={stitchImages.home}
@@ -2356,10 +2350,6 @@ export function ForClientsPage() {
           <p className="rs-clients-hero-note">
             Looking for a coach? <Link to="/coaches">See availability.</Link>
           </p>
-          <p className="rs-clients-hero-note">
-            Your assigned work, check-ins, messages, and next actions in one
-            focused view.
-          </p>
         </div>
         <ProductPreview
           image={stitchImages.home}
@@ -2388,9 +2378,6 @@ export function ForClientsPage() {
               </article>
             ))}
           </div>
-          <p className="rs-clients-section-note rs-stitch-reveal">
-            Your home view should answer one question: what should I do next?
-          </p>
         </div>
       </section>
 
@@ -2495,10 +2482,6 @@ export function ForClientsPage() {
               ))}
             </div>
           </div>
-          <p className="rs-clients-section-note rs-stitch-reveal">
-            RepSync presents information for coaching context. It does not
-            provide medical diagnosis or emergency guidance.
-          </p>
         </div>
       </section>
 
@@ -2596,42 +2579,298 @@ export function ForClientsPage() {
 
 export function SwitchPage() {
   usePublicSeo({
-    title: "Switch to RepSync",
+    title: "Switch to RepSync | Migration protocol",
     description:
-      "Plan a move to RepSync by reviewing your current tools, active clients, templates, and launch workflow.",
+      "Plan a move to RepSync by mapping your current platform, active client workflow, supported migration paths, and launch handoff.",
   });
+
+  const reviewSteps = [
+    {
+      number: "01",
+      title: "Review",
+      body: "Map the current platform, active clients, team access, programs, nutrition, habits, check-ins, messages, and historical records.",
+    },
+    {
+      number: "02",
+      title: "Prepare",
+      body: "Classify each item as supported, assisted, evaluated case by case, or retained in the original system.",
+    },
+    {
+      number: "03",
+      title: "Launch",
+      body: "Configure RepSync, verify active assignments, invite clients deliberately, and confirm the first week of coaching delivery.",
+    },
+  ];
+
+  const moveCategories = [
+    [
+      "People and access",
+      "Active clients, coaches, assistants, viewers, workspace relationships, and invitation status.",
+    ],
+    [
+      "Active coaching",
+      "Current programs, nutrition guidance, habits, check-in cadence, upcoming sessions, and the next required client action.",
+    ],
+    [
+      "Current communication",
+      "Active client conversations, unread items, current follow-up, and the communication channel that will remain authoritative during the transition.",
+    ],
+    [
+      "Operating structure",
+      "Workspaces, team roles, assigned clients, public-profile setup, application flow, and delivery defaults.",
+    ],
+    [
+      "Historical records",
+      "Previous check-ins, messages, notes, documents, wearable history, and billing records that may need to remain accessible after the switch.",
+    ],
+  ];
+
+  const supportStates = [
+    ["Supported", "A verified transfer method currently exists."],
+    [
+      "Assisted",
+      "RepSync can help prepare, structure, or recreate the information through an agreed manual process.",
+    ],
+    [
+      "Evaluate",
+      "The source format and migration scope must be reviewed before a path can be confirmed.",
+    ],
+    [
+      "Not currently supported",
+      "RepSync does not currently provide a transfer path for this category.",
+    ],
+  ];
+
+  const handoffItems = [
+    [
+      "Active client roster",
+      "Confirm which clients are moving, who remains archived, and who should not receive a new invitation.",
+    ],
+    [
+      "Current assignments",
+      "Verify the active program, nutrition guidance, habits, and next scheduled work before inviting the client.",
+    ],
+    [
+      "Check-in schedule",
+      "Avoid moving a client in the middle of an open check-in unless the current response and review process are accounted for.",
+    ],
+    [
+      "Client communication",
+      "Tell clients where new messages should be sent and avoid maintaining parallel active conversations longer than necessary.",
+    ],
+    [
+      "Team access",
+      "Confirm owner, assistant, viewer, and assigned-client access before the first client enters the new workspace.",
+    ],
+  ];
+
+  const platformCards = [
+    {
+      title: "Moving from TrueCoach",
+      body: "Compare the operating model before deciding what to recreate or archive. Review how your current client delivery, communication, check-ins, team workflow, and supporting business tools would translate into RepSync.",
+      cta: "RepSync vs TrueCoach",
+      to: "/compare/truecoach",
+    },
+    {
+      title: "Moving from FITR",
+      body: "Map the programming and business workflow, not only the client list. Review your current programs, active clients, check-ins, communication, and operating process before deciding what should move into RepSync.",
+      cta: "RepSync vs FITR",
+      to: "/compare/fitr",
+    },
+  ];
+
+  const questions = [
+    [
+      "Can RepSync import everything from my current platform?",
+      "No universal import should be assumed. Support depends on the source platform, data format, volume, and whether the information is required for active coaching or historical reference.",
+    ],
+    [
+      "Will my clients need new accounts?",
+      "New RepSync users will generally need to accept an invitation and complete the required account setup. Existing RepSync users should sign in through the appropriate invitation or workspace flow rather than creating a duplicate account.",
+    ],
+    [
+      "Can I keep using my current platform during the transition?",
+      "A controlled overlap may be appropriate, but each workflow should have one clearly defined source of truth. Avoid editing the same active assignment, check-in, or conversation in both systems.",
+    ],
+    [
+      "How long does a switch take?",
+      "The timeline depends on the number of active clients, team structure, current programs, historical-data requirements, and the amount of information that must be recreated or reviewed.",
+    ],
+    [
+      "What should remain archived?",
+      "Historical messages, billing records, unsupported attachments, and other records that are not needed for current delivery may be better retained as exports or in read-only access to the original system.",
+    ],
+    [
+      "Can I start with a smaller group of clients?",
+      "A phased transition can reduce risk. The initial plan should identify a manageable client group, verify access and assignments, and use the result to refine the remaining rollout.",
+    ],
+  ];
 
   return (
     <PublicLayout>
-      <section className="rs-stitch-page-hero rs-stitch-page-hero--text">
-        <div className="rs-stitch-reveal is-visible">
+      <section className="rs-switch-hero">
+        <div className="rs-switch-hero__copy rs-stitch-reveal is-visible">
           <p className="rs-stitch-kicker">Migration protocol</p>
           <h1>Move only after the workflow is clear.</h1>
           <p>
             RepSync does not promise an instant one-click migration. The safest
-            switch starts by mapping what you use today and what needs to remain
-            available during launch.
+            switch starts by mapping what you use today, what must keep running,
+            and what can move without disrupting active coaching.
+          </p>
+          <div className="rs-stitch-hero__actions">
+            <SiteLink to="/book-demo">Book a switching demo</SiteLink>
+            <SiteLink to="#transition-process" variant="secondary">
+              See the transition process
+            </SiteLink>
+          </div>
+          <p className="rs-switch-hero__note">
+            Moving from TrueCoach or FITR? Review the platform-specific
+            comparison before planning the transition.
           </p>
         </div>
+        <aside className="rs-switch-hero__panel rs-stitch-reveal is-visible" aria-label="Switching sequence">
+          {reviewSteps.map((step) => (
+            <article key={step.number}>
+              <span>{step.number}</span>
+              <h2>{step.title}</h2>
+              <p>{step.body}</p>
+            </article>
+          ))}
+          <p>
+            The objective is continuity, not forcing every historical record
+            into a new platform.
+          </p>
+        </aside>
       </section>
-      <section className="rs-stitch-section">
-        <div className="rs-stitch-container">
-          <div className="rs-stitch-steps">
-            {[
-              ["01", "Review", "Map current platforms, spreadsheets, forms, and active-client work."],
-              ["02", "Prepare", "Decide what can be imported, recreated, archived, or launched manually."],
-              ["03", "Launch", "Invite clients deliberately so service continuity stays clear."],
-            ].map(([number, title, body]) => (
-              <article className="rs-stitch-step rs-stitch-reveal" key={number}>
-                <span>{number}</span>
-                <h3>{title}</h3>
-                <p>{body}</p>
-              </article>
-            ))}
-          </div>
+
+      <section className="rs-switch-section rs-switch-section--move">
+        <div className="rs-switch-section__intro rs-stitch-reveal">
+          <p className="rs-stitch-kicker">What may need to move</p>
+          <h2>Map the active relationship before the historical archive.</h2>
+          <p>
+            The information required to continue coaching is not always the same
+            as the information worth preserving for reference. Review the two
+            separately.
+          </p>
+        </div>
+        <div className="rs-switch-category-grid">
+          {moveCategories.map(([title, body]) => (
+            <article className="rs-stitch-reveal" key={title}>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </article>
+          ))}
+        </div>
+        <p className="rs-switch-section__note rs-stitch-reveal">
+          Not every historical record needs to become active RepSync data. Some
+          information may be more appropriate as an export or read-only archive.
+        </p>
+      </section>
+
+      <section className="rs-switch-section rs-switch-section--support" id="transition-process">
+        <div className="rs-switch-section__intro rs-stitch-reveal">
+          <p className="rs-stitch-kicker">Migration support</p>
+          <h2>Every category needs an honest support state.</h2>
+          <p>
+            Migration support depends on the source platform, data format,
+            volume, and whether the information is needed for active coaching or
+            historical reference.
+          </p>
+        </div>
+        <div className="rs-switch-support-grid">
+          {supportStates.map(([title, body]) => (
+            <article className="rs-stitch-reveal" key={title}>
+              <span>{title}</span>
+              <p>{body}</p>
+            </article>
+          ))}
         </div>
       </section>
-      <FinalCta title="Plan the switch with the workflow in front of you." />
+
+      <section className="rs-switch-section rs-switch-section--handoff">
+        <div className="rs-switch-handoff__copy rs-stitch-reveal">
+          <p className="rs-stitch-kicker">During the handoff</p>
+          <h2>Keep one source of truth until each part of the move is complete.</h2>
+          <p>
+            A transition becomes risky when the same information is edited in two
+            systems without a clear owner. Decide which platform is
+            authoritative for each workflow until the handoff is confirmed.
+          </p>
+          <strong>
+            A smaller verified first group is usually safer than inviting the
+            entire client roster at once.
+          </strong>
+        </div>
+        <div className="rs-switch-handoff-list">
+          {handoffItems.map(([title, body], index) => (
+            <article className="rs-stitch-reveal" key={title}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <div>
+                <h3>{title}</h3>
+                <p>{body}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rs-switch-section rs-switch-section--platforms">
+        <div className="rs-switch-section__intro rs-stitch-reveal">
+          <p className="rs-stitch-kicker">Current platform</p>
+          <h2>Start with the workflow you are leaving.</h2>
+          <p>
+            The transition plan should reflect how the current platform handles
+            delivery, client communication, check-ins, team access, and
+            historical information.
+          </p>
+        </div>
+        <div className="rs-switch-platform-grid">
+          {platformCards.map((platform) => (
+            <article className="rs-stitch-reveal" key={platform.title}>
+              <h3>{platform.title}</h3>
+              <p>{platform.body}</p>
+              <SiteLink to={platform.to} variant="secondary">
+                {platform.cta}
+              </SiteLink>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rs-switch-section rs-switch-section--faq">
+        <div className="rs-switch-section__intro rs-stitch-reveal">
+          <p className="rs-stitch-kicker">Questions to resolve before the move</p>
+          <h2>Clarify the limits before the rollout begins.</h2>
+        </div>
+        <div className="rs-switch-faq-list">
+          {questions.map(([question, answer]) => (
+            <article className="rs-stitch-reveal" key={question}>
+              <h3>{question}</h3>
+              <p>{answer}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rs-switch-final rs-stitch-reveal">
+        <SyncRail />
+        <p className="rs-stitch-kicker">Switching demo</p>
+        <h2>Plan the switch with the workflow in front of you.</h2>
+        <p>
+          Book a focused 25-minute walkthrough based on your current platform,
+          active-client volume, team structure, and the information that must
+          remain available during the move.
+        </p>
+        <div className="rs-stitch-cta__actions">
+          <SiteLink to="/book-demo">Book a switching demo</SiteLink>
+          <SiteLink to="/for-coaches" variant="secondary">
+            Explore RepSync for coaches
+          </SiteLink>
+        </div>
+        <p className="rs-switch-final__note">
+          Focused on continuity, current limitations, and the safest next step.
+        </p>
+      </section>
     </PublicLayout>
   );
 }

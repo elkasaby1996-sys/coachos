@@ -49,7 +49,7 @@ export function LoginPage() {
         <CardHeader>
           <CardTitle>Welcome back</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Sign in to your Repsync workspace.
+            Sign in to your RepSync workspace.
           </p>
         </CardHeader>
         <CardContent>

@@ -70,7 +70,7 @@ export function WelcomePage() {
           <div className="relative z-10 space-y-7">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Repsync system
+              RepSync system
             </div>
 
             <div className="space-y-3">
