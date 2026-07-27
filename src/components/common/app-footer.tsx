@@ -22,6 +22,7 @@ type AppFooterProps = {
   className?: string;
   contentClassName?: string;
   enableRegionLanguageSwitcher?: boolean;
+  linkSet?: "default" | "marketing";
   size?: "default" | "portal";
   surface?: "default" | "transparent";
 };
@@ -30,6 +31,7 @@ export function AppFooter({
   className,
   contentClassName,
   enableRegionLanguageSwitcher = true,
+  linkSet = "default",
   size = "default",
   surface = "default",
 }: AppFooterProps) {
@@ -56,6 +58,40 @@ export function AppFooter({
           &copy; 2026 RepSync
         </span>
         <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-self-center">
+          {linkSet === "marketing" ? (
+            <>
+              <Link
+                className="transition-colors hover:text-foreground"
+                to="/product"
+              >
+                Product
+              </Link>
+              <Link
+                className="transition-colors hover:text-foreground"
+                to="/coaches"
+              >
+                Marketplace
+              </Link>
+              <Link
+                className="transition-colors hover:text-foreground"
+                to="/pricing"
+              >
+                Pricing
+              </Link>
+              <Link
+                className="transition-colors hover:text-foreground"
+                to="/faq"
+              >
+                FAQ
+              </Link>
+              <Link
+                className="transition-colors hover:text-foreground"
+                to="/security"
+              >
+                Security
+              </Link>
+            </>
+          ) : null}
           <Link
             className="transition-colors hover:text-foreground"
             to="/support"
@@ -71,6 +107,14 @@ export function AppFooter({
           <Link className="transition-colors hover:text-foreground" to="/terms">
             {t("footer.terms", "Terms of use")}
           </Link>
+          {linkSet === "marketing" ? (
+            <Link
+              className="transition-colors hover:text-foreground"
+              to="/cookies"
+            >
+              Cookies
+            </Link>
+          ) : null}
         </nav>
         {enableRegionLanguageSwitcher ? (
           <RegionLanguageSwitcher />

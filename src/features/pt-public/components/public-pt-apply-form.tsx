@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
 import { Select } from "../../../components/ui/select";
 import { Textarea } from "../../../components/ui/textarea";
 import {
@@ -212,16 +213,19 @@ export function PublicPtApplyForm({
     <div className="space-y-4">
       {success ? (
         <div className="rounded-2xl border border-success/20 bg-success/10 p-4 text-sm text-success">
-          Application sent. The coach can now review your goals, experience,
-          and coaching interest.
+          Application sent. The coach can now review your goals, experience, and
+          coaching interest.
         </div>
       ) : null}
 
       {!identity.isAuthenticated && !preview ? (
         <div className="rounded-2xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
-          Sign in to apply with your account identity.
-          <Link to="/login" className="ml-2 underline">
-            Go to login
+          Sign in once to verify your email before sending this application.
+          <Link
+            to={`/login?redirect=${encodeURIComponent(`/p/${slug}#public-pt-apply-form`)}`}
+            className="ml-2 font-semibold underline underline-offset-4"
+          >
+            Sign in
           </Link>
         </div>
       ) : null}
@@ -234,14 +238,16 @@ export function PublicPtApplyForm({
 
       <div className="grid gap-3">
         {requiresFullName ? (
-          <>
+          <div className="space-y-2">
+            <Label htmlFor={`application-full-name-${slug}`}>Full name</Label>
             <Input
+              id={`application-full-name-${slug}`}
               isInvalid={fullNameLimitState.overLimit}
               value={form.fullName}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, fullName: event.target.value }))
               }
-              placeholder="Full name"
+              autoComplete="name"
               disabled={preview}
             />
             <FieldCharacterMeta
@@ -249,34 +255,58 @@ export function PublicPtApplyForm({
               limit={fullNameLimitState.limit}
               errorText={fullNameLimitState.errorText}
             />
-          </>
+          </div>
         ) : (
-          <div className="rounded-2xl border border-border/70 bg-background/40 px-3 py-2 text-sm text-foreground">
-            {identity.fullName}
+          <div className="space-y-2">
+            <Label htmlFor={`application-full-name-${slug}`}>Full name</Label>
+            <div
+              id={`application-full-name-${slug}`}
+              className="rounded-2xl border border-border/70 bg-background/40 px-3 py-2 text-sm text-foreground"
+            >
+              {identity.fullName}
+            </div>
           </div>
         )}
 
-        <Input value={identity.email} disabled placeholder="Account email" />
-        <Input
-          isInvalid={phoneLimitState.overLimit}
-          value={form.phone}
-          onChange={(event) =>
-            setForm((prev) => ({ ...prev, phone: event.target.value }))
-          }
-          placeholder="Phone (optional)"
-          disabled={preview}
-        />
-        <FieldCharacterMeta
-          count={phoneLimitState.count}
-          limit={phoneLimitState.limit}
-          errorText={phoneLimitState.errorText}
-        />
+        <div className="space-y-2">
+          <Label htmlFor={`application-email-${slug}`}>Account email</Label>
+          <Input
+            id={`application-email-${slug}`}
+            value={identity.email}
+            disabled
+            type="email"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`application-phone-${slug}`}>
+            Phone number{" "}
+            <span className="font-normal text-muted-foreground">
+              (optional)
+            </span>
+          </Label>
+          <Input
+            id={`application-phone-${slug}`}
+            isInvalid={phoneLimitState.overLimit}
+            value={form.phone}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, phone: event.target.value }))
+            }
+            autoComplete="tel"
+            disabled={preview}
+          />
+          <FieldCharacterMeta
+            count={phoneLimitState.count}
+            limit={phoneLimitState.limit}
+            errorText={phoneLimitState.errorText}
+          />
+        </div>
         {hasPackages ? (
           <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+            <Label htmlFor={`application-package-${slug}`}>
               Which coaching option interests you?
-            </p>
+            </Label>
             <Select
+              id={`application-package-${slug}`}
               value={form.packageInterestId}
               onChange={(event) => {
                 const selectedId = event.target.value;
@@ -298,7 +328,6 @@ export function PublicPtApplyForm({
                 }
               }}
               disabled={preview}
-              aria-label="Interested package"
             >
               <option value="">No specific package yet</option>
               {packageOptions.map((option) => (
@@ -329,37 +358,47 @@ export function PublicPtApplyForm({
             You can still apply and discuss options with the coach.
           </p>
         )}
-        <Textarea
-          isInvalid={goalSummaryLimitState.overLimit}
-          value={form.goalSummary}
-          onChange={(event) =>
-            setForm((prev) => ({ ...prev, goalSummary: event.target.value }))
-          }
-          placeholder="What are you trying to achieve?"
-          disabled={preview}
-        />
-        <FieldCharacterMeta
-          count={goalSummaryLimitState.count}
-          limit={goalSummaryLimitState.limit}
-          errorText={goalSummaryLimitState.errorText}
-        />
-        <Input
-          isInvalid={trainingExperienceLimitState.overLimit}
-          value={form.trainingExperience}
-          onChange={(event) =>
-            setForm((prev) => ({
-              ...prev,
-              trainingExperience: event.target.value,
-            }))
-          }
-          placeholder="Tell us about your current training experience."
-          disabled={preview}
-        />
-        <FieldCharacterMeta
-          count={trainingExperienceLimitState.count}
-          limit={trainingExperienceLimitState.limit}
-          errorText={trainingExperienceLimitState.errorText}
-        />
+        <div className="space-y-2">
+          <Label htmlFor={`application-goal-${slug}`}>
+            What are you hoping to achieve?
+          </Label>
+          <Textarea
+            id={`application-goal-${slug}`}
+            isInvalid={goalSummaryLimitState.overLimit}
+            value={form.goalSummary}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, goalSummary: event.target.value }))
+            }
+            disabled={preview}
+          />
+          <FieldCharacterMeta
+            count={goalSummaryLimitState.count}
+            limit={goalSummaryLimitState.limit}
+            errorText={goalSummaryLimitState.errorText}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`application-experience-${slug}`}>
+            Current training experience
+          </Label>
+          <Textarea
+            id={`application-experience-${slug}`}
+            isInvalid={trainingExperienceLimitState.overLimit}
+            value={form.trainingExperience}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                trainingExperience: event.target.value,
+              }))
+            }
+            disabled={preview}
+          />
+          <FieldCharacterMeta
+            count={trainingExperienceLimitState.count}
+            limit={trainingExperienceLimitState.limit}
+            errorText={trainingExperienceLimitState.errorText}
+          />
+        </div>
       </div>
 
       <Button

@@ -2338,6 +2338,38 @@ export function useCoachMarketplaceProfiles() {
   });
 }
 
+export function useCoachMarketplacePackageCounts(coachUserIds: string[]) {
+  const normalizedCoachUserIds = Array.from(
+    new Set(coachUserIds.map((id) => id.trim()).filter(Boolean)),
+  ).sort();
+
+  return useQuery({
+    queryKey: ["coach-marketplace-package-counts", normalizedCoachUserIds],
+    enabled: normalizedCoachUserIds.length > 0,
+    staleTime: 1000 * 60 * 5,
+    queryFn: async () => {
+      if (normalizedCoachUserIds.length === 0) {
+        return {} as Record<string, number>;
+      }
+
+      const { data, error } = await supabase
+        .from("pt_packages")
+        .select("pt_user_id")
+        .in("pt_user_id", normalizedCoachUserIds)
+        .eq("status", "active")
+        .eq("is_public", true)
+        .returns<Array<{ pt_user_id: string }>>();
+
+      if (error) throw error;
+
+      return (data ?? []).reduce<Record<string, number>>((counts, row) => {
+        counts[row.pt_user_id] = (counts[row.pt_user_id] ?? 0) + 1;
+        return counts;
+      }, {});
+    },
+  });
+}
+
 export async function setPtHubProfilePublication(publish: boolean) {
   const { error } = await supabase.rpc("set_pt_profile_publication", {
     p_publish: publish,

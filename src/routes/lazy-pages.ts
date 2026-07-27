@@ -19,11 +19,6 @@ export const ClientLayout = lazy(() =>
 export const LoginPage = lazy(() =>
   import("../pages/public/login").then((m) => ({ default: m.LoginPage })),
 );
-export const MarketingHomePage = lazy(() =>
-  import("../pages/public/marketing-home").then((m) => ({
-    default: m.MarketingHomePage,
-  })),
-);
 export const ProductPage = lazy(() =>
   import("../pages/public/product").then((m) => ({ default: m.ProductPage })),
 );

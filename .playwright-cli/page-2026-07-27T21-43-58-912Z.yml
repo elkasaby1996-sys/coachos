@@ -1,0 +1,137 @@
+- generic [ref=e4]:
+  - link "Skip to content" [ref=e5] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=e6]:
+    - link "RepSync home" [ref=e7] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e8]: R E P S Y N C
+    - navigation "Public navigation" [ref=e9]:
+      - link "Product" [ref=e10] [cursor=pointer]:
+        - /url: /product
+      - link "Marketplace" [ref=e11] [cursor=pointer]:
+        - /url: /coaches
+      - link "For coaches" [ref=e12] [cursor=pointer]:
+        - /url: /for-coaches
+      - link "For clients" [ref=e13] [cursor=pointer]:
+        - /url: /for-clients
+      - link "Switch" [ref=e14] [cursor=pointer]:
+        - /url: /switch
+      - link "Pricing" [ref=e15] [cursor=pointer]:
+        - /url: /pricing
+    - generic [ref=e16]:
+      - link "Log in" [ref=e17] [cursor=pointer]:
+        - /url: /login
+      - link "Book a demo" [ref=e19] [cursor=pointer]:
+        - /url: /book-demo
+  - main [ref=e23]:
+    - generic [ref=e25]:
+      - paragraph [ref=e26]: Coach marketplace
+      - heading "Find A Coach" [level=1] [ref=e27]
+      - paragraph [ref=e28]: Compare specialties, delivery options, and coaching approaches. Applying starts a conversation, not a subscription.
+    - region "Coach marketplace directory" [ref=e29]:
+      - search [ref=e30]:
+        - textbox "Search coaches" [ref=e35]:
+          - /placeholder: Search by name, specialty, location, or coaching style
+        - generic "Coach filters" [ref=e36]:
+          - generic [ref=e37]:
+            - generic [ref=e38]: Coaching type
+            - combobox [ref=e39]
+            - button "Coaching type" [ref=e40] [cursor=pointer]:
+              - generic [ref=e41]: All coaching types
+          - generic [ref=e42]:
+            - generic [ref=e43]: Delivery
+            - combobox [ref=e44]
+            - button "Delivery" [ref=e45] [cursor=pointer]:
+              - generic [ref=e46]: Any delivery mode
+          - generic [ref=e47]:
+            - generic [ref=e48]: Specialty
+            - combobox [ref=e49]
+            - button "Specialty" [ref=e50] [cursor=pointer]:
+              - generic [ref=e51]: All specialties
+          - generic [ref=e52]:
+            - generic [ref=e53]: Sort by
+            - combobox [ref=e54]
+            - button "Sort by" [ref=e55] [cursor=pointer]:
+              - generic [ref=e56]: Name
+      - generic [ref=e57]:
+        - article [ref=e58]:
+          - link "View Ahmed Elkasaby's coaching profile" [ref=e59] [cursor=pointer]:
+            - /url: /p/kasabyfit
+            - img "Ahmed Elkasaby coaching profile banner" [ref=e60]
+            - generic [ref=e61]: View profile
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - img "Ahmed Elkasaby" [ref=e68]
+              - generic [ref=e69]:
+                - heading [level=3] [ref=e70]:
+                  - link "Ahmed Elkasaby" [ref=e71] [cursor=pointer]:
+                    - /url: /p/kasabyfit
+                - paragraph [ref=e72]: High-end coach for coaches
+            - generic [ref=e73]:
+              - generic [ref=e74]: Doha,Dubai,Cairo
+              - generic [ref=e78]: Online
+            - generic [ref=e79]:
+              - paragraph [ref=e80]: Coaching focus
+              - generic [ref=e81]:
+                - generic [ref=e82]: Fat loss
+                - generic [ref=e83]: diet
+                - generic [ref=e84]: 1:1 coaching
+                - generic [ref=e85]: Programming
+            - generic [ref=e86]:
+              - link "View profile" [ref=e87] [cursor=pointer]:
+                - /url: /p/kasabyfit
+              - link "Apply" [ref=e91] [cursor=pointer]:
+                - /url: /p/kasabyfit#public-pt-apply-form
+        - article [ref=e92]:
+          - link "View Demona Catchella's coaching profile" [ref=e93] [cursor=pointer]:
+            - /url: /p/demona
+            - img "Demona Catchella coaching profile banner" [ref=e94]
+            - generic [ref=e95]: View profile
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - img "Demona Catchella" [ref=e102]
+              - generic [ref=e103]:
+                - heading [level=3] [ref=e104]:
+                  - link "Demona Catchella" [ref=e105] [cursor=pointer]:
+                    - /url: /p/demona
+                - paragraph [ref=e106]: High performance coach
+            - generic [ref=e107]:
+              - generic [ref=e108]: Qatar, Dubai
+              - generic [ref=e112]: Online
+              - generic [ref=e113]: In person
+            - generic [ref=e114]:
+              - paragraph [ref=e115]: Coaching focus
+              - generic [ref=e116]:
+                - generic [ref=e117]: Strenght
+                - generic [ref=e118]: fat loss
+                - generic [ref=e119]: 1:1 coaching
+                - generic [ref=e120]: Programming
+            - generic [ref=e121]:
+              - link "View profile" [ref=e122] [cursor=pointer]:
+                - /url: /p/demona
+              - link "Apply" [ref=e126] [cursor=pointer]:
+                - /url: /p/demona#public-pt-apply-form
+  - contentinfo [ref=e127]:
+    - generic [ref=e128]:
+      - generic [ref=e129]: © 2026 RepSync
+      - navigation [ref=e130]:
+        - link "Product" [ref=e131] [cursor=pointer]:
+          - /url: /product
+        - link "Marketplace" [ref=e132] [cursor=pointer]:
+          - /url: /coaches
+        - link "Pricing" [ref=e133] [cursor=pointer]:
+          - /url: /pricing
+        - link "FAQ" [ref=e134] [cursor=pointer]:
+          - /url: /faq
+        - link "Security" [ref=e135] [cursor=pointer]:
+          - /url: /security
+        - link "Support" [ref=e136] [cursor=pointer]:
+          - /url: /support
+        - link "Privacy policy" [ref=e137] [cursor=pointer]:
+          - /url: /privacy
+        - link "Terms of use" [ref=e138] [cursor=pointer]:
+          - /url: /terms
+        - link "Cookies" [ref=e139] [cursor=pointer]:
+          - /url: /cookies
+      - button "Change region and language" [ref=e140] [cursor=pointer]:
+        - generic [ref=e141]: English / United States

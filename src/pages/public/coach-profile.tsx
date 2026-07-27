@@ -11,6 +11,7 @@ import {
   usePublicPtProfile,
 } from "../../features/pt-hub/lib/pt-hub";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
+import { PublicLayout } from "./public-site-shell";
 
 function setPublicProfileMeta(params: {
   title: string;
@@ -68,6 +69,11 @@ function setPublicProfileMeta(params: {
     tag.setAttribute("property", "og:image");
     return tag;
   }).content = imageUrl;
+  ensureMeta('meta[property="og:type"]', () => {
+    const tag = document.createElement("meta");
+    tag.setAttribute("property", "og:type");
+    return tag;
+  }).content = "profile";
   ensureMeta('meta[name="twitter:card"]', () => {
     const tag = document.createElement("meta");
     tag.name = "twitter:card";
@@ -93,6 +99,25 @@ function setPublicProfileMeta(params: {
     tag.rel = "canonical";
     return tag;
   }).href = `${origin}${params.canonicalPath}`;
+
+  let structuredData = document.head.querySelector<HTMLScriptElement>(
+    "#repsync-public-structured-data",
+  );
+  if (!structuredData) {
+    structuredData = document.createElement("script");
+    structuredData.id = "repsync-public-structured-data";
+    structuredData.type = "application/ld+json";
+    document.head.appendChild(structuredData);
+  }
+  structuredData.text = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    name: params.title,
+    description: params.description,
+    url: `${origin}${params.canonicalPath}`,
+    primaryImageOfPage: imageUrl,
+    isPartOf: { "@type": "WebSite", name: "RepSync", url: origin },
+  });
 }
 
 export function PublicCoachProfilePage() {
@@ -136,7 +161,8 @@ export function PublicCoachProfilePage() {
     }
 
     const profile = profileQuery.data;
-    const displayName = profile.displayName || profile.fullName || "RepSync coach";
+    const displayName =
+      profile.displayName || profile.fullName || "RepSync coach";
     const description =
       profile.headline?.trim() ||
       profile.shortBio?.trim() ||
@@ -148,39 +174,48 @@ export function PublicCoachProfilePage() {
       robots: "index,follow",
       imageUrl: profile.bannerImageUrl || profile.profilePhotoUrl,
     });
-  }, [profileQuery.data, profileQuery.error, profileQuery.isLoading, resolvedSlug]);
+  }, [
+    profileQuery.data,
+    profileQuery.error,
+    profileQuery.isLoading,
+    resolvedSlug,
+  ]);
 
   if (profileQuery.isLoading) {
     return (
-      <div className="theme-shell-canvas relative isolate min-h-screen overflow-hidden px-4 py-10 text-foreground">
-        <AppShellBackgroundLayer />
-        <div className="relative z-10 mx-auto max-w-5xl">
-          <EmptyState
-            title="Loading coach profile"
-            description="Rendering the public coach page..."
-          />
+      <PublicLayout>
+        <div className="theme-shell-canvas relative isolate min-h-screen overflow-hidden px-4 pb-10 pt-32 text-foreground">
+          <AppShellBackgroundLayer />
+          <div className="relative z-10 mx-auto max-w-5xl">
+            <EmptyState
+              title="Loading coach profile"
+              description="Rendering the public coach page..."
+            />
+          </div>
         </div>
-      </div>
+      </PublicLayout>
     );
   }
 
   if (profileQuery.error || !profileQuery.data) {
     return (
-      <div className="theme-shell-canvas relative isolate min-h-screen overflow-hidden px-4 py-10 text-foreground">
-        <AppShellBackgroundLayer />
-        <div className="relative z-10 mx-auto max-w-3xl space-y-4">
-          <Button asChild variant="ghost">
-            <Link to="/">
-              <ArrowLeft className="h-4 w-4" />
-              Back to RepSync
-            </Link>
-          </Button>
-          <EmptyState
-            title="Coach profile not found"
-            description="This public coach page is either unpublished or the link is no longer valid."
-          />
+      <PublicLayout>
+        <div className="theme-shell-canvas relative isolate min-h-screen overflow-hidden px-4 pb-10 pt-32 text-foreground">
+          <AppShellBackgroundLayer />
+          <div className="relative z-10 mx-auto max-w-3xl space-y-4">
+            <Button asChild variant="ghost">
+              <Link to="/coaches">
+                <ArrowLeft className="h-4 w-4" />
+                Back to coach marketplace
+              </Link>
+            </Button>
+            <EmptyState
+              title="Coach profile not found"
+              description="This public coach page is either unpublished or the link is no longer valid."
+            />
+          </div>
         </div>
-      </div>
+      </PublicLayout>
     );
   }
 
@@ -200,43 +235,45 @@ export function PublicCoachProfilePage() {
   const packageOptions = packageOptionsQuery.data ?? [];
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#FBF9F1] text-foreground">
-      {error ? (
-        <div className="fixed inset-x-0 top-4 z-50 px-4 sm:px-6">
-          <div className="mx-auto max-w-xl rounded-[8px] border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning backdrop-blur-xl">
-            {error}
+    <PublicLayout>
+      <div className="relative min-h-screen overflow-x-hidden bg-[#FBF9F1] pt-[74px] text-foreground">
+        {error ? (
+          <div className="fixed inset-x-0 top-24 z-50 px-4 sm:px-6">
+            <div className="mx-auto max-w-xl rounded-[8px] border border-warning/30 bg-[#FBF9F1] px-4 py-3 text-sm text-warning shadow-lg">
+              {error}
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      <PublicPtProfileView
-        profile={profileQuery.data}
-        submitting={submitting}
-        success={success}
-        applicantIdentity={{
-          isAuthenticated: Boolean(session?.user),
-          email: identityEmail,
-          fullName: identityFullName,
-          phone: identityPhone,
-        }}
-        packageOptions={packageOptions}
-        onSubmitApplication={async (input) => {
-          setSubmitting(true);
-          setError(null);
-          try {
-            await submitPublicPtApplication(input);
-            setSuccess(true);
-          } catch (submissionError) {
-            setError(
-              submissionError instanceof Error
-                ? submissionError.message
-                : "Unable to submit your application right now.",
-            );
-          } finally {
-            setSubmitting(false);
-          }
-        }}
-      />
-    </div>
+        <PublicPtProfileView
+          profile={profileQuery.data}
+          submitting={submitting}
+          success={success}
+          applicantIdentity={{
+            isAuthenticated: Boolean(session?.user),
+            email: identityEmail,
+            fullName: identityFullName,
+            phone: identityPhone,
+          }}
+          packageOptions={packageOptions}
+          onSubmitApplication={async (input) => {
+            setSubmitting(true);
+            setError(null);
+            try {
+              await submitPublicPtApplication(input);
+              setSuccess(true);
+            } catch (submissionError) {
+              setError(
+                submissionError instanceof Error
+                  ? submissionError.message
+                  : "Unable to submit your application right now.",
+              );
+            } finally {
+              setSubmitting(false);
+            }
+          }}
+        />
+      </div>
+    </PublicLayout>
   );
 }

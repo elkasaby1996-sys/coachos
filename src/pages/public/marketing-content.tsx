@@ -1,6 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -27,21 +27,24 @@ import { Button } from "../../components/ui/button";
 import { AppFooter } from "../../components/common/app-footer";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { Select } from "../../components/ui/select";
 import { Textarea } from "../../components/ui/textarea";
+import { supabase } from "../../lib/supabase";
+import { usePublicSeo } from "./public-seo";
+import { PublicHeader, PublicLayout } from "./public-site-shell";
 import "../../styles/marketing-home.css";
 
-type SeoConfig = {
-  title: string;
-  description: string;
-  robots?: string;
-};
-
 type DemoFormState = {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  business: string;
-  clients: string;
+  businessName: string;
+  coachingModel: string;
+  activeClientsRange: string;
+  primaryReason: string;
   message: string;
+  consent: boolean;
+  website: string;
 };
 
 type Chapter = {
@@ -60,22 +63,30 @@ const stitchImages = {
   product: `/assets/stitch-repsync-product.png?v=${assetVersion}`,
 };
 
-const navItems = [
-  { label: "Product", to: "/product" },
-  { label: "Marketplace", to: "/coaches" },
-  { label: "For coaches", to: "/for-coaches" },
-  { label: "For clients", to: "/for-clients" },
-  { label: "Switch", to: "/switch" },
-];
-
 const journey = [
   ["01", "Public profile", "The relationship starts before an application."],
-  ["02", "Application", "Prospect answers stay attached to the coaching context."],
+  [
+    "02",
+    "Application",
+    "Prospect answers stay attached to the coaching context.",
+  ],
   ["03", "Conversation", "Lead conversations remain part of the record."],
   ["04", "Approval", "The right prospects move forward with clarity."],
-  ["05", "Onboarding", "Setup, expectations, and first actions stay connected."],
-  ["06", "Coaching", "Programs, nutrition, habits, and messages share context."],
-  ["07", "Check-in", "Progress review becomes part of the relationship history."],
+  [
+    "05",
+    "Onboarding",
+    "Setup, expectations, and first actions stay connected.",
+  ],
+  [
+    "06",
+    "Coaching",
+    "Programs, nutrition, habits, and messages share context.",
+  ],
+  [
+    "07",
+    "Check-in",
+    "Progress review becomes part of the relationship history.",
+  ],
   ["08", "Client attention", "Signals show who needs help and why."],
 ];
 
@@ -134,53 +145,6 @@ const switchingSteps = [
   },
 ];
 
-function usePublicSeo({ title, description, robots = "index,follow" }: SeoConfig) {
-  useEffect(() => {
-    document.documentElement.lang = "en";
-    document.title = title;
-
-    const ensureMeta = (selector: string, create: () => HTMLMetaElement) => {
-      const existing = document.head.querySelector<HTMLMetaElement>(selector);
-      if (existing) return existing;
-      const tag = create();
-      document.head.appendChild(tag);
-      return tag;
-    };
-
-    ensureMeta('meta[name="description"]', () => {
-      const tag = document.createElement("meta");
-      tag.name = "description";
-      return tag;
-    }).content = description;
-
-    ensureMeta('meta[name="robots"]', () => {
-      const tag = document.createElement("meta");
-      tag.name = "robots";
-      return tag;
-    }).content = robots;
-
-    ensureMeta('meta[property="og:title"]', () => {
-      const tag = document.createElement("meta");
-      tag.setAttribute("property", "og:title");
-      return tag;
-    }).content = title;
-
-    ensureMeta('meta[property="og:description"]', () => {
-      const tag = document.createElement("meta");
-      tag.setAttribute("property", "og:description");
-      return tag;
-    }).content = description;
-  }, [description, robots, title]);
-}
-
-function BrandMark() {
-  return (
-    <Link className="rs-stitch-brand" to="/" aria-label="RepSync home">
-      <span>R E P S Y N C</span>
-    </Link>
-  );
-}
-
 function SiteLink({
   to,
   children,
@@ -193,98 +157,19 @@ function SiteLink({
   return (
     <Link className={`rs-stitch-button rs-stitch-button--${variant}`} to={to}>
       <span>{children}</span>
-      {variant === "primary" ? <ArrowRight size={16} aria-hidden="true" /> : null}
+      {variant === "primary" ? (
+        <ArrowRight size={16} aria-hidden="true" />
+      ) : null}
     </Link>
   );
 }
 
 function SyncRail({ orientation = "h" }: { orientation?: "h" | "v" }) {
-  return <span className={`rs-sync-rail rs-sync-rail--${orientation}`} aria-hidden="true" />;
-}
-
-function PublicHeader() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const location = useLocation();
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [location.pathname]);
-
   return (
-    <header className="rs-stitch-header">
-      <BrandMark />
-      <button
-        className="rs-stitch-menu"
-        type="button"
-        aria-controls="rs-stitch-nav"
-        aria-expanded={menuOpen}
-        onClick={() => setMenuOpen((open) => !open)}
-      >
-        <span />
-        <span />
-        <span className="sr-only">Toggle navigation</span>
-      </button>
-      <nav
-        className={`rs-stitch-nav ${menuOpen ? "is-open" : ""}`}
-        id="rs-stitch-nav"
-        aria-label="Public navigation"
-      >
-        {navItems.map((item) => (
-          <Link
-            key={item.to}
-            className={location.pathname === item.to ? "is-active" : ""}
-            to={item.to}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      <div className={`rs-stitch-actions ${menuOpen ? "is-open" : ""}`}>
-        <SiteLink to="/login" variant="text">
-          Log in
-        </SiteLink>
-        <SiteLink to="/book-demo">Book a demo</SiteLink>
-      </div>
-    </header>
-  );
-}
-
-function PublicLayout({ children }: { children: ReactNode }) {
-  const location = useLocation();
-
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    const targets = Array.from(
-      document.querySelectorAll<HTMLElement>(".rs-stitch-reveal"),
-    );
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add("is-visible");
-          observer.unobserve(entry.target);
-        });
-      },
-      { rootMargin: "0px 0px -10% 0px", threshold: 0.12 },
-    );
-
-    targets.forEach((target) => observer.observe(target));
-    return () => observer.disconnect();
-  }, [location.pathname]);
-
-  return (
-    <div className="rs-stitch-site">
-      <a className="rs-stitch-skip" href="#main">
-        Skip to content
-      </a>
-      <PublicHeader />
-      <main id="main">{children}</main>
-      <AppFooter
-        className="rs-marketing-app-footer"
-        contentClassName="rs-marketing-app-footer__content"
-      />
-    </div>
+    <span
+      className={`rs-sync-rail rs-sync-rail--${orientation}`}
+      aria-hidden="true"
+    />
   );
 }
 
@@ -332,8 +217,15 @@ function ProductPreview({
         <span />
       </div>
       {mediaSpec ? (
-        <div className="rs-stitch-media-placeholder" role="img" aria-label={alt}>
-          <div className="rs-stitch-media-placeholder__frame" aria-hidden="true">
+        <div
+          className="rs-stitch-media-placeholder"
+          role="img"
+          aria-label={alt}
+        >
+          <div
+            className="rs-stitch-media-placeholder__frame"
+            aria-hidden="true"
+          >
             <LayoutDashboard size={34} strokeWidth={1.7} />
             <span />
           </div>
@@ -365,7 +257,10 @@ function JourneyGrid() {
         />
         <div className="rs-stitch-journey-grid">
           {journey.map(([number, title, body]) => (
-            <article className="rs-stitch-journey-item rs-stitch-reveal" key={number}>
+            <article
+              className="rs-stitch-journey-item rs-stitch-reveal"
+              key={number}
+            >
               <span>{number}</span>
               <h3>{title}</h3>
               <p>{body}</p>
@@ -387,7 +282,10 @@ function ChapterGrid() {
   return (
     <div className="rs-stitch-chapter-grid">
       {productChapters.map((chapter) => (
-        <article className="rs-stitch-chapter rs-stitch-reveal" key={chapter.id}>
+        <article
+          className="rs-stitch-chapter rs-stitch-reveal"
+          key={chapter.id}
+        >
           <p className="rs-stitch-kicker">{chapter.label}</p>
           <h3>{chapter.title}</h3>
           <p>{chapter.body}</p>
@@ -462,13 +360,17 @@ function HomeSwitching() {
           <p className="rs-stitch-kicker">Switching</p>
           <h2>Move more than your workout library.</h2>
           <p>
-            Changing platforms affects active clients, current programs, check-in
-            routines, communication, and team access, not only exercise templates.
+            Changing platforms affects active clients, current programs,
+            check-in routines, communication, and team access, not only exercise
+            templates.
           </p>
         </div>
         <div className="rs-stitch-switching__grid">
           {switchingSteps.map((step) => (
-            <article className="rs-stitch-switch-card rs-stitch-reveal" key={step.label}>
+            <article
+              className="rs-stitch-switch-card rs-stitch-reveal"
+              key={step.label}
+            >
               <p className="rs-stitch-kicker">{step.label}</p>
               <p>{step.body}</p>
             </article>
@@ -558,7 +460,10 @@ export function MarketingHomePage() {
             <div className="rs-stitch-pathways">
               <article className="rs-stitch-pathway rs-stitch-reveal">
                 <p className="rs-stitch-kicker">For Coaches</p>
-                <h3>Run the work before, during, and around every client relationship.</h3>
+                <h3>
+                  Run the work before, during, and around every client
+                  relationship.
+                </h3>
                 <p>
                   Capture interest, move the right people into coaching, deliver
                   the work, run check-ins, and see who needs attention.
@@ -607,7 +512,9 @@ export function MarketingHomePage() {
             />
             <div className="rs-stitch-reveal">
               <SyncRail />
-              <p className="rs-stitch-kicker">Clear for the coach. Calm for the client.</p>
+              <p className="rs-stitch-kicker">
+                Clear for the coach. Calm for the client.
+              </p>
               <h2>Clear for the coach. Calm for the client.</h2>
               <p>
                 Clients open RepSync and see what matters now: today's workout,
@@ -640,7 +547,9 @@ function HomeIntroGate() {
       return false;
     }
     try {
-      return window.sessionStorage.getItem("repsync_home_intro_seen") !== "true";
+      return (
+        window.sessionStorage.getItem("repsync_home_intro_seen") !== "true"
+      );
     } catch {
       return true;
     }
@@ -675,7 +584,9 @@ export function ProductPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     const revealTargets = Array.from(
       document.querySelectorAll<HTMLElement>(
         ".rs-product-reference__main > section, .rs-product-ref-mockup, .rs-product-ref-card-grid article, .rs-product-ref-mini-grid article, .rs-product-ref-stage-row article",
@@ -687,7 +598,9 @@ export function ProductPage() {
       return;
     }
 
-    revealTargets.forEach((target) => target.classList.add("rs-product-ref-reveal"));
+    revealTargets.forEach((target) =>
+      target.classList.add("rs-product-ref-reveal"),
+    );
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -703,10 +616,14 @@ export function ProductPage() {
     revealTargets.forEach((target) => observer.observe(target));
 
     const navItems = Array.from(
-      document.querySelectorAll<HTMLAnchorElement>(".rs-product-ref-side nav a"),
+      document.querySelectorAll<HTMLAnchorElement>(
+        ".rs-product-ref-side nav a",
+      ),
     );
     const sections = Array.from(
-      document.querySelectorAll<HTMLElement>(".rs-product-reference__main section[id]"),
+      document.querySelectorAll<HTMLElement>(
+        ".rs-product-reference__main section[id]",
+      ),
     );
 
     const scrollToHash = (
@@ -849,7 +766,10 @@ const productReferenceNav = [
 
 function ProductReferenceSideNav() {
   return (
-    <aside className="rs-product-ref-side" aria-label="Product deep-dive chapters">
+    <aside
+      className="rs-product-ref-side"
+      aria-label="Product deep-dive chapters"
+    >
       <div className="rs-product-ref-side__title">
         <p>The OS</p>
         <h2>Product Deep Dive</h2>
@@ -871,7 +791,14 @@ function ProductReferenceSideNav() {
 }
 
 function ProductReferenceHero() {
-  const journey = ["Profile", "Apply", "Onboard", "Coach", "Check in", "Attention"];
+  const journey = [
+    "Profile",
+    "Apply",
+    "Onboard",
+    "Coach",
+    "Check in",
+    "Attention",
+  ];
 
   return (
     <section className="rs-product-ref-hero">
@@ -886,7 +813,10 @@ function ProductReferenceHero() {
       <p className="rs-product-ref-hero__note">
         One operating model from first inquiry to ongoing coaching.
       </p>
-      <div className="rs-product-ref-journey" aria-label="RepSync relationship journey">
+      <div
+        className="rs-product-ref-journey"
+        aria-label="RepSync relationship journey"
+      >
         {journey.map((item, index) => (
           <span key={item} style={{ "--step-index": index } as CSSProperties}>
             {item}
@@ -969,12 +899,17 @@ function ProductReferenceModuleMap() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (isPaused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      isPaused ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       return;
     }
 
     const rotation = window.setInterval(() => {
-      setActiveModuleIndex((currentIndex) => (currentIndex + 1) % modules.length);
+      setActiveModuleIndex(
+        (currentIndex) => (currentIndex + 1) % modules.length,
+      );
     }, 3800);
 
     return () => window.clearInterval(rotation);
@@ -991,10 +926,15 @@ function ProductReferenceModuleMap() {
   };
 
   return (
-    <section className="rs-product-ref-modules" aria-labelledby="product-module-map">
+    <section
+      className="rs-product-ref-modules"
+      aria-labelledby="product-module-map"
+    >
       <div className="rs-product-ref-modules__intro">
         <p className="rs-product-ref-label">Operating system map</p>
-        <h2 id="product-module-map">Nine modules. One coaching relationship.</h2>
+        <h2 id="product-module-map">
+          Nine modules. One coaching relationship.
+        </h2>
         <p>
           Each module owns a specific decision point in the coaching operation,
           then passes context forward without fragmenting the relationship.
@@ -1011,7 +951,11 @@ function ProductReferenceModuleMap() {
             style={{ transform: `translateX(-${activeModuleIndex * 100}%)` }}
           >
             {modules.map((module) => (
-              <a className="rs-product-ref-module-slide" href={module.href} key={module.href}>
+              <a
+                className="rs-product-ref-module-slide"
+                href={module.href}
+                key={module.href}
+              >
                 <span>{module.number}</span>
                 {module.icon}
                 <h3>{module.title}</h3>
@@ -1021,17 +965,29 @@ function ProductReferenceModuleMap() {
           </div>
         </div>
         <div className="rs-product-ref-module-carousel__controls">
-          <button aria-label="Show previous module" type="button" onClick={showPreviousModule}>
+          <button
+            aria-label="Show previous module"
+            type="button"
+            onClick={showPreviousModule}
+          >
             <ArrowLeft size={18} aria-hidden="true" />
           </button>
           <p aria-live="polite">
             {activeModule.number} / {activeModule.title}
           </p>
-          <button aria-label="Show next module" type="button" onClick={showNextModule}>
+          <button
+            aria-label="Show next module"
+            type="button"
+            onClick={showNextModule}
+          >
             <ArrowRight size={18} aria-hidden="true" />
           </button>
         </div>
-        <div className="rs-product-ref-module-carousel__dots" role="tablist" aria-label="Product modules">
+        <div
+          className="rs-product-ref-module-carousel__dots"
+          role="tablist"
+          aria-label="Product modules"
+        >
           {modules.map((module, index) => (
             <button
               aria-current={activeModuleIndex === index ? "true" : undefined}
@@ -1057,7 +1013,11 @@ function ProductProductMockup({
   variant?: "pipeline" | "phone" | "chat";
 }) {
   return (
-    <div className={`rs-product-ref-mockup rs-product-ref-mockup--${variant}`} role="img" aria-label={body}>
+    <div
+      className={`rs-product-ref-mockup rs-product-ref-mockup--${variant}`}
+      role="img"
+      aria-label={body}
+    >
       <div className="rs-product-ref-mockup__bar" aria-hidden="true">
         <span />
         <span />
@@ -1119,7 +1079,10 @@ function ProductProductMockup({
 
 function ProductReferenceAcquire() {
   return (
-    <section className="rs-product-ref-section rs-product-ref-section--split" id="acquire">
+    <section
+      className="rs-product-ref-section rs-product-ref-section--split"
+      id="acquire"
+    >
       <div>
         <p className="rs-product-ref-label">01 Acquire</p>
         <h2>Turn Interest into a Coaching Relationship.</h2>
@@ -1157,7 +1120,10 @@ function ProductReferenceOnboard() {
   ] as const;
 
   return (
-    <section className="rs-product-ref-section rs-product-ref-section--center" id="onboard">
+    <section
+      className="rs-product-ref-section rs-product-ref-section--center"
+      id="onboard"
+    >
       <span className="rs-product-ref-vertical-rail" aria-hidden="true" />
       <p className="rs-product-ref-label">02 Onboard</p>
       <h2>Start Each Client with the Right Context.</h2>
@@ -1179,13 +1145,28 @@ function ProductReferenceOnboard() {
 
 function ProductReferenceDeliver() {
   const cards = [
-    [<Dumbbell />, "Program delivery", "Assign a program, keep the client's current schedule clear, and retain the version delivered to that client."],
-    [<Utensils />, "Nutrition guidance", "Set coach-provided guidance and targets alongside the rest of the coaching plan."],
-    [<Network />, "Habit tracking", "Track the repeatable actions that support progress outside individual training sessions."],
+    [
+      <Dumbbell />,
+      "Program delivery",
+      "Assign a program, keep the client's current schedule clear, and retain the version delivered to that client.",
+    ],
+    [
+      <Utensils />,
+      "Nutrition guidance",
+      "Set coach-provided guidance and targets alongside the rest of the coaching plan.",
+    ],
+    [
+      <Network />,
+      "Habit tracking",
+      "Track the repeatable actions that support progress outside individual training sessions.",
+    ],
   ] as const;
 
   return (
-    <section className="rs-product-ref-section rs-product-ref-deliver" id="deliver">
+    <section
+      className="rs-product-ref-section rs-product-ref-deliver"
+      id="deliver"
+    >
       <span className="rs-product-ref-vertical-rail" aria-hidden="true" />
       <div className="rs-product-ref-section__center-copy">
         <p className="rs-product-ref-label">03 Deliver</p>
@@ -1210,7 +1191,10 @@ function ProductReferenceDeliver() {
 
 function ProductReferenceCommunicate() {
   return (
-    <section className="rs-product-ref-section rs-product-ref-section--split" id="communicate">
+    <section
+      className="rs-product-ref-section rs-product-ref-section--split"
+      id="communicate"
+    >
       <div>
         <p className="rs-product-ref-label">04 Communicate</p>
         <h2>Keep Every Conversation in Context.</h2>
@@ -1236,7 +1220,10 @@ function ProductReferenceCheckin() {
   const stages = ["Opens", "Submitted", "Reviewed", "Follow-up"];
 
   return (
-    <section className="rs-product-ref-section rs-product-ref-checkin" id="checkin">
+    <section
+      className="rs-product-ref-section rs-product-ref-checkin"
+      id="checkin"
+    >
       <p className="rs-product-ref-label">05 Check-ins</p>
       <h2>Structured Check-ins. Clear Follow-up.</h2>
       <p>
@@ -1314,7 +1301,10 @@ function ProductReferenceAttention() {
 
 function ProductReferenceOperate() {
   return (
-    <section className="rs-product-ref-section rs-product-ref-section--center" id="operate">
+    <section
+      className="rs-product-ref-section rs-product-ref-section--center"
+      id="operate"
+    >
       <p className="rs-product-ref-label">07 Operate</p>
       <h2>See the Work That Needs a Decision.</h2>
       <p>
@@ -1331,7 +1321,10 @@ function ProductReferenceOperate() {
 
 function ProductReferenceClientExperience() {
   return (
-    <section className="rs-product-ref-section rs-product-ref-experience" id="experience">
+    <section
+      className="rs-product-ref-section rs-product-ref-experience"
+      id="experience"
+    >
       <ProductProductMockup
         title="Client home"
         body="Use a mobile client screenshot showing today's priorities and recent coaching context."
@@ -1410,6 +1403,7 @@ function ProductReferenceFooter() {
     <AppFooter
       className="rs-marketing-app-footer rs-product-ref-footer"
       contentClassName="rs-marketing-app-footer__content"
+      linkSet="marketing"
     />
   );
 }
@@ -1424,7 +1418,10 @@ function ProductSideNav() {
   ] as const;
 
   return (
-    <aside className="rs-product-sidebar" aria-label="Product deep-dive navigation">
+    <aside
+      className="rs-product-sidebar"
+      aria-label="Product deep-dive navigation"
+    >
       <div>
         <Link className="rs-product-sidebar__brand" to="/">
           RepSync
@@ -1526,12 +1523,36 @@ function ProductCommandCenter() {
 
 function ProductArchitecture() {
   const modules = [
-    ["01 / Acquire", "Client Intake", "Custom lead magnets and funnel builders designed for fitness and high-ticket coaching."],
-    ["02 / Onboard", "Automated Welcome", "Forms, contracts, and baseline assessments trigger from a clean onboarding path."],
-    ["03 / Deliver", "The Training Engine", "Workout building with structured progressions, libraries, and delivery context."],
-    ["04 / Communicate", "Smart Inbox", "Unified coaching communication with client context attached to the thread."],
-    ["05 / Check-in", "Bio-Feedback Loops", "Adaptive check-ins that organize subjective and performance markers."],
-    ["06 / Identify", "Attention Signals", "Alerts for missed habits, plateaus, or decreasing engagement before the relationship drifts."],
+    [
+      "01 / Acquire",
+      "Client Intake",
+      "Custom lead magnets and funnel builders designed for fitness and high-ticket coaching.",
+    ],
+    [
+      "02 / Onboard",
+      "Automated Welcome",
+      "Forms, contracts, and baseline assessments trigger from a clean onboarding path.",
+    ],
+    [
+      "03 / Deliver",
+      "The Training Engine",
+      "Workout building with structured progressions, libraries, and delivery context.",
+    ],
+    [
+      "04 / Communicate",
+      "Smart Inbox",
+      "Unified coaching communication with client context attached to the thread.",
+    ],
+    [
+      "05 / Check-in",
+      "Bio-Feedback Loops",
+      "Adaptive check-ins that organize subjective and performance markers.",
+    ],
+    [
+      "06 / Identify",
+      "Attention Signals",
+      "Alerts for missed habits, plateaus, or decreasing engagement before the relationship drifts.",
+    ],
   ];
 
   return (
@@ -1563,16 +1584,14 @@ function ProductSignals() {
       icon: <AlertTriangle />,
       title: "Missed Check-in - Client: Acme Corp",
       time: "Triggered 2 hours ago",
-      note:
-        "The semantic engine noticed a missed check-in for Acme Corp. Auto-follow-up prepared for coach review.",
+      note: "The semantic engine noticed a missed check-in for Acme Corp. Auto-follow-up prepared for coach review.",
       tone: "danger",
     },
     {
       icon: <TrendingUp />,
       title: "Engagement Dip - Athlete Roster",
       time: "Triggered this morning",
-      note:
-        "Three active clients have lower completion momentum than their previous two-week baseline.",
+      note: "Three active clients have lower completion momentum than their previous two-week baseline.",
       tone: "clay",
     },
   ];
@@ -1589,7 +1608,11 @@ function ProductSignals() {
         </header>
         <div>
           {signals.map((signal) => (
-            <article className="rs-product-signal" data-tone={signal.tone} key={signal.title}>
+            <article
+              className="rs-product-signal"
+              data-tone={signal.tone}
+              key={signal.title}
+            >
               <div className="rs-product-signal__top">
                 <div className="rs-product-signal__identity">
                   <span>{signal.icon}</span>
@@ -1684,7 +1707,10 @@ function ProductTeams() {
       </div>
       <div className="rs-product-team-grid">
         {[
-          ["Owner", "Full visibility, financial controls, and master settings."],
+          [
+            "Owner",
+            "Full visibility, financial controls, and master settings.",
+          ],
           ["Assistant", "Manage inquiries, update logs, and handle schedules."],
           ["Viewer", "Read-only access for guest consultants or specialists."],
         ].map(([role, body]) => (
@@ -1730,12 +1756,26 @@ function ProductBusinessVisibility() {
         <div>
           <aside>
             <p>Quarterly Goal</p>
-            <div><span /></div>
+            <div>
+              <span />
+            </div>
             <nav>
-              <a href="#command"><Gauge size={15} />Overview</a>
-              <a href="#visibility"><TrendingUp size={15} />Growth</a>
-              <a href="#teams"><UsersRound size={15} />Athletes</a>
-              <a href="#command"><CreditCard size={15} />Revenue</a>
+              <a href="#command">
+                <Gauge size={15} />
+                Overview
+              </a>
+              <a href="#visibility">
+                <TrendingUp size={15} />
+                Growth
+              </a>
+              <a href="#teams">
+                <UsersRound size={15} />
+                Athletes
+              </a>
+              <a href="#command">
+                <CreditCard size={15} />
+                Revenue
+              </a>
             </nav>
           </aside>
           <section>
@@ -1777,14 +1817,21 @@ function ProductDeepCta() {
 
 function ProductMobileNav() {
   return (
-    <nav className="rs-product-mobile-nav" aria-label="Mobile product navigation">
+    <nav
+      className="rs-product-mobile-nav"
+      aria-label="Mobile product navigation"
+    >
       {[
         ["#main", "Home", <LayoutDashboard />],
         ["#architecture", "Plan", <ClipboardCheck />],
         ["#delivery", "Log", <Dumbbell />],
         ["#visibility", "Stats", <BarChart3 />],
       ].map(([href, label, icon], index) => (
-        <a className={index === 0 ? "is-active" : ""} href={href as string} key={label as string}>
+        <a
+          className={index === 0 ? "is-active" : ""}
+          href={href as string}
+          key={label as string}
+        >
           {icon}
           <span>{label}</span>
         </a>
@@ -1887,7 +1934,8 @@ export function ForCoachesPage() {
           <p>
             RepSync connects the journey from public profile and application to
             active delivery, recurring check-ins, communication, and client
-            attention without splitting the relationship across separate systems.
+            attention without splitting the relationship across separate
+            systems.
           </p>
           <div className="rs-stitch-hero__actions">
             <SiteLink to="/book-demo">Book a demo</SiteLink>
@@ -1931,7 +1979,14 @@ export function ForCoachesPage() {
             <article>
               <p className="rs-stitch-kicker">Before</p>
               <div className="rs-coaches-flow__path">
-                {["DMs", "Forms", "Spreadsheets", "Workout platform", "Messaging app", "Manual reminders"].map((item) => (
+                {[
+                  "DMs",
+                  "Forms",
+                  "Spreadsheets",
+                  "Workout platform",
+                  "Messaging app",
+                  "Manual reminders",
+                ].map((item) => (
                   <span key={item}>{item}</span>
                 ))}
               </div>
@@ -1939,7 +1994,14 @@ export function ForCoachesPage() {
             <article>
               <p className="rs-stitch-kicker">With RepSync</p>
               <div className="rs-coaches-flow__path">
-                {["Profile", "Application", "Lead", "Client", "Coaching", "Attention"].map((item) => (
+                {[
+                  "Profile",
+                  "Application",
+                  "Lead",
+                  "Client",
+                  "Coaching",
+                  "Attention",
+                ].map((item) => (
                   <span key={item}>{item}</span>
                 ))}
               </div>
@@ -1965,8 +2027,8 @@ export function ForCoachesPage() {
                 right workspace without starting from zero.
               </p>
               <p className="rs-coaches-section-note">
-                The handoff from lead to client should not erase the conversation
-                that came before it.
+                The handoff from lead to client should not erase the
+                conversation that came before it.
               </p>
               <SiteLink to="/product" variant="secondary">
                 Explore acquisition and onboarding
@@ -1993,7 +2055,10 @@ export function ForCoachesPage() {
           />
           <div className="rs-stitch-card-grid">
             {deliveryBlocks.map((block) => (
-              <article className="rs-stitch-card rs-stitch-reveal" key={block.title}>
+              <article
+                className="rs-stitch-card rs-stitch-reveal"
+                key={block.title}
+              >
                 <span className="rs-stitch-card__icon" aria-hidden="true">
                   {block.icon}
                 </span>
@@ -2033,7 +2098,14 @@ export function ForCoachesPage() {
                 review.
               </p>
               <div className="rs-coaches-lifecycle">
-                {["Invited", "Onboarding", "Active", "Paused", "Completed", "Churned"].map((item) => (
+                {[
+                  "Invited",
+                  "Onboarding",
+                  "Active",
+                  "Paused",
+                  "Completed",
+                  "Churned",
+                ].map((item) => (
                   <span key={item}>{item}</span>
                 ))}
               </div>
@@ -2069,14 +2141,17 @@ export function ForCoachesPage() {
             <div className="rs-stitch-reveal">
               <SyncRail />
               <p className="rs-stitch-kicker">Client experience</p>
-              <h2>Your operation can be detailed. Their experience should not be.</h2>
+              <h2>
+                Your operation can be detailed. Their experience should not be.
+              </h2>
               <p>
                 Clients see their assigned work, nutrition guidance, habits,
                 next check-in, messages, and progress without seeing the
                 operational layer behind the coaching.
               </p>
               <p className="rs-coaches-section-note">
-                The coach keeps the context. The client gets a clear next action.
+                The coach keeps the context. The client gets a clear next
+                action.
               </p>
               <SiteLink to="/for-clients" variant="secondary">
                 See the client experience
@@ -2133,7 +2208,13 @@ export function ForCoachesPage() {
             {["Owner", "Assistant coach", "Viewer"].map((role) => (
               <article className="rs-stitch-card rs-stitch-reveal" key={role}>
                 <span className="rs-stitch-card__icon" aria-hidden="true">
-                  {role === "Owner" ? <LockKeyhole /> : role === "Assistant coach" ? <UsersRound /> : <UserRound />}
+                  {role === "Owner" ? (
+                    <LockKeyhole />
+                  ) : role === "Assistant coach" ? (
+                    <UsersRound />
+                  ) : (
+                    <UserRound />
+                  )}
                 </span>
                 <h3>{role}</h3>
                 <ul>
@@ -2183,7 +2264,9 @@ export function ForCoachesPage() {
           />
           <div className="rs-coaches-fit-grid">
             <article className="rs-coaches-fit-card rs-stitch-reveal">
-              <p className="rs-stitch-kicker">RepSync is a strong fit when...</p>
+              <p className="rs-stitch-kicker">
+                RepSync is a strong fit when...
+              </p>
               <ul>
                 {strongFit.map((item) => (
                   <li key={item}>
@@ -2194,7 +2277,9 @@ export function ForCoachesPage() {
               </ul>
             </article>
             <article className="rs-coaches-fit-card rs-stitch-reveal">
-              <p className="rs-stitch-kicker">RepSync may not be the right fit yet when...</p>
+              <p className="rs-stitch-kicker">
+                RepSync may not be the right fit yet when...
+              </p>
               <ul>
                 {weakerFit.map((item) => (
                   <li key={item}>
@@ -2254,8 +2339,16 @@ export function ForClientsPage() {
   });
 
   const todayItems = [
-    ["Today's workout", "See the session your coach has assigned.", <Dumbbell />],
-    ["Nutrition guidance", "Review the current guidance or targets.", <Utensils />],
+    [
+      "Today's workout",
+      "See the session your coach has assigned.",
+      <Dumbbell />,
+    ],
+    [
+      "Nutrition guidance",
+      "Review the current guidance or targets.",
+      <Utensils />,
+    ],
     ["Active habits", "See the actions you are working on.", <CheckCircle2 />],
     ["Next check-in", "Know when it opens or is due.", <ClipboardCheck />],
     ["Coach message", "Read the latest coaching context.", <MessageSquare />],
@@ -2387,7 +2480,9 @@ export function ForClientsPage() {
             <div className="rs-stitch-reveal">
               <SyncRail />
               <p className="rs-stitch-kicker">02 / Your plan</p>
-              <h2>Your plan, guidance, and next actions in one coaching space.</h2>
+              <h2>
+                Your plan, guidance, and next actions in one coaching space.
+              </h2>
               <p>
                 What your coach assigns stays clear. What you complete is easy
                 to see.
@@ -2400,16 +2495,18 @@ export function ForClientsPage() {
                 </span>
                 <h3>Follow the training your coach has set for you.</h3>
                 <p>
-                  See scheduled sessions, exercise details, completion state, and
-                  what comes next without searching through separate documents or
-                  message threads.
+                  See scheduled sessions, exercise details, completion state,
+                  and what comes next without searching through separate
+                  documents or message threads.
                 </p>
               </article>
               <article className="rs-stitch-reveal">
                 <span className="rs-stitch-card__icon" aria-hidden="true">
                   <Utensils />
                 </span>
-                <h3>Keep the actions outside training connected to the plan.</h3>
+                <h3>
+                  Keep the actions outside training connected to the plan.
+                </h3>
                 <p>
                   View nutrition guidance and the habits your coach wants you to
                   focus on alongside the rest of your coaching.
@@ -2429,7 +2526,8 @@ export function ForClientsPage() {
               <h2>Keep the coaching conversation moving between sessions.</h2>
               <p>
                 Check-ins give you a structured place to reflect. Messages give
-                you a direct place to ask questions and continue the conversation.
+                you a direct place to ask questions and continue the
+                conversation.
               </p>
             </div>
             <div className="rs-clients-checkin-flow rs-stitch-reveal">
@@ -2520,7 +2618,10 @@ export function ForClientsPage() {
           />
           <div className="rs-clients-join-grid">
             {joinPaths.map((path) => (
-              <article className="rs-stitch-card rs-stitch-reveal" key={path.title}>
+              <article
+                className="rs-stitch-card rs-stitch-reveal"
+                key={path.title}
+              >
                 <span className="rs-stitch-card__icon" aria-hidden="true">
                   {path.icon}
                 </span>
@@ -2528,11 +2629,17 @@ export function ForClientsPage() {
                 <p>{path.body}</p>
                 <SiteLink
                   to={path.to}
-                  variant={path.title === "I have an invitation" ? "primary" : "secondary"}
+                  variant={
+                    path.title === "I have an invitation"
+                      ? "primary"
+                      : "secondary"
+                  }
                 >
                   {path.action}
                 </SiteLink>
-                {path.note ? <p className="rs-clients-card-note">{path.note}</p> : null}
+                {path.note ? (
+                  <p className="rs-clients-card-note">{path.note}</p>
+                ) : null}
               </article>
             ))}
           </div>
@@ -2728,7 +2835,10 @@ export function SwitchPage() {
             comparison before planning the transition.
           </p>
         </div>
-        <aside className="rs-switch-hero__panel rs-stitch-reveal is-visible" aria-label="Switching sequence">
+        <aside
+          className="rs-switch-hero__panel rs-stitch-reveal is-visible"
+          aria-label="Switching sequence"
+        >
           {reviewSteps.map((step) => (
             <article key={step.number}>
               <span>{step.number}</span>
@@ -2767,7 +2877,10 @@ export function SwitchPage() {
         </p>
       </section>
 
-      <section className="rs-switch-section rs-switch-section--support" id="transition-process">
+      <section
+        className="rs-switch-section rs-switch-section--support"
+        id="transition-process"
+      >
         <div className="rs-switch-section__intro rs-stitch-reveal">
           <p className="rs-stitch-kicker">Migration support</p>
           <h2>Every category needs an honest support state.</h2>
@@ -2790,10 +2903,12 @@ export function SwitchPage() {
       <section className="rs-switch-section rs-switch-section--handoff">
         <div className="rs-switch-handoff__copy rs-stitch-reveal">
           <p className="rs-stitch-kicker">During the handoff</p>
-          <h2>Keep one source of truth until each part of the move is complete.</h2>
+          <h2>
+            Keep one source of truth until each part of the move is complete.
+          </h2>
           <p>
-            A transition becomes risky when the same information is edited in two
-            systems without a clear owner. Decide which platform is
+            A transition becomes risky when the same information is edited in
+            two systems without a clear owner. Decide which platform is
             authoritative for each workflow until the handoff is confirmed.
           </p>
           <strong>
@@ -2839,7 +2954,9 @@ export function SwitchPage() {
 
       <section className="rs-switch-section rs-switch-section--faq">
         <div className="rs-switch-section__intro rs-stitch-reveal">
-          <p className="rs-stitch-kicker">Questions to resolve before the move</p>
+          <p className="rs-stitch-kicker">
+            Questions to resolve before the move
+          </p>
           <h2>Clarify the limits before the rollout begins.</h2>
         </div>
         <div className="rs-switch-faq-list">
@@ -2901,20 +3018,57 @@ export function PricingPage() {
         <div className="rs-stitch-container">
           <div className="rs-stitch-pricing">
             {[
-              ["Profile", "Public profile, packages, applications, and first impression."],
-              ["Coach OS", "Lead context, client delivery, check-ins, and operating visibility."],
-              ["Studio", "Small-team workspaces, roles, handoff, and setup support."],
-            ].map(([name, body]) => (
+              {
+                name: "Profile",
+                body: "For coaches building a professional public presence.",
+                features: [
+                  "Published coach profile",
+                  "Coaching options",
+                  "Client applications",
+                ],
+              },
+              {
+                name: "Coach OS",
+                body: "For independent coaches managing active relationships.",
+                features: [
+                  "Lead and client context",
+                  "Delivery and check-ins",
+                  "Client attention signals",
+                ],
+              },
+              {
+                name: "Studio",
+                body: "For small teams that need controlled collaboration.",
+                features: [
+                  "Role-based team access",
+                  "Shared coaching workflows",
+                  "Guided setup support",
+                ],
+              },
+            ].map(({ name, body, features }) => (
               <article className="rs-stitch-price rs-stitch-reveal" key={name}>
                 <p className="rs-stitch-kicker">{name}</p>
-                <h3>Contact</h3>
+                <h3>Early access</h3>
                 <p>{body}</p>
+                <ul className="rs-stitch-price__features">
+                  {features.map((feature) => (
+                    <li key={feature}>
+                      <CheckCircle2 size={16} aria-hidden="true" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
                 <SiteLink to="/book-demo" variant="secondary">
-                  Discuss fit
+                  Discuss early access
                 </SiteLink>
               </article>
             ))}
           </div>
+          <p className="rs-stitch-pricing__note rs-stitch-reveal">
+            Pricing is shaped by active-client volume, team access, and setup or
+            migration support. A demo confirms the appropriate pilot scope
+            before any commitment.
+          </p>
         </div>
       </section>
     </PublicLayout>
@@ -2923,11 +3077,20 @@ export function PricingPage() {
 
 function validateDemoForm(values: DemoFormState) {
   const errors: Partial<Record<keyof DemoFormState, string>> = {};
-  if (!values.name.trim()) errors.name = "Enter your name.";
-  if (!/\S+@\S+\.\S+/.test(values.email.trim())) errors.email = "Enter a valid email.";
-  if (!values.business.trim()) errors.business = "Add your coaching business type.";
-  if (!values.clients.trim()) errors.clients = "Add an approximate client count.";
-  if (values.message.trim().length < 12) errors.message = "Add a little context.";
+  if (values.firstName.trim().length < 2)
+    errors.firstName = "Enter your first name.";
+  if (values.lastName.trim().length < 2)
+    errors.lastName = "Enter your last name.";
+  if (!/\S+@\S+\.\S+/.test(values.email.trim()))
+    errors.email = "Enter a valid email.";
+  if (!values.coachingModel)
+    errors.coachingModel = "Choose your coaching model.";
+  if (!values.activeClientsRange)
+    errors.activeClientsRange = "Choose your active-client range.";
+  if (!values.primaryReason)
+    errors.primaryReason = "Choose the workflow you want to improve.";
+  if (!values.consent)
+    errors.consent = "Confirm that RepSync may respond to this request.";
   return errors;
 }
 
@@ -2939,30 +3102,89 @@ export function DemoPage() {
   });
 
   const [values, setValues] = useState<DemoFormState>({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
-    business: "",
-    clients: "",
+    businessName: "",
+    coachingModel: "",
+    activeClientsRange: "",
+    primaryReason: "",
     message: "",
+    consent: false,
+    website: "",
   });
   const [touched, setTouched] = useState(false);
   const [sent, setSent] = useState(false);
-  const errors = useMemo(() => (touched ? validateDemoForm(values) : {}), [touched, values]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const errors = useMemo(
+    () => (touched ? validateDemoForm(values) : {}),
+    [touched, values],
+  );
 
   const updateField =
     (field: keyof DemoFormState) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (
+      event: React.ChangeEvent<
+        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+      >,
+    ) => {
       setValues((current) => ({ ...current, [field]: event.target.value }));
       setSent(false);
+      setSubmitError(null);
     };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submitting) return;
     setTouched(true);
     const nextErrors = validateDemoForm(values);
     if (Object.keys(nextErrors).length > 0) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    const query = new URLSearchParams(window.location.search);
+    const { error } = await supabase.functions.invoke("marketing-lead-submit", {
+      body: {
+        type: "request_access",
+        first_name: values.firstName.trim(),
+        last_name: values.lastName.trim(),
+        email: values.email.trim().toLowerCase(),
+        business_name: values.businessName.trim() || null,
+        coaching_model: values.coachingModel,
+        active_clients_range: values.activeClientsRange,
+        primary_reason: values.primaryReason,
+        message: values.message.trim() || null,
+        consent: values.consent,
+        website: values.website,
+        page_path: window.location.pathname,
+        referrer: document.referrer || null,
+        utm_source: query.get("utm_source"),
+        utm_medium: query.get("utm_medium"),
+        utm_campaign: query.get("utm_campaign"),
+        utm_content: query.get("utm_content"),
+        utm_term: query.get("utm_term"),
+      },
+    });
+    setSubmitting(false);
+    if (error) {
+      setSubmitError(
+        "The request could not be sent. Please try again or contact support.",
+      );
+      return;
+    }
     setSent(true);
-    setValues({ name: "", email: "", business: "", clients: "", message: "" });
+    setValues({
+      firstName: "",
+      lastName: "",
+      email: "",
+      businessName: "",
+      coachingModel: "",
+      activeClientsRange: "",
+      primaryReason: "",
+      message: "",
+      consent: false,
+      website: "",
+    });
     setTouched(false);
   };
 
@@ -2977,23 +3199,110 @@ export function DemoPage() {
             your lead flow, client count, delivery model, and workspace needs.
           </p>
         </div>
-        <form className="rs-stitch-form rs-stitch-reveal is-visible" onSubmit={handleSubmit} noValidate>
+        <form
+          className="rs-stitch-form rs-stitch-reveal is-visible"
+          onSubmit={handleSubmit}
+          noValidate
+        >
           <div className="rs-stitch-form__grid">
-            <FieldBlock id="demo-name" label="Name" error={errors.name}>
-              <Input id="demo-name" value={values.name} onChange={updateField("name")} autoComplete="name" />
+            <FieldBlock
+              id="demo-first-name"
+              label="First name"
+              error={errors.firstName}
+            >
+              <Input
+                id="demo-first-name"
+                value={values.firstName}
+                onChange={updateField("firstName")}
+                autoComplete="given-name"
+              />
             </FieldBlock>
-            <FieldBlock id="demo-email" label="Email" error={errors.email}>
-              <Input id="demo-email" type="email" value={values.email} onChange={updateField("email")} autoComplete="email" />
+            <FieldBlock
+              id="demo-last-name"
+              label="Last name"
+              error={errors.lastName}
+            >
+              <Input
+                id="demo-last-name"
+                value={values.lastName}
+                onChange={updateField("lastName")}
+                autoComplete="family-name"
+              />
             </FieldBlock>
           </div>
           <div className="rs-stitch-form__grid">
-            <FieldBlock id="demo-business" label="Business type" error={errors.business}>
-              <Input id="demo-business" value={values.business} onChange={updateField("business")} placeholder="Online coach, studio, hybrid PT" />
+            <FieldBlock id="demo-email" label="Work email" error={errors.email}>
+              <Input
+                id="demo-email"
+                type="email"
+                value={values.email}
+                onChange={updateField("email")}
+                autoComplete="email"
+              />
             </FieldBlock>
-            <FieldBlock id="demo-clients" label="Active clients" error={errors.clients}>
-              <Input id="demo-clients" value={values.clients} onChange={updateField("clients")} placeholder="Example: 25 active clients" />
+            <FieldBlock id="demo-business" label="Business name">
+              <Input
+                id="demo-business"
+                value={values.businessName}
+                onChange={updateField("businessName")}
+                autoComplete="organization"
+              />
             </FieldBlock>
           </div>
+          <div className="rs-stitch-form__grid">
+            <FieldBlock
+              id="demo-model"
+              label="Coaching model"
+              error={errors.coachingModel}
+            >
+              <Select
+                id="demo-model"
+                value={values.coachingModel}
+                onChange={updateField("coachingModel")}
+              >
+                <option value="">Choose a model</option>
+                <option value="online">Online</option>
+                <option value="hybrid">Hybrid</option>
+                <option value="in_person">In person</option>
+                <option value="mixed">Mixed team</option>
+              </Select>
+            </FieldBlock>
+            <FieldBlock
+              id="demo-clients"
+              label="Active clients"
+              error={errors.activeClientsRange}
+            >
+              <Select
+                id="demo-clients"
+                value={values.activeClientsRange}
+                onChange={updateField("activeClientsRange")}
+              >
+                <option value="">Choose a range</option>
+                <option value="0_5">0-5</option>
+                <option value="6_20">6-20</option>
+                <option value="21_50">21-50</option>
+                <option value="51_plus">51+</option>
+              </Select>
+            </FieldBlock>
+          </div>
+          <FieldBlock
+            id="demo-reason"
+            label="What should RepSync improve first?"
+            error={errors.primaryReason}
+          >
+            <Select
+              id="demo-reason"
+              value={values.primaryReason}
+              onChange={updateField("primaryReason")}
+            >
+              <option value="">Choose a workflow</option>
+              <option value="lead_to_client">Lead-to-client flow</option>
+              <option value="client_attention">Client attention</option>
+              <option value="team_workspace">Team workspace</option>
+              <option value="delivery_clarity">Coaching delivery</option>
+              <option value="migration_planning">Migration planning</option>
+            </Select>
+          </FieldBlock>
           <FieldBlock id="demo-message" label="Message" error={errors.message}>
             <Textarea
               id="demo-message"
@@ -3003,13 +3312,53 @@ export function DemoPage() {
               rows={6}
             />
           </FieldBlock>
+          <div className="rs-stitch-consent">
+            <input
+              id="demo-consent"
+              type="checkbox"
+              checked={values.consent}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  consent: event.target.checked,
+                }))
+              }
+            />
+            <Label htmlFor="demo-consent">
+              RepSync may use these details to respond to this request. See the{" "}
+              <Link to="/privacy">privacy policy</Link>.
+            </Label>
+          </div>
+          {errors.consent ? (
+            <p className="rs-stitch-form__error">{errors.consent}</p>
+          ) : null}
+          <div className="rs-stitch-honeypot" aria-hidden="true">
+            <Label htmlFor="demo-website">Website</Label>
+            <Input
+              id="demo-website"
+              tabIndex={-1}
+              autoComplete="off"
+              value={values.website}
+              onChange={updateField("website")}
+            />
+          </div>
           {sent ? (
             <p className="rs-stitch-success" role="status">
-              Demo request captured locally. Wire this form to your preferred inbox or CRM before launch.
+              Your request has been sent. RepSync will follow up using the email
+              you provided.
             </p>
           ) : null}
-          <Button className="rs-stitch-submit" type="submit">
-            Request demo
+          {submitError ? (
+            <p className="rs-stitch-form__error" role="alert">
+              {submitError}
+            </p>
+          ) : null}
+          <Button
+            className="rs-stitch-submit"
+            type="submit"
+            disabled={submitting}
+          >
+            {submitting ? "Sending..." : "Request demo"}
             <ArrowRight size={16} />
           </Button>
         </form>
@@ -3049,7 +3398,8 @@ export function RequestAccessPage() {
 export function CoachesPage() {
   usePublicSeo({
     title: "Browse coaches | RepSync",
-    description: "Browse public RepSync coach profiles as they become available.",
+    description:
+      "Browse public RepSync coach profiles as they become available.",
   });
 
   return (
@@ -3126,9 +3476,46 @@ export function FaqPage() {
     >
       <div className="rs-stitch-faq">
         {[
-          ["Is RepSync only for workout programming?", "No. Programming is part of the workflow, but RepSync is positioned around the whole coaching relationship."],
-          ["Can RepSync replace spreadsheets and DMs?", "It can reduce the need for scattered tools by keeping leads, clients, check-ins, and delivery context together."],
-          ["Is pricing public?", "Not yet. Pricing is handled through early-access conversations."],
+          [
+            "Is RepSync only for workout programming?",
+            "No. Programming is part of the workflow, but RepSync is positioned around the whole coaching relationship.",
+          ],
+          [
+            "Can RepSync replace spreadsheets and DMs?",
+            "It can reduce the need for scattered tools by keeping leads, clients, check-ins, and delivery context together.",
+          ],
+          [
+            "How does early access work?",
+            "Book a focused demo so the team can review your coaching model, active-client volume, and workflow. The next step is agreed after that review.",
+          ],
+          [
+            "How is pricing determined?",
+            "Pricing is currently matched to client volume, team access, and setup or migration support. The pricing page explains the available early-access scopes.",
+          ],
+          [
+            "Do clients need to install an app?",
+            "No. RepSync is web-based and is designed to work across current desktop and mobile browsers.",
+          ],
+          [
+            "How do clients join?",
+            "Clients normally enter through a secure invitation from their coach, then complete any required account and onboarding steps.",
+          ],
+          [
+            "Can I move from another coaching platform?",
+            "RepSync supports a deliberate transition plan. Import support depends on the source platform, data format, active workflows, and information that needs to remain available.",
+          ],
+          [
+            "Can a small coaching team use RepSync?",
+            "Yes. Workspace roles are designed to separate owner, coach, assistant, and viewer responsibilities while keeping client access tied to the coaching relationship.",
+          ],
+          [
+            "Who owns the coaching data?",
+            "Data access follows the account and workspace relationship. Export, retention, and deletion requirements should be confirmed during setup and are described further in the privacy policy.",
+          ],
+          [
+            "Where can I get help?",
+            "Use the support page for product and account questions. Urgent medical or emergency guidance is outside RepSync's scope.",
+          ],
         ].map(([q, a]) => (
           <details key={q}>
             <summary>{q}</summary>
@@ -3149,11 +3536,43 @@ export function SecurityPage() {
     >
       <InfoGrid
         items={[
-          [<LockKeyhole />, "Authenticated private areas", "Private app routes require account access through the configured auth flow."],
-          [<UsersRound />, "Workspace role boundaries", "Team access is organized around owner, coach, assistant, and viewer responsibilities."],
-          [<ShieldCheck />, "No unsupported certification claims", "The public site avoids HIPAA, SOC 2, ISO, and uptime guarantees unless formally verified."],
+          [
+            <LockKeyhole />,
+            "Authenticated private areas",
+            "Private coaching routes require an authenticated account and are separated from public coach profiles.",
+          ],
+          [
+            <UsersRound />,
+            "Role-based workspace access",
+            "Owner, coach, assistant, and viewer responsibilities define what each workspace member can access.",
+          ],
+          [
+            <ShieldCheck />,
+            "Public and private separation",
+            "Published profile information is kept separate from private plans, check-ins, messages, and client records.",
+          ],
+          [
+            <Network />,
+            "Controlled data paths",
+            "Browser and backend requests use configured application and database controls rather than exposing direct public write access.",
+          ],
+          [
+            <ClipboardCheck />,
+            "Operational safeguards",
+            "Validation, access checks, and protected owner actions are applied at key account and workspace boundaries.",
+          ],
+          [
+            <MessageSquare />,
+            "Security support",
+            "Security or privacy concerns can be reported through the support channel for review and follow-up.",
+          ],
         ]}
       />
+      <p className="rs-stitch-security-note">
+        RepSync does not currently claim HIPAA, SOC 2, or ISO certification.
+        Security documentation will be updated when a formal review supports
+        additional claims.
+      </p>
     </SimpleInfoPage>
   );
 }
@@ -3167,9 +3586,21 @@ export function PrivacyPage() {
     >
       <InfoGrid
         items={[
-          [<UsersRound />, "Account and profile information", "RepSync may process identity, email, profile, workspace, and coach-controlled public profile details."],
-          [<ClipboardCheck />, "Coaching information", "Private coaching areas may include programs, nutrition, habits, check-ins, messages, notes, progress, and wearable context."],
-          [<MessageSquare />, "Marketing forms", "Demo and switch forms collect contact details and operational context so the team can respond."],
+          [
+            <UsersRound />,
+            "Account and profile information",
+            "RepSync may process identity, email, profile, workspace, and coach-controlled public profile details.",
+          ],
+          [
+            <ClipboardCheck />,
+            "Coaching information",
+            "Private coaching areas may include programs, nutrition, habits, check-ins, messages, notes, progress, and wearable context.",
+          ],
+          [
+            <MessageSquare />,
+            "Marketing forms",
+            "Demo and switch forms collect contact details and operational context so the team can respond.",
+          ],
         ]}
       />
     </SimpleInfoPage>
@@ -3185,9 +3616,21 @@ export function TermsPage() {
     >
       <InfoGrid
         items={[
-          [<CheckCircle2 />, "Account responsibility", "Users are responsible for accurate account information and secure credentials."],
-          [<ShieldCheck />, "Acceptable use", "Do not misuse RepSync, attempt unauthorized access, or interfere with service operation."],
-          [<Dumbbell />, "Coach responsibility", "Coaches remain responsible for coaching content, client communication, and professional obligations."],
+          [
+            <CheckCircle2 />,
+            "Account responsibility",
+            "Users are responsible for accurate account information and secure credentials.",
+          ],
+          [
+            <ShieldCheck />,
+            "Acceptable use",
+            "Do not misuse RepSync, attempt unauthorized access, or interfere with service operation.",
+          ],
+          [
+            <Dumbbell />,
+            "Coach responsibility",
+            "Coaches remain responsible for coaching content, client communication, and professional obligations.",
+          ],
         ]}
       />
     </SimpleInfoPage>
@@ -3203,8 +3646,16 @@ export function CookiesPage() {
     >
       <InfoGrid
         items={[
-          [<LockKeyhole />, "Essential", "Required for authentication, route state, security-sensitive operation, and saved preferences."],
-          [<BarChart3 />, "Analytics", "Optional public-site usage events should exclude personal, health, and private client data."],
+          [
+            <LockKeyhole />,
+            "Essential",
+            "Required for authentication, route state, security-sensitive operation, and saved preferences.",
+          ],
+          [
+            <BarChart3 />,
+            "Analytics",
+            "Optional public-site usage events should exclude personal, health, and private client data.",
+          ],
         ]}
       />
     </SimpleInfoPage>

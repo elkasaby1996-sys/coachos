@@ -165,7 +165,7 @@ export function PublicPtProfileView({
   };
 
   return (
-    <main className="min-h-screen bg-[#FBF9F1] text-[#171915]">
+    <div className="min-h-screen bg-[#FBF9F1] text-[#171915]">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <Button
           asChild
@@ -336,7 +336,10 @@ export function PublicPtProfileView({
         </section>
 
         <section className="border-t border-[#285D49]/16 py-12 lg:py-16">
-          <SectionIntro eyebrow="Approach" title={`How ${firstName} coaches.`} />
+          <SectionIntro
+            eyebrow="Approach"
+            title={`How ${firstName} coaches.`}
+          />
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {approachItems.map((item) => (
               <InfoPanel key={item.title} title={item.title} body={item.body} />
@@ -401,7 +404,10 @@ export function PublicPtProfileView({
             />
           </div>
           {hasPackages ? (
-            <div className="mt-8 lg:hidden" data-testid="packages-section-mobile">
+            <div
+              className="mt-8 lg:hidden"
+              data-testid="packages-section-mobile"
+            >
               <PublicPackageSection
                 packageOptions={packageCards}
                 onApply={handleApplyForPackage}
@@ -509,7 +515,7 @@ export function PublicPtProfileView({
           does not guarantee coaching outcomes or replace medical advice.
         </p>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -579,7 +585,10 @@ function PublicPackageSection({
             {featureBullets.length > 0 ? (
               <ul className="mt-5 space-y-2 text-sm leading-6 text-[#43514B]">
                 {featureBullets.map((feature) => (
-                  <li key={`${packageOption.id}-${feature}`} className="flex gap-2">
+                  <li
+                    key={`${packageOption.id}-${feature}`}
+                    className="flex gap-2"
+                  >
                     <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[#285D49]" />
                     <span>{feature}</span>
                   </li>
@@ -602,7 +611,13 @@ function PublicPackageSection({
   );
 }
 
-function SuccessPanel({ slug, firstName }: { slug: string; firstName: string }) {
+function SuccessPanel({
+  slug,
+  firstName,
+}: {
+  slug: string;
+  firstName: string;
+}) {
   return (
     <div className="mb-5 rounded-[8px] border border-[#285D49]/18 bg-[#E2EFE8] p-5">
       <h3 className="text-xl font-bold text-[#0F261D]">

@@ -44,7 +44,6 @@ import {
   LegacySettingsRedirectPage,
   LoginPage,
   MarketingNotFoundPage,
-  MarketingHomePage,
   NoWorkspacePage,
   PricingPage,
   ProductPage,
@@ -107,6 +106,7 @@ import {
   WorkspaceSettingsLayoutPage,
   WorkspaceSettingsTeamTab,
 } from "./lazy-pages";
+import { MarketingHomePage } from "../pages/public/marketing-home";
 
 // ✅ assumes your AuthProvider exports this hook
 import {
@@ -310,6 +310,7 @@ function LoginGate() {
     (redirectParam.startsWith("/join/") ||
       redirectParam.startsWith("/invite/") ||
       redirectParam.startsWith("/team-invites/") ||
+      redirectParam.startsWith("/p/") ||
       redirectParam === "/pt-hub" ||
       redirectParam.startsWith("/pt-hub/"))
       ? redirectParam
@@ -337,7 +338,7 @@ function PublicRootGate() {
     bootstrapPath,
   });
 
-  if (decision.type === "loading") return <FullPageLoader />;
+  if (decision.type === "loading") return <MarketingHomePage />;
   if (decision.type === "redirect") {
     return <Navigate to={decision.to} replace />;
   }
