@@ -145,6 +145,105 @@ const switchingSteps = [
   },
 ];
 
+const pricingPlans = [
+  {
+    name: "Launch",
+    audience: "For new and part-time coaches building their first client base.",
+    monthlyPrice: "$19",
+    annualPrice: "$190",
+    limits: [
+      "10 active clients",
+      "1 coach seat",
+      "1 workspace",
+      "3 published packages",
+    ],
+    summary:
+      "Everything required to coach professionally, for up to 10 clients.",
+  },
+  {
+    name: "Growth",
+    audience:
+      "For full-time independent coaches and coaches beginning to work with an assistant.",
+    monthlyPrice: "$49",
+    annualPrice: "$490",
+    limits: [
+      "35 active clients",
+      "2 coach seats",
+      "3 workspaces",
+      "Unlimited published packages",
+    ],
+    summary: "Run a full-time coaching operation with room for an assistant.",
+    featured: true,
+  },
+  {
+    name: "Scale",
+    audience:
+      "For established coaches, small coaching companies, and multi-coach delivery teams.",
+    monthlyPrice: "$99",
+    annualPrice: "$990",
+    limits: [
+      "100 active clients",
+      "5 coach seats",
+      "10 workspaces",
+      "Unlimited published packages",
+    ],
+    summary:
+      "A coaching-business operating system for teams managing up to 100 active clients.",
+  },
+  {
+    name: "Studio",
+    audience:
+      "For larger teams, studios, gyms, and multi-brand coaching businesses.",
+    monthlyPrice: "From $199",
+    annualPrice: "From $1,990",
+    limits: [
+      "200 active clients",
+      "10 coach seats",
+      "Unlimited workspaces",
+      "Unlimited published packages",
+    ],
+    summary:
+      "Central oversight for larger coaching operations and multiple delivery environments.",
+  },
+];
+
+const pricingCoreFeatures = [
+  "Public coach profile",
+  "Marketplace presence",
+  "Public packages",
+  "Lead applications",
+  "Lead conversations",
+  "Client onboarding",
+  "Workouts and programs",
+  "Nutrition guidance",
+  "Habits",
+  "Check-ins and reviews",
+  "Messaging",
+  "Progress tracking and photos",
+  "Client lifecycle",
+  "Client attention indicators",
+  "Standard analytics",
+];
+
+const pricingDefinitions = [
+  {
+    title: "Active client",
+    body: "A client in an ongoing coaching relationship. Onboarding, active, and paused clients count. Leads, invitations, completed relationships, churned clients, and archived records do not.",
+  },
+  {
+    title: "Coach seat",
+    body: "The owner and every team member with access to owned workspaces. Clients do not count as coach seats.",
+  },
+  {
+    title: "Workspace",
+    body: "A separate client-delivery environment with its own team, clients, defaults, and coaching configuration.",
+  },
+  {
+    title: "Published package",
+    body: "A public coaching option shown on the coach's RepSync profile.",
+  },
+];
+
 function SiteLink({
   to,
   children,
@@ -2993,83 +3092,236 @@ export function SwitchPage() {
 }
 
 export function PricingPage() {
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">(
+    "monthly",
+  );
+
   usePublicSeo({
     title: "Pricing | RepSync",
     description:
-      "RepSync pricing is handled through early-access conversations while the product is still being shaped.",
+      "Compare RepSync plans for independent coaches and coaching teams, with every plan including the core coaching workflow.",
   });
 
   return (
     <PublicLayout>
-      <section className="rs-stitch-page-hero rs-stitch-page-hero--text">
-        <div className="rs-stitch-reveal is-visible">
+      <section className="rs-pricing-hero">
+        <div className="rs-pricing-hero__copy rs-stitch-reveal is-visible">
           <p className="rs-stitch-kicker">Pricing</p>
-          <h1>Early-access pricing, matched to the operation.</h1>
+          <h1>
+            Start with the clients you coach today. Grow when the operation
+            does.
+          </h1>
           <p>
-            Public pricing is not finalized. Book a demo so RepSync can map your
-            coaching model, client count, team structure, and launch needs.
+            Every RepSync plan includes the core coaching workflow. Choose based
+            on active clients, team size, and workspace needs - not by giving up
+            the tools required to coach properly.
           </p>
-          <div className="rs-stitch-hero__actions">
-            <SiteLink to="/book-demo">Book a demo</SiteLink>
+          <div
+            className="rs-pricing-hero__assurances"
+            aria-label="Trial details"
+          >
+            <span>7-day Growth trial</span>
+            <span>No card required</span>
+            <span>Clients use RepSync free</span>
+          </div>
+        </div>
+        <div className="rs-pricing-period rs-stitch-reveal is-visible">
+          <p>Billing period</p>
+          <div role="group" aria-label="Choose a billing period">
+            <button
+              className={billingPeriod === "monthly" ? "is-active" : ""}
+              type="button"
+              aria-pressed={billingPeriod === "monthly"}
+              onClick={() => setBillingPeriod("monthly")}
+            >
+              Monthly
+            </button>
+            <button
+              className={billingPeriod === "annual" ? "is-active" : ""}
+              type="button"
+              aria-pressed={billingPeriod === "annual"}
+              onClick={() => setBillingPeriod("annual")}
+            >
+              Annual
+              <span>Two months free</span>
+            </button>
           </div>
         </div>
       </section>
-      <section className="rs-stitch-section">
-        <div className="rs-stitch-container">
-          <div className="rs-stitch-pricing">
-            {[
-              {
-                name: "Profile",
-                body: "For coaches building a professional public presence.",
-                features: [
-                  "Published coach profile",
-                  "Coaching options",
-                  "Client applications",
-                ],
-              },
-              {
-                name: "Coach OS",
-                body: "For independent coaches managing active relationships.",
-                features: [
-                  "Lead and client context",
-                  "Delivery and check-ins",
-                  "Client attention signals",
-                ],
-              },
-              {
-                name: "Studio",
-                body: "For small teams that need controlled collaboration.",
-                features: [
-                  "Role-based team access",
-                  "Shared coaching workflows",
-                  "Guided setup support",
-                ],
-              },
-            ].map(({ name, body, features }) => (
-              <article className="rs-stitch-price rs-stitch-reveal" key={name}>
-                <p className="rs-stitch-kicker">{name}</p>
-                <h3>Early access</h3>
-                <p>{body}</p>
-                <ul className="rs-stitch-price__features">
-                  {features.map((feature) => (
-                    <li key={feature}>
-                      <CheckCircle2 size={16} aria-hidden="true" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <SiteLink to="/book-demo" variant="secondary">
-                  Discuss early access
-                </SiteLink>
-              </article>
-            ))}
-          </div>
-          <p className="rs-stitch-pricing__note rs-stitch-reveal">
-            Pricing is shaped by active-client volume, team access, and setup or
-            migration support. A demo confirms the appropriate pilot scope
-            before any commitment.
+
+      <section className="rs-pricing-plans" aria-label="RepSync plans">
+        <div className="rs-pricing-plan-grid">
+          {pricingPlans.map((plan) => (
+            <article
+              className={`rs-pricing-plan rs-stitch-reveal${plan.featured ? " rs-pricing-plan--featured" : ""}`}
+              key={plan.name}
+            >
+              <div className="rs-pricing-plan__header">
+                <p className="rs-stitch-kicker">{plan.name}</p>
+                {plan.featured ? <span>Most popular</span> : null}
+              </div>
+              <p className="rs-pricing-plan__audience">{plan.audience}</p>
+              <p className="rs-pricing-plan__price" aria-live="polite">
+                <strong>
+                  {billingPeriod === "monthly"
+                    ? plan.monthlyPrice
+                    : plan.annualPrice}
+                </strong>
+                <span>
+                  per {billingPeriod === "monthly" ? "month" : "year"}
+                </span>
+              </p>
+              <ul className="rs-pricing-plan__limits">
+                {plan.limits.map((limit) => (
+                  <li key={limit}>
+                    <CheckCircle2 size={16} aria-hidden="true" />
+                    <span>{limit}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="rs-pricing-plan__summary">{plan.summary}</p>
+              <SiteLink
+                to="/signup/pt"
+                variant={plan.featured ? "primary" : "secondary"}
+              >
+                Start 7-day trial
+              </SiteLink>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rs-pricing-core">
+        <div className="rs-pricing-section-heading rs-stitch-reveal">
+          <p className="rs-stitch-kicker">All plans include</p>
+          <h2>The coaching core is included on every plan.</h2>
+          <p>
+            Launch is not a restricted demonstration tier. Every coach receives
+            the core workflows required to manage leads and deliver coaching
+            professionally.
           </p>
         </div>
+        <ul className="rs-pricing-core__grid rs-stitch-reveal">
+          {pricingCoreFeatures.map((feature) => (
+            <li key={feature}>
+              <CheckCircle2 size={16} aria-hidden="true" />
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="rs-pricing-core__note rs-stitch-reveal">
+          Plans differ mainly by capacity, team structure, workspace needs,
+          advanced reporting, and operating controls.
+        </p>
+      </section>
+
+      <section className="rs-pricing-seats">
+        <div className="rs-pricing-seats__intro rs-stitch-reveal">
+          <p className="rs-stitch-kicker">Additional coach seats</p>
+          <h2>Add support without changing the client limit.</h2>
+          <p>
+            Additional coach seats cost $9 per month. An additional seat adds
+            team access but does not increase the active-client allowance.
+          </p>
+        </div>
+        <div className="rs-pricing-seats__limits rs-stitch-reveal">
+          <p>
+            <strong>Launch</strong>
+            <span>Maximum 2 total seats</span>
+          </p>
+          <p>
+            <strong>Growth</strong>
+            <span>Maximum 5 total seats</span>
+          </p>
+          <p>
+            <strong>Scale</strong>
+            <span>Maximum 10 total seats</span>
+          </p>
+          <p>
+            <strong>Studio</strong>
+            <span>Custom above 10</span>
+          </p>
+        </div>
+      </section>
+
+      <section className="rs-pricing-counts">
+        <div className="rs-pricing-section-heading rs-stitch-reveal">
+          <p className="rs-stitch-kicker">What counts</p>
+          <h2>What counts toward a plan?</h2>
+        </div>
+        <div className="rs-pricing-counts__grid">
+          {pricingDefinitions.map((definition, index) => (
+            <article className="rs-stitch-reveal" key={definition.title}>
+              <span>0{index + 1}</span>
+              <h3>{definition.title}</h3>
+              <p>{definition.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rs-pricing-client-access">
+        <div className="rs-stitch-reveal">
+          <p className="rs-stitch-kicker">Client access</p>
+          <h2>Clients use RepSync free.</h2>
+        </div>
+        <div className="rs-stitch-reveal">
+          <p>
+            Clients do not pay RepSync to view their coaching, complete
+            workouts, follow nutrition guidance, track habits, submit check-ins,
+            or message their coach.
+          </p>
+          <p>
+            Any fee a client pays for coaching is set by the coach and is
+            separate from the coach's RepSync software subscription.
+          </p>
+        </div>
+      </section>
+
+      <section className="rs-pricing-trial">
+        <div className="rs-pricing-trial__copy rs-stitch-reveal">
+          <p className="rs-stitch-kicker">7-day Growth trial</p>
+          <h2>Use the full Growth workflow before choosing a plan.</h2>
+          <p>
+            Start with Growth capacity and features for seven days. Explore a
+            sample workspace, configure your own coaching environment, and
+            decide which plan fits after you understand the workflow.
+          </p>
+          <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
+        </div>
+        <ul className="rs-pricing-trial__details rs-stitch-reveal">
+          {[
+            "No card required",
+            "One trial per coach account",
+            "Trial begins after the first workspace is ready",
+            "Trial lasts seven calendar days",
+            "Plan intent does not create a charge",
+          ].map((detail) => (
+            <li key={detail}>
+              <CheckCircle2 size={17} aria-hidden="true" />
+              <span>{detail}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="rs-pricing-final rs-stitch-reveal">
+        <SyncRail />
+        <p className="rs-stitch-kicker">Get started</p>
+        <h2>Start with Growth access for seven days.</h2>
+        <p>
+          Explore the full coaching workflow, then choose the capacity that fits
+          your client base, team, and workspace structure.
+        </p>
+        <div className="rs-stitch-cta__actions">
+          <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
+          <SiteLink to="/product" variant="secondary">
+            Explore the product
+          </SiteLink>
+        </div>
+        <p className="rs-pricing-final__note">
+          No card required. Clients use RepSync free.
+        </p>
       </section>
     </PublicLayout>
   );
@@ -3485,12 +3737,12 @@ export function FaqPage() {
             "It can reduce the need for scattered tools by keeping leads, clients, check-ins, and delivery context together.",
           ],
           [
-            "How does early access work?",
-            "Book a focused demo so the team can review your coaching model, active-client volume, and workflow. The next step is agreed after that review.",
+            "How does the 7-day trial work?",
+            "Coach accounts start with Growth capacity and features for seven calendar days. No card is required, and plan intent does not create a charge.",
           ],
           [
             "How is pricing determined?",
-            "Pricing is currently matched to client volume, team access, and setup or migration support. The pricing page explains the available early-access scopes.",
+            "Choose a plan based on active-client capacity, coach seats, and workspace needs. Every plan includes the core coaching workflow.",
           ],
           [
             "Do clients need to install an app?",

@@ -1126,7 +1126,8 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "Is pricing available?",
-        a: "Public pricing is not available yet.",
+        a: "Yes. RepSync offers Launch, Growth, Scale, and Studio plans based on active-client capacity, coach seats, and workspace needs.",
+        href: "/pricing",
       },
       {
         q: "Does RepSync support billing?",

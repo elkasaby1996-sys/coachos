@@ -1,0 +1,4 @@
+[    3651ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-GG6IGNHI.js?v=043253a8:21608
+[   93067ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://127.0.0.1:5173/src/styles/marketing-home.css?t=1785267121484:0
+[   93067ms] [ERROR] [vite] Failed to reload /src/styles/marketing-home.css. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://127.0.0.1:5173/@vite/client:808
+[   93068ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:5173/@vite/client:864
