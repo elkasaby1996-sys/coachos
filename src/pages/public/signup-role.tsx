@@ -101,7 +101,7 @@ export function SignupRolePage() {
             <span className="block text-2xl font-semibold tracking-tight text-foreground">
               I'm a Coach
             </span>
-            <span className="mt-3 block text-sm leading-6 text-[oklch(0.99_0.004_95/0.94)]">
+            <span className="mt-3 block text-sm leading-6 text-foreground/72">
               Create a PT account, set up your workspace, and finish your coach
               profile.
             </span>
@@ -118,7 +118,7 @@ export function SignupRolePage() {
             <span className="block text-2xl font-semibold tracking-tight text-foreground">
               I'm a Client
             </span>
-            <span className="mt-3 block text-sm leading-6 text-[oklch(0.99_0.004_95/0.94)]">
+            <span className="mt-3 block text-sm leading-6 text-foreground/72">
               Create your account now and connect to a coach later when you have
               an invite.
             </span>

@@ -34,7 +34,6 @@ import {
   CompareTrueCoachPage,
   CookiesPage,
   AuthCallbackPage,
-  DemoPage,
   FaqPage,
   ForClientsPage,
   ForCoachesPage,
@@ -89,7 +88,6 @@ import {
   PtWorkoutTemplatePreviewPage,
   PtWorkoutTemplatesPage,
   PtWorkspaceOnboardingPage,
-  RequestAccessPage,
   ResetPasswordPage,
   SecurityPage,
   SignupRolePage,
@@ -648,9 +646,16 @@ export function App() {
           {/* Public landing */}
           <Route path="/" element={<PublicRootGate />} />
           <Route path="/product" element={<ProductPage />} />
+          <Route
+            path="/start-trial"
+            element={<Navigate to="/signup/pt" replace />}
+          />
           <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/demo" element={<DemoPage />} />
-          <Route path="/book-demo" element={<DemoPage />} />
+          <Route path="/demo" element={<Navigate to="/signup/pt" replace />} />
+          <Route
+            path="/book-demo"
+            element={<Navigate to="/signup/pt" replace />}
+          />
           <Route path="/coaches" element={<CoachesPage />} />
           <Route
             path="/coaches/:ptSlug"
@@ -663,7 +668,10 @@ export function App() {
           <Route path="/compare/fitr" element={<CompareFitrPage />} />
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/security" element={<SecurityPage />} />
-          <Route path="/request-access" element={<RequestAccessPage />} />
+          <Route
+            path="/request-access"
+            element={<Navigate to="/signup/pt" replace />}
+          />
 
           {/* Public */}
           <Route path="/login" element={<LoginGate />} />

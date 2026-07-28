@@ -4,6 +4,8 @@ import { useLocation } from "react-router-dom";
 type PublicSeoConfig = {
   title: string;
   description: string;
+  openGraphTitle?: string;
+  openGraphDescription?: string;
   robots?: string;
   canonicalPath?: string;
   imagePath?: string;
@@ -27,6 +29,8 @@ function ensureMeta(
 export function usePublicSeo({
   title,
   description,
+  openGraphTitle = title,
+  openGraphDescription = description,
   robots = "index,follow",
   canonicalPath,
   imagePath = "/og-repsync.png",
@@ -55,12 +59,12 @@ export function usePublicSeo({
       description;
     ensureMeta('meta[name="robots"]', "name", "robots").content = robots;
     ensureMeta('meta[property="og:title"]', "property", "og:title").content =
-      title;
+      openGraphTitle;
     ensureMeta(
       'meta[property="og:description"]',
       "property",
       "og:description",
-    ).content = description;
+    ).content = openGraphDescription;
     ensureMeta('meta[property="og:type"]', "property", "og:type").content =
       "website";
     ensureMeta('meta[property="og:url"]', "property", "og:url").content =
@@ -104,6 +108,8 @@ export function usePublicSeo({
     description,
     imagePath,
     location.pathname,
+    openGraphDescription,
+    openGraphTitle,
     robots,
     structuredData,
     title,

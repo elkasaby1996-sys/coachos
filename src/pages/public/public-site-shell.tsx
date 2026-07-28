@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { AppFooter } from "../../components/common/app-footer";
+import { BloomField } from "./bloom-field";
 import "../../styles/marketing-home.css";
 
 const navItems = [
@@ -74,7 +75,7 @@ export function PublicHeader() {
         <PublicSiteLink to="/login" variant="text">
           Log in
         </PublicSiteLink>
-        <PublicSiteLink to="/book-demo">Book a demo</PublicSiteLink>
+        <PublicSiteLink to="/start-trial">Start 7-day trial</PublicSiteLink>
       </div>
     </header>
   );
@@ -104,6 +105,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="rs-stitch-site">
+      <BloomField className="rs-site-bloom" motionAmount={0.22} speed={0.24} />
       <a className="rs-stitch-skip" href="#main">
         Skip to content
       </a>

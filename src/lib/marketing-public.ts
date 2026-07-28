@@ -4,9 +4,9 @@ export type MarketingFeatureAvailability =
   | "coming_soon"
   | "not_available";
 
-export type MarketingSignupMode = "request_access" | "direct_signup";
+export type MarketingSignupMode = "direct_signup";
 
-export const marketingSignupMode: MarketingSignupMode = "request_access";
+export const marketingSignupMode: MarketingSignupMode = "direct_signup";
 
 export type MarketingAudience = "coach" | "client" | "team" | "business";
 
@@ -194,11 +194,7 @@ export function getActiveMarketingFeatures() {
 export function getMarketingCtaDestination(
   intent: "primary" | "switch" | "product" | "login",
 ) {
-  if (intent === "primary") {
-    return marketingSignupMode === "direct_signup"
-      ? "/signup/pt"
-      : "/book-demo";
-  }
+  if (intent === "primary") return "/signup/pt";
   if (intent === "switch") return "/switch";
   if (intent === "product") return "/product";
   return "/login";
@@ -1117,12 +1113,13 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "Is RepSync available now?",
-        a: "RepSync is presented as controlled early access. Book a demo so the team can qualify fit and explain current availability.",
-        href: "/book-demo",
+        a: "Yes. Coaches can start with the full Growth workflow for seven days, with no card required, then choose the plan that fits their operation.",
+        href: "/signup/pt",
       },
       {
-        q: "How does early access work?",
-        a: "Coaches share business workflow context, current platform, client range, and priorities. RepSync follows up when there is a fit.",
+        q: "How does the trial work?",
+        a: "Create a coach account, configure the first workspace, and use Growth access for seven calendar days before choosing a plan.",
+        href: "/signup/pt",
       },
       {
         q: "Is pricing available?",
@@ -1725,7 +1722,7 @@ const repSyncComparisonBase: Array<
     label: "Migration support",
     repSync: {
       availability: "included",
-      note: "RepSync offers switch assessment during early access without promising full automated migration.",
+      note: "RepSync supports deliberate switch planning without promising full automated migration.",
     },
     competitorByPage: {
       truecoach: {
@@ -1869,9 +1866,9 @@ export const marketingRouteMetadata: Record<string, MarketingRouteMetadata> = {
     canonicalPath: "/",
   },
   "/product": {
-    title: "RepSync Product | Coaching Business and Client Management",
+    title: "RepSync Product | The Whole Coaching Relationship",
     description:
-      "Explore how RepSync connects lead management, onboarding, coaching delivery, check-ins, messaging, client attention, and workspace oversight.",
+      "Explore how RepSync connects public profiles, leads, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, integrations, and the client experience.",
     canonicalPath: "/product",
   },
   "/for-coaches": {
@@ -1905,9 +1902,9 @@ export const marketingRouteMetadata: Record<string, MarketingRouteMetadata> = {
     canonicalPath: "/compare/fitr",
   },
   "/faq": {
-    title: "RepSync FAQ | Product, Security, Switching, and Early Access",
+    title: "RepSync FAQ | Product, Security, Switching, and Trials",
     description:
-      "Answers about RepSync product scope, coaches, clients, switching, availability, integrations, security, privacy, and early access.",
+      "Answers about RepSync product scope, coaches, clients, switching, trials, integrations, security, and privacy.",
     canonicalPath: "/faq",
   },
   "/security": {
@@ -1915,18 +1912,6 @@ export const marketingRouteMetadata: Record<string, MarketingRouteMetadata> = {
     description:
       "Learn how RepSync separates public profile information from private coaching data with authentication, workspace roles, client boundaries, and invite checks.",
     canonicalPath: "/security",
-  },
-  "/book-demo": {
-    title: "Book a Demo | RepSync",
-    description:
-      "Book a RepSync demo for your coaching business or small coaching team.",
-    canonicalPath: "/book-demo",
-  },
-  "/request-access": {
-    title: "Book a Demo | RepSync",
-    description:
-      "Book a RepSync demo for your coaching business or small coaching team.",
-    canonicalPath: "/book-demo",
   },
   "/privacy": {
     title: "RepSync Privacy Notice",
@@ -1937,7 +1922,7 @@ export const marketingRouteMetadata: Record<string, MarketingRouteMetadata> = {
   "/terms": {
     title: "RepSync Terms of Service",
     description:
-      "Read the RepSync draft terms covering accounts, acceptable use, coach and client responsibilities, public profile content, early access, and service limitations.",
+      "Read the RepSync draft terms covering accounts, acceptable use, coach and client responsibilities, public profile content, trials, and service limitations.",
     canonicalPath: "/terms",
   },
   "/cookies": {

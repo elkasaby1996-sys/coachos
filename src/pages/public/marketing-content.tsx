@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -23,29 +23,11 @@ import {
   UsersRound,
   Utensils,
 } from "lucide-react";
-import { Button } from "../../components/ui/button";
 import { AppFooter } from "../../components/common/app-footer";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
-import { Select } from "../../components/ui/select";
-import { Textarea } from "../../components/ui/textarea";
-import { supabase } from "../../lib/supabase";
+import { BloomField } from "./bloom-field";
 import { usePublicSeo } from "./public-seo";
 import { PublicHeader, PublicLayout } from "./public-site-shell";
 import "../../styles/marketing-home.css";
-
-type DemoFormState = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  businessName: string;
-  coachingModel: string;
-  activeClientsRange: string;
-  primaryReason: string;
-  message: string;
-  consent: boolean;
-  website: string;
-};
 
 type Chapter = {
   id: string;
@@ -297,25 +279,29 @@ function ProductPreview({
   caption,
   mediaTitle,
   mediaSpec,
+  media,
 }: {
   image: string;
   alt: string;
   caption: string;
   mediaTitle?: string;
   mediaSpec?: string;
+  media?: ReactNode;
 }) {
   return (
     <figure
       className={`rs-stitch-preview rs-stitch-reveal ${
         mediaSpec ? "rs-stitch-preview--placeholder" : ""
-      }`}
+      } ${media ? "rs-stitch-preview--motion" : ""}`}
     >
       <div className="rs-stitch-preview__chrome" aria-hidden="true">
         <span />
         <span />
         <span />
       </div>
-      {mediaSpec ? (
+      {media ? (
+        media
+      ) : mediaSpec ? (
         <div
           className="rs-stitch-media-placeholder"
           role="img"
@@ -342,6 +328,97 @@ function ProductPreview({
         <span>{caption}</span>
       </figcaption>
     </figure>
+  );
+}
+
+function HeroProductMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const motionPreference = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    );
+    const updateMotionPreference = () =>
+      setPrefersReducedMotion(motionPreference.matches);
+
+    updateMotionPreference();
+    motionPreference.addEventListener("change", updateMotionPreference);
+    return () =>
+      motionPreference.removeEventListener("change", updateMotionPreference);
+  }, []);
+
+  const poster = "/media/repsync-workflow-poster.png?v=20260729-light-tour";
+  const alt =
+    "RepSync workflow showing an application becoming an active coaching relationship.";
+
+  return (
+    <div className="rs-stitch-preview__motion">
+      {prefersReducedMotion ? (
+        <img src={poster} alt={alt} />
+      ) : (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster={poster}
+          preload="metadata"
+          aria-label={alt}
+        >
+          <source
+            src="/media/repsync-workflow-motion.webm?v=20260729-light-tour"
+            type="video/webm"
+          />
+          <img src={poster} alt={alt} />
+        </video>
+      )}
+    </div>
+  );
+}
+
+function ClientExperienceMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const motionPreference = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    );
+    const updateMotionPreference = () =>
+      setPrefersReducedMotion(motionPreference.matches);
+
+    updateMotionPreference();
+    motionPreference.addEventListener("change", updateMotionPreference);
+    return () =>
+      motionPreference.removeEventListener("change", updateMotionPreference);
+  }, []);
+
+  const poster =
+    "/media/repsync-client-experience-poster.png?v=20260729-client-workout-tour";
+  const alt =
+    "RepSync client app showing today's plan, workouts, an active exercise logger and rest timer, nutrition, habits, check-ins, messages, and progress.";
+
+  return (
+    <div className="rs-stitch-preview__motion">
+      {prefersReducedMotion ? (
+        <img src={poster} alt={alt} />
+      ) : (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster={poster}
+          preload="metadata"
+          aria-label={alt}
+        >
+          <source
+            src="/media/repsync-client-experience.webm?v=20260729-client-workout-tour"
+            type="video/webm"
+          />
+          <img src={poster} alt={alt} />
+        </video>
+      )}
+    </div>
   );
 }
 
@@ -396,11 +473,6 @@ function ChapterGrid() {
               </li>
             ))}
           </ul>
-          {chapter.id === "coach" ? (
-            <p className="rs-stitch-chapter__note">
-              The client sees the plan. The coach retains the context.
-            </p>
-          ) : null}
           <SiteLink to="/product" variant="secondary">
             {chapterLinks[chapter.id as keyof typeof chapterLinks]}
           </SiteLink>
@@ -490,8 +562,8 @@ function HomeSwitching() {
 }
 
 function FinalCta({
-  title = "See how RepSync would fit your coaching operation.",
-  body = "Book a focused 25-minute walkthrough based on your current tools, client volume, and coaching workflow.",
+  title = "Start building a more connected coaching operation.",
+  body = "Use the full Growth workflow for seven days, then choose the capacity that fits your clients, team, and workspaces.",
 }: {
   title?: string;
   body?: string;
@@ -502,7 +574,7 @@ function FinalCta({
       <h2>{title}</h2>
       <p>{body}</p>
       <div className="rs-stitch-cta__actions">
-        <SiteLink to="/book-demo">Book a demo</SiteLink>
+        <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
         <SiteLink to="/for-coaches" variant="secondary">
           Explore RepSync for coaches
         </SiteLink>
@@ -534,18 +606,17 @@ export function MarketingHomePage() {
               check-ins, messaging, and client attention.
             </p>
             <div className="rs-stitch-hero__actions">
-              <SiteLink to="/book-demo">Book a demo</SiteLink>
+              <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
               <SiteLink to="/product" variant="secondary">
                 Explore the product
               </SiteLink>
             </div>
           </div>
           <ProductPreview
-            image={stitchImages.home}
-            alt="Placeholder for the RepSync homepage hero media showing connected coaching operations."
+            image="/media/repsync-workflow-poster.png?v=20260729-light-tour"
+            alt="RepSync workflow showing an application becoming an active coaching relationship."
             caption="One client relationship, connected from application to active coaching."
-            mediaTitle="Hero product motion"
-            mediaSpec="Use a 12-15 second silent product video or animated UI capture showing a prospect application becoming an active coaching client with leads, onboarding, programs, nutrition, habits, check-ins, messaging, and attention signals visible."
+            media={<HeroProductMotion />}
           />
         </section>
 
@@ -603,11 +674,10 @@ export function MarketingHomePage() {
         <section className="rs-stitch-section rs-stitch-section--sage">
           <div className="rs-stitch-container rs-stitch-client-grid">
             <ProductPreview
-              image={stitchImages.product}
-              alt="Placeholder for RepSync client experience media showing the focused client app surface."
+              image="/media/repsync-client-experience-poster.png?v=20260729-client-workout-tour"
+              alt="RepSync client app showing today's plan, workouts, an active exercise logger and rest timer, nutrition, habits, check-ins, messages, and progress."
               caption="The operational system stays with the coach. The client gets a focused coaching experience."
-              mediaTitle="Client experience screen"
-              mediaSpec="Use a clean mobile-first screenshot or short looping capture of the client home view: today's workout, nutrition guidance, active habits, next check-in, recent messages, and progress."
+              media={<ClientExperienceMotion />}
             />
             <div className="rs-stitch-reveal">
               <SyncRail />
@@ -778,6 +848,11 @@ export function ProductPage() {
 
   return (
     <div className="rs-stitch-site rs-product-deep rs-product-reference">
+      <BloomField
+        className="rs-site-bloom rs-product-reference__bloom"
+        motionAmount={0.18}
+        speed={0.2}
+      />
       <PublicHeader />
       <div className="rs-product-reference__shell">
         <ProductReferenceSideNav />
@@ -833,6 +908,7 @@ function ProductIntro({
         }
       }}
     >
+      <BloomField className="rs-product-intro__mesh" />
       <div className="rs-product-intro__content">
         <h1 aria-label="RepSync">
           {letters.map((letter, index) => (
@@ -881,9 +957,9 @@ function ProductReferenceSideNav() {
           </a>
         ))}
       </nav>
-      <div className="rs-product-ref-side__demo">
-        <p>Want to see the system live in action with your own data?</p>
-        <Link to="/book-demo">Watch Demo</Link>
+      <div className="rs-product-ref-side__trial">
+        <p>Ready to configure the workflow around your own clients?</p>
+        <Link to="/signup/pt">Start 7-day trial</Link>
       </div>
     </aside>
   );
@@ -1487,10 +1563,10 @@ function ProductReferenceCta() {
   return (
     <section className="rs-product-ref-cta">
       <SyncRail />
-      <p className="rs-product-ref-label">Book a walkthrough</p>
-      <h2>See How RepSync Fits Your Coaching Operation.</h2>
+      <p className="rs-product-ref-label">Start with Growth</p>
+      <h2>Run the Full Coaching Workflow for Seven Days.</h2>
       <div>
-        <Link to="/book-demo">Book a demo</Link>
+        <Link to="/signup/pt">Start 7-day trial</Link>
         <Link to="/for-coaches">Explore for coaches</Link>
       </div>
     </section>
@@ -1544,8 +1620,8 @@ function ProductSideNav() {
           <UserRound size={18} />
           <span>Account</span>
         </Link>
-        <Link className="rs-product-sidebar__cta" to="/book-demo">
-          New session
+        <Link className="rs-product-sidebar__cta" to="/signup/pt">
+          Start trial
         </Link>
       </div>
     </aside>
@@ -1906,10 +1982,10 @@ function ProductDeepCta() {
         their business as they do from their athletes.
       </p>
       <div>
-        <Link to="/book-demo">Request access</Link>
-        <Link to="/support">Talk to sales</Link>
+        <Link to="/signup/pt">Start 7-day trial</Link>
+        <Link to="/pricing">View pricing</Link>
       </div>
-      <span>Currently onboarding selective teams only</span>
+      <span>No card required. Clients use RepSync free.</span>
     </section>
   );
 }
@@ -2037,7 +2113,7 @@ export function ForCoachesPage() {
             systems.
           </p>
           <div className="rs-stitch-hero__actions">
-            <SiteLink to="/book-demo">Book a demo</SiteLink>
+            <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
             <SiteLink to="/product" variant="secondary">
               Explore the product
             </SiteLink>
@@ -2358,7 +2434,7 @@ export function ForCoachesPage() {
         <div className="rs-stitch-container">
           <SectionIntro
             eyebrow="Product fit"
-            title="Know whether RepSync fits before the demo."
+            title="Know whether RepSync fits before you start."
             body="RepSync is designed for a specific operating model. Being clear about that makes the evaluation more useful."
           />
           <div className="rs-coaches-fit-grid">
@@ -2423,8 +2499,8 @@ export function ForCoachesPage() {
       </section>
 
       <FinalCta
-        title="See how RepSync fits the way you coach."
-        body="Book a focused 25-minute walkthrough based on your current platform, client volume, team structure, and weekly coaching workflow."
+        title="Start with the full coaching workflow."
+        body="Use Growth access for seven days, configure your operation, and choose a plan after you understand how RepSync fits the way you coach."
       />
     </PublicLayout>
   );
@@ -2924,7 +3000,7 @@ export function SwitchPage() {
             and what can move without disrupting active coaching.
           </p>
           <div className="rs-stitch-hero__actions">
-            <SiteLink to="/book-demo">Book a switching demo</SiteLink>
+            <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
             <SiteLink to="#transition-process" variant="secondary">
               See the transition process
             </SiteLink>
@@ -3070,15 +3146,15 @@ export function SwitchPage() {
 
       <section className="rs-switch-final rs-stitch-reveal">
         <SyncRail />
-        <p className="rs-stitch-kicker">Switching demo</p>
-        <h2>Plan the switch with the workflow in front of you.</h2>
+        <p className="rs-stitch-kicker">Start deliberately</p>
+        <h2>Prepare the workflow, then start with a controlled first group.</h2>
         <p>
-          Book a focused 25-minute walkthrough based on your current platform,
-          active-client volume, team structure, and the information that must
-          remain available during the move.
+          Use the seven-day Growth trial to configure your workspace, verify
+          access, and understand what should move before inviting active
+          clients.
         </p>
         <div className="rs-stitch-cta__actions">
-          <SiteLink to="/book-demo">Book a switching demo</SiteLink>
+          <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
           <SiteLink to="/for-coaches" variant="secondary">
             Explore RepSync for coaches
           </SiteLink>
@@ -3196,8 +3272,8 @@ export function PricingPage() {
           <p className="rs-stitch-kicker">All plans include</p>
           <h2>The coaching core is included on every plan.</h2>
           <p>
-            Launch is not a restricted demonstration tier. Every coach receives
-            the core workflows required to manage leads and deliver coaching
+            Launch is not a restricted starter tier. Every coach receives the
+            core workflows required to manage leads and deliver coaching
             professionally.
           </p>
         </div>
@@ -3327,326 +3403,6 @@ export function PricingPage() {
   );
 }
 
-function validateDemoForm(values: DemoFormState) {
-  const errors: Partial<Record<keyof DemoFormState, string>> = {};
-  if (values.firstName.trim().length < 2)
-    errors.firstName = "Enter your first name.";
-  if (values.lastName.trim().length < 2)
-    errors.lastName = "Enter your last name.";
-  if (!/\S+@\S+\.\S+/.test(values.email.trim()))
-    errors.email = "Enter a valid email.";
-  if (!values.coachingModel)
-    errors.coachingModel = "Choose your coaching model.";
-  if (!values.activeClientsRange)
-    errors.activeClientsRange = "Choose your active-client range.";
-  if (!values.primaryReason)
-    errors.primaryReason = "Choose the workflow you want to improve.";
-  if (!values.consent)
-    errors.consent = "Confirm that RepSync may respond to this request.";
-  return errors;
-}
-
-export function DemoPage() {
-  usePublicSeo({
-    title: "Book a demo | RepSync",
-    description:
-      "Book a RepSync demo and map the product to your lead flow, client count, delivery model, and team structure.",
-  });
-
-  const [values, setValues] = useState<DemoFormState>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    businessName: "",
-    coachingModel: "",
-    activeClientsRange: "",
-    primaryReason: "",
-    message: "",
-    consent: false,
-    website: "",
-  });
-  const [touched, setTouched] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const errors = useMemo(
-    () => (touched ? validateDemoForm(values) : {}),
-    [touched, values],
-  );
-
-  const updateField =
-    (field: keyof DemoFormState) =>
-    (
-      event: React.ChangeEvent<
-        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-      >,
-    ) => {
-      setValues((current) => ({ ...current, [field]: event.target.value }));
-      setSent(false);
-      setSubmitError(null);
-    };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (submitting) return;
-    setTouched(true);
-    const nextErrors = validateDemoForm(values);
-    if (Object.keys(nextErrors).length > 0) return;
-    setSubmitting(true);
-    setSubmitError(null);
-    const query = new URLSearchParams(window.location.search);
-    const { error } = await supabase.functions.invoke("marketing-lead-submit", {
-      body: {
-        type: "request_access",
-        first_name: values.firstName.trim(),
-        last_name: values.lastName.trim(),
-        email: values.email.trim().toLowerCase(),
-        business_name: values.businessName.trim() || null,
-        coaching_model: values.coachingModel,
-        active_clients_range: values.activeClientsRange,
-        primary_reason: values.primaryReason,
-        message: values.message.trim() || null,
-        consent: values.consent,
-        website: values.website,
-        page_path: window.location.pathname,
-        referrer: document.referrer || null,
-        utm_source: query.get("utm_source"),
-        utm_medium: query.get("utm_medium"),
-        utm_campaign: query.get("utm_campaign"),
-        utm_content: query.get("utm_content"),
-        utm_term: query.get("utm_term"),
-      },
-    });
-    setSubmitting(false);
-    if (error) {
-      setSubmitError(
-        "The request could not be sent. Please try again or contact support.",
-      );
-      return;
-    }
-    setSent(true);
-    setValues({
-      firstName: "",
-      lastName: "",
-      email: "",
-      businessName: "",
-      coachingModel: "",
-      activeClientsRange: "",
-      primaryReason: "",
-      message: "",
-      consent: false,
-      website: "",
-    });
-    setTouched(false);
-  };
-
-  return (
-    <PublicLayout>
-      <section className="rs-stitch-form-page">
-        <div className="rs-stitch-reveal is-visible">
-          <p className="rs-stitch-kicker">Demo and contact</p>
-          <h1>Map RepSync to your coaching business.</h1>
-          <p>
-            Share a few details and RepSync can prepare a walkthrough around
-            your lead flow, client count, delivery model, and workspace needs.
-          </p>
-        </div>
-        <form
-          className="rs-stitch-form rs-stitch-reveal is-visible"
-          onSubmit={handleSubmit}
-          noValidate
-        >
-          <div className="rs-stitch-form__grid">
-            <FieldBlock
-              id="demo-first-name"
-              label="First name"
-              error={errors.firstName}
-            >
-              <Input
-                id="demo-first-name"
-                value={values.firstName}
-                onChange={updateField("firstName")}
-                autoComplete="given-name"
-              />
-            </FieldBlock>
-            <FieldBlock
-              id="demo-last-name"
-              label="Last name"
-              error={errors.lastName}
-            >
-              <Input
-                id="demo-last-name"
-                value={values.lastName}
-                onChange={updateField("lastName")}
-                autoComplete="family-name"
-              />
-            </FieldBlock>
-          </div>
-          <div className="rs-stitch-form__grid">
-            <FieldBlock id="demo-email" label="Work email" error={errors.email}>
-              <Input
-                id="demo-email"
-                type="email"
-                value={values.email}
-                onChange={updateField("email")}
-                autoComplete="email"
-              />
-            </FieldBlock>
-            <FieldBlock id="demo-business" label="Business name">
-              <Input
-                id="demo-business"
-                value={values.businessName}
-                onChange={updateField("businessName")}
-                autoComplete="organization"
-              />
-            </FieldBlock>
-          </div>
-          <div className="rs-stitch-form__grid">
-            <FieldBlock
-              id="demo-model"
-              label="Coaching model"
-              error={errors.coachingModel}
-            >
-              <Select
-                id="demo-model"
-                value={values.coachingModel}
-                onChange={updateField("coachingModel")}
-              >
-                <option value="">Choose a model</option>
-                <option value="online">Online</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="in_person">In person</option>
-                <option value="mixed">Mixed team</option>
-              </Select>
-            </FieldBlock>
-            <FieldBlock
-              id="demo-clients"
-              label="Active clients"
-              error={errors.activeClientsRange}
-            >
-              <Select
-                id="demo-clients"
-                value={values.activeClientsRange}
-                onChange={updateField("activeClientsRange")}
-              >
-                <option value="">Choose a range</option>
-                <option value="0_5">0-5</option>
-                <option value="6_20">6-20</option>
-                <option value="21_50">21-50</option>
-                <option value="51_plus">51+</option>
-              </Select>
-            </FieldBlock>
-          </div>
-          <FieldBlock
-            id="demo-reason"
-            label="What should RepSync improve first?"
-            error={errors.primaryReason}
-          >
-            <Select
-              id="demo-reason"
-              value={values.primaryReason}
-              onChange={updateField("primaryReason")}
-            >
-              <option value="">Choose a workflow</option>
-              <option value="lead_to_client">Lead-to-client flow</option>
-              <option value="client_attention">Client attention</option>
-              <option value="team_workspace">Team workspace</option>
-              <option value="delivery_clarity">Coaching delivery</option>
-              <option value="migration_planning">Migration planning</option>
-            </Select>
-          </FieldBlock>
-          <FieldBlock id="demo-message" label="Message" error={errors.message}>
-            <Textarea
-              id="demo-message"
-              value={values.message}
-              onChange={updateField("message")}
-              placeholder="Tell us what you want to clean up first."
-              rows={6}
-            />
-          </FieldBlock>
-          <div className="rs-stitch-consent">
-            <input
-              id="demo-consent"
-              type="checkbox"
-              checked={values.consent}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  consent: event.target.checked,
-                }))
-              }
-            />
-            <Label htmlFor="demo-consent">
-              RepSync may use these details to respond to this request. See the{" "}
-              <Link to="/privacy">privacy policy</Link>.
-            </Label>
-          </div>
-          {errors.consent ? (
-            <p className="rs-stitch-form__error">{errors.consent}</p>
-          ) : null}
-          <div className="rs-stitch-honeypot" aria-hidden="true">
-            <Label htmlFor="demo-website">Website</Label>
-            <Input
-              id="demo-website"
-              tabIndex={-1}
-              autoComplete="off"
-              value={values.website}
-              onChange={updateField("website")}
-            />
-          </div>
-          {sent ? (
-            <p className="rs-stitch-success" role="status">
-              Your request has been sent. RepSync will follow up using the email
-              you provided.
-            </p>
-          ) : null}
-          {submitError ? (
-            <p className="rs-stitch-form__error" role="alert">
-              {submitError}
-            </p>
-          ) : null}
-          <Button
-            className="rs-stitch-submit"
-            type="submit"
-            disabled={submitting}
-          >
-            {submitting ? "Sending..." : "Request demo"}
-            <ArrowRight size={16} />
-          </Button>
-        </form>
-      </section>
-    </PublicLayout>
-  );
-}
-
-function FieldBlock({
-  id,
-  label,
-  error,
-  children,
-}: {
-  id: string;
-  label: string;
-  error?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rs-stitch-field">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      {error ? <p>{error}</p> : null}
-    </div>
-  );
-}
-
-export function BookDemoPage() {
-  return <DemoPage />;
-}
-
-export function RequestAccessPage() {
-  return <DemoPage />;
-}
-
 export function CoachesPage() {
   usePublicSeo({
     title: "Browse coaches | RepSync",
@@ -3724,7 +3480,7 @@ export function FaqPage() {
     <SimpleInfoPage
       eyebrow="FAQ"
       title="Useful answers. No inflated claims."
-      description="RepSync is an early-access coaching operating system focused on lead continuity, delivery clarity, and attention visibility."
+      description="RepSync is a coaching operating system focused on lead continuity, delivery clarity, and attention visibility."
     >
       <div className="rs-stitch-faq">
         {[
@@ -3851,7 +3607,7 @@ export function PrivacyPage() {
           [
             <MessageSquare />,
             "Marketing forms",
-            "Demo and switch forms collect contact details and operational context so the team can respond.",
+            "Switch-planning forms collect contact details and operational context so the team can respond.",
           ],
         ]}
       />

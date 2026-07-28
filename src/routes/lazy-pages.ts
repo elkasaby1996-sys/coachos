@@ -25,9 +25,6 @@ export const ProductPage = lazy(() =>
 export const PricingPage = lazy(() =>
   import("../pages/public/pricing").then((m) => ({ default: m.PricingPage })),
 );
-export const DemoPage = lazy(() =>
-  import("../pages/public/demo").then((m) => ({ default: m.DemoPage })),
-);
 export const CoachesPage = lazy(() =>
   import("../pages/public/coaches").then((m) => ({
     default: m.CoachesPage,
@@ -62,11 +59,6 @@ export const FaqPage = lazy(() =>
 export const SecurityPage = lazy(() =>
   import("../pages/public/security").then((m) => ({
     default: m.SecurityPage,
-  })),
-);
-export const RequestAccessPage = lazy(() =>
-  import("../pages/public/request-access").then((m) => ({
-    default: m.RequestAccessPage,
   })),
 );
 export const CookiesPage = lazy(() =>

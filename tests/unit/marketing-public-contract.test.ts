@@ -24,8 +24,8 @@ function readSource(...segments: string[]) {
 
 describe("marketing public configuration", () => {
   it("centralizes signup-mode CTA destinations", () => {
-    expect(marketingSignupMode).toBe("request_access");
-    expect(getMarketingCtaDestination("primary")).toBe("/book-demo");
+    expect(marketingSignupMode).toBe("direct_signup");
+    expect(getMarketingCtaDestination("primary")).toBe("/signup/pt");
     expect(getMarketingCtaDestination("switch")).toBe("/switch");
     expect(getMarketingCtaDestination("product")).toBe("/product");
   });
@@ -95,7 +95,6 @@ describe("marketing public configuration", () => {
       "/compare/fitr",
       "/faq",
       "/security",
-      "/request-access",
       "/privacy",
       "/terms",
       "/cookies",
@@ -104,12 +103,10 @@ describe("marketing public configuration", () => {
     for (const route of requiredRoutes) {
       expect(marketingRouteMetadata[route]?.title).toBeTruthy();
       expect(marketingRouteMetadata[route]?.description).toBeTruthy();
-      expect(marketingRouteMetadata[route]?.canonicalPath).toBe(
-        route === "/request-access" ? "/book-demo" : route,
-      );
+      expect(marketingRouteMetadata[route]?.canonicalPath).toBe(route);
     }
     expect(marketingRouteMetadata["/product"].title).toBe(
-      "RepSync Product | Coaching Business and Client Management",
+      "RepSync Product | The Whole Coaching Relationship",
     );
     expect(marketingRouteMetadata["/for-coaches"].title).toBe(
       "RepSync for Personal Trainers and Online Coaches",
@@ -131,8 +128,6 @@ describe("marketing public configuration", () => {
       "/compare/fitr",
       "/faq",
       "/security",
-      "/book-demo",
-      "/request-access",
       "/privacy",
       "/terms",
       "/cookies",
@@ -200,32 +195,25 @@ describe("marketing public page source contract", () => {
     "marketing-content.tsx",
   );
 
-  it("renders the complete demo request form fields", () => {
-    [
-      "First name",
-      "Last name",
-      "Work email",
-      "Business name",
-      "Coaching model",
-      "Active clients",
-      "What should RepSync improve first?",
-      "Message",
-    ].forEach((label) => expect(marketingSource).toContain(label));
-  });
-
   it("uses the requested CTA labels consistently", () => {
-    expect(marketingSource).toContain("Book a demo");
+    expect(marketingSource).toContain("Start 7-day trial");
     expect(marketingSource).toContain("Explore the product");
     expect(marketingSource).toContain("Plan your switch");
+    expect(marketingSource).not.toContain("Book a demo");
+    expect(marketingSource).not.toContain("Book a switching demo");
     expect(marketingSource).not.toContain("Request switch help");
     expect(marketingSource).not.toContain("See product");
   });
 
-  it("keeps planned-media specifications visible until final assets exist", () => {
+  it("uses finished homepage motion while retaining unfinished media specs", () => {
+    expect(marketingSource).toContain("/media/repsync-workflow-motion.webm");
+    expect(marketingSource).toContain("/media/repsync-workflow-poster.png");
+    expect(marketingSource).toContain("/media/repsync-client-experience.webm");
+    expect(marketingSource).toContain(
+      "/media/repsync-client-experience-poster.png",
+    );
     expect(marketingSource).toContain("Planned media");
-    expect(marketingSource).toContain("Hero product motion");
-    expect(marketingSource).toContain("12-15 second silent product video");
-    expect(marketingSource).toContain("Client experience screen");
+    expect(marketingSource).not.toContain("Client experience screen");
   });
 
   it("keeps unavailable capabilities out of public product claims", () => {
@@ -243,12 +231,6 @@ describe("marketing public page source contract", () => {
     expect(marketingSource).toContain('"/login"');
     expect(marketingSource).toContain('"/coaches"');
     expect(marketingSource).toContain('"/signup/client"');
-  });
-
-  it("guards duplicate lead submissions in the client form", () => {
-    expect(marketingSource).toContain("if (submitting) return;");
-    expect(marketingSource).toContain("disabled={submitting}");
-    expect(marketingSource).toContain('role="status"');
   });
 
   it("uses the shared public shell and per-route SEO metadata", () => {
