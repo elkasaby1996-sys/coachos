@@ -38,7 +38,11 @@ import {
 import { trackProductMarketingEvent } from "../../lib/marketing-analytics";
 import { BloomField } from "./bloom-field";
 import { usePublicSeo } from "./public-seo";
-import { PublicHeader } from "./public-site-shell";
+import {
+  MarketingConsentBanner,
+  PublicHeader,
+  PublicMobileTrialBar,
+} from "./public-site-shell";
 import "../../styles/marketing-home.css";
 
 const chapterIcons: Record<ProductChapterId, ReactNode> = {
@@ -191,6 +195,8 @@ export function ProductPage() {
           />
         </main>
       </div>
+      <PublicMobileTrialBar />
+      <MarketingConsentBanner />
     </div>
   );
 }
@@ -319,7 +325,7 @@ function ProductReferenceModuleMap({
       <div className="rs-product-ref-modules__intro">
         <p className="rs-product-ref-label">Operating system map</p>
         <h2 id="product-module-map">
-          Eleven chapters. One coaching relationship.
+          {visibleProductChapters.length} chapters. One coaching relationship.
         </h2>
         <p>
           Each chapter owns a clear part of the coaching operation, then keeps
@@ -461,6 +467,122 @@ function FeatureList({ items }: { items: readonly string[] }) {
   );
 }
 
+function ProductCaptureCanvas({ mediaId }: { mediaId: ProductMediaId }) {
+  const models: Partial<
+    Record<
+      ProductMediaId,
+      {
+        eyebrow: string;
+        title: string;
+        metric: string;
+        metricLabel: string;
+        rows: Array<[string, string]>;
+      }
+    >
+  > = {
+    "UI-onboarding": {
+      eyebrow: "Client setup",
+      title: "Maya Chen",
+      metric: "4 / 4",
+      metricLabel: "setup steps ready",
+      rows: [
+        ["Approved lead", "Complete"],
+        ["Workspace", "Strength coaching"],
+        ["Invitation", "Accepted"],
+        ["First check-in", "Friday"],
+      ],
+    },
+    "UI-05-program-assignment": {
+      eyebrow: "Assigned program",
+      title: "Build phase / Week 3",
+      metric: "4",
+      metricLabel: "sessions this week",
+      rows: [
+        ["Monday", "Lower strength"],
+        ["Tuesday", "Upper strength"],
+        ["Thursday", "Lower volume"],
+        ["Saturday", "Upper volume"],
+      ],
+    },
+    "UI-06-nutrition": {
+      eyebrow: "Nutrition guidance",
+      title: "Current daily targets",
+      metric: "2,150",
+      metricLabel: "daily calories",
+      rows: [
+        ["Protein", "165 g"],
+        ["Carbohydrate", "225 g"],
+        ["Fat", "65 g"],
+        ["Active habits", "3 of 4 today"],
+      ],
+    },
+    "UI-01-pt-hub": {
+      eyebrow: "PT Hub",
+      title: "Tuesday operations",
+      metric: "28",
+      metricLabel: "active clients",
+      rows: [
+        ["New applications", "5"],
+        ["Check-ins to review", "7"],
+        ["Clients needing attention", "3"],
+        ["Workspace activity", "Up to date"],
+      ],
+    },
+  };
+  const model = models[mediaId] ?? {
+    eyebrow: "RepSync workspace",
+    title: "Coaching relationship",
+    metric: "Live",
+    metricLabel: "connected context",
+    rows: [
+      ["Plan", "Assigned"],
+      ["Check-in", "Scheduled"],
+      ["Messages", "Up to date"],
+      ["Attention", "Reviewed"],
+    ],
+  };
+
+  return (
+    <div
+      aria-label={`${model.title} RepSync interface preview`}
+      className="rs-product-capture"
+      role="img"
+    >
+      <div className="rs-product-capture__rail" aria-hidden="true">
+        <strong>R S</strong>
+        <span className="is-active" />
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="rs-product-capture__workspace">
+        <header>
+          <div>
+            <span>{model.eyebrow}</span>
+            <strong>{model.title}</strong>
+          </div>
+          <span className="rs-product-capture__status">Active</span>
+        </header>
+        <div className="rs-product-capture__body">
+          <div className="rs-product-capture__rows">
+            {model.rows.map(([label, value]) => (
+              <p key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </p>
+            ))}
+          </div>
+          <aside>
+            <span>Current view</span>
+            <strong>{model.metric}</strong>
+            <p>{model.metricLabel}</p>
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProductMediaFallback({
   mediaId,
   title,
@@ -510,18 +632,12 @@ function ProductMediaFallback({
           />
         </div>
       ) : (
-        <div className="rs-product-ref-media__canvas" aria-hidden="true">
-          <span>{mediaId}</span>
-          <Link2 />
-        </div>
+        <ProductCaptureCanvas mediaId={mediaId} />
       )}
       <figcaption>
-        <p className="rs-product-ref-label">Product capture</p>
+        <p className="rs-product-ref-label">Inside RepSync</p>
         <h3>{title}</h3>
         <p>{description}</p>
-        {asset ? null : (
-          <small>Sanitized interface capture required for {mediaId}.</small>
-        )}
       </figcaption>
     </figure>
   );
@@ -664,7 +780,18 @@ function MessagingContextComparison({
               "Approval or decline context",
             ]}
           />
-          <span>UI-lead-chat</span>
+          <div
+            className="rs-product-message-preview"
+            aria-label="Lead conversation preview"
+          >
+            <p>
+              Thanks for sharing your training history. What would make this
+              coaching a good fit?
+            </p>
+            <p className="is-reply">
+              I need a plan that works around three travel days each month.
+            </p>
+          </div>
         </article>
         <article>
           <p className="rs-product-ref-label">After approval</p>
@@ -680,7 +807,18 @@ function MessagingContextComparison({
               "Unread state and recent message",
             ]}
           />
-          <span>{chapter.mediaId}</span>
+          <div
+            className="rs-product-message-preview"
+            aria-label="Client conversation preview"
+          >
+            <p>
+              Your lower session is ready. Keep the final two sets at the
+              planned effort.
+            </p>
+            <p className="is-reply">
+              Completed. I added a note about the final set.
+            </p>
+          </div>
         </article>
       </div>
     </ProductSection>

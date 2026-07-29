@@ -43,6 +43,23 @@ const availabilityModeLabels: Record<PTAvailabilityMode, string> = {
   in_person: "In person",
 };
 
+const specialtyCorrections: Record<string, string> = {
+  strenght: "Strength",
+};
+
+function normalizeSpecialty(value: string) {
+  const trimmed = value.trim();
+  return specialtyCorrections[trimmed.toLowerCase()] ?? trimmed;
+}
+
+function formatPublicLocation(value: string) {
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
 const marketplaceSteps = [
   {
     number: "01",
@@ -95,16 +112,11 @@ function MarketplaceSkeletonGrid() {
       {Array.from({ length: 4 }).map((_, index) => (
         <div className="rs-marketplace-card" key={index}>
           <Skeleton className="rs-marketplace-card__skeleton-media w-full rounded-none" />
-          <div className="rs-marketplace-card__body space-y-4">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-16 w-16 rounded-lg" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <Skeleton className="h-5 w-2/3" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-            </div>
+          <div className="rs-marketplace-card__body space-y-3">
+            <Skeleton className="h-5 w-2/3" />
             <Skeleton className="h-4 w-4/5" />
-            <Skeleton className="h-11 w-full rounded-lg" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="mt-5 h-5 w-1/2" />
           </div>
         </div>
       ))}
@@ -115,9 +127,13 @@ function MarketplaceSkeletonGrid() {
 function CoachMarketplaceCard({
   profile,
   coachingOptionCount,
+  imageUrl,
+  imageIsPortrait,
 }: {
   profile: PTPublicProfile;
   coachingOptionCount: number | undefined;
+  imageUrl: string | null;
+  imageIsPortrait: boolean;
 }) {
   const profilePath = routes.publicProfile(profile.slug);
   const genericSpecialties = new Set([
@@ -128,6 +144,7 @@ function CoachMarketplaceCard({
     "in person",
   ]);
   const specialties = profile.specialties
+    .map(normalizeSpecialty)
     .filter(
       (specialty) => !genericSpecialties.has(specialty.trim().toLowerCase()),
     )
@@ -140,8 +157,7 @@ function CoachMarketplaceCard({
     coachingOptionCount && coachingOptionCount > 0
       ? `${coachingOptionCount} coaching option${coachingOptionCount === 1 ? "" : "s"}`
       : null;
-  const cardImageUrl = profile.profilePhotoUrl ?? profile.bannerImageUrl;
-  const usesProfilePhoto = Boolean(profile.profilePhotoUrl);
+  const locationLabel = formatPublicLocation(profile.locationLabel);
 
   return (
     <article className="rs-marketplace-card">
@@ -150,14 +166,14 @@ function CoachMarketplaceCard({
         to={profilePath}
         aria-label={`View ${profile.displayName}'s coaching profile`}
       >
-        {cardImageUrl ? (
+        {imageUrl ? (
           <img
             className={
-              usesProfilePhoto
+              imageIsPortrait
                 ? "rs-marketplace-card__image rs-marketplace-card__image--portrait"
                 : "rs-marketplace-card__image"
             }
-            src={cardImageUrl}
+            src={imageUrl}
             alt={`${profile.displayName} coach profile`}
           />
         ) : (
@@ -174,12 +190,12 @@ function CoachMarketplaceCard({
 
         <p className="rs-marketplace-card__meta">
           <span>{coachingFormat || "Coaching format available"}</span>
-          {profile.locationLabel ? (
+          {locationLabel ? (
             <>
               <span aria-hidden="true">&middot;</span>
               <span className="rs-marketplace-card__location">
                 <MapPin size={14} aria-hidden="true" />
-                <span>{profile.locationLabel}</span>
+                <span>{locationLabel}</span>
               </span>
             </>
           ) : null}
@@ -220,7 +236,11 @@ export function CoachesPage() {
   const specialtyOptions = useMemo(
     () =>
       Array.from(
-        new Set(profiles.flatMap((profile) => profile.specialties)),
+        new Set(
+          profiles.flatMap((profile) =>
+            profile.specialties.map(normalizeSpecialty),
+          ),
+        ),
       ).sort(),
     [profiles],
   );
@@ -251,7 +271,10 @@ export function CoachesPage() {
           profile.availabilityModes.includes(
             availabilityMode as PTAvailabilityMode,
           )) &&
-        (!specialty || profile.specialties.includes(specialty)) &&
+        (!specialty ||
+          profile.specialties.some(
+            (value) => normalizeSpecialty(value) === specialty,
+          )) &&
         (!location ||
           profile.locationLabel
             .split(",")
@@ -448,17 +471,34 @@ export function CoachesPage() {
           />
         ) : (
           <div className="rs-marketplace-grid">
-            {filteredProfiles.map((profile) => (
-              <CoachMarketplaceCard
-                key={profile.userId}
-                profile={profile}
-                coachingOptionCount={
-                  packageCountsQuery.isSuccess
-                    ? (packageCountsQuery.data?.[profile.userId] ?? 0)
-                    : undefined
-                }
-              />
-            ))}
+            {filteredProfiles.map((profile, index) => {
+              const repeatedProfilePhoto = filteredProfiles
+                .slice(0, index)
+                .some(
+                  (candidate) =>
+                    Boolean(profile.profilePhotoUrl) &&
+                    candidate.profilePhotoUrl === profile.profilePhotoUrl,
+                );
+              const useBanner = repeatedProfilePhoto && profile.bannerImageUrl;
+              const imageUrl = useBanner
+                ? profile.bannerImageUrl
+                : (profile.profilePhotoUrl ?? profile.bannerImageUrl);
+              return (
+                <CoachMarketplaceCard
+                  key={profile.userId}
+                  profile={profile}
+                  imageUrl={imageUrl}
+                  imageIsPortrait={
+                    Boolean(profile.profilePhotoUrl) && !useBanner
+                  }
+                  coachingOptionCount={
+                    packageCountsQuery.isSuccess
+                      ? (packageCountsQuery.data?.[profile.userId] ?? 0)
+                      : undefined
+                  }
+                />
+              );
+            })}
           </div>
         )}
       </section>
@@ -538,7 +578,7 @@ export function CoachesPage() {
           </div>
           <div className="rs-marketplace-entry__coach">
             <p>Are you a coach?</p>
-            <Link to="/signup/pt">
+            <Link to="/start-trial">
               Start your 7-day coach trial
               <ArrowRight size={16} aria-hidden="true" />
             </Link>

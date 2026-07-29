@@ -1,7 +1,12 @@
 import { ReactNode, useEffect, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BarChart3, ShieldCheck } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { AppFooter } from "../../components/common/app-footer";
+import {
+  getMarketingAnalyticsConsent,
+  setMarketingAnalyticsConsent,
+  type MarketingAnalyticsConsent,
+} from "../../lib/marketing-analytics";
 import { BloomField } from "./bloom-field";
 import "../../styles/marketing-home.css";
 
@@ -81,6 +86,120 @@ export function PublicHeader() {
   );
 }
 
+function useMarketingConsent() {
+  const [ready, setReady] = useState(false);
+  const [consent, setConsent] = useState<MarketingAnalyticsConsent>(null);
+
+  useEffect(() => {
+    const syncConsent = () => {
+      setConsent(getMarketingAnalyticsConsent());
+      setReady(true);
+    };
+    syncConsent();
+    window.addEventListener("repsync:analytics-consent-changed", syncConsent);
+    return () =>
+      window.removeEventListener(
+        "repsync:analytics-consent-changed",
+        syncConsent,
+      );
+  }, []);
+
+  const updateConsent = (value: Exclude<MarketingAnalyticsConsent, null>) => {
+    setMarketingAnalyticsConsent(value);
+    setConsent(value);
+  };
+
+  return { consent, ready, updateConsent };
+}
+
+export function MarketingConsentBanner() {
+  const location = useLocation();
+  const { consent, ready, updateConsent } = useMarketingConsent();
+  if (!ready || consent || location.pathname === "/cookies") return null;
+
+  return (
+    <aside
+      aria-label="Analytics preferences"
+      className="rs-consent-banner"
+      role="dialog"
+    >
+      <div className="rs-consent-banner__icon" aria-hidden="true">
+        <BarChart3 size={18} />
+      </div>
+      <div>
+        <p>Help improve the public website</p>
+        <span>
+          Allow anonymous marketing-page usage events. No private coaching or
+          health information is included. <Link to="/cookies">Learn more</Link>
+        </span>
+      </div>
+      <div className="rs-consent-banner__actions">
+        <button type="button" onClick={() => updateConsent("rejected")}>
+          Decline
+        </button>
+        <button
+          className="is-primary"
+          type="button"
+          onClick={() => updateConsent("accepted")}
+        >
+          Allow analytics
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+export function CookiePreferenceControls() {
+  const { consent, ready, updateConsent } = useMarketingConsent();
+  const status = !ready
+    ? "Loading preferences..."
+    : consent === "accepted"
+      ? "Optional analytics are currently allowed."
+      : consent === "rejected"
+        ? "Optional analytics are currently declined."
+        : "No optional analytics preference has been saved.";
+
+  return (
+    <section
+      aria-labelledby="cookie-preference-title"
+      className="rs-cookie-preferences rs-stitch-reveal"
+    >
+      <div aria-hidden="true">
+        <ShieldCheck size={22} />
+      </div>
+      <div>
+        <p className="rs-stitch-kicker">Your preference</p>
+        <h2 id="cookie-preference-title">Control optional analytics.</h2>
+        <p aria-live="polite">{status}</p>
+      </div>
+      <div className="rs-cookie-preferences__actions">
+        <button type="button" onClick={() => updateConsent("rejected")}>
+          Decline analytics
+        </button>
+        <button
+          className="is-primary"
+          type="button"
+          onClick={() => updateConsent("accepted")}
+        >
+          Allow analytics
+        </button>
+      </div>
+    </section>
+  );
+}
+
+export function PublicMobileTrialBar() {
+  return (
+    <div className="rs-mobile-trial-bar">
+      <span>
+        <strong>7-day Growth trial</strong>
+        No card required
+      </span>
+      <PublicSiteLink to="/start-trial">Start trial</PublicSiteLink>
+    </div>
+  );
+}
+
 export function PublicLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
 
@@ -116,6 +235,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
         contentClassName="rs-marketing-app-footer__content"
         linkSet="marketing"
       />
+      <MarketingConsentBanner />
     </div>
   );
 }

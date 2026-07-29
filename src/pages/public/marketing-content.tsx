@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -24,9 +24,18 @@ import {
   Utensils,
 } from "lucide-react";
 import { AppFooter } from "../../components/common/app-footer";
+import {
+  legalReviewRequired,
+  publicFaqGroups,
+} from "../../lib/marketing-public";
 import { BloomField } from "./bloom-field";
 import { usePublicSeo } from "./public-seo";
-import { PublicHeader, PublicLayout } from "./public-site-shell";
+import {
+  CookiePreferenceControls,
+  PublicHeader,
+  PublicLayout,
+  PublicMobileTrialBar,
+} from "./public-site-shell";
 import "../../styles/marketing-home.css";
 
 type Chapter = {
@@ -277,52 +286,25 @@ function ProductPreview({
   image,
   alt,
   caption,
-  mediaTitle,
-  mediaSpec,
   media,
 }: {
   image: string;
   alt: string;
   caption: string;
-  mediaTitle?: string;
-  mediaSpec?: string;
   media?: ReactNode;
 }) {
   return (
     <figure
       className={`rs-stitch-preview rs-stitch-reveal ${
-        mediaSpec ? "rs-stitch-preview--placeholder" : ""
-      } ${media ? "rs-stitch-preview--motion" : ""}`}
+        media ? "rs-stitch-preview--motion" : ""
+      }`}
     >
       <div className="rs-stitch-preview__chrome" aria-hidden="true">
         <span />
         <span />
         <span />
       </div>
-      {media ? (
-        media
-      ) : mediaSpec ? (
-        <div
-          className="rs-stitch-media-placeholder"
-          role="img"
-          aria-label={alt}
-        >
-          <div
-            className="rs-stitch-media-placeholder__frame"
-            aria-hidden="true"
-          >
-            <LayoutDashboard size={34} strokeWidth={1.7} />
-            <span />
-          </div>
-          <div>
-            <p className="rs-stitch-kicker">Planned media</p>
-            <h3>{mediaTitle}</h3>
-            <p>{mediaSpec}</p>
-          </div>
-        </div>
-      ) : (
-        <img src={image} alt={alt} />
-      )}
+      {media ?? <img src={image} alt={alt} />}
       <figcaption>
         <SyncRail orientation="v" />
         <span>{caption}</span>
@@ -331,8 +313,17 @@ function ProductPreview({
   );
 }
 
-function HeroProductMotion() {
+function ProductMotion({
+  alt,
+  poster,
+  src,
+}: {
+  alt: string;
+  poster: string;
+  src: string;
+}) {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const motionPreference = window.matchMedia(
@@ -347,9 +338,23 @@ function HeroProductMotion() {
       motionPreference.removeEventListener("change", updateMotionPreference);
   }, []);
 
-  const poster = "/media/repsync-workflow-poster.png?v=20260729-light-tour";
-  const alt =
-    "RepSync workflow showing an application becoming an active coaching relationship.";
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || prefersReducedMotion) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          void video.play().catch(() => undefined);
+        } else {
+          video.pause();
+        }
+      },
+      { rootMargin: "160px 0px", threshold: 0.15 },
+    );
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, [prefersReducedMotion]);
 
   return (
     <div className="rs-stitch-preview__motion">
@@ -357,18 +362,15 @@ function HeroProductMotion() {
         <img src={poster} alt={alt} />
       ) : (
         <video
-          autoPlay
+          ref={videoRef}
           loop
           muted
           playsInline
           poster={poster}
-          preload="metadata"
+          preload="none"
           aria-label={alt}
         >
-          <source
-            src="/media/repsync-workflow-motion.webm?v=20260729-light-tour"
-            type="video/webm"
-          />
+          <source src={src} type="video/webm" />
           <img src={poster} alt={alt} />
         </video>
       )}
@@ -376,49 +378,23 @@ function HeroProductMotion() {
   );
 }
 
-function ClientExperienceMotion() {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const motionPreference = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    );
-    const updateMotionPreference = () =>
-      setPrefersReducedMotion(motionPreference.matches);
-
-    updateMotionPreference();
-    motionPreference.addEventListener("change", updateMotionPreference);
-    return () =>
-      motionPreference.removeEventListener("change", updateMotionPreference);
-  }, []);
-
-  const poster =
-    "/media/repsync-client-experience-poster.png?v=20260729-client-workout-tour";
-  const alt =
-    "RepSync client app showing today's plan, workouts, an active exercise logger and rest timer, nutrition, habits, check-ins, messages, and progress.";
-
+function HeroProductMotion() {
   return (
-    <div className="rs-stitch-preview__motion">
-      {prefersReducedMotion ? (
-        <img src={poster} alt={alt} />
-      ) : (
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          poster={poster}
-          preload="metadata"
-          aria-label={alt}
-        >
-          <source
-            src="/media/repsync-client-experience.webm?v=20260729-client-workout-tour"
-            type="video/webm"
-          />
-          <img src={poster} alt={alt} />
-        </video>
-      )}
-    </div>
+    <ProductMotion
+      alt="RepSync workflow showing an application becoming an active coaching relationship."
+      poster="/media/repsync-workflow-poster.png?v=20260729-light-tour"
+      src="/media/repsync-workflow-motion.webm?v=20260729-light-tour"
+    />
+  );
+}
+
+function ClientExperienceMotion() {
+  return (
+    <ProductMotion
+      alt="RepSync client app showing today's plan, workouts, an active exercise logger and rest timer, nutrition, habits, check-ins, messages, and progress."
+      poster="/media/repsync-client-experience-poster.png?v=20260729-client-workout-tour"
+      src="/media/repsync-client-experience.webm?v=20260729-client-workout-tour"
+    />
   );
 }
 
@@ -548,10 +524,10 @@ function HomeSwitching() {
           ))}
         </div>
         <div className="rs-stitch-switching__actions rs-stitch-reveal">
-          <SiteLink to="/switch" variant="secondary">
+          <SiteLink to="/compare/truecoach" variant="secondary">
             Moving from TrueCoach
           </SiteLink>
-          <SiteLink to="/switch" variant="secondary">
+          <SiteLink to="/compare/fitr" variant="secondary">
             Moving from FITR
           </SiteLink>
           <SiteLink to="/switch">Plan your switch</SiteLink>
@@ -574,7 +550,7 @@ function FinalCta({
       <h2>{title}</h2>
       <p>{body}</p>
       <div className="rs-stitch-cta__actions">
-        <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
+        <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
         <SiteLink to="/for-coaches" variant="secondary">
           Explore RepSync for coaches
         </SiteLink>
@@ -606,7 +582,7 @@ export function MarketingHomePage() {
               check-ins, messaging, and client attention.
             </p>
             <div className="rs-stitch-hero__actions">
-              <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
+              <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
               <SiteLink to="/product" variant="secondary">
                 Explore the product
               </SiteLink>
@@ -959,7 +935,7 @@ function ProductReferenceSideNav() {
       </nav>
       <div className="rs-product-ref-side__trial">
         <p>Ready to configure the workflow around your own clients?</p>
-        <Link to="/signup/pt">Start 7-day trial</Link>
+        <Link to="/start-trial">Start 7-day trial</Link>
       </div>
     </aside>
   );
@@ -1566,7 +1542,7 @@ function ProductReferenceCta() {
       <p className="rs-product-ref-label">Start with Growth</p>
       <h2>Run the Full Coaching Workflow for Seven Days.</h2>
       <div>
-        <Link to="/signup/pt">Start 7-day trial</Link>
+        <Link to="/start-trial">Start 7-day trial</Link>
         <Link to="/for-coaches">Explore for coaches</Link>
       </div>
     </section>
@@ -1620,7 +1596,7 @@ function ProductSideNav() {
           <UserRound size={18} />
           <span>Account</span>
         </Link>
-        <Link className="rs-product-sidebar__cta" to="/signup/pt">
+        <Link className="rs-product-sidebar__cta" to="/start-trial">
           Start trial
         </Link>
       </div>
@@ -1982,7 +1958,7 @@ function ProductDeepCta() {
         their business as they do from their athletes.
       </p>
       <div>
-        <Link to="/signup/pt">Start 7-day trial</Link>
+        <Link to="/start-trial">Start 7-day trial</Link>
         <Link to="/pricing">View pricing</Link>
       </div>
       <span>No card required. Clients use RepSync free.</span>
@@ -2113,7 +2089,7 @@ export function ForCoachesPage() {
             systems.
           </p>
           <div className="rs-stitch-hero__actions">
-            <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
+            <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
             <SiteLink to="/product" variant="secondary">
               Explore the product
             </SiteLink>
@@ -2121,10 +2097,9 @@ export function ForCoachesPage() {
         </div>
         <ProductPreview
           image={stitchImages.coaches}
-          alt="Placeholder for RepSync coach operations media showing PT Hub and workspace views."
+          alt="RepSync coach operations workflow showing lead review, onboarding, delivery, check-ins, and client attention."
           caption="Coach business workflow and attention model"
-          mediaTitle="Coach operations walkthrough"
-          mediaSpec="Use a 12-15 second silent product video or animated UI capture showing a public profile, application, lead approval, workspace setup, check-ins, messages, and client attention signals."
+          media={<HeroProductMotion />}
         />
       </section>
 
@@ -2334,10 +2309,9 @@ export function ForCoachesPage() {
             </div>
             <ProductPreview
               image={stitchImages.home}
-              alt="Placeholder for the RepSync client experience showing today's workout, habits, messages, and next check-in."
+              alt="RepSync client experience showing today's workout, habits, messages, next check-in, and an active workout timer."
               caption="Client-facing coaching view"
-              mediaTitle="Client daily view"
-              mediaSpec="Replace with a clean client-facing screenshot or short UI motion showing assigned workout, nutrition guidance, active habits, next check-in, recent messages, and progress."
+              media={<ClientExperienceMotion />}
             />
           </div>
         </div>
@@ -2569,8 +2543,8 @@ export function ForClientsPage() {
     },
     {
       title: "I am looking for a coach",
-      body: "Coach discovery is being prepared. Join the interest list to be notified when it opens.",
-      action: "Get discovery updates",
+      body: "Browse published coach profiles, compare coaching approaches, and apply directly to the coach who feels right.",
+      action: "Browse coaches",
       to: "/coaches",
       icon: <UsersRound />,
     },
@@ -2621,10 +2595,9 @@ export function ForClientsPage() {
         </div>
         <ProductPreview
           image={stitchImages.home}
-          alt="Placeholder for RepSync client home showing assigned work, check-ins, messages, and next actions."
+          alt="RepSync client home showing assigned work, check-ins, messages, progress, and next actions."
           caption="Focused client coaching view"
-          mediaTitle="Client home view"
-          mediaSpec="Replace with a client-facing screenshot or short UI motion showing today's workout, nutrition guidance, active habits, next check-in, coach message, and progress."
+          media={<ClientExperienceMotion />}
         />
       </section>
 
@@ -3000,7 +2973,7 @@ export function SwitchPage() {
             and what can move without disrupting active coaching.
           </p>
           <div className="rs-stitch-hero__actions">
-            <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
+            <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
             <SiteLink to="#transition-process" variant="secondary">
               See the transition process
             </SiteLink>
@@ -3154,7 +3127,7 @@ export function SwitchPage() {
           clients.
         </p>
         <div className="rs-stitch-cta__actions">
-          <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
+          <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
           <SiteLink to="/for-coaches" variant="secondary">
             Explore RepSync for coaches
           </SiteLink>
@@ -3199,6 +3172,13 @@ export function PricingPage() {
             <span>7-day Growth trial</span>
             <span>No card required</span>
             <span>Clients use RepSync free</span>
+          </div>
+          <div className="rs-pricing-hero__conversion">
+            <p>
+              <strong>Plans from $19/month.</strong>
+              Choose your capacity after the Growth trial.
+            </p>
+            <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
           </div>
         </div>
         <div className="rs-pricing-period rs-stitch-reveal is-visible">
@@ -3257,7 +3237,7 @@ export function PricingPage() {
               </ul>
               <p className="rs-pricing-plan__summary">{plan.summary}</p>
               <SiteLink
-                to="/signup/pt"
+                to="/start-trial"
                 variant={plan.featured ? "primary" : "secondary"}
               >
                 Start 7-day trial
@@ -3363,7 +3343,7 @@ export function PricingPage() {
             sample workspace, configure your own coaching environment, and
             decide which plan fits after you understand the workflow.
           </p>
-          <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
+          <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
         </div>
         <ul className="rs-pricing-trial__details rs-stitch-reveal">
           {[
@@ -3390,7 +3370,7 @@ export function PricingPage() {
           your client base, team, and workspace structure.
         </p>
         <div className="rs-stitch-cta__actions">
-          <SiteLink to="/signup/pt">Start 7-day trial</SiteLink>
+          <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
           <SiteLink to="/product" variant="secondary">
             Explore the product
           </SiteLink>
@@ -3399,32 +3379,7 @@ export function PricingPage() {
           No card required. Clients use RepSync free.
         </p>
       </section>
-    </PublicLayout>
-  );
-}
-
-export function CoachesPage() {
-  usePublicSeo({
-    title: "Browse coaches | RepSync",
-    description:
-      "Browse public RepSync coach profiles as they become available.",
-  });
-
-  return (
-    <PublicLayout>
-      <section className="rs-stitch-page-hero rs-stitch-page-hero--text">
-        <div className="rs-stitch-reveal is-visible">
-          <p className="rs-stitch-kicker">Coach marketplace</p>
-          <h1>Public coach discovery is being prepared.</h1>
-          <p>
-            Published coach profiles can appear here when marketplace visibility
-            is enabled. Until then, explore how RepSync supports coaches.
-          </p>
-          <div className="rs-stitch-hero__actions">
-            <SiteLink to="/for-coaches">For coaches</SiteLink>
-          </div>
-        </div>
-      </section>
+      <PublicMobileTrialBar />
     </PublicLayout>
   );
 }
@@ -3453,7 +3408,10 @@ function SimpleInfoPage({
         </div>
       </section>
       <section className="rs-stitch-section">
-        <div className="rs-stitch-container">{children}</div>
+        <div className="rs-stitch-container">
+          <h2 className="sr-only">{title} details</h2>
+          {children}
+        </div>
       </section>
     </PublicLayout>
   );
@@ -3482,54 +3440,28 @@ export function FaqPage() {
       title="Useful answers. No inflated claims."
       description="RepSync is a coaching operating system focused on lead continuity, delivery clarity, and attention visibility."
     >
-      <div className="rs-stitch-faq">
-        {[
-          [
-            "Is RepSync only for workout programming?",
-            "No. Programming is part of the workflow, but RepSync is positioned around the whole coaching relationship.",
-          ],
-          [
-            "Can RepSync replace spreadsheets and DMs?",
-            "It can reduce the need for scattered tools by keeping leads, clients, check-ins, and delivery context together.",
-          ],
-          [
-            "How does the 7-day trial work?",
-            "Coach accounts start with Growth capacity and features for seven calendar days. No card is required, and plan intent does not create a charge.",
-          ],
-          [
-            "How is pricing determined?",
-            "Choose a plan based on active-client capacity, coach seats, and workspace needs. Every plan includes the core coaching workflow.",
-          ],
-          [
-            "Do clients need to install an app?",
-            "No. RepSync is web-based and is designed to work across current desktop and mobile browsers.",
-          ],
-          [
-            "How do clients join?",
-            "Clients normally enter through a secure invitation from their coach, then complete any required account and onboarding steps.",
-          ],
-          [
-            "Can I move from another coaching platform?",
-            "RepSync supports a deliberate transition plan. Import support depends on the source platform, data format, active workflows, and information that needs to remain available.",
-          ],
-          [
-            "Can a small coaching team use RepSync?",
-            "Yes. Workspace roles are designed to separate owner, coach, assistant, and viewer responsibilities while keeping client access tied to the coaching relationship.",
-          ],
-          [
-            "Who owns the coaching data?",
-            "Data access follows the account and workspace relationship. Export, retention, and deletion requirements should be confirmed during setup and are described further in the privacy policy.",
-          ],
-          [
-            "Where can I get help?",
-            "Use the support page for product and account questions. Urgent medical or emergency guidance is outside RepSync's scope.",
-          ],
-        ].map(([q, a]) => (
-          <details key={q}>
-            <summary>{q}</summary>
-            <p>{a}</p>
-          </details>
-        ))}
+      <div className="rs-public-faq-groups">
+        {publicFaqGroups.map((group, groupIndex) => {
+          const headingId = `faq-group-${groupIndex}`;
+          return (
+            <section
+              aria-labelledby={headingId}
+              className="rs-public-faq-group rs-stitch-reveal"
+              key={group.category}
+            >
+              <h2 id={headingId}>{group.category}</h2>
+              <div className="rs-stitch-faq">
+                {group.items.map((item) => (
+                  <details key={item.q}>
+                    <summary>{item.q}</summary>
+                    <p>{item.a}</p>
+                    {item.href ? <Link to={item.href}>Read more</Link> : null}
+                  </details>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </SimpleInfoPage>
   );
@@ -3589,8 +3521,9 @@ export function PrivacyPage() {
   return (
     <SimpleInfoPage
       eyebrow="Privacy"
-      title="Privacy Policy"
-      description="This conservative privacy notice draft covers account, profile, client coaching, application, and marketing-form information. It needs legal review before production launch."
+      title="Interim Privacy Notice"
+      description="This interim notice explains the categories of account, profile, coaching, application, and marketing information RepSync may process while the final policy is under review."
+      robots={legalReviewRequired ? "noindex,nofollow" : "index,follow"}
     >
       <InfoGrid
         items={[
@@ -3619,8 +3552,9 @@ export function TermsPage() {
   return (
     <SimpleInfoPage
       eyebrow="Terms"
-      title="Terms of Service"
-      description="These draft terms describe expected use of RepSync public and app surfaces. They require legal review before production launch."
+      title="Interim Terms of Use"
+      description="These interim terms describe responsible use of RepSync's public and authenticated surfaces while the final terms are under review."
+      robots={legalReviewRequired ? "noindex,nofollow" : "index,follow"}
     >
       <InfoGrid
         items={[
@@ -3650,7 +3584,7 @@ export function CookiesPage() {
     <SimpleInfoPage
       eyebrow="Cookies"
       title="Cookie notice"
-      description="RepSync uses essential browser storage for app operation. Optional analytics should remain consent-based before production launch."
+      description="RepSync uses essential browser storage for account and application operation. Anonymous public-site analytics are optional and remain off until you allow them."
     >
       <InfoGrid
         items={[
@@ -3666,6 +3600,7 @@ export function CookiesPage() {
           ],
         ]}
       />
+      <CookiePreferenceControls />
     </SimpleInfoPage>
   );
 }
@@ -3675,7 +3610,7 @@ export function SupportPage() {
     <SimpleInfoPage
       eyebrow="Support"
       title="Support"
-      description="For product, billing, privacy, or security questions, use your configured RepSync support inbox before production launch."
+      description="For product, billing, privacy, or security questions, contact the RepSync support team."
     >
       <FinalCta title="Need a product walkthrough?" />
     </SimpleInfoPage>
@@ -3695,7 +3630,7 @@ function ComparisonPage({ competitor }: { competitor: string }) {
     <SimpleInfoPage
       eyebrow="Comparison"
       title={`RepSync compared with ${competitor}`}
-      description={`Use this page as a conservative switching summary. RepSync emphasizes lead continuity, delivery context, attention visibility, and small-team operations.`}
+      description={`Compare how RepSync approaches lead continuity, delivery context, attention visibility, and small-team operations when moving from ${competitor}.`}
     >
       <OperationsCards />
     </SimpleInfoPage>

@@ -25,7 +25,7 @@ function readSource(...segments: string[]) {
 describe("marketing public configuration", () => {
   it("centralizes signup-mode CTA destinations", () => {
     expect(marketingSignupMode).toBe("direct_signup");
-    expect(getMarketingCtaDestination("primary")).toBe("/signup/pt");
+    expect(getMarketingCtaDestination("primary")).toBe("/start-trial");
     expect(getMarketingCtaDestination("switch")).toBe("/switch");
     expect(getMarketingCtaDestination("product")).toBe("/product");
   });
@@ -128,8 +128,6 @@ describe("marketing public configuration", () => {
       "/compare/fitr",
       "/faq",
       "/security",
-      "/privacy",
-      "/terms",
       "/cookies",
     ].forEach((route) => {
       const expected =
@@ -138,6 +136,8 @@ describe("marketing public configuration", () => {
           : `https://www.repsync.com${route}`;
       expect(sitemap).toContain(expected);
     });
+    expect(sitemap).not.toContain("https://www.repsync.com/privacy");
+    expect(sitemap).not.toContain("https://www.repsync.com/terms");
   });
 
   it("declares robots and sitemap behavior for public launch", () => {
@@ -205,15 +205,16 @@ describe("marketing public page source contract", () => {
     expect(marketingSource).not.toContain("See product");
   });
 
-  it("uses finished homepage motion while retaining unfinished media specs", () => {
+  it("uses finished product motion without production placeholders", () => {
     expect(marketingSource).toContain("/media/repsync-workflow-motion.webm");
     expect(marketingSource).toContain("/media/repsync-workflow-poster.png");
     expect(marketingSource).toContain("/media/repsync-client-experience.webm");
     expect(marketingSource).toContain(
       "/media/repsync-client-experience-poster.png",
     );
-    expect(marketingSource).toContain("Planned media");
-    expect(marketingSource).not.toContain("Client experience screen");
+    expect(marketingSource).not.toContain("Planned media");
+    expect(marketingSource).not.toContain("MEDIA PLACEHOLDER");
+    expect(marketingSource).not.toContain("Replace with");
   });
 
   it("keeps unavailable capabilities out of public product claims", () => {

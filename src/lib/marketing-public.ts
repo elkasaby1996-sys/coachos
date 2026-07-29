@@ -194,7 +194,7 @@ export function getActiveMarketingFeatures() {
 export function getMarketingCtaDestination(
   intent: "primary" | "switch" | "product" | "login",
 ) {
-  if (intent === "primary") return "/signup/pt";
+  if (intent === "primary") return "/start-trial";
   if (intent === "switch") return "/switch";
   if (intent === "product") return "/product";
   return "/login";
@@ -1026,7 +1026,7 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "Does RepSync replace every tool?",
-        a: "No. RepSync does not currently market automated billing, native mobile apps, Garmin, message attachments, program commerce, or full automated migration as available.",
+        a: "No. RepSync does not currently include automated billing, native mobile apps, Garmin, message attachments, program commerce, or fully automated migration.",
       },
     ],
   },
@@ -1043,11 +1043,11 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "What can assistant coaches access?",
-        a: "Assistant coach access is controlled by workspace role and client assignment. Marketing should not imply assistants receive owner controls.",
+        a: "Assistant coach access is controlled by workspace role and client assignment. Assistants do not receive protected owner controls.",
       },
       {
         q: "Can viewers change client information?",
-        a: "Viewer access is read-oriented in the verified permission configuration and should not be described as client-edit access.",
+        a: "Viewer access is read-oriented and does not include client-edit access.",
       },
       {
         q: "How do workspaces work?",
@@ -1069,7 +1069,7 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "Can a client use RepSync without a coach?",
-        a: "RepSync is designed around a coaching relationship. Independent client signup exists as an app route, but the public product story is coach-led.",
+        a: "RepSync is designed around an active coaching relationship. Most client access begins with an invitation from a coach.",
       },
       {
         q: "Can clients see another client's data?",
@@ -1100,7 +1100,7 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "Is migration automatic?",
-        a: "No. RepSync does not market fully automated competitor migration as available.",
+        a: "No. RepSync does not currently provide fully automated competitor migration.",
       },
       {
         q: "Will clients need new accounts?",
@@ -1114,12 +1114,12 @@ export const publicFaqGroups: FaqGroup[] = [
       {
         q: "Is RepSync available now?",
         a: "Yes. Coaches can start with the full Growth workflow for seven days, with no card required, then choose the plan that fits their operation.",
-        href: "/signup/pt",
+        href: "/start-trial",
       },
       {
         q: "How does the trial work?",
         a: "Create a coach account, configure the first workspace, and use Growth access for seven calendar days before choosing a plan.",
-        href: "/signup/pt",
+        href: "/start-trial",
       },
       {
         q: "Is pricing available?",
@@ -1128,11 +1128,11 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "Does RepSync support billing?",
-        a: "Automated billing is not currently marketed as available.",
+        a: "Automated billing is not currently available.",
       },
       {
         q: "Does RepSync have a marketplace?",
-        a: "Published profiles can appear in a public coach directory while marketplace availability remains beta-positioned.",
+        a: "Yes. Published coach profiles can appear in the public coach directory when the coach enables marketplace visibility.",
       },
     ],
   },
@@ -1141,15 +1141,15 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "Does RepSync support WHOOP?",
-        a: "WHOOP context is marked coming soon in the public feature configuration.",
+        a: "WHOOP support is planned but is not currently available.",
       },
       {
         q: "Does RepSync support Garmin?",
-        a: "No. Garmin is not currently marketed as available.",
+        a: "No. Garmin support is not currently available.",
       },
       {
         q: "What wearable data is shown?",
-        a: "RepSync only describes supported wearable context at a high level until the integration is production-ready.",
+        a: "Wearable information appears only when a supported integration is enabled for the coaching relationship.",
       },
       {
         q: "Does RepSync provide medical advice?",
@@ -1914,15 +1914,15 @@ export const marketingRouteMetadata: Record<string, MarketingRouteMetadata> = {
     canonicalPath: "/security",
   },
   "/privacy": {
-    title: "RepSync Privacy Notice",
+    title: "RepSync Interim Privacy Notice",
     description:
-      "Read the RepSync draft privacy notice covering account information, coach profiles, applications, marketing forms, analytics, cookies, integrations, and data requests.",
+      "Read the interim RepSync privacy notice covering account information, coach profiles, applications, marketing forms, analytics, and coaching information.",
     canonicalPath: "/privacy",
   },
   "/terms": {
-    title: "RepSync Terms of Service",
+    title: "RepSync Interim Terms of Use",
     description:
-      "Read the RepSync draft terms covering accounts, acceptable use, coach and client responsibilities, public profile content, trials, and service limitations.",
+      "Read the interim RepSync terms covering accounts, acceptable use, coach responsibilities, trials, and service limitations.",
     canonicalPath: "/terms",
   },
   "/cookies": {

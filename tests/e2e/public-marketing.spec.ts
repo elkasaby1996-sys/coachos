@@ -4,21 +4,20 @@ const publicRoutes = [
   ["/", "From first inquiry to every check-in."],
   ["/product", "The Whole Coaching Relationship, Connected."],
   [
-    "/for-coaches",
-    "Run a more organized coaching business without making coaching feel corporate.",
+    "/pricing",
+    "Start with the clients you coach today. Grow when the operation does.",
   ],
-  [
-    "/for-clients",
-    "Everything your coach needs you to see, in one clear place.",
-  ],
-  ["/switch", "Move the coaching business, not just the workout library."],
-  ["/compare/truecoach", "Considering a move from TrueCoach?"],
-  ["/compare/fitr", "Considering a move from FITR?"],
+  ["/coaches", "Find a coach who fits how you want to train."],
+  ["/for-coaches", "Run the business around your coaching."],
+  ["/for-clients", "Your coaching, without the clutter."],
+  ["/switch", "Move only after the workflow is clear."],
+  ["/compare/truecoach", "RepSync compared with TrueCoach"],
+  ["/compare/fitr", "RepSync compared with FITR"],
   ["/faq", "Useful answers. No inflated claims."],
   ["/security", "Access should follow the coaching relationship."],
-  ["/privacy", "Privacy Policy"],
-  ["/terms", "Terms of Service"],
-  ["/cookies", "Cookie notice and analytics preferences."],
+  ["/privacy", "Interim Privacy Notice"],
+  ["/terms", "Interim Terms of Use"],
+  ["/cookies", "Cookie notice"],
 ] as const;
 
 test.describe("public marketing site", () => {
@@ -27,7 +26,9 @@ test.describe("public marketing site", () => {
       await page.setViewportSize({ width: 375, height: 900 });
       await page.goto(route);
 
-      await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: heading, exact: true }),
+      ).toBeVisible();
       const hasOverflow = await page.evaluate(
         () =>
           document.documentElement.scrollWidth >
@@ -37,33 +38,32 @@ test.describe("public marketing site", () => {
     });
   }
 
-  test("tells the coach-week story with product and human evidence", async ({
+  test("connects the full coaching journey to working product evidence", async ({
     page,
   }) => {
     await page.goto("/");
 
     await expect(
       page.getByRole("heading", {
-        name: "Know the workload before it gets loud.",
+        name: "The coaching relationship does not begin with a workout.",
       }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "Give attention where it changes the week.",
+        name: "Acquire, coach, and retain from the same operating rhythm.",
       }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "Keep the conversation close to the work.",
+        name: "Clear for the coach. Calm for the client.",
       }),
     ).toBeVisible();
-    await expect(page.getByText("Sample week").first()).toBeVisible();
-    await expect(
-      page.getByRole("navigation", { name: "A coach's week" }),
-    ).toBeVisible();
-    await expect(page.getByText("32 sessions").first()).toBeVisible();
-    await expect(page.getByText("Maya L.").first()).toBeVisible();
-    await expect(page.locator(".rs-week-photo img")).toHaveCount(4);
+    await expect(page.getByText("Lifecycle: Active").first()).toBeVisible();
+    await expect(page.getByText("Attention: At risk").first()).toBeVisible();
+    await expect(page.locator(".rs-stitch-preview__motion video")).toHaveCount(
+      2,
+    );
+    await expect(page.getByText(/Planned media/i)).toHaveCount(0);
   });
 
   test("routes primary CTAs to trial, product, and switching paths", async ({
@@ -82,14 +82,31 @@ test.describe("public marketing site", () => {
     ).toHaveAttribute("href", "/product");
   });
 
+  test("keeps the coach trial entry short and focused", async ({ page }) => {
+    await page.goto("/start-trial");
+
+    await expect(page).toHaveURL(/\/signup\/pt$/);
+    await expect(
+      page.getByRole("heading", { name: "Start your 7-day Growth trial" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Full name")).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "Email", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Phone number")).toHaveCount(0);
+    await expect(page.getByLabel("Country")).toHaveCount(0);
+    await expect(page.getByLabel("City")).toHaveCount(0);
+  });
+
   test("plays the hero workflow and respects reduced motion", async ({
     browser,
     page,
   }) => {
     await page.goto("/");
-    const video = page.locator(".rs-stitch-preview__motion video");
+    const videos = page.locator(".rs-stitch-preview__motion video");
+    const video = videos.first();
 
-    await expect(video).toHaveCount(1);
+    await expect(videos).toHaveCount(2);
     expect(await video.evaluate((element) => element.muted)).toBe(true);
     await expect
       .poll(() => video.evaluate((element) => element.currentTime))
@@ -113,17 +130,19 @@ test.describe("public marketing site", () => {
     await reducedMotionContext.close();
   });
 
-  test("validates the switch form", async ({ page }) => {
+  test("sets clear migration expectations before a switch", async ({
+    page,
+  }) => {
     await page.goto("/switch");
-    await expect(page.getByLabel("Switching timeline")).toBeVisible();
-    await expect(page.getByLabel("Team size")).toBeVisible();
     await expect(
-      page.getByText("Migration needs", { exact: true }),
+      page.getByRole("heading", {
+        name: "Every category needs an honest support state.",
+      }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Plan your switch" }).click();
-    await expect(page.getByRole("status")).toContainText(
-      "Enter your first name.",
-    );
+    await expect(page.getByText("Not currently supported")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "RepSync vs TrueCoach" }),
+    ).toHaveAttribute("href", "/compare/truecoach");
   });
 
   test("gates marketing analytics behind cookie consent", async ({ page }) => {
@@ -142,16 +161,16 @@ test.describe("public marketing site", () => {
     expect(eventCount).toBe(0);
 
     await expect(
-      page.getByRole("dialog", { name: "Choose optional analytics." }),
+      page.getByRole("dialog", { name: "Analytics preferences" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Reject optional" }).click();
+    await page.getByRole("button", { name: "Decline" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(
       page.evaluate(() => localStorage.getItem("repsync_analytics_consent")),
     ).resolves.toBe("rejected");
 
-    await page.getByRole("button", { name: "Manage cookies" }).click();
-    await page.getByRole("button", { name: "Accept analytics" }).click();
+    await page.goto("/cookies");
+    await page.getByRole("button", { name: "Allow analytics" }).click();
     await expect(
       page.evaluate(() => localStorage.getItem("repsync_analytics_consent")),
     ).resolves.toBe("accepted");
@@ -161,15 +180,15 @@ test.describe("public marketing site", () => {
     page,
   }) => {
     await page.goto("/security");
-    await expect(page.getByText("Supabase authentication")).toBeVisible();
-    await expect(page.getByText("Claims not made")).toBeVisible();
+    await expect(page.getByText("Authenticated private areas")).toBeVisible();
+    await expect(page.getByText("Controlled data paths")).toBeVisible();
     await expect(page.getByText("SOC 2")).toBeVisible();
 
     await page.goto("/faq");
     await expect(
       page.getByRole("heading", { name: "Security and privacy" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Reject optional" }).click();
+    await page.getByRole("button", { name: "Decline" }).click();
     await page.getByText("How is access controlled?").click();
     await expect(
       page.getByText("Private areas require authenticated accounts"),
@@ -177,13 +196,19 @@ test.describe("public marketing site", () => {
 
     await page.goto("/privacy");
     await expect(
-      page.getByText("Legal approval: Required before production launch"),
+      page.getByText("Account and profile information"),
     ).toBeVisible();
-    await expect(page.getByText("Marketing-form information")).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      "noindex,nofollow",
+    );
 
     await page.goto("/terms");
-    await expect(page.getByText("Early access behavior")).toBeVisible();
-    await expect(page.getByText("migration completeness")).toBeVisible();
+    await expect(page.getByText("Coach responsibility")).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      "noindex,nofollow",
+    );
 
     await page.goto("/cookies");
     await expect(
@@ -200,7 +225,8 @@ test.describe("public marketing site", () => {
     await page.goto("/product");
     await expect(
       page.getByRole("heading", {
-        name: "Eleven chapters. One coaching relationship.",
+        name: "10 chapters. One coaching relationship.",
+        exact: true,
       }),
     ).toBeVisible();
     await expect(page.getByText("Public coach profile").first()).toBeVisible();
@@ -210,21 +236,23 @@ test.describe("public marketing site", () => {
 
     await page.goto("/for-coaches");
     await expect(
-      page.getByRole("heading", { name: "RepSync is a good fit when..." }),
+      page.getByRole("heading", {
+        name: "Know whether RepSync fits before you start.",
+      }),
     ).toBeVisible();
     await expect(
-      page.getByText("You need automated billing immediately."),
+      page.getByText("Automated billing is required immediately."),
     ).toBeVisible();
 
     await page.goto("/for-clients");
     await expect(
       page.getByRole("link", { name: "I have an invitation" }).first(),
-    ).toHaveAttribute("href", "/login");
+    ).toHaveAttribute("href", "/signup/client");
     await expect(
       page.getByRole("link", { name: "Log in" }).first(),
     ).toHaveAttribute("href", "/login");
     await expect(
-      page.getByRole("link", { name: "I am looking for a coach" }).first(),
+      page.getByRole("link", { name: "Browse coaches" }).first(),
     ).toHaveAttribute("href", "/coaches");
   });
 
@@ -246,45 +274,12 @@ test.describe("public marketing site", () => {
             page.locator("[data-product-chapter]").first(),
           ).toBeVisible();
         } else {
-          await expect(page.locator(".rs-preview-card").first()).toBeVisible();
+          await expect(
+            page.locator(".rs-stitch-preview").first(),
+          ).toBeVisible();
         }
       }
     }
-  });
-
-  test("shows retryable backend failure on switch form", async ({ page }) => {
-    await page.route("**/functions/v1/marketing-lead-submit", async (route) => {
-      await route.fulfill({
-        status: 500,
-        contentType: "application/json",
-        body: JSON.stringify({ error: "Temporary backend failure" }),
-      });
-    });
-
-    await page.goto("/switch");
-    await page.getByLabel("First name").fill("Maya");
-    await page.getByLabel("Last name").fill("Coach");
-    await page.getByLabel("Email").fill("maya@example.com");
-    await page.getByLabel("Business name").fill("Maya Strength");
-    await page.getByLabel("Coaching model").selectOption("online");
-    await page.getByLabel("Active clients").selectOption("6_20");
-    await page.getByLabel("Current platform").selectOption("truecoach");
-    await page.getByLabel("Primary reason").selectOption("lead_to_client");
-    await page.getByLabel("Switching timeline").selectOption("within_90_days");
-    await page.getByLabel("Team size").selectOption("solo");
-    await page.getByLabel("Client information").check();
-    await page.getByLabel("Active programs").check();
-    await page.getByLabel("Check-ins").check();
-    await page.getByLabel(/I agree RepSync can contact me/).check();
-
-    await page.getByRole("button", { name: "Plan your switch" }).click();
-
-    await expect(page.getByRole("status")).toContainText(
-      "Edge Function returned a non-2xx status code",
-    );
-    await expect(
-      page.getByRole("button", { name: "Plan your switch" }),
-    ).toBeEnabled();
   });
 
   test("renders branded public 404", async ({ page }) => {
@@ -292,7 +287,8 @@ test.describe("public marketing site", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: "This page is not in the coaching plan.",
+        name: "Page not found",
+        exact: true,
       }),
     ).toBeVisible();
   });

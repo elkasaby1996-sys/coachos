@@ -31,14 +31,18 @@ const expectedChapterIds = [
   "integrations",
 ];
 
+const expectedVisibleChapterIds = expectedChapterIds.filter(
+  (chapterId) => chapterId !== "integrations",
+);
+
 describe("product page content architecture", () => {
-  it("defines exactly eleven ordered and available chapters", () => {
+  it("defines eleven ordered chapters and hides unavailable integrations", () => {
     expect(productPageContent.chapters).toHaveLength(11);
     expect(productPageContent.chapters.map((chapter) => chapter.id)).toEqual(
       expectedChapterIds,
     );
     expect(visibleProductChapters.map((chapter) => chapter.id)).toEqual(
-      expectedChapterIds,
+      expectedVisibleChapterIds,
     );
   });
 

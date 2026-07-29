@@ -177,17 +177,17 @@ export const productPageContent = {
   metadata: {
     title: "RepSync Product | The Whole Coaching Relationship",
     description:
-      "Explore how RepSync connects public profiles, leads, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, integrations, and the client experience.",
+      "Explore how RepSync connects public profiles, leads, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, and the client experience.",
     canonicalPath: productPageRoutes.product,
     openGraphTitle: "The Whole Coaching Relationship, Connected | RepSync",
     openGraphDescription:
-      "Follow the RepSync product from first inquiry through coaching delivery, check-ins, communication, client attention, team access, and supported integrations.",
+      "Follow the RepSync product from first inquiry through coaching delivery, check-ins, communication, client attention, and team access.",
   },
   hero: {
     eyebrow: "The product",
     heading: "The Whole Coaching Relationship, Connected.",
     emphasizedText: "Coaching Relationship",
-    body: "RepSync connects acquisition, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, integrations, and the client experience.",
+    body: "RepSync connects acquisition, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, and the client experience.",
     supportingCopy:
       "One operating model from first inquiry to ongoing coaching.",
   },
@@ -393,7 +393,7 @@ export const productPageContent = {
   finalCta: {
     eyebrow: "7-day Growth trial",
     heading: "Explore the Whole Coaching Relationship for 7 Days.",
-    body: "Use acquisition, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, supported integrations, and the client experience.",
+    body: "Use acquisition, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, and the client experience.",
     primaryLabel: "Start 7-day trial",
     primaryDestination: productPageRoutes.trial,
     secondaryLabel: "Explore for coaches",
@@ -411,5 +411,8 @@ export function isProductChapterAvailable(chapter: ProductChapterContent) {
 }
 
 export const visibleProductChapters = productPageContent.chapters.filter(
-  isProductChapterAvailable,
+  (chapter) =>
+    isProductChapterAvailable(chapter) &&
+    (chapter.id !== "integrations" ||
+      getPublicMarketingIntegrations().length > 0),
 );

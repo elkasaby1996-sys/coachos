@@ -21,6 +21,34 @@ export type ProductMarketingEventProperties = {
 
 const analyticsConsentKey = "repsync_analytics_consent";
 
+export type MarketingAnalyticsConsent = "accepted" | "rejected" | null;
+
+export function getMarketingAnalyticsConsent(): MarketingAnalyticsConsent {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = window.localStorage.getItem(analyticsConsentKey);
+    return value === "accepted" || value === "rejected" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setMarketingAnalyticsConsent(
+  value: Exclude<MarketingAnalyticsConsent, null>,
+) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(analyticsConsentKey, value);
+    window.dispatchEvent(
+      new CustomEvent("repsync:analytics-consent-changed", {
+        detail: { value },
+      }),
+    );
+  } catch {
+    // Consent storage must not block access to the public website.
+  }
+}
+
 function getUtmProperties(): ProductMarketingEventProperties {
   if (typeof window === "undefined") return {};
   const params = new URLSearchParams(window.location.search);
@@ -38,7 +66,7 @@ export function trackProductMarketingEvent(
   if (typeof window === "undefined") return;
 
   try {
-    if (window.localStorage.getItem(analyticsConsentKey) !== "accepted") return;
+    if (getMarketingAnalyticsConsent() !== "accepted") return;
     window.dispatchEvent(
       new CustomEvent("repsync:marketing-event", {
         detail: {
