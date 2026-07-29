@@ -2573,13 +2573,8 @@
 
 .rs-pricing-hero {
   width: var(--rs-container);
-  min-height: 32rem;
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.55fr);
-  gap: clamp(3rem, 8vw, 8rem);
-  align-items: end;
   margin: 0 auto;
-  padding: 7.5rem 0 4rem;
+  padding: 7.5rem 0 3.75rem;
 }
 
 .rs-pricing-hero__copy h1 {
@@ -2651,35 +2646,45 @@
 }
 
 .rs-pricing-period {
-  border-top: 1px solid rgba(40, 93, 73, 0.28);
-  border-bottom: 1px solid rgba(40, 93, 73, 0.28);
-  padding: 1.25rem 0;
-}
-
-.rs-pricing-period > p {
-  margin-bottom: 0.75rem;
-  color: var(--rs-forest);
-  font-size: 0.68rem;
-  font-weight: 850;
-  text-transform: uppercase;
-}
-
-.rs-pricing-period > div {
+  width: min(100% - 2rem, 32rem);
+  position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  border: 1px solid rgba(40, 93, 73, 0.2);
-  border-radius: 7px;
-  background: var(--rs-white);
+  border: 1px solid rgba(40, 93, 73, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  margin: 0 auto clamp(2.5rem, 5vw, 4rem);
   padding: 4px;
+  text-align: center;
+}
+
+.rs-pricing-period::before {
+  position: absolute;
+  z-index: 0;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: var(--rs-forest);
+  content: "";
+  transform: translateX(0);
+  transition: transform 220ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.rs-pricing-period.is-annual::before {
+  transform: translateX(100%);
 }
 
 .rs-pricing-period button {
-  min-height: 3.4rem;
+  position: relative;
+  z-index: 1;
+  min-height: 3rem;
   display: grid;
   place-content: center;
   gap: 0.15rem;
   border: 0;
-  border-radius: 5px;
+  border-radius: 999px;
   background: transparent;
   color: var(--rs-ink-soft);
   font-size: 0.82rem;
@@ -2697,7 +2702,6 @@
 }
 
 .rs-pricing-period button.is-active {
-  background: var(--rs-forest);
   color: var(--rs-white);
 }
 
@@ -2710,7 +2714,7 @@
   border-top: 1px solid rgba(40, 93, 73, 0.15);
   border-bottom: 1px solid rgba(40, 93, 73, 0.15);
   background: var(--rs-paper-soft);
-  padding: clamp(3.5rem, 7vw, 6rem) 0;
+  padding: clamp(2.5rem, 5vw, 4rem) 0 clamp(3.5rem, 7vw, 6rem);
 }
 
 .rs-pricing-plan-grid {
@@ -3093,12 +3097,11 @@
 
   .rs-pricing-hero {
     min-height: 0;
-    gap: 3rem;
     padding-top: 8rem;
   }
 
   .rs-pricing-period {
-    max-width: 480px;
+    width: min(100% - 2rem, 30rem);
   }
 
   .rs-pricing-core__grid {

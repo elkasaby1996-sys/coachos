@@ -3181,31 +3181,32 @@ export function PricingPage() {
             <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
           </div>
         </div>
-        <div className="rs-pricing-period rs-stitch-reveal is-visible">
-          <p>Billing period</p>
-          <div role="group" aria-label="Choose a billing period">
-            <button
-              className={billingPeriod === "monthly" ? "is-active" : ""}
-              type="button"
-              aria-pressed={billingPeriod === "monthly"}
-              onClick={() => setBillingPeriod("monthly")}
-            >
-              Monthly
-            </button>
-            <button
-              className={billingPeriod === "annual" ? "is-active" : ""}
-              type="button"
-              aria-pressed={billingPeriod === "annual"}
-              onClick={() => setBillingPeriod("annual")}
-            >
-              Annual
-              <span>Two months free</span>
-            </button>
-          </div>
-        </div>
       </section>
 
       <section className="rs-pricing-plans" aria-label="RepSync plans">
+        <div
+          className={`rs-pricing-period rs-stitch-reveal is-visible${billingPeriod === "annual" ? " is-annual" : ""}`}
+          role="group"
+          aria-label="Choose a billing period"
+        >
+          <button
+            className={billingPeriod === "monthly" ? "is-active" : ""}
+            type="button"
+            aria-pressed={billingPeriod === "monthly"}
+            onClick={() => setBillingPeriod("monthly")}
+          >
+            Monthly
+          </button>
+          <button
+            className={billingPeriod === "annual" ? "is-active" : ""}
+            type="button"
+            aria-pressed={billingPeriod === "annual"}
+            onClick={() => setBillingPeriod("annual")}
+          >
+            Annual
+            <span>Two months free</span>
+          </button>
+        </div>
         <div className="rs-pricing-plan-grid">
           {pricingPlans.map((plan) => (
             <article
