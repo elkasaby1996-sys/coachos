@@ -75,14 +75,14 @@ test.describe("public product page", () => {
     ).toBeVisible();
   });
 
-  test("renders media fallbacks and complete SEO metadata", async ({
+  test("renders the public coach-profile video and complete SEO metadata", async ({
     page,
   }) => {
     await page.goto("/product");
     await expect(page.locator(".rs-product-ref-media").first()).toBeVisible();
     await expect(
       page.locator(
-        '.rs-product-ref-media img[src*="repsync-workflow-poster.png"]',
+        '.rs-product-ref-media video[src*="repsync-public-coach-profiles.webm"]',
       ),
     ).toBeVisible();
     await expect(

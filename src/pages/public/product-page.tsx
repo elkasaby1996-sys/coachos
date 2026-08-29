@@ -188,13 +188,13 @@ export function ProductPage() {
             <ProductChapter chapter={chapter} key={chapter.id} />
           ))}
           <ProductReferenceCta />
-          <AppFooter
-            className="rs-marketing-app-footer rs-product-ref-footer"
-            contentClassName="rs-marketing-app-footer__content"
-            linkSet="marketing"
-          />
         </main>
       </div>
+      <AppFooter
+        className="rs-marketing-app-footer"
+        contentClassName="rs-marketing-app-footer__content"
+        linkSet="marketing"
+      />
       <PublicMobileTrialBar />
       <MarketingConsentBanner />
     </div>
@@ -208,14 +208,8 @@ function ProductReferenceSideNav({
   activeChapter: ProductChapterId;
   onNavigate: (id: ProductChapterId) => void;
 }) {
-  const cta = productPageContent.sidebarCta;
-
   return (
     <aside className="rs-product-ref-side" aria-label="Product chapters">
-      <div className="rs-product-ref-side__title">
-        <p>The OS</p>
-        <h2>Product Deep Dive</h2>
-      </div>
       <nav aria-label="Product deep-dive chapters">
         {visibleProductChapters.map((chapter) => (
           <a
@@ -228,28 +222,13 @@ function ProductReferenceSideNav({
               onNavigate(chapter.id);
             }}
           >
-            {chapterIcons[chapter.id]}
-            <span>
-              {chapter.number} {chapter.navLabel}
+            <span className="rs-product-ref-side__node" aria-hidden="true" />
+            <span className="rs-product-ref-side__chapter">
+              {chapter.navLabel}
             </span>
           </a>
         ))}
       </nav>
-      <div className="rs-product-ref-side__trial">
-        <p>{cta.body}</p>
-        <Link
-          to={cta.destination}
-          onClick={() =>
-            trackProductMarketingEvent("product_trial_clicked", {
-              ctaLocation: "sidebar",
-              ctaDestination: cta.destination,
-            })
-          }
-        >
-          {cta.label}
-        </Link>
-        <small>{cta.microcopy}</small>
-      </div>
     </aside>
   );
 }
@@ -595,6 +574,7 @@ function ProductMediaFallback({
   compact?: boolean;
 }) {
   const mediaRef = useRef<HTMLElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const asset = productMediaAssets[mediaId];
   useEffect(() => {
     const media = mediaRef.current;
@@ -611,6 +591,32 @@ function ProductMediaFallback({
     return () => observer.disconnect();
   }, [mediaId]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || asset?.kind !== "video") return;
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updatePlayback = (isVisible: boolean) => {
+      if (reducedMotion.matches || !isVisible) {
+        video.pause();
+        return;
+      }
+      void video.play().catch(() => undefined);
+    };
+    const observer = new IntersectionObserver(
+      ([entry]) => updatePlayback(Boolean(entry?.isIntersecting)),
+      { threshold: 0.35 },
+    );
+    const onReducedMotionChange = () => updatePlayback(true);
+
+    observer.observe(video);
+    reducedMotion.addEventListener("change", onReducedMotionChange);
+    return () => {
+      observer.disconnect();
+      reducedMotion.removeEventListener("change", onReducedMotionChange);
+    };
+  }, [asset?.kind, asset?.src]);
+
   return (
     <figure
       className={`rs-product-ref-media ${compact ? "rs-product-ref-media--compact" : ""}`.trim()}
@@ -623,13 +629,28 @@ function ProductMediaFallback({
       </div>
       {asset ? (
         <div className="rs-product-ref-media__asset">
-          <img
-            alt={asset.alt}
-            height={asset.height}
-            loading="lazy"
-            src={asset.src}
-            width={asset.width}
-          />
+          {asset.kind === "video" ? (
+            <video
+              aria-label={asset.alt}
+              height={asset.height}
+              loop
+              muted
+              playsInline
+              poster={asset.poster}
+              preload="metadata"
+              ref={videoRef}
+              src={asset.src}
+              width={asset.width}
+            />
+          ) : (
+            <img
+              alt={asset.alt}
+              height={asset.height}
+              loading="lazy"
+              src={asset.src}
+              width={asset.width}
+            />
+          )}
         </div>
       ) : (
         <ProductCaptureCanvas mediaId={mediaId} />
@@ -652,9 +673,9 @@ function AcquireWorkflowPreview({
     <ProductSection chapter={chapter} className="rs-product-ref-section--split">
       <ChapterCopy chapter={chapter} />
       <ProductMediaFallback
-        description="Published profile, application context, lead conversation, and approval decision in one readable product view."
+        description="Browse a published coach profile, review an option, and begin the application that starts a coaching conversation."
         mediaId={chapter.mediaId}
-        title="Public profile and lead pipeline"
+        title="Public coach profile flow"
       />
     </ProductSection>
   );
@@ -1078,7 +1099,6 @@ function ProductReferenceCta() {
           {cta.secondaryLabel}
         </Link>
       </div>
-      <p className="rs-product-ref-cta__note">{cta.microcopy}</p>
     </section>
   );
 }

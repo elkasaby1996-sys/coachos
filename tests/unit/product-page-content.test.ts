@@ -121,6 +121,10 @@ describe("product page content architecture", () => {
       ),
     ).toBe(true);
     expect(productMediaAssets["UI-03-lead-pipeline"]?.width).toBe(960);
+    expect(productMediaAssets["UI-03-lead-pipeline"]?.kind).toBe("video");
+    expect(productMediaAssets["UI-03-lead-pipeline"]?.src).toContain(
+      "repsync-public-coach-profiles.webm",
+    );
     expect(productMediaAssets["UI-08-client-home"]?.alt).toContain(
       "active workout timer",
     );

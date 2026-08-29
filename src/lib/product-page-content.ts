@@ -33,20 +33,24 @@ export const productMediaIds = [
 export type ProductMediaId = (typeof productMediaIds)[number];
 
 export type ProductMediaAsset = {
+  kind?: "image" | "video";
   src: string;
   width: number;
   height: number;
   alt: string;
+  poster?: string;
 };
 
 export const productMediaAssets: Partial<
   Record<ProductMediaId, ProductMediaAsset>
 > = {
   "UI-03-lead-pipeline": {
-    src: "/media/repsync-workflow-poster.png",
+    kind: "video",
+    src: "/media/repsync-public-coach-profiles.webm",
+    poster: "/media/repsync-public-coach-profiles-poster.png",
     width: 960,
     height: 660,
-    alt: "RepSync light-mode workflow showing a prospect moving through lead review, onboarding, coaching delivery, and client attention.",
+    alt: "A RepSync product walkthrough: browse published coach profiles, review a profile, choose a coaching option, and start an application.",
   },
   "UI-08-client-home": {
     src: "/media/repsync-client-experience-poster.png",
@@ -190,12 +194,6 @@ export const productPageContent = {
     body: "RepSync connects acquisition, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, and the client experience.",
     supportingCopy:
       "One operating model from first inquiry to ongoing coaching.",
-  },
-  sidebarCta: {
-    body: "Explore the complete RepSync workflow for seven days.",
-    label: "Start 7-day trial",
-    destination: productPageRoutes.trial,
-    microcopy: "No card required. Start with Growth access.",
   },
   chapters: [
     {
@@ -398,7 +396,6 @@ export const productPageContent = {
     primaryDestination: productPageRoutes.trial,
     secondaryLabel: "Explore for coaches",
     secondaryDestination: productPageRoutes.forCoaches,
-    microcopy: "No card required. Begin with Growth access.",
   },
 } as const;
 
