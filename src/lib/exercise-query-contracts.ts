@@ -3,9 +3,15 @@ export const EXERCISE_LIBRARY_FULL_PROJECTION =
 
 export const EXERCISE_EDITOR_WRITABLE_FIELDS = [
   "owner_user_id",
+  "workspace_id",
   "name",
   "muscle_group",
+  "primary_muscle",
   "secondary_muscles",
+  "body_region_keys",
+  "primary_muscle_keys",
+  "secondary_muscle_keys",
+  "muscle_taxonomy_version",
   "equipment",
   "video_url",
   "is_unilateral",

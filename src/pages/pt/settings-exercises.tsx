@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { ExerciseMuscleClassificationFields } from "../../components/pt/exercise-muscle-classification-fields";
 import {
   exerciseDatasetConfigured,
   searchExerciseDataset,
@@ -26,6 +27,14 @@ import {
 } from "../../lib/exercise-dataset";
 import type { PersistentExerciseLibraryRecord } from "../../lib/exercise-domain";
 import { buildCurrentProviderCanonicalMuscleFields } from "../../lib/exercise-muscle-mapping";
+import {
+  adaptPersistedExerciseMuscleProfile,
+  buildCustomExerciseMusclePersistenceFields,
+  createEmptyExerciseMuscleFormValue,
+  getLegacyExerciseMuscleLabels,
+  initializeExerciseMuscleFormValue,
+  type ExerciseMuscleFormValue,
+} from "../../lib/exercise-muscle-classification";
 import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
 import { exerciseQueryKeys } from "../../lib/exercise-query-contracts";
 import { supabase } from "../../lib/supabase";
@@ -45,8 +54,6 @@ const muscleGroups = [
 
 type ExerciseFormState = {
   name: string;
-  muscle_group: string;
-  secondary_muscles: string;
   equipment: string;
   video_url: string;
   is_unilateral: boolean;
@@ -54,8 +61,6 @@ type ExerciseFormState = {
 
 const emptyForm: ExerciseFormState = {
   name: "",
-  muscle_group: "",
-  secondary_muscles: "",
   equipment: "",
   video_url: "",
   is_unilateral: false,
@@ -186,6 +191,10 @@ export function PtExerciseLibraryPage() {
   const [selected, setSelected] =
     useState<PersistentExerciseLibraryRecord | null>(null);
   const [form, setForm] = useState<ExerciseFormState>(emptyForm);
+  const [muscleClassification, setMuscleClassification] =
+    useState<ExerciseMuscleFormValue>(createEmptyExerciseMuscleFormValue);
+  const [muscleClassificationChanged, setMuscleClassificationChanged] =
+    useState(false);
   const [filters, setFilters] = useState({
     name: "",
     primary_muscle: "",
@@ -210,12 +219,6 @@ export function PtExerciseLibraryPage() {
     const timeout = setTimeout(() => setToastMessage(null), 2400);
     return () => clearTimeout(timeout);
   }, [toastMessage]);
-
-  const splitList = (value: string) =>
-    value
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
 
   const ownerScopeQuery = useQuery({
     queryKey: ["workspace-owner", workspaceId],
@@ -358,6 +361,8 @@ export function PtExerciseLibraryPage() {
   const openCreate = () => {
     setSelected(null);
     setForm(emptyForm);
+    setMuscleClassification(createEmptyExerciseMuscleFormValue());
+    setMuscleClassificationChanged(false);
     setActionError(null);
     setModalOpen(true);
   };
@@ -366,12 +371,12 @@ export function PtExerciseLibraryPage() {
     setSelected(exercise);
     setForm({
       name: exercise.name,
-      muscle_group: exercise.muscle_group ?? "",
-      secondary_muscles: exercise.secondary_muscles?.join(", ") ?? "",
       equipment: exercise.equipment ?? "",
       video_url: exercise.video_url ?? "",
       is_unilateral: exercise.is_unilateral ?? false,
     });
+    setMuscleClassification(initializeExerciseMuscleFormValue(exercise));
+    setMuscleClassificationChanged(false);
     setActionError(null);
     setModalOpen(true);
   };
@@ -393,14 +398,18 @@ export function PtExerciseLibraryPage() {
     const payload = {
       owner_user_id: libraryOwnerUserId,
       name: form.name.trim(),
-      muscle_group: form.muscle_group.trim() || null,
-      secondary_muscles: splitList(form.secondary_muscles).length
-        ? splitList(form.secondary_muscles)
-        : null,
       equipment: form.equipment.trim() || null,
       video_url: form.video_url.trim() || null,
       is_unilateral: form.is_unilateral,
-      source: selected?.source ?? "manual",
+      ...(selected
+        ? {}
+        : {
+            workspace_id: null,
+            source: "manual",
+          }),
+      ...(!selected || muscleClassificationChanged
+        ? buildCustomExerciseMusclePersistenceFields(muscleClassification)
+        : {}),
     };
 
     const response = selected
@@ -1129,7 +1138,7 @@ export function PtExerciseLibraryPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent className="sm:max-w-[720px]">
           <DialogHeader>
             <DialogTitle>
               {selected ? "Edit exercise" : "Add exercise"}
@@ -1151,43 +1160,23 @@ export function PtExerciseLibraryPage() {
                 placeholder="e.g., Bench Press"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Muscle group
-              </label>
-              <select
-                className="h-10 w-full app-field px-3 text-sm"
-                value={form.muscle_group}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    muscle_group: event.target.value,
-                  }))
-                }
-              >
-                <option value="">Select group</option>
-                {muscleGroups.map((group) => (
-                  <option key={group} value={group}>
-                    {group}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Secondary muscles (comma-separated)
-              </label>
-              <Input
-                value={form.secondary_muscles}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    secondary_muscles: event.target.value,
-                  }))
-                }
-                placeholder="e.g., Triceps, Shoulders"
-              />
-            </div>
+            <ExerciseMuscleClassificationFields
+              value={muscleClassification}
+              onChange={(nextValue) => {
+                setMuscleClassification(nextValue);
+                setMuscleClassificationChanged(true);
+              }}
+              disabled={actionStatus === "saving"}
+              legacyLabels={
+                selected
+                  ? [
+                      ...getLegacyExerciseMuscleLabels(selected),
+                      ...adaptPersistedExerciseMuscleProfile(selected)
+                        .unmappedLabels,
+                    ]
+                  : []
+              }
+            />
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">
                 Equipment

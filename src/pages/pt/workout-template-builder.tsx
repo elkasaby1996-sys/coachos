@@ -38,6 +38,7 @@ import {
 } from "../../components/ui/dialog";
 import { EmptyState } from "../../components/ui/coachos";
 import { Skeleton } from "../../components/ui/skeleton";
+import { ExerciseMuscleClassificationFields } from "../../components/pt/exercise-muscle-classification-fields";
 import {
   exerciseDatasetConfigured,
   searchExerciseDataset,
@@ -56,6 +57,11 @@ import {
   type ResolvedExerciseSelection,
 } from "../../lib/exercise-domain";
 import { buildCurrentProviderCanonicalMuscleFields } from "../../lib/exercise-muscle-mapping";
+import {
+  buildCustomExerciseMusclePersistenceFields,
+  createEmptyExerciseMuscleFormValue,
+  type ExerciseMuscleFormValue,
+} from "../../lib/exercise-muscle-classification";
 import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
 import {
   exerciseQueryKeys,
@@ -174,7 +180,7 @@ type BulkTemplateExerciseForm = {
 
 type LibraryExerciseForm = {
   name: string;
-  muscle_group: string;
+  muscleClassification: ExerciseMuscleFormValue;
   equipment: string;
   video_url: string;
 };
@@ -200,7 +206,7 @@ const emptyBulkExerciseForm: BulkTemplateExerciseForm = {
 
 const emptyLibraryExerciseForm: LibraryExerciseForm = {
   name: "",
-  muscle_group: "",
+  muscleClassification: createEmptyExerciseMuscleFormValue(),
   equipment: "",
   video_url: "",
 };
@@ -709,11 +715,14 @@ export function PtWorkoutTemplateBuilderPage() {
       .from("exercises")
       .insert({
         owner_user_id: libraryOwnerUserId,
+        workspace_id: null,
         name: createExerciseForm.name.trim(),
-        muscle_group: createExerciseForm.muscle_group.trim() || null,
         equipment: createExerciseForm.equipment.trim() || null,
         video_url: createExerciseForm.video_url.trim() || null,
         source: "manual",
+        ...buildCustomExerciseMusclePersistenceFields(
+          createExerciseForm.muscleClassification,
+        ),
       })
       .select("id")
       .single();
@@ -1682,7 +1691,7 @@ export function PtWorkoutTemplateBuilderPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent className="sm:max-w-[720px]">
           <DialogHeader>
             <DialogTitle>Create exercise</DialogTitle>
             <DialogDescription>
@@ -1706,21 +1715,16 @@ export function PtWorkoutTemplateBuilderPage() {
                 placeholder="e.g., Bench Press"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Muscle group
-              </label>
-              <Input
-                value={createExerciseForm.muscle_group}
-                onChange={(event) =>
-                  setCreateExerciseForm((prev) => ({
-                    ...prev,
-                    muscle_group: event.target.value,
-                  }))
-                }
-                placeholder="e.g., Chest"
-              />
-            </div>
+            <ExerciseMuscleClassificationFields
+              value={createExerciseForm.muscleClassification}
+              onChange={(muscleClassification) =>
+                setCreateExerciseForm((prev) => ({
+                  ...prev,
+                  muscleClassification,
+                }))
+              }
+              disabled={createExerciseStatus === "saving"}
+            />
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">
                 Equipment
