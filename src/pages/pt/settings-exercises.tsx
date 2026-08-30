@@ -25,6 +25,7 @@ import {
   type ExerciseDatasetExercise,
 } from "../../lib/exercise-dataset";
 import type { PersistentExerciseLibraryRecord } from "../../lib/exercise-domain";
+import { buildCurrentProviderCanonicalMuscleFields } from "../../lib/exercise-muscle-mapping";
 import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
 import { exerciseQueryKeys } from "../../lib/exercise-query-contracts";
 import { supabase } from "../../lib/supabase";
@@ -657,6 +658,7 @@ export function PtExerciseLibraryPage() {
         ),
       ),
       category: exercise.bodyPart,
+      ...buildCurrentProviderCanonicalMuscleFields(exercise),
       source: "exercise_dataset",
       source_exercise_id: exercise.id,
       source_payload: exercise.raw,
@@ -859,11 +861,6 @@ export function PtExerciseLibraryPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {!exerciseDatasetConfigured ? (
-                <div className="rounded-[18px] border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                  Set `VITE_EXERCISE_DATASET_BASE_URL` to enable imports.
-                </div>
-              ) : null}
               {filteredExercises.length > 0 ||
               visibleDatasetResults.length > 0 ? (
                 <div

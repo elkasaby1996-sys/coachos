@@ -1,5 +1,5 @@
 export const EXERCISE_LIBRARY_FULL_PROJECTION =
-  "id, owner_user_id, workspace_id, name, category, muscle_group, primary_muscle, secondary_muscles, equipment, video_url, instructions, notes, cues, is_unilateral, tags, created_at, source, source_exercise_id, source_payload";
+  "id, owner_user_id, workspace_id, name, category, muscle_group, primary_muscle, secondary_muscles, body_region_keys, primary_muscle_keys, secondary_muscle_keys, muscle_taxonomy_version, equipment, video_url, instructions, notes, cues, is_unilateral, tags, created_at, source, source_exercise_id, source_payload";
 
 export const EXERCISE_EDITOR_WRITABLE_FIELDS = [
   "owner_user_id",

@@ -83,6 +83,10 @@ ALLOW_REMOTE_SUPABASE=I_UNDERSTAND_THIS_TOUCHES_REMOTE SUPABASE_PROJECT_REF=<pro
 - `docker compose up -d` - start the Open Wearables backend, frontend, and supporting services.
 - `make seed` - optionally seed sample Open Wearables users and activity data.
 - `npx supabase@latest functions serve open-wearables --env-file supabase/.env.local` - serve the RepSync Open Wearables proxy/import function locally with local-only secrets.
+- `npx supabase@latest functions serve exercise-dataset-search --env-file supabase/.env.local` - serve the authenticated exercise-provider gateway with local-only provider configuration.
+
+Exercise-provider setup, deployment order, verification, credential rotation,
+and rollback are documented in `docs/exercise-dataset-gateway.md`.
 
 ## Reference notes
 

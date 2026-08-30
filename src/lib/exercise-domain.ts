@@ -1,3 +1,5 @@
+import type { BodyRegionKey, MuscleKey } from "./exercise-muscle-taxonomy";
+
 export type PersistentExerciseLibraryRecord = {
   id: string;
   owner_user_id: string;
@@ -7,6 +9,10 @@ export type PersistentExerciseLibraryRecord = {
   muscle_group: string | null;
   primary_muscle: string | null;
   secondary_muscles: string[] | null;
+  body_region_keys: BodyRegionKey[];
+  primary_muscle_keys: MuscleKey[];
+  secondary_muscle_keys: MuscleKey[];
+  muscle_taxonomy_version: number;
   equipment: string | null;
   video_url: string | null;
   instructions: string | null;

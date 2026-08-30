@@ -55,6 +55,7 @@ import {
   type PersistentExerciseLibraryRecord,
   type ResolvedExerciseSelection,
 } from "../../lib/exercise-domain";
+import { buildCurrentProviderCanonicalMuscleFields } from "../../lib/exercise-muscle-mapping";
 import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
 import {
   exerciseQueryKeys,
@@ -497,6 +498,7 @@ export function PtWorkoutTemplateBuilderPage() {
     }
 
     let active = true;
+    const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       setDatasetSearchStatus("loading");
       setDatasetSearchError(null);
@@ -508,6 +510,7 @@ export function PtWorkoutTemplateBuilderPage() {
           target: "",
           limit: 10,
           cursor: null,
+          signal: controller.signal,
         });
         if (!active) return;
         setDatasetExercises(result.exercises);
@@ -522,6 +525,7 @@ export function PtWorkoutTemplateBuilderPage() {
 
     return () => {
       active = false;
+      controller.abort();
       window.clearTimeout(timeout);
     };
   }, [addOpen, search]);
@@ -627,6 +631,7 @@ export function PtWorkoutTemplateBuilderPage() {
                   .filter((value): value is string => Boolean(value)),
               ),
             ),
+            ...buildCurrentProviderCanonicalMuscleFields(candidate.exercise),
             source: "exercise_dataset",
             source_exercise_id: candidate.exercise.id,
             source_payload: candidate.exercise.raw,

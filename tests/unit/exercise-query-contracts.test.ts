@@ -40,4 +40,19 @@ describe("exercise query contracts", () => {
       expect(projectedFields.has(field), `${field} must be fetched`).toBe(true);
     });
   });
+
+  it("includes every canonical muscle field in the full library projection", () => {
+    const projectedFields = new Set(
+      EXERCISE_LIBRARY_FULL_PROJECTION.split(",").map((field) => field.trim()),
+    );
+
+    for (const field of [
+      "body_region_keys",
+      "primary_muscle_keys",
+      "secondary_muscle_keys",
+      "muscle_taxonomy_version",
+    ]) {
+      expect(projectedFields.has(field), `${field} must be fetched`).toBe(true);
+    }
+  });
 });

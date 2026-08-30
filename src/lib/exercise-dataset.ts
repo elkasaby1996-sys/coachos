@@ -1,18 +1,5 @@
 import type { ProviderNormalizedExercise } from "./exercise-domain";
-
-const datasetBaseUrl = (import.meta.env.VITE_EXERCISE_DATASET_BASE_URL ?? "")
-  .trim()
-  .replace(/\/+$/, "");
-const datasetApiKey = (
-  import.meta.env.VITE_EXERCISE_DATASET_API_KEY ?? ""
-).trim();
-const datasetApiKeyHeader =
-  (
-    import.meta.env.VITE_EXERCISE_DATASET_API_KEY_HEADER ?? "x-api-key"
-  ).trim() || "x-api-key";
-const datasetApiHost = (
-  import.meta.env.VITE_EXERCISE_DATASET_API_HOST ?? ""
-).trim();
+import { supabase } from "./supabase";
 
 export type ExerciseDatasetSearchFilters = {
   name: string;
@@ -21,6 +8,7 @@ export type ExerciseDatasetSearchFilters = {
   target: string;
   limit?: number;
   cursor?: string | null;
+  signal?: AbortSignal;
 };
 
 export type ExerciseDatasetExercise = ProviderNormalizedExercise;
@@ -216,45 +204,6 @@ export const extractExerciseDatasetNextCursor = (payload: unknown) => {
     : null;
 };
 
-const datasetHeaders = () => {
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-  };
-
-  if (datasetApiKey) {
-    headers[datasetApiKeyHeader] = datasetApiKey;
-  }
-  if (datasetApiHost) {
-    headers["X-RapidAPI-Host"] = datasetApiHost;
-  }
-
-  return headers;
-};
-
-const fetchJson = async (url: string) => {
-  const response = await fetch(url, {
-    method: "GET",
-    headers: datasetHeaders(),
-  });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Dataset request failed (${response.status}).`);
-  }
-
-  return response.json();
-};
-
-const buildRequestUrl = ({
-  limit = 24,
-  cursor,
-}: ExerciseDatasetSearchFilters) => {
-  const params = new URLSearchParams();
-  params.set("limit", String(limit));
-  if (cursor) params.set("cursor", cursor);
-  return `${datasetBaseUrl}/api/v1/exercises?${params.toString()}`;
-};
-
 const matchesSearch = (exercise: ExerciseDatasetExercise, search: string) =>
   !search ||
   exercise.name.toLowerCase().includes(search) ||
@@ -266,7 +215,96 @@ const matchesSearch = (exercise: ExerciseDatasetExercise, search: string) =>
   ) ||
   exercise.keywords.some((item) => item.toLowerCase().includes(search));
 
-export const exerciseDatasetConfigured = Boolean(datasetBaseUrl);
+export const exerciseDatasetConfigured = true;
+
+export type ExerciseDatasetErrorCode =
+  | "unauthenticated"
+  | "forbidden"
+  | "invalid_request"
+  | "provider_not_configured"
+  | "provider_rate_limited"
+  | "provider_timeout"
+  | "provider_unavailable"
+  | "provider_invalid_response"
+  | "unknown_provider_error";
+
+const exerciseDatasetErrorMessages: Record<ExerciseDatasetErrorCode, string> = {
+  unauthenticated: "Sign in again to search provider exercises.",
+  forbidden: "Your account does not have access to provider exercises.",
+  invalid_request: "The exercise search request is invalid.",
+  provider_not_configured:
+    "The exercise provider is not configured. Saved exercises remain available.",
+  provider_rate_limited:
+    "The exercise provider rate-limited this request. Wait a moment and try again.",
+  provider_timeout:
+    "The exercise provider took too long to respond. Try again shortly.",
+  provider_unavailable:
+    "The exercise provider is temporarily unavailable. Saved exercises remain available.",
+  provider_invalid_response:
+    "The exercise provider returned an invalid response. Saved exercises remain available.",
+  unknown_provider_error:
+    "The exercise provider request failed. Saved exercises remain available.",
+};
+
+const exerciseDatasetErrorCodes = new Set<ExerciseDatasetErrorCode>(
+  Object.keys(exerciseDatasetErrorMessages) as ExerciseDatasetErrorCode[],
+);
+
+export class ExerciseDatasetError extends Error {
+  readonly code: ExerciseDatasetErrorCode;
+
+  constructor(code: ExerciseDatasetErrorCode) {
+    super(exerciseDatasetErrorMessages[code]);
+    this.name = "ExerciseDatasetError";
+    this.code = code;
+  }
+}
+
+const isExerciseDatasetErrorCode = (
+  value: unknown,
+): value is ExerciseDatasetErrorCode =>
+  typeof value === "string" &&
+  exerciseDatasetErrorCodes.has(value as ExerciseDatasetErrorCode);
+
+const readGatewayErrorCode = async (
+  error: unknown,
+): Promise<ExerciseDatasetErrorCode> => {
+  const context =
+    error && typeof error === "object" && "context" in error
+      ? (error as { context?: unknown }).context
+      : null;
+  if (
+    (context instanceof DOMException || context instanceof Error) &&
+    (context.name === "AbortError" || context.name === "TimeoutError")
+  ) {
+    return "provider_timeout";
+  }
+  if (context instanceof Response) {
+    try {
+      const body = (await context.clone().json()) as {
+        error?: { code?: unknown };
+      };
+      if (isExerciseDatasetErrorCode(body.error?.code)) {
+        return body.error.code;
+      }
+    } catch {
+      // Fall back to the status-only mapping below.
+    }
+    if (context.status === 401) return "unauthenticated";
+    if (context.status === 403) return "forbidden";
+    if (context.status === 400) return "invalid_request";
+    if (context.status === 429) return "provider_rate_limited";
+    if (context.status === 504) return "provider_timeout";
+  }
+
+  if (
+    (error instanceof DOMException || error instanceof Error) &&
+    (error.name === "AbortError" || error.name === "TimeoutError")
+  ) {
+    return "provider_timeout";
+  }
+  return "provider_unavailable";
+};
 
 export function filterExerciseDataset(
   exercises: ExerciseDatasetExercise[],
@@ -304,40 +342,26 @@ export function filterExerciseDataset(
 export async function searchExerciseDataset(
   filters: ExerciseDatasetSearchFilters,
 ): Promise<ExerciseDatasetPage> {
-  if (!datasetBaseUrl) {
-    throw new Error(
-      "Exercise dataset API is not configured. Set VITE_EXERCISE_DATASET_BASE_URL first.",
-    );
+  const { signal, ...requestBody } = filters;
+  const { data, error } = await supabase.functions.invoke<{
+    providerPayload?: unknown;
+  }>("exercise-dataset-search", {
+    body: {
+      ...requestBody,
+      limit: filters.limit ?? 24,
+      cursor: filters.cursor ?? null,
+    },
+    signal,
+    timeout: 15_000,
+  });
+  if (error) throw new ExerciseDatasetError(await readGatewayErrorCode(error));
+  if (!data || !("providerPayload" in data)) {
+    throw new ExerciseDatasetError("provider_invalid_response");
   }
 
-  const pageLimit = filters.limit ?? 24;
-  let payload: unknown;
-  try {
-    payload = await fetchJson(
-      buildRequestUrl({
-        ...filters,
-        limit: pageLimit,
-        cursor: filters.cursor ?? null,
-      }),
-    );
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Exercise dataset search failed.";
-    if (message.includes("(403)")) {
-      throw new Error(
-        "The dataset provider rejected this request. Check the provider plan, key, and route configuration.",
-      );
-    }
-    if (message.includes("(429)")) {
-      throw new Error(
-        "The dataset provider rate-limited this request. Wait a moment and try again.",
-      );
-    }
-    throw error instanceof Error
-      ? error
-      : new Error("Exercise dataset search failed.");
+  const payload = data.providerPayload;
+  if (!Array.isArray(payload) && (!payload || typeof payload !== "object")) {
+    throw new ExerciseDatasetError("provider_invalid_response");
   }
 
   return {
