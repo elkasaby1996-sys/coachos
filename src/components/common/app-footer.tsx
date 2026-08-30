@@ -76,7 +76,7 @@ export function AppFooter({
                 className="transition-colors hover:text-foreground"
                 to="/pricing"
               >
-                Pricing
+                Plans
               </Link>
               <Link
                 className="transition-colors hover:text-foreground"

@@ -33,6 +33,9 @@ export function SignupRolePage() {
   const redirectSearch = inviteRedirect
     ? `?redirect=${encodeURIComponent(inviteRedirect)}`
     : "";
+  const coachSignupPath = inviteRedirect
+    ? `/signup/pt${redirectSearch}`
+    : "/pricing";
 
   useEffect(() => {
     document.title = "Sign Up — RepSync";
@@ -95,7 +98,7 @@ export function SignupRolePage() {
 
         <div className="grid w-full gap-4 md:grid-cols-2">
           <Link
-            to={`/signup/pt${redirectSearch}`}
+            to={coachSignupPath}
             className="group relative min-h-[12rem] overflow-hidden rounded-[32px] border border-border/55 bg-card/62 p-6 shadow-[0_28px_90px_-54px_oklch(var(--primary)/0.58),inset_0_1px_0_oklch(1_0_0/0.22)] backdrop-blur-2xl transition-[border-color,background-color,transform,box-shadow] duration-200 hover:-translate-y-1 hover:border-white/60 hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span className="block text-2xl font-semibold tracking-tight text-foreground">

@@ -113,6 +113,7 @@ import {
   useSessionAuth,
 } from "../lib/auth";
 import { tracePoint } from "../lib/perf-trace";
+import { buildPtSignupPath } from "../lib/trial-plan";
 import {
   getClientRouteGuardDecision,
   isClientRouteUuid,
@@ -377,6 +378,11 @@ function PtClientDetailRoute() {
 function LegacyJoinRedirect() {
   const { code } = useParams<{ code: string }>();
   return <Navigate to={`/invite/${code ?? ""}`} replace />;
+}
+
+function StartTrialRedirect() {
+  const location = useLocation();
+  return <Navigate to={buildPtSignupPath(location.search)} replace />;
 }
 
 function CoachMarketplaceProfileRedirect() {
@@ -648,7 +654,7 @@ export function App() {
           <Route path="/product" element={<ProductPage />} />
           <Route
             path="/start-trial"
-            element={<Navigate to="/signup/pt" replace />}
+            element={<StartTrialRedirect />}
           />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/demo" element={<Navigate to="/signup/pt" replace />} />

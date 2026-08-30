@@ -21,6 +21,13 @@ import {
   useBootstrapAuth,
   useSessionAuth,
 } from "../../lib/auth";
+import {
+  clearPendingTrialPlan,
+  defaultTrialPlan,
+  getTrialPlanFromSearch,
+  getTrialPlanLabel,
+  persistPendingTrialPlan,
+} from "../../lib/trial-plan";
 
 const ptDetailFieldClassName =
   "border-border/70 bg-card/55 shadow-[inset_0_1px_0_oklch(1_0_0/0.62),0_10px_28px_-24px_oklch(var(--primary)/0.55)] backdrop-blur-xl focus-visible:ring-primary/45";
@@ -57,6 +64,8 @@ export function PtSignupPage() {
   const { authLoading, session, user } = useSessionAuth();
   const [fullName, setFullName] = useState("");
   const [googleBusy, setGoogleBusy] = useState(false);
+  const selectedPlan = getTrialPlanFromSearch(location.search);
+  const selectedPlanLabel = getTrialPlanLabel(selectedPlan);
   const redirectParam = new URLSearchParams(location.search).get("redirect");
   const inviteRedirect =
     redirectParam?.startsWith("/team-invites/") === true ? redirectParam : null;
@@ -87,6 +96,7 @@ export function PtSignupPage() {
 
   const persistPtSignupDraft = () => {
     persistSignupIntent("pt");
+    persistPendingTrialPlan(selectedPlan);
     window.localStorage.setItem("coachos_pt_signup_full_name", fullName.trim());
     window.localStorage.removeItem("coachos_pt_signup_country");
     window.localStorage.removeItem("coachos_pt_signup_city");
@@ -126,6 +136,7 @@ export function PtSignupPage() {
           display_name: fullName.trim(),
           name: fullName.trim(),
           account_type: "pt",
+          requested_plan: selectedPlan,
         },
       );
       if (signUpError) throw signUpError;
@@ -145,7 +156,10 @@ export function PtSignupPage() {
           fullName,
           contactEmail: email.trim(),
           supportEmail: email.trim(),
+          subscriptionPlan: selectedPlanLabel,
+          subscriptionStatus: "7-day trial",
         });
+        clearPendingTrialPlan();
       }
 
       if (data.session?.user?.id) {
@@ -206,8 +220,12 @@ export function PtSignupPage() {
       mode="signup"
       brandName="R E P S Y N C"
       brandHref={getMarketingSiteUrl()}
-      title="Start your 7-day Growth trial"
-      subtitle="No card required. Add your coaching profile details after your account is ready."
+      title={
+        selectedPlan === defaultTrialPlan
+          ? "Start your 7-day Growth trial"
+          : `Start your 7-day trial with ${selectedPlanLabel} selected`
+      }
+      subtitle={`${selectedPlanLabel} will remain selected while you create your coach account. No card required.`}
       primaryLabel="Start free trial"
       secondaryLinkHref={
         inviteRedirect

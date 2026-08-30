@@ -16,7 +16,7 @@ const navItems = [
   { label: "For coaches", to: "/for-coaches" },
   { label: "For clients", to: "/for-clients" },
   { label: "Switch", to: "/switch" },
-  { label: "Pricing", to: "/pricing" },
+  { label: "Plans", to: "/pricing" },
 ];
 
 export function PublicSiteLink({

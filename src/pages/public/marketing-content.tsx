@@ -28,6 +28,7 @@ import {
   legalReviewRequired,
   publicFaqGroups,
 } from "../../lib/marketing-public";
+import { buildTrialPath, type TrialPlanId } from "../../lib/trial-plan";
 import { BloomField } from "./bloom-field";
 import { usePublicSeo } from "./public-seo";
 import {
@@ -138,6 +139,7 @@ const switchingSteps = [
 
 const pricingPlans = [
   {
+    id: "launch" as TrialPlanId,
     name: "Launch",
     audience: "For new and part-time coaches building their first client base.",
     monthlyPrice: "$19",
@@ -152,6 +154,7 @@ const pricingPlans = [
       "Everything required to coach professionally, for up to 10 clients.",
   },
   {
+    id: "growth" as TrialPlanId,
     name: "Growth",
     audience:
       "For full-time independent coaches and coaches beginning to work with an assistant.",
@@ -167,6 +170,7 @@ const pricingPlans = [
     featured: true,
   },
   {
+    id: "scale" as TrialPlanId,
     name: "Scale",
     audience:
       "For established coaches, small coaching companies, and multi-coach delivery teams.",
@@ -182,6 +186,7 @@ const pricingPlans = [
       "A coaching-business operating system for teams managing up to 100 active clients.",
   },
   {
+    id: "studio" as TrialPlanId,
     name: "Studio",
     audience:
       "For larger teams, studios, gyms, and multi-brand coaching businesses.",
@@ -1959,7 +1964,7 @@ function ProductDeepCta() {
       </p>
       <div>
         <Link to="/start-trial">Start 7-day trial</Link>
-        <Link to="/pricing">View pricing</Link>
+        <Link to="/pricing">View plans</Link>
       </div>
       <span>No card required. Clients use RepSync free.</span>
     </section>
@@ -3137,7 +3142,7 @@ export function PricingPage() {
   );
 
   usePublicSeo({
-    title: "Pricing | RepSync",
+    title: "Plans | RepSync",
     description:
       "Compare RepSync plans for independent coaches and coaching teams, with every plan including the core coaching workflow.",
   });
@@ -3146,7 +3151,7 @@ export function PricingPage() {
     <PublicLayout>
       <section className="rs-pricing-hero">
         <div className="rs-pricing-hero__copy rs-stitch-reveal is-visible">
-          <p className="rs-stitch-kicker">Pricing</p>
+          <p className="rs-stitch-kicker">Plans</p>
           <h1>
             Start with the clients you coach today. Grow when the operation
             does.
@@ -3229,7 +3234,7 @@ export function PricingPage() {
               </ul>
               <p className="rs-pricing-plan__summary">{plan.summary}</p>
               <SiteLink
-                to="/start-trial"
+                to={buildTrialPath(plan.id)}
                 variant={plan.featured ? "primary" : "secondary"}
               >
                 Start 7-day trial
