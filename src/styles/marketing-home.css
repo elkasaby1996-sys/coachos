@@ -15,6 +15,8 @@
   --rs-green: var(--rs-forest-2);
   --rs-line: var(--rs-paper-line);
   --rs-container: min(1240px, calc(100vw - 40px));
+  --rs-public-header-height: 82px;
+  --rs-public-intro-top: 138px;
   min-width: 0;
   min-height: 100vh;
   overflow-x: hidden;
@@ -135,10 +137,11 @@
   left: 0;
   z-index: 80;
   display: grid;
+  min-height: var(--rs-public-header-height);
   grid-template-columns: auto 1fr auto;
   gap: 28px;
   align-items: center;
-  border-bottom: 4px double var(--rs-paper-line);
+  border-bottom: 1px solid var(--rs-paper-line);
   background: rgba(251, 249, 241, 0.92);
   padding: 16px max(20px, calc((100vw - 1240px) / 2));
   backdrop-filter: blur(18px);
@@ -187,27 +190,41 @@
 }
 
 .rs-stitch-nav a {
-  border-right: 1px solid transparent;
-  border-left: 1px solid transparent;
+  position: relative;
   color: var(--rs-ink-soft);
   padding: 9px 14px;
-  transition:
-    color 180ms ease,
-    border-color 180ms ease,
-    background-color 180ms ease;
+  transition: color 180ms ease;
+}
+
+.rs-stitch-nav a::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 22px;
+  height: 2px;
+  transform: translateX(-50%) scaleX(0);
+  transform-origin: center;
+  background: var(--rs-forest);
+  transition: transform 180ms ease;
 }
 
 .rs-stitch-nav a:hover {
-  border-color: rgba(11, 69, 51, 0.2);
-  background: rgba(11, 69, 51, 0.045);
   color: var(--rs-forest);
+}
+
+.rs-stitch-nav a:hover::after {
+  transform: translateX(-50%) scaleX(0.5);
 }
 
 .rs-stitch-nav a.is-active,
 .rs-stitch-nav a[aria-current="page"] {
-  border-color: rgba(11, 69, 51, 0.25);
-  background: rgba(11, 69, 51, 0.07);
   color: var(--rs-forest);
+}
+
+.rs-stitch-nav a.is-active::after,
+.rs-stitch-nav a[aria-current="page"]::after {
+  transform: translateX(-50%) scaleX(1);
 }
 
 .rs-stitch-actions {
@@ -326,7 +343,7 @@
   gap: clamp(30px, 6vw, 72px);
   align-items: center;
   margin: 0 auto;
-  padding: 138px 0 76px;
+  padding: var(--rs-public-intro-top) 0 76px;
 }
 
 .rs-stitch-page-hero {
@@ -603,7 +620,7 @@
 .rs-marketplace-intro {
   width: var(--rs-container);
   margin: 0 auto;
-  padding: 5.25rem 0 2.75rem;
+  padding: var(--rs-public-intro-top) 0 2.75rem;
   border-bottom: 1px solid rgba(40, 93, 73, 0.18);
 }
 
@@ -1615,11 +1632,12 @@
   gap: clamp(42px, 7vw, 96px);
   align-items: center;
   margin: 0 auto;
-  padding: clamp(78px, 10vw, 126px) 0 clamp(58px, 8vw, 96px);
+  padding: var(--rs-public-intro-top) 0 clamp(58px, 8vw, 96px);
 }
 
 .rs-switch-hero__copy {
   max-width: 780px;
+  align-self: start;
 }
 
 .rs-switch-hero h1,
@@ -2006,6 +2024,17 @@
   color: #b7cbc2;
 }
 
+.rs-coaches-split--dark .rs-stitch-button--secondary {
+  border-color: rgba(255, 255, 255, 0.62);
+  color: var(--rs-white);
+}
+
+.rs-coaches-split--dark .rs-stitch-button--secondary:hover {
+  border-color: var(--rs-paper-soft);
+  background: var(--rs-paper-soft);
+  color: var(--rs-forest);
+}
+
 .rs-coaches-journey {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2047,17 +2076,20 @@
 }
 
 .rs-coaches-lifecycle {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: 26px 0 4px;
 }
 
 .rs-coaches-lifecycle span {
+  display: grid;
+  place-items: center;
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(211, 231, 221, 0.26);
   color: var(--rs-sage);
-  padding: 10px 12px;
+  padding: 10px 8px;
+  text-align: center;
 }
 
 .rs-coaches-attention {
@@ -2574,7 +2606,7 @@
 .rs-pricing-hero {
   width: var(--rs-container);
   margin: 0 auto;
-  padding: 7.5rem 0 3.75rem;
+  padding: var(--rs-public-intro-top) 0 3.75rem;
 }
 
 .rs-pricing-hero__copy h1 {
@@ -3097,7 +3129,7 @@
 
   .rs-pricing-hero {
     min-height: 0;
-    padding-top: 8rem;
+    padding-top: var(--rs-public-intro-top);
   }
 
   .rs-pricing-period {
@@ -3123,7 +3155,7 @@
 
 @media (max-width: 600px) {
   .rs-pricing-hero {
-    padding: 7rem 0 3.5rem;
+    padding: var(--rs-public-intro-top) 0 3.5rem;
   }
 
   .rs-pricing-hero__copy h1,
@@ -3384,6 +3416,8 @@
 @media (max-width: 760px) {
   .rs-stitch-site {
     --rs-container: min(100vw - 32px, 1240px);
+    --rs-public-header-height: 78px;
+    --rs-public-intro-top: 150px;
   }
 
   .rs-stitch-header {
@@ -3404,7 +3438,7 @@
 
   .rs-stitch-hero,
   .rs-stitch-page-hero {
-    padding-top: 150px;
+    padding-top: var(--rs-public-intro-top);
     padding-bottom: 54px;
   }
 
@@ -3445,7 +3479,7 @@
   }
 
   .rs-switch-hero {
-    padding-top: 78px;
+    padding-top: var(--rs-public-intro-top);
     padding-bottom: 52px;
   }
 
@@ -3974,7 +4008,7 @@ body.rs-intro-active {
 }
 
 .rs-product-ref-hero {
-  padding: 84px 56px 62px;
+  padding: 64px 56px 62px;
 }
 
 .rs-product-ref-hero .rs-sync-rail,
@@ -6039,7 +6073,7 @@ body.rs-intro-active {
 
 @media (max-width: 680px) {
   .rs-marketplace-intro {
-    padding: 6rem 0 2.5rem;
+    padding: var(--rs-public-intro-top) 0 2.5rem;
   }
 
   .rs-marketplace-intro__copy h1 {
@@ -6564,6 +6598,10 @@ body.rs-intro-active {
     padding-top: 138px;
   }
 
+  .rs-product-ref-hero {
+    padding-top: 56px;
+  }
+
   .rs-product-ref-chapter,
   .rs-product-ref-attention {
     scroll-margin-top: 150px;
@@ -6596,6 +6634,10 @@ body.rs-intro-active {
 
   .rs-product-reference__shell {
     padding-top: 142px;
+  }
+
+  .rs-product-ref-hero {
+    padding-top: 78px;
   }
 
   .rs-product-ref-journey--eleven,

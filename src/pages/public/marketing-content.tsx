@@ -2020,17 +2020,14 @@ export function ForCoachesPage() {
     {
       title: "Assign the plan without losing the client-specific version.",
       body: "Build reusable coaching material, assign the appropriate plan, and keep the client's delivered work clear as coaching continues.",
-      icon: <Dumbbell />,
     },
     {
       title: "Keep the actions outside training visible.",
       body: "Nutrition guidance and habits remain part of the same coaching relationship rather than living in separate documents or message threads.",
-      icon: <Utensils />,
     },
     {
       title: "Make reflection and follow-up part of delivery.",
       body: "Run recurring check-ins, review the response, and continue the conversation with the client context still visible.",
-      icon: <ClipboardCheck />,
     },
   ];
 
@@ -2209,17 +2206,11 @@ export function ForCoachesPage() {
                 className="rs-stitch-card rs-stitch-reveal"
                 key={block.title}
               >
-                <span className="rs-stitch-card__icon" aria-hidden="true">
-                  {block.icon}
-                </span>
                 <h3>{block.title}</h3>
                 <p>{block.body}</p>
               </article>
             ))}
             <article className="rs-stitch-card rs-stitch-reveal">
-              <span className="rs-stitch-card__icon" aria-hidden="true">
-                <MessageSquare />
-              </span>
               <h3>Continue the thread after every action.</h3>
               <p>
                 Messages stay beside delivery, check-ins, and client history, so
