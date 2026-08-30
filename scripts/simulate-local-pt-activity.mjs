@@ -46,7 +46,9 @@ async function getUserId(email) {
     `select id::text as id from auth.users where email = ${sqlString(email)} limit 1;`,
   );
   if (!rows[0]?.id) {
-    throw new Error(`Missing local user ${email}. Run npm run seed:local:pt-demo first.`);
+    throw new Error(
+      `Missing local user ${email}. Run npm run seed:local:pt-demo first.`,
+    );
   }
   return rows[0].id;
 }

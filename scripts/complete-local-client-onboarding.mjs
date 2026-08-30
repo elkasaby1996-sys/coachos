@@ -125,7 +125,9 @@ async function getUserId(email) {
     `select id::text as id from auth.users where email = ${sqlString(email)} limit 1;`,
   );
   if (!rows[0]?.id) {
-    throw new Error(`Missing local user ${email}. Run npm run seed:local:pt-demo first.`);
+    throw new Error(
+      `Missing local user ${email}. Run npm run seed:local:pt-demo first.`,
+    );
   }
   return rows[0].id;
 }
@@ -138,11 +140,20 @@ for (const client of clients) {
 }
 
 const clientIdList = clients.map((client) => `'${client.id}'::uuid`).join(", ");
-const workoutIdList = clients.map((client) => `'${client.workoutId}'::uuid`).join(", ");
-const nutritionIdList = clients.map((client) => `'${client.nutritionId}'::uuid`).join(", ");
-const baselineIdList = clients.map((client) => `'${client.baselineId}'::uuid`).join(", ");
+const workoutIdList = clients
+  .map((client) => `'${client.workoutId}'::uuid`)
+  .join(", ");
+const nutritionIdList = clients
+  .map((client) => `'${client.nutritionId}'::uuid`)
+  .join(", ");
+const baselineIdList = clients
+  .map((client) => `'${client.baselineId}'::uuid`)
+  .join(", ");
 const conversationIdList = clients
-  .filter((client) => client.conversationId !== "00000000-0000-4000-8000-000000000501")
+  .filter(
+    (client) =>
+      client.conversationId !== "00000000-0000-4000-8000-000000000501",
+  )
   .map((client) => `'${client.conversationId}'::uuid`)
   .join(", ");
 
@@ -224,7 +235,7 @@ const baselineMetricsValues = clients
       ${client.weight},
       170,
       24,
-      ${Math.round((client.weight * 0.76) * 10) / 10},
+      ${Math.round(client.weight * 0.76 * 10) / 10},
       ${client.waist},
       92,
       98,
@@ -506,4 +517,7 @@ const summary = await pgQuery(`
      join workspace_clients wc on wc.id = ci.client_id) as clients_with_checkins;
 `);
 
-console.log("Completed all local client onboarding and assignments:", summary[0]);
+console.log(
+  "Completed all local client onboarding and assignments:",
+  summary[0],
+);

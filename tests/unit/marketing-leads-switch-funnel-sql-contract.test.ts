@@ -25,7 +25,9 @@ describe("marketing leads switch funnel migration", () => {
     expect(migration).toContain("'qualified'");
     expect(migration).toContain("'spam'");
     expect(migration).toContain("marketing_leads_form_type_check");
-    expect(migration).toContain("revoke all on public.marketing_leads from anon, authenticated");
+    expect(migration).toContain(
+      "revoke all on public.marketing_leads from anon, authenticated",
+    );
     expect(migration).not.toContain("grant select");
     expect(migration).not.toContain("to anon");
   });

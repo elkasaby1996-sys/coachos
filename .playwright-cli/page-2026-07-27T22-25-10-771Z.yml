@@ -1,175 +1,175 @@
 - generic [ref=e4]:
-  - link "Skip to content" [ref=e5] [cursor=pointer]:
-    - /url: "#main"
-  - banner [ref=e6]:
-    - link "RepSync home" [ref=e7] [cursor=pointer]:
-      - /url: /
-      - generic [ref=e8]: R E P S Y N C
-    - navigation "Public navigation" [ref=e9]:
-      - link "Product" [ref=e10] [cursor=pointer]:
-        - /url: /product
-      - link "Marketplace" [ref=e11] [cursor=pointer]:
-        - /url: /coaches
-      - link "For coaches" [ref=e12] [cursor=pointer]:
-        - /url: /for-coaches
-      - link "For clients" [ref=e13] [cursor=pointer]:
-        - /url: /for-clients
-      - link "Switch" [ref=e14] [cursor=pointer]:
-        - /url: /switch
-      - link "Pricing" [ref=e15] [cursor=pointer]:
-        - /url: /pricing
-    - generic [ref=e16]:
-      - link "Log in" [ref=e17] [cursor=pointer]:
-        - /url: /login
-      - link "Book a demo" [ref=e19] [cursor=pointer]:
-        - /url: /book-demo
-  - main [ref=e23]:
-    - generic [ref=e25]:
-      - paragraph [ref=e26]: Coach marketplace
-      - heading "Find a coach who fits how you want to train." [level=1] [ref=e27]
-      - paragraph [ref=e28]: Explore published profiles, compare coaching approaches and services, and apply directly to the coach who feels right. Applying starts a conversation, not a subscription.
-    - region "Coach marketplace directory" [ref=e29]:
-      - search [ref=e30]:
-        - heading "Search coaches" [level=2] [ref=e31]
-        - textbox "Search coaches" [ref=e36]:
-          - /placeholder: Search by coach, goal, specialty, or location
-        - generic "Coach filters" [ref=e37]:
-          - generic [ref=e38]:
-            - generic [ref=e39]: Goal or specialty
-            - combobox [ref=e40]
-            - button "Goal or specialty" [ref=e41] [cursor=pointer]:
-              - generic [ref=e42]: All goals and specialties
-          - generic [ref=e43]:
-            - generic [ref=e44]: Coaching format
-            - combobox [ref=e45]
-            - button "Coaching format" [ref=e46] [cursor=pointer]:
-              - generic [ref=e47]: All coaching formats
-          - generic [ref=e48]:
-            - generic [ref=e49]: Location
-            - combobox [ref=e50]
-            - button "Location" [ref=e51] [cursor=pointer]:
-              - generic [ref=e52]: All locations
-          - generic [ref=e53]:
-            - generic [ref=e54]: Availability
-            - combobox [ref=e55]
-            - button "Availability" [ref=e56] [cursor=pointer]:
-              - generic [ref=e57]: Any availability
-        - generic [ref=e58]:
-          - paragraph [ref=e59]: 2 coaches currently accepting applications
-          - generic [ref=e60]:
-            - generic [ref=e61]: Sort by
-            - combobox [ref=e62]
-            - button "Sort by" [ref=e63] [cursor=pointer]:
-              - generic [ref=e64]: Recently added
-      - generic [ref=e65]:
-        - article [ref=e66]:
-          - link "View Demona Catchella's coaching profile" [ref=e67] [cursor=pointer]:
-            - /url: /p/demona
-            - img "Demona Catchella coach profile" [ref=e68]
-          - generic [ref=e69]:
-            - heading [level=3] [ref=e70]:
-              - link "Demona Catchella" [ref=e71] [cursor=pointer]:
-                - /url: /p/demona
-            - paragraph [ref=e72]: High performance coach
-            - paragraph [ref=e73]:
-              - generic [ref=e74]: 1:1 coaching
-              - generic [ref=e75]: ·
-              - generic [ref=e76]: Qatar, Dubai
-            - generic [ref=e81]:
-              - generic [ref=e82]: Strenght
-              - generic [ref=e83]: fat loss
-            - link "View profile" [ref=e85] [cursor=pointer]:
-              - /url: /p/demona
-        - article [ref=e89]:
-          - link "View Ahmed Elkasaby's coaching profile" [ref=e90] [cursor=pointer]:
-            - /url: /p/kasabyfit
-            - img "Ahmed Elkasaby coach profile" [ref=e91]
-          - generic [ref=e92]:
-            - heading [level=3] [ref=e93]:
-              - link "Ahmed Elkasaby" [ref=e94] [cursor=pointer]:
-                - /url: /p/kasabyfit
-            - paragraph [ref=e95]: High-end coach for coaches
-            - paragraph [ref=e96]:
-              - generic [ref=e97]: 1:1 coaching
-              - generic [ref=e98]: ·
-              - generic [ref=e99]: Doha,Dubai,Cairo
-            - generic [ref=e104]:
-              - generic [ref=e105]: Fat loss
-              - generic [ref=e106]: diet
-            - generic [ref=e107]:
-              - generic [ref=e108]: 3 coaching options
-              - link "View profile" [ref=e109] [cursor=pointer]:
-                - /url: /p/kasabyfit
-    - generic [ref=e114]:
-      - generic [ref=e116]:
-        - paragraph [ref=e117]: How it works
-        - heading "A direct path from profile to coaching." [level=2] [ref=e118]
-      - list [ref=e119]:
-        - listitem [ref=e120]:
-          - text: "01"
-          - heading "Explore" [level=3] [ref=e121]
-          - paragraph [ref=e122]: Review the coach's approach, specialties, coaching format, and public services.
-        - listitem [ref=e123]:
-          - text: "02"
-          - heading "Apply" [level=3] [ref=e124]
-          - paragraph [ref=e125]: Share your goals, training experience, and the coaching option that interests you.
-        - listitem [ref=e126]:
-          - text: "03"
-          - heading "Talk" [level=3] [ref=e127]
-          - paragraph [ref=e128]: Continue the conversation with the coach before either side commits.
-        - listitem [ref=e129]:
-          - text: "04"
-          - heading "Start after approval" [level=3] [ref=e130]
-          - paragraph [ref=e131]: Once approved, enter the coaching relationship through the appropriate RepSync account and workspace flow.
-      - paragraph [ref=e132]: Applying does not guarantee acceptance. The coach decides whether the relationship is the right fit.
-    - generic [ref=e134]:
-      - generic [ref=e135]:
-        - paragraph [ref=e136]: Trust
-        - heading "Choose based on fit, not a score." [level=2] [ref=e137]
-      - generic [ref=e138]:
-        - paragraph [ref=e139]: Coach profiles, services, availability, qualifications, and public pricing are supplied by each coach. Review the full profile and ask the questions that matter before starting a coaching relationship.
-        - navigation "Marketplace trust resources" [ref=e140]:
-          - link "Security" [ref=e141] [cursor=pointer]:
-            - /url: /security
-          - link "Privacy" [ref=e145] [cursor=pointer]:
-            - /url: /privacy
-          - link "Client FAQ" [ref=e150] [cursor=pointer]:
-            - /url: /faq
-    - generic [ref=e155]:
-      - generic [ref=e156]:
-        - paragraph [ref=e157]: Existing client
-        - heading "Already working with a coach?" [level=2] [ref=e158]
-        - paragraph [ref=e159]: Use your invitation or sign in to open your current coaching experience.
-        - generic [ref=e160]:
-          - link "I have an invitation" [ref=e161] [cursor=pointer]:
-            - /url: /signup/client
-          - link "Log in" [ref=e165] [cursor=pointer]:
-            - /url: /login
-      - generic [ref=e167]:
-        - paragraph [ref=e168]: Are you a coach?
-        - link "Start your 7-day coach trial" [ref=e169] [cursor=pointer]:
-          - /url: /signup/pt
-  - contentinfo [ref=e172]:
-    - generic [ref=e173]:
-      - generic [ref=e174]: © 2026 RepSync
-      - navigation [ref=e175]:
-        - link "Product" [ref=e176] [cursor=pointer]:
-          - /url: /product
-        - link "Marketplace" [ref=e177] [cursor=pointer]:
-          - /url: /coaches
-        - link "Pricing" [ref=e178] [cursor=pointer]:
-          - /url: /pricing
-        - link "FAQ" [ref=e179] [cursor=pointer]:
-          - /url: /faq
-        - link "Security" [ref=e180] [cursor=pointer]:
-          - /url: /security
-        - link "Support" [ref=e181] [cursor=pointer]:
-          - /url: /support
-        - link "Privacy policy" [ref=e182] [cursor=pointer]:
-          - /url: /privacy
-        - link "Terms of use" [ref=e183] [cursor=pointer]:
-          - /url: /terms
-        - link "Cookies" [ref=e184] [cursor=pointer]:
-          - /url: /cookies
-      - button "Change region and language" [ref=e185] [cursor=pointer]:
-        - generic [ref=e186]: English / United States
+    - link "Skip to content" [ref=e5] [cursor=pointer]:
+        - /url: "#main"
+    - banner [ref=e6]:
+        - link "RepSync home" [ref=e7] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e8]: R E P S Y N C
+        - navigation "Public navigation" [ref=e9]:
+            - link "Product" [ref=e10] [cursor=pointer]:
+                - /url: /product
+            - link "Marketplace" [ref=e11] [cursor=pointer]:
+                - /url: /coaches
+            - link "For coaches" [ref=e12] [cursor=pointer]:
+                - /url: /for-coaches
+            - link "For clients" [ref=e13] [cursor=pointer]:
+                - /url: /for-clients
+            - link "Switch" [ref=e14] [cursor=pointer]:
+                - /url: /switch
+            - link "Pricing" [ref=e15] [cursor=pointer]:
+                - /url: /pricing
+        - generic [ref=e16]:
+            - link "Log in" [ref=e17] [cursor=pointer]:
+                - /url: /login
+            - link "Book a demo" [ref=e19] [cursor=pointer]:
+                - /url: /book-demo
+    - main [ref=e23]:
+        - generic [ref=e25]:
+            - paragraph [ref=e26]: Coach marketplace
+            - heading "Find a coach who fits how you want to train." [level=1] [ref=e27]
+            - paragraph [ref=e28]: Explore published profiles, compare coaching approaches and services, and apply directly to the coach who feels right. Applying starts a conversation, not a subscription.
+        - region "Coach marketplace directory" [ref=e29]:
+            - search [ref=e30]:
+                - heading "Search coaches" [level=2] [ref=e31]
+                - textbox "Search coaches" [ref=e36]:
+                    - /placeholder: Search by coach, goal, specialty, or location
+                - generic "Coach filters" [ref=e37]:
+                    - generic [ref=e38]:
+                        - generic [ref=e39]: Goal or specialty
+                        - combobox [ref=e40]
+                        - button "Goal or specialty" [ref=e41] [cursor=pointer]:
+                            - generic [ref=e42]: All goals and specialties
+                    - generic [ref=e43]:
+                        - generic [ref=e44]: Coaching format
+                        - combobox [ref=e45]
+                        - button "Coaching format" [ref=e46] [cursor=pointer]:
+                            - generic [ref=e47]: All coaching formats
+                    - generic [ref=e48]:
+                        - generic [ref=e49]: Location
+                        - combobox [ref=e50]
+                        - button "Location" [ref=e51] [cursor=pointer]:
+                            - generic [ref=e52]: All locations
+                    - generic [ref=e53]:
+                        - generic [ref=e54]: Availability
+                        - combobox [ref=e55]
+                        - button "Availability" [ref=e56] [cursor=pointer]:
+                            - generic [ref=e57]: Any availability
+                - generic [ref=e58]:
+                    - paragraph [ref=e59]: 2 coaches currently accepting applications
+                    - generic [ref=e60]:
+                        - generic [ref=e61]: Sort by
+                        - combobox [ref=e62]
+                        - button "Sort by" [ref=e63] [cursor=pointer]:
+                            - generic [ref=e64]: Recently added
+            - generic [ref=e65]:
+                - article [ref=e66]:
+                    - link "View Demona Catchella's coaching profile" [ref=e67] [cursor=pointer]:
+                        - /url: /p/demona
+                        - img "Demona Catchella coach profile" [ref=e68]
+                    - generic [ref=e69]:
+                        - heading [level=3] [ref=e70]:
+                            - link "Demona Catchella" [ref=e71] [cursor=pointer]:
+                                - /url: /p/demona
+                        - paragraph [ref=e72]: High performance coach
+                        - paragraph [ref=e73]:
+                            - generic [ref=e74]: 1:1 coaching
+                            - generic [ref=e75]: ·
+                            - generic [ref=e76]: Qatar, Dubai
+                        - generic [ref=e81]:
+                            - generic [ref=e82]: Strenght
+                            - generic [ref=e83]: fat loss
+                        - link "View profile" [ref=e85] [cursor=pointer]:
+                            - /url: /p/demona
+                - article [ref=e89]:
+                    - link "View Ahmed Elkasaby's coaching profile" [ref=e90] [cursor=pointer]:
+                        - /url: /p/kasabyfit
+                        - img "Ahmed Elkasaby coach profile" [ref=e91]
+                    - generic [ref=e92]:
+                        - heading [level=3] [ref=e93]:
+                            - link "Ahmed Elkasaby" [ref=e94] [cursor=pointer]:
+                                - /url: /p/kasabyfit
+                        - paragraph [ref=e95]: High-end coach for coaches
+                        - paragraph [ref=e96]:
+                            - generic [ref=e97]: 1:1 coaching
+                            - generic [ref=e98]: ·
+                            - generic [ref=e99]: Doha,Dubai,Cairo
+                        - generic [ref=e104]:
+                            - generic [ref=e105]: Fat loss
+                            - generic [ref=e106]: diet
+                        - generic [ref=e107]:
+                            - generic [ref=e108]: 3 coaching options
+                            - link "View profile" [ref=e109] [cursor=pointer]:
+                                - /url: /p/kasabyfit
+        - generic [ref=e114]:
+            - generic [ref=e116]:
+                - paragraph [ref=e117]: How it works
+                - heading "A direct path from profile to coaching." [level=2] [ref=e118]
+            - list [ref=e119]:
+                - listitem [ref=e120]:
+                    - text: "01"
+                    - heading "Explore" [level=3] [ref=e121]
+                    - paragraph [ref=e122]: Review the coach's approach, specialties, coaching format, and public services.
+                - listitem [ref=e123]:
+                    - text: "02"
+                    - heading "Apply" [level=3] [ref=e124]
+                    - paragraph [ref=e125]: Share your goals, training experience, and the coaching option that interests you.
+                - listitem [ref=e126]:
+                    - text: "03"
+                    - heading "Talk" [level=3] [ref=e127]
+                    - paragraph [ref=e128]: Continue the conversation with the coach before either side commits.
+                - listitem [ref=e129]:
+                    - text: "04"
+                    - heading "Start after approval" [level=3] [ref=e130]
+                    - paragraph [ref=e131]: Once approved, enter the coaching relationship through the appropriate RepSync account and workspace flow.
+            - paragraph [ref=e132]: Applying does not guarantee acceptance. The coach decides whether the relationship is the right fit.
+        - generic [ref=e134]:
+            - generic [ref=e135]:
+                - paragraph [ref=e136]: Trust
+                - heading "Choose based on fit, not a score." [level=2] [ref=e137]
+            - generic [ref=e138]:
+                - paragraph [ref=e139]: Coach profiles, services, availability, qualifications, and public pricing are supplied by each coach. Review the full profile and ask the questions that matter before starting a coaching relationship.
+                - navigation "Marketplace trust resources" [ref=e140]:
+                    - link "Security" [ref=e141] [cursor=pointer]:
+                        - /url: /security
+                    - link "Privacy" [ref=e145] [cursor=pointer]:
+                        - /url: /privacy
+                    - link "Client FAQ" [ref=e150] [cursor=pointer]:
+                        - /url: /faq
+        - generic [ref=e155]:
+            - generic [ref=e156]:
+                - paragraph [ref=e157]: Existing client
+                - heading "Already working with a coach?" [level=2] [ref=e158]
+                - paragraph [ref=e159]: Use your invitation or sign in to open your current coaching experience.
+                - generic [ref=e160]:
+                    - link "I have an invitation" [ref=e161] [cursor=pointer]:
+                        - /url: /signup/client
+                    - link "Log in" [ref=e165] [cursor=pointer]:
+                        - /url: /login
+            - generic [ref=e167]:
+                - paragraph [ref=e168]: Are you a coach?
+                - link "Start your 7-day coach trial" [ref=e169] [cursor=pointer]:
+                    - /url: /signup/pt
+    - contentinfo [ref=e172]:
+        - generic [ref=e173]:
+            - generic [ref=e174]: © 2026 RepSync
+            - navigation [ref=e175]:
+                - link "Product" [ref=e176] [cursor=pointer]:
+                    - /url: /product
+                - link "Marketplace" [ref=e177] [cursor=pointer]:
+                    - /url: /coaches
+                - link "Pricing" [ref=e178] [cursor=pointer]:
+                    - /url: /pricing
+                - link "FAQ" [ref=e179] [cursor=pointer]:
+                    - /url: /faq
+                - link "Security" [ref=e180] [cursor=pointer]:
+                    - /url: /security
+                - link "Support" [ref=e181] [cursor=pointer]:
+                    - /url: /support
+                - link "Privacy policy" [ref=e182] [cursor=pointer]:
+                    - /url: /privacy
+                - link "Terms of use" [ref=e183] [cursor=pointer]:
+                    - /url: /terms
+                - link "Cookies" [ref=e184] [cursor=pointer]:
+                    - /url: /cookies
+            - button "Change region and language" [ref=e185] [cursor=pointer]:
+                - generic [ref=e186]: English / United States

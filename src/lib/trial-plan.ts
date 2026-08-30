@@ -13,7 +13,9 @@ const trialPlanLabels: Record<TrialPlanId, string> = {
 
 const pendingTrialPlanStorageKey = "repsync_pending_trial_plan";
 
-export function normalizeTrialPlan(value: string | null | undefined): TrialPlanId {
+export function normalizeTrialPlan(
+  value: string | null | undefined,
+): TrialPlanId {
   const normalized = value?.trim().toLowerCase();
   return trialPlanIds.includes(normalized as TrialPlanId)
     ? (normalized as TrialPlanId)

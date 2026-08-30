@@ -24,7 +24,10 @@ function loadEnv(filePath) {
       .filter((line) => line && !line.startsWith("#") && line.includes("="))
       .map((line) => {
         const separator = line.indexOf("=");
-        return [line.slice(0, separator).trim(), line.slice(separator + 1).trim()];
+        return [
+          line.slice(0, separator).trim(),
+          line.slice(separator + 1).trim(),
+        ];
       }),
   );
 }
@@ -32,9 +35,7 @@ function loadEnv(filePath) {
 const fileEnv = loadEnv(envFile);
 const config = {
   baseURL:
-    process.env.E2E_BASE_URL ||
-    fileEnv.E2E_BASE_URL ||
-    "http://127.0.0.1:5173",
+    process.env.E2E_BASE_URL || fileEnv.E2E_BASE_URL || "http://127.0.0.1:5173",
   email: process.env.E2E_PT_EMAIL || fileEnv.E2E_PT_EMAIL,
   password: process.env.E2E_PT_PASSWORD || fileEnv.E2E_PT_PASSWORD,
   clientId:
@@ -188,7 +189,12 @@ async function captureProductFrames(browser, storageState) {
   });
   frames.push({
     label: "03 / CLIENTS",
-    path: await captureRoute(page, "/pt-hub/clients", "Zoe Ramirez", "03-clients.png"),
+    path: await captureRoute(
+      page,
+      "/pt-hub/clients",
+      "Zoe Ramirez",
+      "03-clients.png",
+    ),
   });
   frames.push({
     label: "04 / CLIENT CONTEXT",
@@ -200,7 +206,9 @@ async function captureProductFrames(browser, storageState) {
     ),
   });
 
-  const workspaceHeading = page.getByText("Coaching Workspace", { exact: true });
+  const workspaceHeading = page.getByText("Coaching Workspace", {
+    exact: true,
+  });
   if (await workspaceHeading.isVisible().catch(() => false)) {
     await workspaceHeading.evaluate((element) =>
       element.scrollIntoView({ block: "center" }),
@@ -325,9 +333,11 @@ try {
   for (let index = 1; index < frames.length; index += 1) {
     await page.evaluate(
       ({ activeIndex, label }) => {
-        document.querySelectorAll(".tour-frame").forEach((frame, frameIndex) => {
-          frame.classList.toggle("is-active", frameIndex === activeIndex);
-        });
+        document
+          .querySelectorAll(".tour-frame")
+          .forEach((frame, frameIndex) => {
+            frame.classList.toggle("is-active", frameIndex === activeIndex);
+          });
         document.querySelector(".tour-label").textContent = label;
       },
       { activeIndex: index, label: frames[index].label },

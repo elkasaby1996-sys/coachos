@@ -652,10 +652,7 @@ export function App() {
           {/* Public landing */}
           <Route path="/" element={<PublicRootGate />} />
           <Route path="/product" element={<ProductPage />} />
-          <Route
-            path="/start-trial"
-            element={<StartTrialRedirect />}
-          />
+          <Route path="/start-trial" element={<StartTrialRedirect />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/demo" element={<Navigate to="/signup/pt" replace />} />
           <Route

@@ -4,7 +4,9 @@ import { pathToFileURL } from "node:url";
 const packageJsonPath = process.env.npm_package_json;
 
 if (!packageJsonPath) {
-  throw new Error("npm_package_json is required to start the Vite development server.");
+  throw new Error(
+    "npm_package_json is required to start the Vite development server.",
+  );
 }
 
 const projectRoot = dirname(packageJsonPath);

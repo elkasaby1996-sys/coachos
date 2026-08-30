@@ -18,7 +18,9 @@ describe("marketing funnel comparison data", () => {
         expect(feature.competitor.availability).not.toBe("unknown");
         if (feature.competitor.availability !== "not_available") {
           expect(feature.competitor.evidence?.sourceUrl).toMatch(/^https:\/\//);
-          expect(feature.competitor.evidence?.verifiedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+          expect(feature.competitor.evidence?.verifiedAt).toMatch(
+            /^\d{4}-\d{2}-\d{2}$/,
+          );
         }
       }
     }
@@ -28,7 +30,9 @@ describe("marketing funnel comparison data", () => {
     const trueCoachCategories = getComparisonCategories(
       comparisonPages.truecoach.features,
     );
-    const fitrCategories = getComparisonCategories(comparisonPages.fitr.features);
+    const fitrCategories = getComparisonCategories(
+      comparisonPages.fitr.features,
+    );
 
     expect(trueCoachCategories).toContain("Delivery");
     expect(trueCoachCategories).toContain("Acquisition");
@@ -49,30 +53,32 @@ describe("marketing funnel comparison data", () => {
   });
 
   it("centralizes product and audience feature claims", () => {
-    expect(getMarketingFeaturesByCategory("acquire").map((item) => item.id)).toContain(
-      "public_profile",
-    );
-    expect(getMarketingFeaturesByAudience("client").map((item) => item.id)).toContain(
-      "client_home",
-    );
-    expect(marketingProductFeatures.map((item) => item.availability)).not.toContain(
-      undefined,
-    );
     expect(
-      marketingProductFeatures.filter((item) => item.availability === "not_available"),
+      getMarketingFeaturesByCategory("acquire").map((item) => item.id),
+    ).toContain("public_profile");
+    expect(
+      getMarketingFeaturesByAudience("client").map((item) => item.id),
+    ).toContain("client_home");
+    expect(
+      marketingProductFeatures.map((item) => item.availability),
+    ).not.toContain(undefined);
+    expect(
+      marketingProductFeatures.filter(
+        (item) => item.availability === "not_available",
+      ),
     ).toHaveLength(0);
   });
 
   it("keeps unavailable capabilities explicit without rendering them as active features", () => {
-    expect(unavailableMarketingCapabilities.map((item) => item.label)).toContain(
-      "Automated billing",
-    );
-    expect(unavailableMarketingCapabilities.map((item) => item.label)).toContain(
-      "Native mobile apps",
-    );
-    expect(unavailableMarketingCapabilities.map((item) => item.label)).toContain(
-      "Garmin",
-    );
+    expect(
+      unavailableMarketingCapabilities.map((item) => item.label),
+    ).toContain("Automated billing");
+    expect(
+      unavailableMarketingCapabilities.map((item) => item.label),
+    ).toContain("Native mobile apps");
+    expect(
+      unavailableMarketingCapabilities.map((item) => item.label),
+    ).toContain("Garmin");
   });
 
   it("provides deterministic previews for primary product sections", () => {

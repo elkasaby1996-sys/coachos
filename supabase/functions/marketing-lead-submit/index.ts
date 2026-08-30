@@ -69,7 +69,11 @@ function cleanLongText(value: unknown, maxLength: number) {
   return value.trim().slice(0, maxLength);
 }
 
-function cleanStringArray(value: unknown, allowed: Set<string>, maxItems: number) {
+function cleanStringArray(
+  value: unknown,
+  allowed: Set<string>,
+  maxItems: number,
+) {
   if (!Array.isArray(value)) return [] as string[];
   return Array.from(
     new Set(
@@ -90,7 +94,12 @@ const allowedPlatforms = new Set([
   "none",
   "other",
 ]);
-const allowedCoachingModels = new Set(["online", "hybrid", "in_person", "mixed"]);
+const allowedCoachingModels = new Set([
+  "online",
+  "hybrid",
+  "in_person",
+  "mixed",
+]);
 const allowedClientRanges = new Set(["0_5", "6_20", "21_50", "51_plus"]);
 const allowedTeamSizes = new Set(["solo", "2_3", "4_10", "11_plus"]);
 const allowedTimelines = new Set([
@@ -147,7 +156,10 @@ function validatePayload(payload: LeadPayload) {
   const currentPlatformOther = cleanText(payload.current_platform_other, 160);
   const primaryReason = cleanText(payload.primary_reason ?? payload.goal, 160);
   const switchingTimeline = cleanText(payload.switching_timeline, 80);
-  const teamSizeRange = cleanText(payload.team_size_range ?? payload.team_size, 80);
+  const teamSizeRange = cleanText(
+    payload.team_size_range ?? payload.team_size,
+    80,
+  );
   const migrationNeeds = cleanStringArray(
     payload.migration_needs,
     allowedMigrationNeeds,
@@ -190,7 +202,11 @@ function validatePayload(payload: LeadPayload) {
   if (type === "switch" && !allowedPlatforms.has(currentPlatform)) {
     return { ok: false as const, error: "Current platform is invalid" };
   }
-  if (type === "switch" && currentPlatform === "other" && !currentPlatformOther) {
+  if (
+    type === "switch" &&
+    currentPlatform === "other" &&
+    !currentPlatformOther
+  ) {
     return { ok: false as const, error: "Other platform is required" };
   }
   if (type === "switch" && !switchingTimeline) {
