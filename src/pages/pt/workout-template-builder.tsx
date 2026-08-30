@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -43,6 +43,23 @@ import {
   searchExerciseDataset,
   type ExerciseDatasetExercise,
 } from "../../lib/exercise-dataset";
+import {
+  buildWorkoutTemplateExerciseInsertRows,
+  emptyExerciseSelectionState,
+  findLibraryExerciseForProvider,
+  makeExerciseSelectionKey,
+  partitionNewExerciseSelections,
+  resolveExerciseSelectionCandidates,
+  toggleExerciseSelection,
+  type ExerciseSelectionState,
+  type PersistentExerciseLibraryRecord,
+  type ResolvedExerciseSelection,
+} from "../../lib/exercise-domain";
+import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
+import {
+  exerciseQueryKeys,
+  workoutTemplateExerciseQueryKeys,
+} from "../../lib/exercise-query-contracts";
 import {
   ASSIGNMENT_SNAPSHOT_NOTICE,
   ASSIGNMENT_SNAPSHOT_WARNING_TITLE,
@@ -110,19 +127,14 @@ type TemplateRow = {
   workout_type_tag: string | null;
 };
 
-type ExerciseRow = {
-  id: string;
-  name: string | null;
-  muscle_group: string | null;
-  primary_muscle: string | null;
-  equipment: string | null;
-  video_url: string | null;
-  tags: string[] | null;
-  source_exercise_id?: string | null;
-};
+type TemplateExerciseLibraryRecord = Pick<
+  PersistentExerciseLibraryRecord,
+  "id" | "name" | "muscle_group" | "equipment" | "video_url"
+>;
 
 type TemplateExerciseRow = {
   id: string;
+  exercise_id: string;
   sort_order: number | null;
   sets: number | null;
   reps: string | null;
@@ -132,7 +144,7 @@ type TemplateExerciseRow = {
   rpe: number | null;
   video_url: string | null;
   notes: string | null;
-  exercise: ExerciseRow | null;
+  exercise: TemplateExerciseLibraryRecord | null;
 };
 
 const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null => {
@@ -333,7 +345,8 @@ export function PtWorkoutTemplateBuilderPage() {
   const [deleteTemplateError, setDeleteTemplateError] = useState<string | null>(
     null,
   );
-  const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>([]);
+  const [exerciseSelection, setExerciseSelection] =
+    useState<ExerciseSelectionState>(emptyExerciseSelectionState);
   const [createExerciseForm, setCreateExerciseForm] =
     useState<LibraryExerciseForm>(emptyLibraryExerciseForm);
   const [createExerciseError, setCreateExerciseError] = useState<string | null>(
@@ -366,6 +379,9 @@ export function PtWorkoutTemplateBuilderPage() {
   const [exerciseRows, setExerciseRows] = useState<TemplateExerciseRow[]>([]);
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const addSubmissionInFlightRef = useRef(false);
+
+  const selectedExerciseIds = exerciseSelection.keys;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -403,37 +419,28 @@ export function PtWorkoutTemplateBuilderPage() {
 
   const libraryOwnerUserId = ownerUserId ?? ownerScopeQuery.data ?? null;
 
-  const exercisesQuery = useQuery({
-    queryKey: ["exercise-library", libraryOwnerUserId],
-    enabled: !!libraryOwnerUserId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("exercises")
-        .select(
-          "id, name, muscle_group, primary_muscle, equipment, video_url, tags, source_exercise_id",
-        )
-        .eq("owner_user_id", libraryOwnerUserId ?? "")
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as ExerciseRow[];
-    },
-  });
+  const exercisesQuery = useQuery(
+    exerciseLibraryFullQueryOptions(libraryOwnerUserId),
+  );
 
   const templateExercisesQuery = useQuery({
-    queryKey: ["workout-template-exercises", templateId],
+    queryKey: workoutTemplateExerciseQueryKeys.builder(templateId),
     enabled: !!templateId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_template_exercises")
         .select(
-          "id, sort_order, sets, reps, superset_group, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id,name,muscle_group,equipment,video_url)",
+          "id, exercise_id, sort_order, sets, reps, superset_group, rest_seconds, tempo, rpe, video_url, notes, exercise:exercises(id,name,muscle_group,equipment,video_url)",
         )
         .eq("workout_template_id", templateId ?? "")
         .order("sort_order", { ascending: true });
       if (error) throw error;
       const rows = (data ?? []) as Array<
         Omit<TemplateExerciseRow, "exercise"> & {
-          exercise: ExerciseRow | ExerciseRow[] | null;
+          exercise:
+            | TemplateExerciseLibraryRecord
+            | TemplateExerciseLibraryRecord[]
+            | null;
         }
       >;
       return rows.map((row) => ({
@@ -467,6 +474,10 @@ export function PtWorkoutTemplateBuilderPage() {
   const exercises = useMemo(
     () => exercisesQuery.data ?? [],
     [exercisesQuery.data],
+  );
+  const existingTemplateExerciseIds = useMemo(
+    () => new Set(exerciseRows.map((row) => row.exercise_id)),
+    [exerciseRows],
   );
   const filteredExercises = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -516,44 +527,80 @@ export function PtWorkoutTemplateBuilderPage() {
   }, [addOpen, search]);
 
   const handleAddExercise = async () => {
-    if (!templateId || selectedExerciseIds.length === 0) return;
+    if (
+      !templateId ||
+      selectedExerciseIds.length === 0 ||
+      addSubmissionInFlightRef.current
+    ) {
+      return;
+    }
     if (!libraryOwnerUserId) {
       setActionError(
         "Shared library owner could not be resolved for this workspace.",
       );
       return;
     }
+    addSubmissionInFlightRef.current = true;
     setActionStatus("saving");
     setActionError(null);
 
-    const rows =
-      exerciseRows.length > 0
-        ? exerciseRows
-        : (templateExercisesQuery.data ?? []);
-    const maxSort = rows.reduce(
-      (acc, row) => Math.max(acc, row.sort_order ?? 0),
-      0,
-    );
-    const resolvedExerciseIds: string[] = [];
+    try {
+      const { candidates, unresolvedKeys } = resolveExerciseSelectionCandidates(
+        exerciseSelection,
+        exercises,
+      );
+      if (unresolvedKeys.length > 0) {
+        setActionError(
+          `Unable to resolve ${unresolvedKeys.length} selected exercise${unresolvedKeys.length === 1 ? "" : "s"}. Clear the selection and choose the item again.`,
+        );
+        return;
+      }
 
-    for (const selectedExerciseId of selectedExerciseIds) {
-      if (selectedExerciseId.startsWith("dataset:")) {
-        const datasetId = selectedExerciseId.replace("dataset:", "");
-        const datasetExercise =
-          datasetExercises.find((exercise) => exercise.id === datasetId) ??
+      const { data: currentRows, error: currentRowsError } = await supabase
+        .from("workout_template_exercises")
+        .select("exercise_id, sort_order")
+        .eq("workout_template_id", templateId);
+      if (currentRowsError) throw currentRowsError;
+
+      const currentTemplateRows = (currentRows ?? []) as Array<{
+        exercise_id: string;
+        sort_order: number | null;
+      }>;
+      const existingExerciseIds = new Set(
+        currentTemplateRows.map((row) => row.exercise_id),
+      );
+      const maxSort = currentTemplateRows.reduce(
+        (maximum, row) => Math.max(maximum, row.sort_order ?? 0),
+        0,
+      );
+      const resolvedSelections: ResolvedExerciseSelection[] = [];
+      const libraryIdBySource = new Map(
+        exercises
+          .filter((exercise) => Boolean(exercise.source_exercise_id))
+          .map((exercise) => [exercise.source_exercise_id, exercise.id]),
+      );
+      const libraryIdByName = new Map(
+        exercises.map((exercise) => [
+          exercise.name.trim().toLowerCase(),
+          exercise.id,
+        ]),
+      );
+
+      for (const candidate of candidates) {
+        if (candidate.source === "library") {
+          resolvedSelections.push({ exerciseId: candidate.exerciseId });
+          continue;
+        }
+
+        const normalizedProviderName = candidate.exercise.name
+          .trim()
+          .toLowerCase();
+        const existingMatchId =
+          libraryIdBySource.get(candidate.exercise.id) ??
+          libraryIdByName.get(normalizedProviderName) ??
           null;
-        if (!datasetExercise) continue;
-
-        const existingMatch =
-          exercises.find(
-            (exercise) =>
-              exercise.source_exercise_id === datasetExercise.id ||
-              (exercise.name ?? "").trim().toLowerCase() ===
-                datasetExercise.name.trim().toLowerCase(),
-          ) ?? null;
-
-        if (existingMatch?.id) {
-          resolvedExerciseIds.push(existingMatch.id);
+        if (existingMatchId) {
+          resolvedSelections.push({ exerciseId: existingMatchId });
           continue;
         }
 
@@ -561,76 +608,81 @@ export function PtWorkoutTemplateBuilderPage() {
           .from("exercises")
           .insert({
             owner_user_id: libraryOwnerUserId,
-            name: datasetExercise.name,
-            muscle_group: datasetExercise.bodyPart,
-            primary_muscle: datasetExercise.target,
-            secondary_muscles: datasetExercise.secondaryMuscles.length
-              ? datasetExercise.secondaryMuscles
+            name: candidate.exercise.name,
+            muscle_group: candidate.exercise.bodyPart,
+            primary_muscle: candidate.exercise.target,
+            secondary_muscles: candidate.exercise.secondaryMuscles.length
+              ? candidate.exercise.secondaryMuscles
               : null,
-            equipment: datasetExercise.equipment,
-            video_url: datasetExercise.videoUrl,
+            equipment: candidate.exercise.equipment,
+            video_url: candidate.exercise.videoUrl,
             tags: Array.from(
               new Set(
                 [
-                  datasetExercise.bodyPart,
-                  datasetExercise.target,
-                  datasetExercise.equipment,
+                  candidate.exercise.bodyPart,
+                  candidate.exercise.target,
+                  candidate.exercise.equipment,
                 ]
                   .map((value) => value?.trim())
                   .filter((value): value is string => Boolean(value)),
               ),
             ),
             source: "exercise_dataset",
-            source_exercise_id: datasetExercise.id,
-            source_payload: datasetExercise.raw,
+            source_exercise_id: candidate.exercise.id,
+            source_payload: candidate.exercise.raw,
           })
           .select("id")
           .single();
-
-        if (error) {
-          const details = getErrorDetails(error);
-          setActionError(`${details.code}: ${details.message}`);
-          setActionStatus("idle");
-          return;
-        }
+        if (error) throw error;
 
         const createdId = (data as { id: string } | null)?.id ?? null;
-        if (createdId) {
-          resolvedExerciseIds.push(createdId);
+        if (!createdId) {
+          throw new Error(
+            `The selected provider exercise "${candidate.exercise.name}" was created without a resolvable library id.`,
+          );
         }
-        continue;
+        libraryIdBySource.set(candidate.exercise.id, createdId);
+        libraryIdByName.set(normalizedProviderName, createdId);
+        resolvedSelections.push({ exerciseId: createdId });
       }
 
-      resolvedExerciseIds.push(selectedExerciseId.replace("library:", ""));
-    }
+      const { newSelections } = partitionNewExerciseSelections(
+        resolvedSelections,
+        existingExerciseIds,
+      );
+      if (newSelections.length === 0) {
+        setActionError(
+          "Every selected exercise is already in this workout template. Choose a different exercise.",
+        );
+        return;
+      }
 
-    const payload = resolvedExerciseIds.map((exerciseId, index) => ({
-      workout_template_id: templateId,
-      exercise_id: exerciseId,
-      sort_order: maxSort + (index + 1) * 10,
-    }));
+      const payload = buildWorkoutTemplateExerciseInsertRows(
+        templateId,
+        newSelections,
+        maxSort,
+      );
+      const { error } = await supabase
+        .from("workout_template_exercises")
+        .insert(payload);
+      if (error) throw error;
 
-    const { error } = await supabase
-      .from("workout_template_exercises")
-      .insert(payload);
-
-    if (error) {
+      setAddOpen(false);
+      setExerciseSelection(emptyExerciseSelectionState());
+      setDatasetExercises([]);
+      setDatasetSearchError(null);
+      await queryClient.invalidateQueries({
+        queryKey: exerciseQueryKeys.library.owner(libraryOwnerUserId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: workoutTemplateExerciseQueryKeys.template(templateId),
+      });
+    } catch (error) {
       setActionError(getTemplateMutationErrorMessage(error));
+    } finally {
+      addSubmissionInFlightRef.current = false;
       setActionStatus("idle");
-      return;
     }
-
-    setActionStatus("idle");
-    setAddOpen(false);
-    setSelectedExerciseIds([]);
-    setDatasetExercises([]);
-    setDatasetSearchError(null);
-    await queryClient.invalidateQueries({
-      queryKey: ["exercise-library", libraryOwnerUserId],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: ["workout-template-exercises", templateId],
-    });
   };
 
   const handleCreateExercise = async () => {
@@ -674,13 +726,14 @@ export function PtWorkoutTemplateBuilderPage() {
 
     const createdId = (data as { id: string } | null)?.id ?? null;
     await queryClient.invalidateQueries({
-      queryKey: ["exercise-library", libraryOwnerUserId],
+      queryKey: exerciseQueryKeys.library.owner(libraryOwnerUserId),
     });
     if (createdId) {
-      setSelectedExerciseIds((prev) =>
-        prev.includes(`library:${createdId}`)
-          ? prev
-          : [...prev, `library:${createdId}`],
+      const selectionKey = makeExerciseSelectionKey("library", createdId);
+      setExerciseSelection((current) =>
+        current.keys.includes(selectionKey)
+          ? current
+          : toggleExerciseSelection(current, selectionKey),
       );
     }
     setCreateExerciseStatus("idle");
@@ -739,7 +792,7 @@ export function PtWorkoutTemplateBuilderPage() {
     setEditOpen(false);
     setSelectedRow(null);
     await queryClient.invalidateQueries({
-      queryKey: ["workout-template-exercises", templateId],
+      queryKey: workoutTemplateExerciseQueryKeys.template(templateId),
     });
   };
 
@@ -790,7 +843,7 @@ export function PtWorkoutTemplateBuilderPage() {
       setBulkForm(emptyBulkExerciseForm);
       setBulkExerciseIds([]);
       await queryClient.invalidateQueries({
-        queryKey: ["workout-template-exercises", templateId],
+        queryKey: workoutTemplateExerciseQueryKeys.template(templateId),
       });
     } catch (error) {
       setActionError(getTemplateMutationErrorMessage(error));
@@ -818,7 +871,7 @@ export function PtWorkoutTemplateBuilderPage() {
     setDeleteOpen(false);
     setSelectedRow(null);
     await queryClient.invalidateQueries({
-      queryKey: ["workout-template-exercises", templateId],
+      queryKey: workoutTemplateExerciseQueryKeys.template(templateId),
     });
   };
 
@@ -959,7 +1012,7 @@ export function PtWorkoutTemplateBuilderPage() {
     } finally {
       setActionStatus("idle");
       await queryClient.invalidateQueries({
-        queryKey: ["workout-template-exercises", templateId],
+        queryKey: workoutTemplateExerciseQueryKeys.template(templateId),
       });
     }
   };
@@ -1372,7 +1425,7 @@ export function PtWorkoutTemplateBuilderPage() {
           setAddOpen(open);
           if (!open) {
             setSearch("");
-            setSelectedExerciseIds([]);
+            setExerciseSelection(emptyExerciseSelectionState());
             setDatasetExercises([]);
             setDatasetSearchError(null);
             setDatasetSearchStatus("idle");
@@ -1415,7 +1468,9 @@ export function PtWorkoutTemplateBuilderPage() {
                 <button
                   type="button"
                   className="font-medium text-foreground hover:underline"
-                  onClick={() => setSelectedExerciseIds([])}
+                  onClick={() =>
+                    setExerciseSelection(emptyExerciseSelectionState())
+                  }
                 >
                   Clear selection
                 </button>
@@ -1450,25 +1505,39 @@ export function PtWorkoutTemplateBuilderPage() {
                 datasetExercises.length > 0 ? (
                 <>
                   {filteredExercises.map((exercise) => {
-                    const selectionKey = `library:${exercise.id}`;
+                    const selectionKey = makeExerciseSelectionKey(
+                      "library",
+                      exercise.id,
+                    );
+                    const alreadyInTemplate = existingTemplateExerciseIds.has(
+                      exercise.id,
+                    );
                     return (
                       <button
                         type="button"
                         key={selectionKey}
+                        disabled={alreadyInTemplate}
                         onClick={() =>
-                          setSelectedExerciseIds((prev) =>
-                            prev.includes(selectionKey)
-                              ? prev.filter((id) => id !== selectionKey)
-                              : [...prev, selectionKey],
+                          setExerciseSelection((current) =>
+                            toggleExerciseSelection(current, selectionKey),
                           )
                         }
                         className={
-                          selectedExerciseIds.includes(selectionKey)
-                            ? "w-full rounded-md border border-accent bg-accent/10 px-3 py-2 text-left text-sm"
-                            : "w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm"
+                          alreadyInTemplate
+                            ? "w-full cursor-not-allowed rounded-md border border-border bg-muted/20 px-3 py-2 text-left text-sm opacity-50"
+                            : selectedExerciseIds.includes(selectionKey)
+                              ? "w-full rounded-md border border-accent bg-accent/10 px-3 py-2 text-left text-sm"
+                              : "w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm"
                         }
                       >
-                        <div className="font-medium">{exercise.name}</div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-medium">{exercise.name}</div>
+                          {alreadyInTemplate ? (
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Already added
+                            </span>
+                          ) : null}
+                        </div>
                         <div className="text-xs text-muted-foreground">
                           {exercise.primary_muscle ??
                             exercise.muscle_group ??
@@ -1501,28 +1570,44 @@ export function PtWorkoutTemplateBuilderPage() {
                         ),
                     )
                     .map((exercise) => {
-                      const selectionKey = `dataset:${exercise.id}`;
+                      const selectionKey = makeExerciseSelectionKey(
+                        "dataset",
+                        exercise.id,
+                      );
+                      const libraryMatch = findLibraryExerciseForProvider(
+                        exercise,
+                        exercises,
+                      );
+                      const alreadyInTemplate = Boolean(
+                        libraryMatch &&
+                        existingTemplateExerciseIds.has(libraryMatch.id),
+                      );
                       return (
                         <button
                           type="button"
                           key={selectionKey}
+                          disabled={alreadyInTemplate}
                           onClick={() =>
-                            setSelectedExerciseIds((prev) =>
-                              prev.includes(selectionKey)
-                                ? prev.filter((id) => id !== selectionKey)
-                                : [...prev, selectionKey],
+                            setExerciseSelection((current) =>
+                              toggleExerciseSelection(
+                                current,
+                                selectionKey,
+                                exercise,
+                              ),
                             )
                           }
                           className={
-                            selectedExerciseIds.includes(selectionKey)
-                              ? "w-full rounded-md border border-accent bg-accent/10 px-3 py-2 text-left text-sm"
-                              : "w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm"
+                            alreadyInTemplate
+                              ? "w-full cursor-not-allowed rounded-md border border-border bg-muted/20 px-3 py-2 text-left text-sm opacity-50"
+                              : selectedExerciseIds.includes(selectionKey)
+                                ? "w-full rounded-md border border-accent bg-accent/10 px-3 py-2 text-left text-sm"
+                                : "w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm"
                           }
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="font-medium">{exercise.name}</div>
                             <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                              API
+                              {alreadyInTemplate ? "Already added" : "API"}
                             </span>
                           </div>
                           <div className="text-xs text-muted-foreground">
@@ -1553,7 +1638,10 @@ export function PtWorkoutTemplateBuilderPage() {
               )}
             </div>
             {actionError ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+              <div
+                role="alert"
+                className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive"
+              >
                 {actionError}
               </div>
             ) : null}

@@ -24,6 +24,9 @@ import {
   searchExerciseDataset,
   type ExerciseDatasetExercise,
 } from "../../lib/exercise-dataset";
+import type { PersistentExerciseLibraryRecord } from "../../lib/exercise-domain";
+import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
+import { exerciseQueryKeys } from "../../lib/exercise-query-contracts";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { Search } from "lucide-react";
@@ -38,26 +41,6 @@ const muscleGroups = [
   "Full Body",
   "Other",
 ] as const;
-
-type ExerciseRow = {
-  id: string;
-  owner_user_id: string;
-  name: string;
-  category: string | null;
-  muscle_group: string | null;
-  primary_muscle: string | null;
-  secondary_muscles: string[] | null;
-  equipment: string | null;
-  video_url: string | null;
-  instructions: string | null;
-  notes: string | null;
-  cues: string | null;
-  is_unilateral: boolean | null;
-  tags: string[] | null;
-  created_at: string | null;
-  source: string | null;
-  source_exercise_id: string | null;
-};
 
 type ExerciseFormState = {
   name: string;
@@ -151,7 +134,7 @@ const exerciseRowClassName = `rounded-[22px] border border-border/70 bg-backgrou
 const exerciseColumnLabelClassName =
   "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:hidden";
 
-const getLibraryMuscleTags = (exercise: ExerciseRow) =>
+const getLibraryMuscleTags = (exercise: PersistentExerciseLibraryRecord) =>
   Array.from(
     new Set(
       [
@@ -199,7 +182,8 @@ export function PtExerciseLibraryPage() {
   } = useWorkspace();
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selected, setSelected] = useState<ExerciseRow | null>(null);
+  const [selected, setSelected] =
+    useState<PersistentExerciseLibraryRecord | null>(null);
   const [form, setForm] = useState<ExerciseFormState>(emptyForm);
   const [filters, setFilters] = useState({
     name: "",
@@ -250,21 +234,9 @@ export function PtExerciseLibraryPage() {
 
   const libraryOwnerUserId = ownerUserId ?? ownerScopeQuery.data ?? null;
 
-  const libraryQuery = useQuery({
-    queryKey: ["exercise-library", libraryOwnerUserId],
-    enabled: !!libraryOwnerUserId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("exercises")
-        .select(
-          "id, owner_user_id, name, category, muscle_group, primary_muscle, secondary_muscles, equipment, video_url, instructions, notes, cues, is_unilateral, tags, created_at, source, source_exercise_id",
-        )
-        .eq("owner_user_id", libraryOwnerUserId ?? "")
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as ExerciseRow[];
-    },
-  });
+  const libraryQuery = useQuery(
+    exerciseLibraryFullQueryOptions(libraryOwnerUserId),
+  );
 
   const exercises = useMemo(() => libraryQuery.data ?? [], [libraryQuery.data]);
   const existingSourceIds = useMemo(
@@ -389,7 +361,7 @@ export function PtExerciseLibraryPage() {
     setModalOpen(true);
   };
 
-  const openEdit = (exercise: ExerciseRow) => {
+  const openEdit = (exercise: PersistentExerciseLibraryRecord) => {
     setSelected(exercise);
     setForm({
       name: exercise.name,
@@ -448,7 +420,7 @@ export function PtExerciseLibraryPage() {
     setActionStatus("idle");
     setModalOpen(false);
     await queryClient.invalidateQueries({
-      queryKey: ["exercise-library", libraryOwnerUserId],
+      queryKey: exerciseQueryKeys.library.owner(libraryOwnerUserId),
     });
     setToastMessage("Exercise saved");
   };
@@ -472,7 +444,7 @@ export function PtExerciseLibraryPage() {
     setDeleteOpen(false);
     setSelected(null);
     await queryClient.invalidateQueries({
-      queryKey: ["exercise-library", libraryOwnerUserId],
+      queryKey: exerciseQueryKeys.library.owner(libraryOwnerUserId),
     });
   };
 
@@ -703,7 +675,7 @@ export function PtExerciseLibraryPage() {
 
     setImportingId(null);
     await queryClient.invalidateQueries({
-      queryKey: ["exercise-library", libraryOwnerUserId],
+      queryKey: exerciseQueryKeys.library.owner(libraryOwnerUserId),
     });
     setToastMessage("Exercise imported");
   };

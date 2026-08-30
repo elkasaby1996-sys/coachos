@@ -1,3 +1,5 @@
+import type { ProviderNormalizedExercise } from "./exercise-domain";
+
 const datasetBaseUrl = (import.meta.env.VITE_EXERCISE_DATASET_BASE_URL ?? "")
   .trim()
   .replace(/\/+$/, "");
@@ -21,21 +23,7 @@ export type ExerciseDatasetSearchFilters = {
   cursor?: string | null;
 };
 
-export type ExerciseDatasetExercise = {
-  id: string;
-  name: string;
-  bodyPart: string | null;
-  target: string | null;
-  secondaryMuscles: string[];
-  equipment: string | null;
-  instructions: string[];
-  exerciseTips: string[];
-  overview: string | null;
-  keywords: string[];
-  videoUrl: string | null;
-  imageUrl: string | null;
-  raw: Record<string, unknown>;
-};
+export type ExerciseDatasetExercise = ProviderNormalizedExercise;
 
 export type ExerciseDatasetPage = {
   exercises: ExerciseDatasetExercise[];
@@ -51,6 +39,14 @@ export type ExerciseDatasetFilterInput = {
 
 const readText = (value: unknown) =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+
+const readIdentifier = (value: unknown) => {
+  const text = readText(value);
+  if (text) return text;
+  return typeof value === "number" && Number.isFinite(value)
+    ? String(value)
+    : null;
+};
 
 const normalizeLookupKey = (value: string | null) =>
   (value ?? "")
@@ -163,11 +159,14 @@ const firstText = (...values: unknown[]) => {
   return null;
 };
 
-const normalizeExercise = (value: unknown): ExerciseDatasetExercise | null => {
+export const normalizeExerciseDatasetRecord = (
+  value: unknown,
+): ExerciseDatasetExercise | null => {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
   const name = readText(record.name);
-  const sourceId = firstText(record.exerciseId, record.id);
+  const sourceId =
+    readIdentifier(record.exerciseId) ?? readIdentifier(record.id);
   if (!name || !sourceId) return null;
 
   return {
@@ -207,7 +206,7 @@ const extractExerciseList = (payload: unknown) => {
   return [];
 };
 
-const extractNextCursor = (payload: unknown) => {
+export const extractExerciseDatasetNextCursor = (payload: unknown) => {
   if (!payload || typeof payload !== "object") return null;
   const meta = (payload as Record<string, unknown>).meta;
   if (!meta || typeof meta !== "object") return null;
@@ -343,8 +342,8 @@ export async function searchExerciseDataset(
 
   return {
     exercises: extractExerciseList(payload)
-      .map(normalizeExercise)
+      .map(normalizeExerciseDatasetRecord)
       .filter((item): item is ExerciseDatasetExercise => Boolean(item)),
-    nextCursor: extractNextCursor(payload),
+    nextCursor: extractExerciseDatasetNextCursor(payload),
   };
 }
