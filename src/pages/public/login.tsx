@@ -1,6 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import { Dumbbell } from "lucide-react";
 import { AuthComponent } from "../../components/ui/sign-up";
 import {
   buildAuthCallbackUrl,
@@ -26,7 +25,9 @@ export function LoginPage() {
     (requestedRedirect.startsWith("/join/") ||
       requestedRedirect.startsWith("/invite/") ||
       requestedRedirect.startsWith("/team-invites/") ||
-      requestedRedirect.startsWith("/pt/onboarding/"))
+      requestedRedirect.startsWith("/pt/onboarding/") ||
+      requestedRedirect === "/pt-hub" ||
+      requestedRedirect.startsWith("/pt-hub/"))
       ? requestedRedirect
       : "/";
   const signupLink =
@@ -37,15 +38,10 @@ export function LoginPage() {
   return (
     <AuthComponent
       mode="signin"
-      brandName="RepSync"
+      brandName="R E P S Y N C"
       brandHref={getMarketingSiteUrl()}
-      logo={
-        <div className="rounded-md bg-primary p-1.5 text-primary-foreground">
-          <Dumbbell className="h-4 w-4" />
-        </div>
-      }
       title="Welcome back"
-      subtitle=""
+      subtitle="Open your current coaching or coach workspace."
       primaryLabel="Sign in"
       secondaryLinkHref={signupLink}
       secondaryLinkLabel="Need an account? Sign up"

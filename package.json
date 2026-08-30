@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node --input-type=module -e \"import { dirname, join } from 'node:path'; import { pathToFileURL } from 'node:url'; await import(pathToFileURL(join(dirname(process.env.npm_package_json), 'scripts', 'run-vite-dev.mjs')).href)\" --",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -20,6 +20,8 @@
     "supabase:db:reset": "npx supabase@latest db reset --local --yes",
     "supabase:db:lint": "npx supabase@latest db lint --local --level error --fail-on error",
     "supabase:db:test": "npx supabase@latest test db",
+    "seed:local:pt-demo": "node scripts/seed-local-pt-demo.mjs",
+    "render:public-coach-profiles-media": "node scripts/render-public-coach-profiles-media.mjs",
     "supabase:remote": "node scripts/supabase-remote-guard.mjs",
     "verify:release": "npm run lint && npm run format && npm run build && npm run test:e2e:smoke",
     "test:e2e": "playwright test",

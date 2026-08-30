@@ -82,7 +82,9 @@ describe("animated auth component contract", () => {
 
   it("uses the animated backdrop on auth screens", () => {
     expect(backdropSource).toContain("AuthFlowBackground");
-    expect(backdropSource).toContain("backdrop-blur-[36px]");
+    expect(backdropSource).toContain("<BloomField");
+    expect(backdropSource).toContain("motionAmount={0.24}");
+    expect(backdropSource).toContain("auth-flow-grain");
     expect(source).toContain("<AuthFlowBackground />");
   });
 });

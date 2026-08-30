@@ -23,11 +23,23 @@ export function PublicInfoLayout({
 }: PublicInfoLayoutProps) {
   useEffect(() => {
     document.body.classList.add("public-info-portal-light");
+    document.title = `${title} | RepSync`;
+
+    const existingDescription = document.head.querySelector<HTMLMetaElement>(
+      'meta[name="description"]',
+    );
+    const descriptionTag =
+      existingDescription ?? document.createElement("meta");
+    descriptionTag.setAttribute("name", "description");
+    descriptionTag.setAttribute("content", description);
+    if (!existingDescription) {
+      document.head.appendChild(descriptionTag);
+    }
 
     return () => {
       document.body.classList.remove("public-info-portal-light");
     };
-  }, []);
+  }, [description, title]);
 
   return (
     <div className="light public-info-shell flex min-h-dvh flex-col bg-white text-slate-950">
