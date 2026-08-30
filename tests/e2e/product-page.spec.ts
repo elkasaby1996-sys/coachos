@@ -11,18 +11,17 @@ const chapterIds = [
   "operations-analytics",
   "client-experience",
   "team-access",
-  "integrations",
 ];
 
 test.describe("public product page", () => {
-  test("renders eleven valid chapter links and trial actions", async ({
+  test("renders ten available chapter links and trial actions", async ({
     page,
   }) => {
     await page.goto("/product");
     const nav = page.getByRole("navigation", {
       name: "Product deep-dive chapters",
     });
-    await expect(nav.getByRole("link")).toHaveCount(11);
+    await expect(nav.getByRole("link")).toHaveCount(chapterIds.length);
 
     for (const id of chapterIds) {
       await expect(nav.locator(`a[href="#${id}"]`)).toHaveCount(1);
@@ -46,10 +45,10 @@ test.describe("public product page", () => {
       page.locator('a[href="#messaging"][aria-current="location"]'),
     ).toBeVisible();
 
-    await page.locator('a[href="#integrations"]').first().click();
-    await expect(page).toHaveURL(/#integrations$/);
+    await page.locator('a[href="#team-access"]').first().click();
+    await expect(page).toHaveURL(/#team-access$/);
     await expect(
-      page.locator('a[href="#integrations"][aria-current="location"]'),
+      page.locator('a[href="#team-access"][aria-current="location"]'),
     ).toBeVisible();
 
     await page.goBack();
@@ -70,9 +69,10 @@ test.describe("public product page", () => {
 
     await expect(page.getByText("WHOOP", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Garmin", { exact: true })).toHaveCount(0);
+    await expect(page.locator("section#integrations")).toHaveCount(0);
     await expect(
       page.getByText("No public integrations are listed yet."),
-    ).toBeVisible();
+    ).toHaveCount(0);
   });
 
   test("renders the public coach-profile video and complete SEO metadata", async ({
@@ -90,9 +90,7 @@ test.describe("public product page", () => {
         '.rs-product-ref-media img[src*="repsync-client-experience-poster.png"]',
       ),
     ).toBeVisible();
-    await expect(
-      page.locator(".rs-product-ref-media__canvas").first(),
-    ).toBeVisible();
+    await expect(page.locator(".rs-product-capture").first()).toBeVisible();
     await expect(page.getByText("MEDIA PLACEHOLDER")).toHaveCount(0);
     await expect(page).toHaveTitle(
       "RepSync Product | The Whole Coaching Relationship",

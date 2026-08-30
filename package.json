@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node --input-type=module -e \"import { dirname, join } from 'node:path'; import { pathToFileURL } from 'node:url'; await import(pathToFileURL(join(dirname(process.env.npm_package_json), 'scripts', 'run-vite-dev.mjs')).href)\"",
+    "dev": "node --input-type=module -e \"import { dirname, join } from 'node:path'; import { pathToFileURL } from 'node:url'; await import(pathToFileURL(join(dirname(process.env.npm_package_json), 'scripts', 'run-vite-dev.mjs')).href)\" --",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",

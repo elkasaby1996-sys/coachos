@@ -644,7 +644,7 @@ function SuccessPanel({
           variant="secondary"
           className="border border-[#285D49]/30 bg-transparent text-[#0F261D] hover:bg-white/70"
         >
-          <a href={`/p/${slug}`}>Return to profile</a>
+          <a href={`/p/${encodeURIComponent(slug)}`}>Return to profile</a>
         </Button>
         <Button asChild variant="secondary">
           <a href="/coaches">Browse other coaches</a>

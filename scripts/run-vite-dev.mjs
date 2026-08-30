@@ -9,7 +9,23 @@ if (!packageJsonPath) {
   );
 }
 
-const projectRoot = dirname(packageJsonPath);
+function normalizeWindowsExtendedPath(filePath) {
+  if (process.platform !== "win32") {
+    return filePath;
+  }
+
+  if (filePath.startsWith("\\\\?\\UNC\\")) {
+    return `\\\\${filePath.slice(8)}`;
+  }
+
+  if (filePath.startsWith("\\\\?\\")) {
+    return filePath.slice(4);
+  }
+
+  return filePath;
+}
+
+const projectRoot = dirname(normalizeWindowsExtendedPath(packageJsonPath));
 const viteCliPath = join(projectRoot, "node_modules", "vite", "bin", "vite.js");
 const argumentOffset = process.argv[1]?.endsWith(".mjs") ? 2 : 1;
 

@@ -1135,8 +1135,8 @@ async function main() {
     console.log("Seeded local PT demo:", rows[0]);
   });
 
-  console.log("PT login:", demo.pt.email, "/", demo.pt.password);
-  console.log("Client login:", zoe.email, "/", zoe.password);
+  console.log("PT demo account:", demo.pt.email);
+  console.log("Client demo account:", zoe.email);
   console.log("Screenshot client ID:", zoe.id);
 }
 
