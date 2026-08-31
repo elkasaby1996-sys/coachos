@@ -1,0 +1,349 @@
+import { describe, expect, it } from "vitest";
+import {
+  adaptPersistedExerciseBrowserItem,
+  adaptProviderExerciseBrowserItem,
+  classifyPersistedExerciseOrigin,
+  classifyProviderSavedMatch,
+  exerciseBrowserItemMatchesQuery,
+  filterExerciseBrowserItems,
+  isExerciseBrowserItemUnclassified,
+  parseExerciseBrowserSearchParams,
+  serializeExerciseBrowserSearchState,
+  type ExerciseBrowserFilters,
+  type ExerciseBrowserItem,
+} from "../../src/lib/exercise-browser";
+import type {
+  PersistentExerciseLibraryRecord,
+  ProviderNormalizedExercise,
+} from "../../src/lib/exercise-domain";
+
+const persisted = (
+  overrides: Partial<PersistentExerciseLibraryRecord> = {},
+): PersistentExerciseLibraryRecord => ({
+  id: "saved-1",
+  owner_user_id: "owner-1",
+  workspace_id: null,
+  name: "Saved curl",
+  category: null,
+  muscle_group: "Arms",
+  primary_muscle: "Legacy label",
+  secondary_muscles: ["Legacy secondary"],
+  body_region_keys: ["arms"],
+  primary_muscle_keys: ["biceps"],
+  secondary_muscle_keys: ["forearms"],
+  muscle_taxonomy_version: 1,
+  equipment: "Dumbbell",
+  video_url: null,
+  instructions: "Stand tall\nCurl slowly",
+  notes: "Keep the elbow still",
+  cues: null,
+  is_unilateral: false,
+  tags: ["hypertrophy"],
+  created_at: null,
+  source: "manual",
+  source_exercise_id: null,
+  source_payload: null,
+  ...overrides,
+});
+
+const provider = (
+  overrides: Partial<ProviderNormalizedExercise> = {},
+): ProviderNormalizedExercise => ({
+  id: "provider-1",
+  name: "Provider curl",
+  bodyPart: "Arms",
+  target: "Biceps",
+  secondaryMuscles: ["Forearms"],
+  equipment: "Dumbbell",
+  instructions: ["Curl under control"],
+  exerciseTips: [],
+  overview: "A controlled arm movement",
+  keywords: ["hypertrophy"],
+  videoUrl: null,
+  imageUrl: null,
+  raw: {
+    bodyPart: "upper arms",
+    target: "biceps brachii",
+    secondaryMuscles: ["brachioradialis"],
+  },
+  ...overrides,
+});
+
+const defaultFilters: ExerciseBrowserFilters = {
+  query: "",
+  muscleKey: null,
+  tag: null,
+  origin: "all",
+  classification: "all",
+};
+
+const browserItem = (
+  overrides: Partial<ExerciseBrowserItem>,
+): ExerciseBrowserItem => ({
+  key: "persisted:test",
+  kind: "persisted",
+  exerciseId: "test",
+  providerExerciseId: null,
+  origin: "custom",
+  name: "Test exercise",
+  muscleProfile: {
+    bodyRegionKeys: [],
+    primaryMuscleKeys: [],
+    secondaryMuscleKeys: [],
+    unmappedLabels: [],
+  },
+  equipment: null,
+  tags: [],
+  instructions: [],
+  notes: null,
+  videoUrl: null,
+  savedMatch: { status: "exact", exerciseId: "test" },
+  ...overrides,
+});
+
+describe("exercise browser item adapters", () => {
+  it("adapts persisted canonical arrays without parsing legacy anatomy", () => {
+    const item = adaptPersistedExerciseBrowserItem(persisted());
+    expect(item).toMatchObject({
+      key: "persisted:saved-1",
+      kind: "persisted",
+      origin: "custom",
+      exerciseId: "saved-1",
+      providerExerciseId: null,
+      instructions: ["Stand tall", "Curl slowly"],
+      muscleProfile: {
+        bodyRegionKeys: ["arms", "forearms"],
+        primaryMuscleKeys: ["biceps"],
+        secondaryMuscleKeys: ["forearms"],
+      },
+    });
+    expect(item.muscleProfile.unmappedLabels).toEqual([]);
+  });
+
+  it("adapts provider records through the canonical provider mapper", () => {
+    const item = adaptProviderExerciseBrowserItem(provider(), []);
+    expect(item).toMatchObject({
+      key: "provider:provider-1",
+      kind: "provider",
+      origin: "provider",
+      exerciseId: null,
+      providerExerciseId: "provider-1",
+      muscleProfile: {
+        primaryMuscleKeys: ["biceps"],
+        secondaryMuscleKeys: ["forearms"],
+      },
+      savedMatch: { status: "none" },
+    });
+  });
+
+  it("classifies custom and imported records from provenance, never ID format", () => {
+    expect(
+      classifyPersistedExerciseOrigin(
+        persisted({ id: "42", source: "manual", source_exercise_id: null }),
+      ),
+    ).toBe("custom");
+    expect(
+      classifyPersistedExerciseOrigin(
+        persisted({
+          id: "uuid-looking-id",
+          source: "exercise_dataset",
+          source_exercise_id: "42",
+        }),
+      ),
+    ).toBe("imported");
+  });
+
+  it("finds exact provider identity before a normalized name conflict", () => {
+    const exact = persisted({
+      id: "exact-id",
+      name: "Different name",
+      source: "exercise_dataset",
+      source_exercise_id: "provider-1",
+    });
+    expect(classifyProviderSavedMatch(provider(), [exact])).toEqual({
+      status: "exact",
+      exerciseId: "exact-id",
+    });
+
+    const conflict = persisted({
+      id: "conflict-id",
+      name: " Provider   Curl ",
+    });
+    expect(classifyProviderSavedMatch(provider(), [conflict])).toEqual({
+      status: "name_conflict",
+      exerciseId: "conflict-id",
+    });
+  });
+});
+
+describe("canonical exercise browser filtering", () => {
+  it("searches normalized canonical labels and general metadata", () => {
+    const item = browserItem({
+      name: "Cable raise",
+      equipment: "Cable machine",
+      tags: ["upper body"],
+      muscleProfile: {
+        bodyRegionKeys: ["shoulders"],
+        primaryMuscleKeys: ["anterior_deltoids"],
+        secondaryMuscleKeys: [],
+        unmappedLabels: [],
+      },
+    });
+    expect(exerciseBrowserItemMatchesQuery(item, " anterior   deltoids ")).toBe(
+      true,
+    );
+    expect(exerciseBrowserItemMatchesQuery(item, "CABLE MACHINE")).toBe(true);
+    expect(exerciseBrowserItemMatchesQuery(item, "hamstrings")).toBe(false);
+  });
+
+  it("ranks primary, secondary, region, and full-body fallback deterministically", () => {
+    const items = [
+      browserItem({
+        key: "persisted:region",
+        name: "Zulu region",
+        muscleProfile: {
+          bodyRegionKeys: ["arms"],
+          primaryMuscleKeys: [],
+          secondaryMuscleKeys: [],
+          unmappedLabels: [],
+        },
+      }),
+      browserItem({
+        key: "persisted:secondary",
+        name: "Beta secondary",
+        muscleProfile: {
+          bodyRegionKeys: ["arms"],
+          primaryMuscleKeys: [],
+          secondaryMuscleKeys: ["biceps"],
+          unmappedLabels: [],
+        },
+      }),
+      browserItem({
+        key: "persisted:primary-z",
+        name: "Zulu primary",
+        muscleProfile: {
+          bodyRegionKeys: ["arms"],
+          primaryMuscleKeys: ["biceps"],
+          secondaryMuscleKeys: [],
+          unmappedLabels: [],
+        },
+      }),
+      browserItem({
+        key: "persisted:primary-a",
+        name: "Alpha primary",
+        muscleProfile: {
+          bodyRegionKeys: ["arms"],
+          primaryMuscleKeys: ["biceps"],
+          secondaryMuscleKeys: [],
+          unmappedLabels: [],
+        },
+      }),
+      browserItem({
+        key: "persisted:full-body",
+        name: "Alpha fallback",
+        muscleProfile: {
+          bodyRegionKeys: ["full_body"],
+          primaryMuscleKeys: [],
+          secondaryMuscleKeys: [],
+          unmappedLabels: [],
+        },
+      }),
+    ];
+
+    const result = filterExerciseBrowserItems(items, {
+      ...defaultFilters,
+      muscleKey: "biceps",
+    });
+    expect(
+      result.map(({ key, matchRank, matchReason }) => [
+        key,
+        matchRank,
+        matchReason,
+      ]),
+    ).toEqual([
+      ["persisted:primary-a", 3, "primary"],
+      ["persisted:primary-z", 3, "primary"],
+      ["persisted:secondary", 2, "secondary"],
+      ["persisted:full-body", 1, "region"],
+      ["persisted:region", 1, "region"],
+    ]);
+  });
+
+  it("applies equivalent muscle semantics to custom and provider items", () => {
+    const custom = adaptPersistedExerciseBrowserItem(persisted());
+    const transient = adaptProviderExerciseBrowserItem(provider(), []);
+    const result = filterExerciseBrowserItems([custom, transient], {
+      ...defaultFilters,
+      muscleKey: "biceps",
+    });
+    expect(result).toHaveLength(2);
+    expect(result.every(({ matchRank }) => matchRank === 3)).toBe(true);
+  });
+
+  it("detects unclassified items and filters by source", () => {
+    const unclassifiedCustom = browserItem({
+      key: "persisted:custom",
+      origin: "custom",
+    });
+    const imported = browserItem({
+      key: "persisted:imported",
+      origin: "imported",
+      muscleProfile: {
+        bodyRegionKeys: ["back"],
+        primaryMuscleKeys: [],
+        secondaryMuscleKeys: [],
+        unmappedLabels: [],
+      },
+    });
+    expect(isExerciseBrowserItemUnclassified(unclassifiedCustom)).toBe(true);
+    expect(
+      filterExerciseBrowserItems([unclassifiedCustom, imported], {
+        ...defaultFilters,
+        origin: "custom",
+        classification: "unclassified",
+      }).map(({ key }) => key),
+    ).toEqual(["persisted:custom"]);
+  });
+});
+
+describe("exercise browser URL state", () => {
+  it("rejects invalid muscles and resolves muscle/unclassified conflicts", () => {
+    expect(
+      parseExerciseBrowserSearchParams(
+        new URLSearchParams("muscle=svg-path-12&classification=unclassified"),
+      ).filters,
+    ).toMatchObject({ muscleKey: null, classification: "unclassified" });
+    expect(
+      parseExerciseBrowserSearchParams(
+        new URLSearchParams("muscle=biceps&classification=unclassified"),
+      ).filters,
+    ).toMatchObject({ muscleKey: "biceps", classification: "all" });
+  });
+
+  it("serializes canonical non-default filters and round-trips them", () => {
+    const state = {
+      view: "provider" as const,
+      filters: {
+        query: " squat ",
+        muscleKey: "quadriceps" as const,
+        tag: " barbell ",
+        origin: "imported" as const,
+        classification: "classified" as const,
+      },
+    };
+    const params = serializeExerciseBrowserSearchState(state);
+    expect(params.toString()).toBe(
+      "view=provider&q=squat&muscle=quadriceps&tag=barbell&origin=imported&classification=classified",
+    );
+    expect(parseExerciseBrowserSearchParams(params)).toEqual({
+      ...state,
+      filters: { ...state.filters, query: "squat", tag: "barbell" },
+    });
+    expect(
+      serializeExerciseBrowserSearchState({
+        view: "library",
+        filters: defaultFilters,
+      }).toString(),
+    ).toBe("");
+  });
+});

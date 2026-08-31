@@ -10,7 +10,7 @@ const migration = readFileSync(
     "20260830120000_exercise_canonical_muscle_taxonomy.sql",
   ),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const muscleFunction = migration.slice(
   migration.indexOf("function public.exercise_canonical_muscle_key"),
   migration.indexOf("function public.exercise_canonical_body_region_key"),

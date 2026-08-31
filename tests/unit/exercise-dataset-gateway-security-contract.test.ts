@@ -72,16 +72,15 @@ describe("exercise dataset gateway security wiring", () => {
       "workout-template-builder.tsx",
     );
 
-    expect(settings).toContain("filteredExercises.map((exercise)");
-    expect(settings).toMatch(
-      /filteredExercises\.length > 0 \|\|\s+visibleDatasetResults\.length > 0/,
+    expect(settings).toContain('{view === "library" ? (');
+    expect(settings).toContain(
+      ") : providerQuery.isError && !providerQuery.data ? (",
     );
+    expect(settings).toContain("Saved exercises remain available.");
     expect(builder).toMatch(
       /filteredExercises\.length > 0 \|\|\s+datasetExercises\.length > 0/,
     );
-    expect(settings).toContain(
-      "setDatasetError(`${details.code}: ${details.message}`)",
-    );
+    expect(settings).toContain("getProviderErrorCopy(providerQuery.error)");
     expect(builder).toContain(
       "setDatasetSearchError(`${details.code}: ${details.message}`)",
     );

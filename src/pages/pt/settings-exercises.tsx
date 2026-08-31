@@ -1,15 +1,13 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, AlertDescription } from "../../components/ui/alert";
-import { Button } from "../../components/ui/button";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-import { Input } from "../../components/ui/input";
-import { Select } from "../../components/ui/select";
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent } from "../../components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -18,15 +16,36 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
-import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { Input } from "../../components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { ExerciseMuscleClassificationFields } from "../../components/pt/exercise-muscle-classification-fields";
 import {
+  ExerciseLibraryFilterPanel,
+  ExerciseLibraryResults,
+  ExerciseLibraryToolbar,
+} from "../../components/pt/exercise-library";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import {
+  ExerciseDatasetError,
   exerciseDatasetConfigured,
   searchExerciseDataset,
   type ExerciseDatasetExercise,
+  type ExerciseDatasetPage,
 } from "../../lib/exercise-dataset";
 import type { PersistentExerciseLibraryRecord } from "../../lib/exercise-domain";
-import { buildCurrentProviderCanonicalMuscleFields } from "../../lib/exercise-muscle-mapping";
+import {
+  DEFAULT_EXERCISE_BROWSER_FILTERS,
+  adaptPersistedExerciseBrowserItem,
+  adaptProviderExerciseBrowserItem,
+  filterExerciseBrowserItems,
+  getExerciseDeleteErrorMessage,
+  parseExerciseBrowserSearchParams,
+  serializeExerciseBrowserSearchState,
+  type ExerciseBrowserClassificationFilter,
+  type ExerciseBrowserOriginFilter,
+  type ExerciseBrowserSearchState,
+  type FilteredExerciseBrowserItem,
+} from "../../lib/exercise-browser";
 import {
   adaptPersistedExerciseMuscleProfile,
   buildCustomExerciseMusclePersistenceFields,
@@ -35,22 +54,17 @@ import {
   initializeExerciseMuscleFormValue,
   type ExerciseMuscleFormValue,
 } from "../../lib/exercise-muscle-classification";
-import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
+import { buildCurrentProviderCanonicalMuscleFields } from "../../lib/exercise-muscle-mapping";
+import {
+  getMuscleMetadata,
+  type MuscleKey,
+} from "../../lib/exercise-muscle-taxonomy";
 import { exerciseQueryKeys } from "../../lib/exercise-query-contracts";
+import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
-import { Search } from "lucide-react";
-
-const muscleGroups = [
-  "Chest",
-  "Back",
-  "Legs",
-  "Shoulders",
-  "Arms",
-  "Core",
-  "Full Body",
-  "Other",
-] as const;
+import { useSearchParams } from "react-router-dom";
+import { Database, Library, Plus, RefreshCcw } from "lucide-react";
 
 type ExerciseFormState = {
   name: string;
@@ -66,38 +80,20 @@ const emptyForm: ExerciseFormState = {
   is_unilateral: false,
 };
 
-const globalPrimaryMuscleOptions = [
-  "",
-  "Chest",
-  "Back",
-  "Shoulders",
-  "Biceps",
-  "Triceps",
-  "Core",
-  "Glutes",
-  "Quads",
-  "Hamstrings",
-  "Calves",
-  "Forearms",
-  "Legs",
-  "Arms",
-  "Full Body",
-  "Other",
-] as const;
+const libraryPageSize = 20;
+const providerPageSize = 24;
 
 const getErrorDetails = (error: unknown) => {
   if (!error) return { code: "unknown", message: "Unknown error" };
   if (typeof error === "object") {
-    const err = error as { code?: string | null; message?: string | null };
+    const details = error as { code?: string | null; message?: string | null };
     return {
-      code: err.code ?? "unknown",
-      message: err.message ?? "Unknown error",
+      code: details.code ?? "unknown",
+      message: details.message ?? "Unknown error",
     };
   }
   return { code: "unknown", message: "Unknown error" };
 };
-
-const normalizeName = (value: string) => value.trim().toLowerCase();
 
 const joinParagraphs = (values: string[]) =>
   values
@@ -105,87 +101,39 @@ const joinParagraphs = (values: string[]) =>
     .filter(Boolean)
     .join("\n\n");
 
-const includesFilter = (
-  values: Array<string | null | undefined>,
-  filterValue: string,
-) => {
-  if (!filterValue) return true;
-  return values.some((value) => value?.toLowerCase().includes(filterValue));
-};
-
-const getExerciseContextChips = (exercise: {
-  category?: string | null;
-  muscle_group?: string | null;
-  primary_muscle?: string | null;
-  tags?: string[] | null;
-  is_unilateral?: boolean | null;
-}) =>
-  Array.from(
-    new Set(
-      [
-        exercise.primary_muscle,
-        exercise.muscle_group,
-        exercise.category,
-        ...(exercise.tags ?? []),
-        exercise.is_unilateral ? "Unilateral" : null,
-      ].filter((value): value is string => Boolean(value?.trim())),
-    ),
-  ).slice(0, 4);
-
-const exerciseTagClassName =
-  "inline-flex min-h-7 max-w-[11rem] items-center truncate rounded-full border border-border/70 bg-secondary/35 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground";
-const exerciseCatalogGridClassName =
-  "lg:grid-cols-[minmax(13rem,1.15fr)_minmax(12rem,0.82fr)_minmax(9rem,0.58fr)_minmax(7rem,0.42fr)_minmax(8rem,auto)]";
-const exerciseRowClassName = `rounded-[22px] border border-border/70 bg-background/45 px-4 py-3 transition-colors hover:border-border hover:bg-secondary/20 lg:grid ${exerciseCatalogGridClassName} lg:items-center lg:gap-4`;
-const exerciseColumnLabelClassName =
-  "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:hidden";
-
-const getLibraryMuscleTags = (exercise: PersistentExerciseLibraryRecord) =>
-  Array.from(
-    new Set(
-      [
-        exercise.primary_muscle,
-        exercise.muscle_group,
-        ...(exercise.secondary_muscles ?? []),
-      ].filter((value): value is string => Boolean(value?.trim())),
-    ),
-  ).slice(0, 2);
-
-const getDatasetMuscleTags = (exercise: ExerciseDatasetExercise) =>
-  Array.from(
-    new Set(
-      [exercise.target, exercise.bodyPart, ...exercise.secondaryMuscles].filter(
-        (value): value is string => Boolean(value?.trim()),
-      ),
-    ),
-  ).slice(0, 2);
-
-const datasetPageSize = 24;
-
-const mergeDatasetExercises = (
-  current: ExerciseDatasetExercise[],
-  incoming: ExerciseDatasetExercise[],
-) => {
-  const seen = new Set(current.map((exercise) => exercise.id));
-  const next = [...current];
-
-  incoming.forEach((exercise) => {
-    if (seen.has(exercise.id)) return;
-    seen.add(exercise.id);
-    next.push(exercise);
+const mergeProviderPages = (pages: ExerciseDatasetPage[] | undefined) => {
+  const byId = new Map<string, ExerciseDatasetExercise>();
+  pages?.forEach((page) => {
+    page.exercises.forEach((exercise) => {
+      if (!byId.has(exercise.id)) byId.set(exercise.id, exercise);
+    });
   });
-
-  return next;
+  return Array.from(byId.values());
 };
+
+const getProviderErrorCopy = (error: unknown) =>
+  error instanceof ExerciseDatasetError
+    ? error.message
+    : "The exercise provider is temporarily unavailable. Saved exercises remain available.";
 
 export function PtExerciseLibraryPage() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     workspaceId,
     ownerUserId,
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
+  const searchState = useMemo(
+    () => parseExerciseBrowserSearchParams(searchParams),
+    [searchParams],
+  );
+  const { view, filters } = searchState;
+  const [debouncedProviderQuery, setDebouncedProviderQuery] = useState(
+    filters.query,
+  );
+  const [libraryPage, setLibraryPage] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selected, setSelected] =
@@ -195,30 +143,57 @@ export function PtExerciseLibraryPage() {
     useState<ExerciseMuscleFormValue>(createEmptyExerciseMuscleFormValue);
   const [muscleClassificationChanged, setMuscleClassificationChanged] =
     useState(false);
-  const [filters, setFilters] = useState({
-    name: "",
-    primary_muscle: "",
-    tag: "",
-  });
-  const [datasetResults, setDatasetResults] = useState<
-    ExerciseDatasetExercise[]
-  >([]);
-  const [datasetLoading, setDatasetLoading] = useState(false);
-  const [datasetError, setDatasetError] = useState<string | null>(null);
-  const [datasetCursor, setDatasetCursor] = useState<string | null>(null);
-  const [datasetHasMore, setDatasetHasMore] = useState(false);
-  const [datasetPage, setDatasetPage] = useState(1);
   const [importingId, setImportingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [actionStatus, setActionStatus] = useState<"idle" | "saving">("idle");
+  const [actionStatus, setActionStatus] = useState<
+    "idle" | "saving" | "deleting"
+  >("idle");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const datasetBootstrappedRef = useRef(false);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(
+      () => setDebouncedProviderQuery(filters.query.trim()),
+      300,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [filters.query]);
 
   useEffect(() => {
     if (!toastMessage) return;
-    const timeout = setTimeout(() => setToastMessage(null), 2400);
-    return () => clearTimeout(timeout);
+    const timeout = window.setTimeout(() => setToastMessage(null), 2600);
+    return () => window.clearTimeout(timeout);
   }, [toastMessage]);
+
+  useEffect(() => {
+    setLibraryPage(0);
+  }, [
+    filters.classification,
+    filters.muscleKey,
+    filters.origin,
+    filters.query,
+    filters.tag,
+  ]);
+
+  const updateSearchState = (
+    update: (current: ExerciseBrowserSearchState) => ExerciseBrowserSearchState,
+    replace = false,
+  ) => {
+    setSearchParams(serializeExerciseBrowserSearchState(update(searchState)), {
+      replace,
+    });
+  };
+
+  const updateFilters = (
+    next: Partial<ExerciseBrowserSearchState["filters"]>,
+    replace = false,
+  ) =>
+    updateSearchState(
+      (current) => ({
+        ...current,
+        filters: { ...current.filters, ...next },
+      }),
+      replace,
+    );
 
   const ownerScopeQuery = useQuery({
     queryKey: ["workspace-owner", workspaceId],
@@ -237,126 +212,73 @@ export function PtExerciseLibraryPage() {
   });
 
   const libraryOwnerUserId = ownerUserId ?? ownerScopeQuery.data ?? null;
-
   const libraryQuery = useQuery(
     exerciseLibraryFullQueryOptions(libraryOwnerUserId),
   );
-
   const exercises = useMemo(() => libraryQuery.data ?? [], [libraryQuery.data]);
-  const existingSourceIds = useMemo(
+  const libraryItems = useMemo(
+    () => exercises.map(adaptPersistedExerciseBrowserItem),
+    [exercises],
+  );
+  const filteredLibraryItems = useMemo(
+    () => filterExerciseBrowserItems(libraryItems, filters),
+    [filters, libraryItems],
+  );
+  const libraryPageCount = Math.max(
+    1,
+    Math.ceil(filteredLibraryItems.length / libraryPageSize),
+  );
+  const visibleLibraryItems = useMemo(() => {
+    const safePage = Math.min(libraryPage, libraryPageCount - 1);
+    return filteredLibraryItems.slice(
+      safePage * libraryPageSize,
+      (safePage + 1) * libraryPageSize,
+    );
+  }, [filteredLibraryItems, libraryPage, libraryPageCount]);
+
+  const providerQuery = useInfiniteQuery({
+    queryKey: ["exercise-provider-browser", debouncedProviderQuery] as const,
+    enabled: view === "provider" && exerciseDatasetConfigured,
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) =>
+      searchExerciseDataset({
+        name: debouncedProviderQuery,
+        bodyPart: "",
+        equipment: "",
+        target: "",
+        limit: providerPageSize,
+        cursor: pageParam,
+        signal,
+      }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  const providerExercises = useMemo(
+    () => mergeProviderPages(providerQuery.data?.pages),
+    [providerQuery.data?.pages],
+  );
+  const providerById = useMemo(
+    () => new Map(providerExercises.map((exercise) => [exercise.id, exercise])),
+    [providerExercises],
+  );
+  const providerItems = useMemo(
     () =>
-      new Set(
-        exercises
-          .map((exercise) => exercise.source_exercise_id?.trim())
-          .filter((value): value is string => Boolean(value)),
+      providerExercises.map((exercise) =>
+        adaptProviderExerciseBrowserItem(exercise, exercises),
       ),
-    [exercises],
+    [exercises, providerExercises],
   );
-  const existingNames = useMemo(
-    () => new Set(exercises.map((exercise) => normalizeName(exercise.name))),
-    [exercises],
-  );
-
-  const filteredExercises = useMemo(() => {
-    const nameFilter = filters.name.trim().toLowerCase();
-    const primaryFilter = filters.primary_muscle.trim().toLowerCase();
-    const tagFilter = filters.tag.trim().toLowerCase();
-
-    return exercises.filter((exercise) => {
-      const searchValues = [
-        exercise.name,
-        exercise.primary_muscle,
-        exercise.muscle_group,
-        exercise.category,
-        exercise.equipment,
-        exercise.notes,
-        exercise.instructions,
-        ...(exercise.secondary_muscles ?? []),
-        ...(exercise.tags ?? []),
-      ];
-      const nameMatch = includesFilter(searchValues, nameFilter);
-      const primaryMatch = includesFilter(
-        [
-          exercise.primary_muscle,
-          exercise.muscle_group,
-          ...(exercise.secondary_muscles ?? []),
-        ],
-        primaryFilter,
-      );
-      const tagsMatch = includesFilter(
-        [
-          ...(exercise.tags ?? []),
-          exercise.equipment,
-          exercise.category,
-          exercise.muscle_group,
-          exercise.primary_muscle,
-        ],
-        tagFilter,
-      );
-      return nameMatch && primaryMatch && tagsMatch;
-    });
-  }, [exercises, filters]);
-
-  const filteredDatasetResults = useMemo(() => {
-    const nameFilter = filters.name.trim().toLowerCase();
-    const primaryFilter = filters.primary_muscle.trim().toLowerCase();
-    const tagFilter = filters.tag.trim().toLowerCase();
-
-    return datasetResults.filter((exercise) => {
-      const searchValues = [
-        exercise.name,
-        exercise.bodyPart,
-        exercise.target,
-        exercise.equipment,
-        exercise.overview,
-        ...exercise.secondaryMuscles,
-        ...exercise.keywords,
-        ...exercise.exerciseTips,
-        ...exercise.instructions,
-      ];
-      const nameMatch = includesFilter(searchValues, nameFilter);
-      const primaryMatch = includesFilter(
-        [exercise.target, exercise.bodyPart, ...exercise.secondaryMuscles],
-        primaryFilter,
-      );
-      const tagsMatch = includesFilter(
-        [
-          exercise.equipment,
-          exercise.bodyPart,
-          exercise.target,
-          ...exercise.secondaryMuscles,
-          ...exercise.keywords,
-        ],
-        tagFilter,
-      );
-      return nameMatch && primaryMatch && tagsMatch;
-    });
-  }, [datasetResults, filters]);
-  const datasetTotalPages = useMemo(
+  const filteredProviderItems = useMemo(
     () =>
-      Math.max(1, Math.ceil(filteredDatasetResults.length / datasetPageSize)),
-    [filteredDatasetResults.length],
+      filterExerciseBrowserItems(providerItems, {
+        ...filters,
+        origin: "all",
+        classification: "all",
+      }),
+    [filters, providerItems],
   );
-  const visibleDatasetResults = useMemo(() => {
-    const startIndex = (datasetPage - 1) * datasetPageSize;
-    return filteredDatasetResults.slice(
-      startIndex,
-      startIndex + datasetPageSize,
-    );
-  }, [datasetPage, filteredDatasetResults]);
-  const datasetPageButtons = useMemo(() => {
-    const total = datasetTotalPages + (datasetHasMore ? 1 : 0);
-    if (total <= 1) return [1];
-
-    const start = Math.max(1, datasetPage - 2);
-    const end = Math.min(total, start + 4);
-    const adjustedStart = Math.max(1, end - 4);
-
-    return Array.from(
-      { length: end - adjustedStart + 1 },
-      (_, index) => adjustedStart + index,
-    );
-  }, [datasetHasMore, datasetPage, datasetTotalPages]);
 
   const openCreate = () => {
     setSelected(null);
@@ -401,12 +323,7 @@ export function PtExerciseLibraryPage() {
       equipment: form.equipment.trim() || null,
       video_url: form.video_url.trim() || null,
       is_unilateral: form.is_unilateral,
-      ...(selected
-        ? {}
-        : {
-            workspace_id: null,
-            source: "manual",
-          }),
+      ...(selected ? {} : { workspace_id: null, source: "manual" }),
       ...(!selected || muscleClassificationChanged
         ? buildCustomExerciseMusclePersistenceFields(muscleClassification)
         : {}),
@@ -421,7 +338,7 @@ export function PtExerciseLibraryPage() {
       setActionError(
         details.code === "23505"
           ? "An exercise with this name already exists in this shared library."
-          : `${details.code}: ${details.message}`,
+          : "The exercise could not be saved. Try again.",
       );
       setActionStatus("idle");
       return;
@@ -437,15 +354,14 @@ export function PtExerciseLibraryPage() {
 
   const handleDelete = async () => {
     if (!selected || !libraryOwnerUserId) return;
-    setActionStatus("saving");
+    setActionStatus("deleting");
     setActionError(null);
     const { error } = await supabase
       .from("exercises")
       .delete()
       .eq("id", selected.id);
     if (error) {
-      const details = getErrorDetails(error);
-      setActionError(`${details.code}: ${details.message}`);
+      setActionError(getExerciseDeleteErrorMessage(error));
       setActionStatus("idle");
       return;
     }
@@ -456,194 +372,16 @@ export function PtExerciseLibraryPage() {
     await queryClient.invalidateQueries({
       queryKey: exerciseQueryKeys.library.owner(libraryOwnerUserId),
     });
+    setToastMessage("Exercise deleted");
   };
-
-  const loadDefaultDataset = async () => {
-    if (!exerciseDatasetConfigured) return;
-    setDatasetLoading(true);
-    setDatasetError(null);
-    try {
-      const result = await searchExerciseDataset({
-        name: "",
-        bodyPart: "",
-        equipment: "",
-        target: "",
-        limit: datasetPageSize,
-        cursor: null,
-      });
-      setDatasetResults(result.exercises);
-      setDatasetCursor(result.nextCursor);
-      setDatasetHasMore(Boolean(result.nextCursor));
-      setDatasetPage(1);
-    } catch (error) {
-      const details = getErrorDetails(error);
-      setDatasetError(`${details.code}: ${details.message}`);
-    } finally {
-      setDatasetLoading(false);
-    }
-  };
-
-  const goToDatasetPage = async (page: number) => {
-    if (page < 1) return;
-    if (page <= datasetTotalPages) {
-      setDatasetPage(page);
-      return;
-    }
-    if (!datasetCursor || !datasetHasMore) {
-      setDatasetPage(datasetTotalPages);
-      return;
-    }
-
-    setDatasetLoading(true);
-    setDatasetError(null);
-    try {
-      let nextCursor: string | null = datasetCursor;
-      let nextHasMore: boolean = datasetHasMore;
-      let nextResults = datasetResults;
-
-      while (
-        nextHasMore &&
-        nextResults.filter((exercise) => {
-          const nameFilter = filters.name.trim().toLowerCase();
-          const primaryFilter = filters.primary_muscle.trim().toLowerCase();
-          const tagFilter = filters.tag.trim().toLowerCase();
-
-          const searchValues = [
-            exercise.name,
-            exercise.bodyPart,
-            exercise.target,
-            exercise.equipment,
-            exercise.overview,
-            ...exercise.secondaryMuscles,
-            ...exercise.keywords,
-            ...exercise.exerciseTips,
-            ...exercise.instructions,
-          ];
-
-          return (
-            includesFilter(searchValues, nameFilter) &&
-            includesFilter(
-              [
-                exercise.target,
-                exercise.bodyPart,
-                ...exercise.secondaryMuscles,
-              ],
-              primaryFilter,
-            ) &&
-            includesFilter(
-              [
-                exercise.equipment,
-                exercise.bodyPart,
-                exercise.target,
-                ...exercise.secondaryMuscles,
-                ...exercise.keywords,
-              ],
-              tagFilter,
-            )
-          );
-        }).length <
-          page * datasetPageSize &&
-        nextCursor
-      ) {
-        const result = await searchExerciseDataset({
-          name: "",
-          bodyPart: "",
-          equipment: "",
-          target: "",
-          limit: datasetPageSize,
-          cursor: nextCursor,
-        });
-        nextResults = mergeDatasetExercises(nextResults, result.exercises);
-        nextCursor = result.nextCursor;
-        nextHasMore = Boolean(result.nextCursor);
-      }
-
-      const nextFilteredResults = nextResults.filter((exercise) => {
-        const nameFilter = filters.name.trim().toLowerCase();
-        const primaryFilter = filters.primary_muscle.trim().toLowerCase();
-        const tagFilter = filters.tag.trim().toLowerCase();
-
-        const searchValues = [
-          exercise.name,
-          exercise.bodyPart,
-          exercise.target,
-          exercise.equipment,
-          exercise.overview,
-          ...exercise.secondaryMuscles,
-          ...exercise.keywords,
-          ...exercise.exerciseTips,
-          ...exercise.instructions,
-        ];
-
-        return (
-          includesFilter(searchValues, nameFilter) &&
-          includesFilter(
-            [exercise.target, exercise.bodyPart, ...exercise.secondaryMuscles],
-            primaryFilter,
-          ) &&
-          includesFilter(
-            [
-              exercise.equipment,
-              exercise.bodyPart,
-              exercise.target,
-              ...exercise.secondaryMuscles,
-              ...exercise.keywords,
-            ],
-            tagFilter,
-          )
-        );
-      });
-      const nextTotalPages = Math.max(
-        1,
-        Math.ceil(nextFilteredResults.length / datasetPageSize),
-      );
-
-      setDatasetResults(nextResults);
-      setDatasetCursor(nextCursor);
-      setDatasetHasMore(nextHasMore);
-      setDatasetPage(Math.min(page, nextTotalPages));
-    } catch (error) {
-      const details = getErrorDetails(error);
-      setDatasetError(`${details.code}: ${details.message}`);
-    } finally {
-      setDatasetLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!exerciseDatasetConfigured) return;
-    if (datasetBootstrappedRef.current) return;
-    datasetBootstrappedRef.current = true;
-    void loadDefaultDataset();
-  }, []);
-
-  useEffect(() => {
-    setDatasetPage(1);
-  }, [filters]);
 
   const handleImportExercise = async (exercise: ExerciseDatasetExercise) => {
-    if (!libraryOwnerUserId) {
-      setDatasetError(
-        "Shared library owner could not be resolved for this workspace.",
-      );
-      return;
-    }
-    if (existingSourceIds.has(exercise.id)) {
-      setDatasetError("That exercise is already imported.");
-      return;
-    }
-    if (existingNames.has(normalizeName(exercise.name))) {
-      setDatasetError(
-        "That exercise name already exists in this shared library.",
-      );
-      return;
-    }
-
+    if (!libraryOwnerUserId) return;
     setImportingId(exercise.id);
-    setDatasetError(null);
 
     const { error } = await supabase.from("exercises").insert({
       owner_user_id: libraryOwnerUserId,
+      workspace_id: null,
       name: exercise.name,
       muscle_group: exercise.bodyPart,
       primary_muscle: exercise.target,
@@ -673,460 +411,396 @@ export function PtExerciseLibraryPage() {
       source_payload: exercise.raw,
     });
 
+    setImportingId(null);
     if (error) {
       const details = getErrorDetails(error);
-      setDatasetError(
+      setToastMessage(
         details.code === "23505"
-          ? "A matching exercise already exists in this shared library."
-          : `${details.code}: ${details.message}`,
+          ? "That exercise name already exists in your library."
+          : "The exercise could not be saved to your library.",
       );
-      setImportingId(null);
       return;
     }
 
-    setImportingId(null);
     await queryClient.invalidateQueries({
       queryKey: exerciseQueryKeys.library.owner(libraryOwnerUserId),
     });
-    setToastMessage("Exercise imported");
+    setToastMessage("Exercise saved to your library");
+  };
+
+  const handleMuscleChange = (muscleKey: MuscleKey | null) => {
+    updateFilters({
+      muscleKey,
+      classification:
+        muscleKey && filters.classification === "unclassified"
+          ? "all"
+          : filters.classification,
+    });
+  };
+
+  const handleLibraryScopeChange = (
+    origin: ExerciseBrowserOriginFilter,
+    classification: ExerciseBrowserClassificationFilter,
+  ) => {
+    updateFilters({
+      origin,
+      classification,
+      muscleKey: classification === "unclassified" ? null : filters.muscleKey,
+    });
+  };
+
+  const clearFilters = () =>
+    updateSearchState((current) => ({
+      ...current,
+      filters: DEFAULT_EXERCISE_BROWSER_FILTERS,
+    }));
+
+  const hasActiveFilters =
+    Boolean(filters.query.trim()) ||
+    Boolean(filters.tag) ||
+    Boolean(filters.muscleKey) ||
+    filters.origin !== "all" ||
+    filters.classification !== "all";
+  const selectedMuscleLabel = filters.muscleKey
+    ? getMuscleMetadata(filters.muscleKey).label
+    : null;
+  const libraryLoading =
+    workspaceLoading || ownerScopeQuery.isLoading || libraryQuery.isLoading;
+  const libraryError =
+    workspaceError ?? ownerScopeQuery.error ?? libraryQuery.error;
+  const safeLibraryPage = Math.min(libraryPage, libraryPageCount - 1);
+
+  const libraryActions = (item: FilteredExerciseBrowserItem) => {
+    const exercise = exercises.find(
+      (candidate) => candidate.id === item.exerciseId,
+    );
+    if (!exercise) return null;
+    return (
+      <>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={() => openEdit(exercise)}
+        >
+          Edit
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setSelected(exercise);
+            setActionError(null);
+            setDeleteOpen(true);
+          }}
+        >
+          Delete
+        </Button>
+      </>
+    );
+  };
+
+  const providerActions = (item: FilteredExerciseBrowserItem) => {
+    if (libraryLoading) {
+      return (
+        <Button type="button" size="sm" variant="secondary" disabled>
+          Checking library…
+        </Button>
+      );
+    }
+    if (item.savedMatch.status === "exact") {
+      return (
+        <Button type="button" size="sm" variant="secondary" disabled>
+          In library
+        </Button>
+      );
+    }
+    if (item.savedMatch.status === "name_conflict") {
+      return (
+        <Button type="button" size="sm" variant="secondary" disabled>
+          Name already exists
+        </Button>
+      );
+    }
+    const providerExercise = item.providerExerciseId
+      ? providerById.get(item.providerExerciseId)
+      : null;
+    return (
+      <Button
+        type="button"
+        size="sm"
+        disabled={!providerExercise || importingId === item.providerExerciseId}
+        onClick={() => {
+          if (providerExercise) void handleImportExercise(providerExercise);
+        }}
+      >
+        {importingId === item.providerExerciseId
+          ? "Saving…"
+          : "Save to library"}
+      </Button>
+    );
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-5">
       {toastMessage ? (
-        <div className="fixed right-6 top-6 z-50 w-[260px]">
-          <Alert className="border-border bg-muted/90">
-            <AlertDescription className="text-sm">
-              {toastMessage}
-            </AlertDescription>
+        <div
+          className="fixed right-4 top-4 z-50 w-[min(22rem,calc(100vw-2rem))]"
+          aria-live="polite"
+        >
+          <Alert tone="info">
+            <AlertDescription>{toastMessage}</AlertDescription>
           </Alert>
         </div>
       ) : null}
+
       <WorkspacePageHeader
+        eyebrow="Coaching library"
         title="Exercise Library"
-        description="Manage a shared owner-level library used across owned workspaces."
-        className="w-full"
+        description="Browse your shared owner library or save movements from the connected provider using one canonical muscle filter."
         actions={
-          <div className="flex w-full min-w-0 items-center gap-2 overflow-x-auto pb-1 sm:overflow-visible sm:pb-0">
-            <div className="relative min-w-[280px] flex-1 sm:w-[320px]">
-              <Search className="app-search-icon h-4 w-4" />
-              <Input
-                className="app-search-input"
-                placeholder="Search all exercises"
-                value={filters.name}
-                onChange={(event) =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    name: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <Select
-              variant="filter"
-              className="min-w-[200px]"
-              value={filters.primary_muscle}
-              onChange={(event) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  primary_muscle: event.target.value,
-                }))
-              }
-            >
-              {globalPrimaryMuscleOptions.map((option) => (
-                <option key={option || "all"} value={option}>
-                  {option ? option : "All primary muscles"}
-                </option>
-              ))}
-            </Select>
-            <Input
-              className="min-w-[200px]"
-              placeholder="Filter by tag"
-              value={filters.tag}
-              onChange={(event) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  tag: event.target.value,
-                }))
-              }
-            />
-            <Button className="ml-auto shrink-0" onClick={openCreate}>
-              Add exercise
-            </Button>
-          </div>
+          <Button type="button" onClick={openCreate}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Create exercise
+          </Button>
         }
       />
 
-      {workspaceError ? (
-        <Card className="border-destructive/40">
-          <CardHeader>
-            <CardTitle>Workspace error</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            {getErrorDetails(workspaceError).code}:{" "}
-            {getErrorDetails(workspaceError).message}
-          </CardContent>
-        </Card>
-      ) : null}
+      <ExerciseLibraryToolbar
+        query={filters.query}
+        tag={filters.tag}
+        onQueryChange={(query) => updateFilters({ query }, true)}
+        onTagChange={(tag) => updateFilters({ tag: tag.trim() || null }, true)}
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      />
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 border-b border-border/60 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <CardTitle>Exercise catalog</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Scan saved movements and import-ready exercises by muscle and
-              setup.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <span className={exerciseTagClassName}>
-              Library {filteredExercises.length}
-            </span>
-            {exerciseDatasetConfigured ? (
-              <span className={exerciseTagClassName}>
-                Import results {filteredDatasetResults.length}
-              </span>
+      <Tabs
+        value={view}
+        onValueChange={(value) =>
+          updateSearchState((current) => ({
+            ...current,
+            view: value === "provider" ? "provider" : "library",
+          }))
+        }
+      >
+        <div className="flex flex-col gap-3 rounded-[24px] border border-border/65 bg-card/45 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList className="grid w-full grid-cols-2 sm:w-auto">
+            <TabsTrigger value="library" className="gap-2">
+              <Library className="h-4 w-4" aria-hidden="true" />
+              My Library
+            </TabsTrigger>
+            <TabsTrigger value="provider" className="gap-2">
+              <Database className="h-4 w-4" aria-hidden="true" />
+              Provider Catalog
+            </TabsTrigger>
+          </TabsList>
+          <div className="flex flex-wrap items-center gap-2" aria-live="polite">
+            {selectedMuscleLabel ? (
+              <Badge variant="info">Muscle: {selectedMuscleLabel}</Badge>
             ) : null}
+            <Badge variant="muted">
+              {view === "library"
+                ? `${filteredLibraryItems.length} saved result${filteredLibraryItems.length === 1 ? "" : "s"}`
+                : `${filteredProviderItems.length} match${filteredProviderItems.length === 1 ? "" : "es"} in ${providerItems.length} loaded`}
+            </Badge>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-5">
-          {workspaceLoading ||
-          ownerScopeQuery.isLoading ||
-          libraryQuery.isLoading ? (
-            <div className="text-sm text-muted-foreground">
-              Loading exercises...
-            </div>
-          ) : ownerScopeQuery.error || libraryQuery.error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-              {
-                getErrorDetails(ownerScopeQuery.error ?? libraryQuery.error)
-                  .code
-              }
-              :{" "}
-              {
-                getErrorDetails(ownerScopeQuery.error ?? libraryQuery.error)
-                  .message
-              }
-            </div>
-          ) : exercises.length === 0 && visibleDatasetResults.length === 0 ? (
-            <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-4 rounded-[24px] border border-dashed border-border bg-muted/20 p-5">
-                <div className="space-y-3">
-                  <div className="text-sm font-semibold text-foreground">
-                    No exercises yet
-                  </div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    Add or import exercises to start building from a shared
-                    owner library.
-                  </div>
-                </div>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div className="rounded-[18px] border border-border/70 bg-background/45 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Categories
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {muscleGroups.slice(0, 5).map((group) => (
-                        <span
-                          key={group}
-                          className="rounded-full border border-border/70 bg-secondary/18 px-2.5 py-1 text-[11px] text-muted-foreground"
-                        >
-                          {group}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="rounded-[18px] border border-border/70 bg-background/45 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Tags
-                    </div>
-                    <div className="mt-2 text-sm text-muted-foreground">
-                      Examples: dumbbell, home gym, unilateral, power.
-                    </div>
-                  </div>
-                  <div className="rounded-[18px] border border-border/70 bg-background/45 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Shared scope
-                    </div>
-                    <div className="mt-2 text-sm text-muted-foreground">
-                      Owned workspaces reuse the same exercise rows.
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-[24px] border border-border/70 bg-background/35 p-5">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Example item
-                </div>
-                <div className="mt-3 rounded-[20px] border border-border/70 bg-background/45 p-4">
-                  <div className="text-sm font-semibold text-foreground">
-                    Dumbbell Split Squat
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Legs · Dumbbells
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredExercises.length > 0 ||
-              visibleDatasetResults.length > 0 ? (
-                <div
-                  className={`hidden rounded-[18px] border border-border/60 bg-secondary/18 px-4 py-2.5 lg:grid ${exerciseCatalogGridClassName} lg:items-center lg:gap-4`}
-                >
-                  <div className="ops-kicker">Exercise</div>
-                  <div className="ops-kicker">Muscles</div>
-                  <div className="ops-kicker">Equipment</div>
-                  <div className="ops-kicker">Source</div>
-                  <div className="ops-kicker text-right">Action</div>
-                </div>
-              ) : null}
-              {filteredExercises.length === 0 &&
-              visibleDatasetResults.length === 0 ? (
-                <div className="rounded-[18px] border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                  No exercises match those filters.
-                </div>
-              ) : null}
-              {filteredExercises.map((exercise) => {
-                const muscleTags = getLibraryMuscleTags(exercise);
-                const contextTags = getExerciseContextChips(exercise).filter(
-                  (tag) =>
-                    !muscleTags.some(
-                      (muscle) => muscle.toLowerCase() === tag.toLowerCase(),
-                    ) &&
-                    tag.toLowerCase() !==
-                      (exercise.equipment ?? "").toLowerCase(),
-                );
+        </div>
 
-                return (
-                  <article key={exercise.id} className={exerciseRowClassName}>
-                    <div className="min-w-0 space-y-1.5">
-                      <div className={exerciseColumnLabelClassName}>
-                        Exercise
-                      </div>
-                      <h3 className="truncate text-base font-semibold text-foreground">
-                        {exercise.name}
-                      </h3>
-                      {contextTags.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {contextTags.slice(0, 2).map((tag) => (
-                            <span key={tag} className={exerciseTagClassName}>
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="mt-3 min-w-0 lg:mt-0">
-                      <div className={exerciseColumnLabelClassName}>
-                        Muscles
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-1.5 lg:mt-0">
-                        {(muscleTags.length ? muscleTags : ["General"]).map(
-                          (tag) => (
-                            <span
-                              key={tag}
-                              className={exerciseTagClassName}
-                              title={tag}
-                            >
-                              {tag}
-                            </span>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-3 min-w-0 lg:mt-0">
-                      <div className={exerciseColumnLabelClassName}>
-                        Equipment
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-1.5 lg:mt-0">
-                        <span className={exerciseTagClassName}>
-                          <span className="truncate">
-                            {exercise.equipment ?? "No equipment"}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 lg:mt-0">
-                      <div className={exerciseColumnLabelClassName}>Source</div>
-                      <span className="mt-1 inline-flex min-h-7 items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary lg:mt-0">
-                        {exercise.source === "exercise_dataset"
-                          ? "Imported"
-                          : "Saved"}
-                      </span>
-                    </div>
-                    <div className="mt-3 flex shrink-0 items-center gap-2 lg:mt-0 lg:justify-end">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <ExerciseLibraryFilterPanel
+            muscleKey={filters.muscleKey}
+            origin={filters.origin}
+            classification={filters.classification}
+            libraryFiltersVisible={view === "library"}
+            onMuscleChange={handleMuscleChange}
+            onLibraryScopeChange={handleLibraryScopeChange}
+          />
+
+          <section
+            className="min-w-0 rounded-[26px] border border-border/70 bg-card/55 p-3 shadow-card sm:p-4"
+            aria-label={
+              view === "library"
+                ? "My Library results"
+                : "Provider Catalog results"
+            }
+          >
+            {view === "library" ? (
+              <div className="space-y-4">
+                {libraryError ? (
+                  <Alert tone="danger">
+                    <AlertTitle>Couldn’t load your exercise library</AlertTitle>
+                    <AlertDescription>
+                      Saved exercises are temporarily unavailable.
+                    </AlertDescription>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="mt-3"
+                      onClick={() => void libraryQuery.refetch()}
+                    >
+                      <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                      Try again
+                    </Button>
+                  </Alert>
+                ) : (
+                  <ExerciseLibraryResults
+                    items={visibleLibraryItems}
+                    loading={libraryLoading}
+                    emptyTitle={
+                      exercises.length === 0
+                        ? "Your library is empty"
+                        : filters.classification === "unclassified"
+                          ? "No unclassified exercises"
+                          : "No saved exercises match"
+                    }
+                    emptyDescription={
+                      exercises.length === 0
+                        ? "Create an exercise or open Provider Catalog to save one to this owner-level library."
+                        : filters.classification === "unclassified"
+                          ? "Every saved exercise currently has canonical anatomy metadata."
+                          : "Adjust the search, muscle, tag, or library-scope filters."
+                    }
+                    actionsForItem={libraryActions}
+                  />
+                )}
+
+                {!libraryLoading &&
+                !libraryError &&
+                filteredLibraryItems.length > 0 ? (
+                  <div className="flex flex-col gap-3 border-t border-border/60 pt-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                    <p>
+                      Showing {safeLibraryPage * libraryPageSize + 1}–
+                      {Math.min(
+                        (safeLibraryPage + 1) * libraryPageSize,
+                        filteredLibraryItems.length,
+                      )}{" "}
+                      of {filteredLibraryItems.length}
+                    </p>
+                    <div className="flex items-center gap-2">
                       <Button
+                        type="button"
                         size="sm"
                         variant="secondary"
-                        onClick={() => openEdit(exercise)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setSelected(exercise);
-                          setDeleteOpen(true);
-                          setActionError(null);
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </article>
-                );
-              })}
-              {datasetError ? (
-                <div className="rounded-[18px] border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                  {datasetError}
-                </div>
-              ) : null}
-              {visibleDatasetResults.map((exercise) => {
-                const sourceImported = existingSourceIds.has(exercise.id);
-                const nameExists = existingNames.has(
-                  normalizeName(exercise.name),
-                );
-                const importDisabled = sourceImported || nameExists;
-                const statusLabel = sourceImported
-                  ? "Imported"
-                  : nameExists
-                    ? "Name used"
-                    : "Import";
-                const muscleTags = getDatasetMuscleTags(exercise);
-                const equipmentLabel = exercise.equipment || "No equipment";
-
-                return (
-                  <article
-                    key={exercise.id}
-                    className={exerciseRowClassName.replace(
-                      "bg-background/45",
-                      "bg-secondary/15",
-                    )}
-                  >
-                    <div className="min-w-0 space-y-1.5">
-                      <div className={exerciseColumnLabelClassName}>
-                        Exercise
-                      </div>
-                      <h3 className="truncate text-base font-semibold text-foreground">
-                        {exercise.name}
-                      </h3>
-                    </div>
-                    <div className="mt-3 min-w-0 lg:mt-0">
-                      <div className={exerciseColumnLabelClassName}>
-                        Muscles
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-1.5 lg:mt-0">
-                        {(muscleTags.length ? muscleTags : ["General"]).map(
-                          (tag) => (
-                            <span
-                              key={tag}
-                              className={exerciseTagClassName}
-                              title={tag}
-                            >
-                              {tag}
-                            </span>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-3 min-w-0 lg:mt-0">
-                      <div className={exerciseColumnLabelClassName}>
-                        Equipment
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-1.5 lg:mt-0">
-                        <span className={exerciseTagClassName}>
-                          <span className="truncate">{equipmentLabel}</span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 lg:mt-0">
-                      <div className={exerciseColumnLabelClassName}>Source</div>
-                      <span className="mt-1 inline-flex min-h-7 items-center rounded-full border border-border/70 bg-background/60 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:mt-0">
-                        Dataset
-                      </span>
-                    </div>
-                    <div className="mt-3 flex justify-start lg:mt-0 lg:justify-end">
-                      <Button
-                        size="sm"
-                        variant={importDisabled ? "secondary" : "default"}
-                        disabled={importDisabled || importingId === exercise.id}
-                        onClick={() => handleImportExercise(exercise)}
-                        className="shrink-0"
-                      >
-                        {importingId === exercise.id
-                          ? "Importing..."
-                          : statusLabel}
-                      </Button>
-                    </div>
-                  </article>
-                );
-              })}
-              {datasetLoading && exerciseDatasetConfigured ? (
-                <div className="rounded-[18px] border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-                  Loading imported exercises...
-                </div>
-              ) : null}
-              {!datasetLoading &&
-              exerciseDatasetConfigured &&
-              filteredExercises.length > 0 &&
-              visibleDatasetResults.length === 0 ? (
-                <div className="rounded-[18px] border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-                  No import results match those filters.
-                </div>
-              ) : null}
-              {exerciseDatasetConfigured ? (
-                <div className="flex flex-col gap-3 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-xs text-muted-foreground">
-                    Import results page {datasetPage} of {datasetTotalPages}
-                    {datasetHasMore ? "+" : ""}
-                  </div>
-                  {(datasetPageButtons.length > 1 || datasetHasMore) && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={datasetPage === 1 || datasetLoading}
-                        onClick={() => void goToDatasetPage(datasetPage - 1)}
+                        disabled={safeLibraryPage === 0}
+                        onClick={() =>
+                          setLibraryPage((page) => Math.max(0, page - 1))
+                        }
                       >
                         Previous
                       </Button>
-                      {datasetPageButtons.map((pageNumber) => (
-                        <Button
-                          key={pageNumber}
-                          size="sm"
-                          variant={
-                            pageNumber === datasetPage ? "default" : "secondary"
-                          }
-                          disabled={
-                            datasetLoading && pageNumber !== datasetPage
-                          }
-                          onClick={() => void goToDatasetPage(pageNumber)}
-                        >
-                          {pageNumber}
-                        </Button>
-                      ))}
+                      <span className="text-xs">
+                        Page {safeLibraryPage + 1} of {libraryPageCount}
+                      </span>
                       <Button
+                        type="button"
                         size="sm"
                         variant="secondary"
-                        disabled={
-                          datasetLoading ||
-                          (!datasetHasMore && datasetPage >= datasetTotalPages)
+                        disabled={safeLibraryPage >= libraryPageCount - 1}
+                        onClick={() =>
+                          setLibraryPage((page) =>
+                            Math.min(libraryPageCount - 1, page + 1),
+                          )
                         }
-                        onClick={() => void goToDatasetPage(datasetPage + 1)}
                       >
                         Next
                       </Button>
                     </div>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {!exerciseDatasetConfigured ? (
+                  <Alert tone="warning">
+                    <AlertTitle>Provider catalog unavailable</AlertTitle>
+                    <AlertDescription>
+                      The provider is not configured. Your saved library remains
+                      available.
+                    </AlertDescription>
+                  </Alert>
+                ) : providerQuery.isError && !providerQuery.data ? (
+                  <Alert tone="danger">
+                    <AlertTitle>Provider catalog couldn’t load</AlertTitle>
+                    <AlertDescription>
+                      {getProviderErrorCopy(providerQuery.error)}
+                    </AlertDescription>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="mt-3"
+                      onClick={() => void providerQuery.refetch()}
+                    >
+                      <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                      Retry provider
+                    </Button>
+                  </Alert>
+                ) : (
+                  <>
+                    <ExerciseLibraryResults
+                      items={filteredProviderItems}
+                      loading={providerQuery.isPending}
+                      emptyTitle={
+                        providerQuery.hasNextPage
+                          ? "No matches in the loaded provider results"
+                          : "No provider results"
+                      }
+                      emptyDescription={
+                        providerQuery.hasNextPage
+                          ? "More provider records are available. Load one additional page to continue searching."
+                          : providerItems.length
+                            ? "The loaded provider stream has ended without a match for these filters."
+                            : "The provider result stream ended without returning exercises."
+                      }
+                      actionsForItem={providerActions}
+                    />
+
+                    {providerQuery.isFetchNextPageError &&
+                    providerItems.length ? (
+                      <Alert tone="warning">
+                        <AlertTitle>
+                          Couldn’t load the next provider page
+                        </AlertTitle>
+                        <AlertDescription>
+                          Existing loaded results are still available. Try
+                          loading one more page again.
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
+
+                    {!providerQuery.isPending ? (
+                      <div className="flex flex-col gap-3 border-t border-border/60 pt-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                        <p>
+                          {providerItems.length} provider record
+                          {providerItems.length === 1 ? "" : "s"} loaded
+                          {providerQuery.hasNextPage
+                            ? "; more available"
+                            : "; end reached"}
+                        </p>
+                        {providerQuery.hasNextPage ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={providerQuery.isFetchingNextPage}
+                            onClick={() => void providerQuery.fetchNextPage()}
+                          >
+                            {providerQuery.isFetchingNextPage
+                              ? "Loading one page…"
+                              : "Load more"}
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            )}
+          </section>
+        </div>
+      </Tabs>
 
       <Dialog
         open={modalOpen}
@@ -1141,21 +815,28 @@ export function PtExerciseLibraryPage() {
         <DialogContent className="sm:max-w-[720px]">
           <DialogHeader>
             <DialogTitle>
-              {selected ? "Edit exercise" : "Add exercise"}
+              {selected ? "Edit exercise" : "Create exercise"}
             </DialogTitle>
             <DialogDescription>
-              Define movement defaults for the shared library.
+              Define movement defaults for the shared owner-level library.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
+              <label
+                htmlFor="exercise-name"
+                className="text-xs font-semibold text-muted-foreground"
+              >
                 Name
               </label>
               <Input
+                id="exercise-name"
                 value={form.name}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, name: event.target.value }))
+                  setForm((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
                 }
                 placeholder="e.g., Bench Press"
               />
@@ -1166,7 +847,7 @@ export function PtExerciseLibraryPage() {
                 setMuscleClassification(nextValue);
                 setMuscleClassificationChanged(true);
               }}
-              disabled={actionStatus === "saving"}
+              disabled={actionStatus !== "idle"}
               legacyLabels={
                 selected
                   ? [
@@ -1178,14 +859,18 @@ export function PtExerciseLibraryPage() {
               }
             />
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
+              <label
+                htmlFor="exercise-equipment"
+                className="text-xs font-semibold text-muted-foreground"
+              >
                 Equipment
               </label>
               <Input
+                id="exercise-equipment"
                 value={form.equipment}
                 onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
+                  setForm((current) => ({
+                    ...current,
                     equipment: event.target.value,
                   }))
                 }
@@ -1193,28 +878,32 @@ export function PtExerciseLibraryPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">
+              <label
+                htmlFor="exercise-video"
+                className="text-xs font-semibold text-muted-foreground"
+              >
                 Video URL
               </label>
               <Input
+                id="exercise-video"
                 value={form.video_url}
                 onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
+                  setForm((current) => ({
+                    ...current,
                     video_url: event.target.value,
                   }))
                 }
                 placeholder="https://"
               />
             </div>
-            <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-border/65 bg-muted/25 px-3 text-sm text-foreground">
               <input
                 type="checkbox"
                 className="h-4 w-4"
                 checked={form.is_unilateral}
                 onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
+                  setForm((current) => ({
+                    ...current,
                     is_unilateral: event.target.checked,
                   }))
                 }
@@ -1222,46 +911,62 @@ export function PtExerciseLibraryPage() {
               Unilateral movement
             </label>
             {actionError ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-                {actionError}
-              </div>
+              <Alert tone="danger">
+                <AlertDescription>{actionError}</AlertDescription>
+              </Alert>
             ) : null}
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setModalOpen(false)}
+            >
               Cancel
             </Button>
-            <Button disabled={actionStatus === "saving"} onClick={handleSave}>
-              {actionStatus === "saving" ? "Saving..." : "Save"}
+            <Button
+              type="button"
+              disabled={actionStatus !== "idle"}
+              onClick={() => void handleSave()}
+            >
+              {actionStatus === "saving" ? "Saving…" : "Save exercise"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent className="sm:max-w-[460px]">
           <DialogHeader>
-            <DialogTitle>Delete exercise</DialogTitle>
+            <DialogTitle>Delete exercise permanently?</DialogTitle>
             <DialogDescription>
-              This removes the exercise from the shared library and dependent
-              template rows.
+              Unused exercises may be permanently deleted. Exercises referenced
+              by templates, assignments, or workout history cannot be deleted,
+              and dependent records are never cascaded.
             </DialogDescription>
           </DialogHeader>
           {actionError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-              {actionError}
-            </div>
+            <Alert tone="danger">
+              <AlertDescription>{actionError}</AlertDescription>
+            </Alert>
           ) : null}
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setDeleteOpen(false)}
+            >
               Cancel
             </Button>
             <Button
+              type="button"
               variant="secondary"
-              disabled={actionStatus === "saving"}
-              onClick={handleDelete}
+              disabled={actionStatus !== "idle"}
+              onClick={() => void handleDelete()}
             >
-              {actionStatus === "saving" ? "Deleting..." : "Delete"}
+              {actionStatus === "deleting"
+                ? "Deleting…"
+                : "Delete unused exercise"}
             </Button>
           </DialogFooter>
         </DialogContent>
