@@ -309,6 +309,14 @@ describe("controlled anatomical selector source contract", () => {
     expect(selectorSource).toContain("selectedMuscle.label");
   });
 
+  it("presents muscle subgroups as keyboard-native disclosures", () => {
+    expect(listSource).toContain("<details");
+    expect(listSource).toContain("<summary");
+    expect(listSource).toContain("group-open:rotate-180");
+    expect(listSource).toContain("aria-labelledby={groupLabelId}");
+    expect(listSource).toContain("selectedMuscle?.label");
+  });
+
   it("keeps inactive map/list content out of the active tabs view", () => {
     expect(selectorSource).toContain('<TabsContent value="map"');
     expect(selectorSource).toContain('<TabsContent value="list"');
