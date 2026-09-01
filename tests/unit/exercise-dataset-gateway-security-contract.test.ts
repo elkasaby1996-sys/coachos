@@ -52,6 +52,13 @@ describe("exercise dataset gateway security wiring", () => {
     );
   });
 
+  it("reuses the existing server-only Open Wearables configuration", () => {
+    expect(edgeFunction).toContain('getOptionalEnv("OPEN_WEARABLES_API_URL")');
+    expect(edgeFunction).toContain('getOptionalEnv("OPEN_WEARABLES_API_KEY")');
+    expect(edgeFunction).toContain('"X-Open-Wearables-API-Key"');
+    expect(edgeFunction).toContain('.replace(/\\/api\\/v1\\/?$/i, "")');
+  });
+
   it("bounds upstream calls and returns stable safe errors", () => {
     expect(edgeHelper).toContain("EXERCISE_DATASET_MAX_LIMIT = 50");
     expect(edgeHelper).toContain(

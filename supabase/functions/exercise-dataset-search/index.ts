@@ -17,14 +17,27 @@ function getOptionalEnv(name: string) {
 }
 
 function getProviderConfig(): ExerciseDatasetProviderConfig | null {
-  const baseUrl = getOptionalEnv("EXERCISE_DATASET_BASE_URL");
-  const apiKey = getOptionalEnv("EXERCISE_DATASET_API_KEY");
+  const configuredBaseUrl = getOptionalEnv("EXERCISE_DATASET_BASE_URL");
+  const configuredApiKey = getOptionalEnv("EXERCISE_DATASET_API_KEY");
+  const openWearablesBaseUrl = getOptionalEnv("OPEN_WEARABLES_API_URL");
+  const openWearablesApiKey = getOptionalEnv("OPEN_WEARABLES_API_KEY");
+  const usesOpenWearablesFallback =
+    !configuredBaseUrl &&
+    !configuredApiKey &&
+    Boolean(openWearablesBaseUrl && openWearablesApiKey);
+  const baseUrl = usesOpenWearablesFallback
+    ? openWearablesBaseUrl.replace(/\/api\/v1\/?$/i, "")
+    : configuredBaseUrl;
+  const apiKey = usesOpenWearablesFallback
+    ? openWearablesApiKey
+    : configuredApiKey;
   if (!baseUrl || !apiKey) return null;
   return {
     baseUrl,
     apiKey,
     apiKeyHeader:
-      getOptionalEnv("EXERCISE_DATASET_API_KEY_HEADER") || "x-api-key",
+      getOptionalEnv("EXERCISE_DATASET_API_KEY_HEADER") ||
+      (usesOpenWearablesFallback ? "X-Open-Wearables-API-Key" : "x-api-key"),
     apiHost: getOptionalEnv("EXERCISE_DATASET_API_HOST"),
   };
 }

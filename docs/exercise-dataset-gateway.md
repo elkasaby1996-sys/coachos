@@ -16,6 +16,12 @@ file and never commit real values.
   to `x-api-key` when omitted locally.
 - `EXERCISE_DATASET_API_HOST` — optional provider host header value.
 
+When the current Open Wearables server configuration already exists, the
+gateway also accepts the server-only `OPEN_WEARABLES_API_URL` and
+`OPEN_WEARABLES_API_KEY` names. The generic `EXERCISE_DATASET_*` pair takes
+precedence when configured. The Open Wearables fallback uses the existing
+`X-Open-Wearables-API-Key` server header and never exposes it to frontend code.
+
 Supabase supplies `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to the
 function runtime. They must also remain server-only.
 
