@@ -25,6 +25,18 @@ export type ExerciseDatasetFilterInput = {
   target?: string;
 };
 
+export function mergeExerciseDatasetPages(
+  pages: readonly ExerciseDatasetPage[] | undefined,
+) {
+  const byId = new Map<string, ExerciseDatasetExercise>();
+  pages?.forEach((page) => {
+    page.exercises.forEach((exercise) => {
+      if (!byId.has(exercise.id)) byId.set(exercise.id, exercise);
+    });
+  });
+  return Array.from(byId.values());
+}
+
 const readText = (value: unknown) =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 

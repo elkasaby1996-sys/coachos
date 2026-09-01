@@ -8,6 +8,11 @@ import {
   getAnatomicalRegionsForSurface,
 } from "../../src/components/pt/anatomical-muscle-selector/anatomy-registry";
 import {
+  SOURCE_SLUG_TO_MUSCLE_KEY,
+  VENDORED_ARTWORK_REGIONS,
+} from "../../src/components/pt/anatomical-muscle-selector/artwork/artwork-adapter";
+import { REPSYNC_ANATOMY_OVERLAYS } from "../../src/components/pt/anatomical-muscle-selector/artwork/repsync-anatomy-overlays";
+import {
   MUSCLE_KEYS,
   isMuscleKey,
 } from "../../src/lib/exercise-muscle-taxonomy";
@@ -46,6 +51,73 @@ const readSource = (...segments: string[]) =>
   readFileSync(resolve(process.cwd(), ...segments), "utf8");
 
 describe("premium anatomy presentation mapping", () => {
+  it("maps the direct upstream slugs through an explicit canonical adapter", () => {
+    expect(SOURCE_SLUG_TO_MUSCLE_KEY).toEqual({
+      front: {
+        chest: "pectorals",
+        obliques: "obliques",
+        abs: "rectus_abdominis",
+        biceps: "biceps",
+        forearm: "forearms",
+        adductors: "adductors",
+        quadriceps: "quadriceps",
+        tibialis: "tibialis_anterior",
+      },
+      back: {
+        trapezius: "trapezius",
+        triceps: "triceps",
+        forearm: "forearms",
+        gluteal: "gluteals",
+        hamstring: "hamstrings",
+        calves: "calves",
+      },
+    });
+  });
+
+  it("keeps decorative and base artwork non-selectable", () => {
+    const passive = VENDORED_ARTWORK_REGIONS.filter(
+      ({ role }) => role !== "muscle",
+    );
+    const selectable = VENDORED_ARTWORK_REGIONS.filter(
+      ({ role }) => role === "muscle",
+    );
+
+    expect(passive.length).toBeGreaterThan(0);
+    expect(passive.every(({ muscleKey }) => muscleKey === null)).toBe(true);
+    expect(selectable.every(({ muscleKey }) => isMuscleKey(muscleKey))).toBe(
+      true,
+    );
+  });
+
+  it("keeps broad source regions passive and refined canonical regions distinct", () => {
+    for (const sourceSlug of ["deltoids", "upper-back", "lower-back"]) {
+      const broadRegions = VENDORED_ARTWORK_REGIONS.filter(
+        (region) => region.sourceSlug === sourceSlug,
+      );
+      expect(broadRegions.length).toBeGreaterThan(0);
+      expect(broadRegions.every(({ role }) => role === "decorative")).toBe(
+        true,
+      );
+    }
+
+    const distinctKeys = new Set(
+      ANATOMICAL_REGION_DEFINITIONS.map(({ muscleKey }) => muscleKey),
+    );
+    expect(distinctKeys.size).toBe(MUSCLE_KEYS.length);
+    for (const key of [
+      "anterior_deltoids",
+      "lateral_deltoids",
+      "posterior_deltoids",
+      "latissimus_dorsi",
+      "rhomboids",
+      "spinal_erectors",
+      "hip_flexors",
+      "hip_abductors",
+    ] as const) {
+      expect(distinctKeys.has(key)).toBe(true);
+    }
+  });
+
   it("uses unique private IDs for regions, artwork, and hit areas", () => {
     const regionIds = ANATOMICAL_REGION_DEFINITIONS.map(({ id }) => id);
     const artworkIds = ANATOMICAL_REGION_DEFINITIONS.flatMap(({ artwork }) =>
@@ -160,7 +232,28 @@ describe("controlled anatomical selector source contract", () => {
     "anatomical-muscle-selector",
     "anatomical-muscle-selector.css",
   );
-  const componentSource = `${selectorSource}\n${figureSource}\n${listSource}`;
+  const adapterSource = readSource(
+    "src",
+    "components",
+    "pt",
+    "anatomical-muscle-selector",
+    "artwork",
+    "artwork-adapter.ts",
+  );
+  const browserSource = readSource(
+    "src",
+    "components",
+    "pt",
+    "exercise-library",
+    "exercise-library-browser.tsx",
+  );
+  const messageComposeSource = readSource(
+    "src",
+    "components",
+    "pt",
+    "pt-message-compose.tsx",
+  );
+  const componentSource = `${selectorSource}\n${figureSource}\n${listSource}\n${adapterSource}`;
 
   it("publishes the exact locked controlled API without mirrored value state", () => {
     expect(selectorSource).toContain("value: MuscleKey | null");
@@ -208,13 +301,12 @@ describe("controlled anatomical selector source contract", () => {
     expect(selectorSource).toContain("disabled={disabled}");
   });
 
-  it("keeps map, grouped list, and selected summary synchronized", () => {
+  it("keeps map and grouped list synchronized", () => {
     expect(selectorSource).toContain("value={value}");
     expect(selectorSource).toContain("value={value}");
     expect(listSource).toContain("BODY_REGIONS.map");
     expect(listSource).toContain("MUSCLES.filter");
-    expect(selectorSource).toContain("selectedMuscle?.label");
-    expect(selectorSource).toContain("selectedRegion");
+    expect(selectorSource).toContain("selectedMuscle.label");
   });
 
   it("keeps inactive map/list content out of the active tabs view", () => {
@@ -228,19 +320,89 @@ describe("controlled anatomical selector source contract", () => {
     expect(figureSource).toContain("aria-disabled={disabled || undefined}");
     expect(listSource).toContain("aria-pressed={selected}");
     expect(selectorSource).toContain('aria-live="polite"');
-    expect(selectorSource).toContain('aria-label="Clear selected muscle"');
+    expect(selectorSource).toContain('aria-label="Anatomical muscle selector"');
   });
 
   it("uses outline and text indicators in addition to selected color", () => {
     expect(styles).toContain(
       '.anatomy-art-muscle[data-selected="true"] .anatomy-art-shape',
     );
-    expect(styles).toContain("stroke-width: 2.25");
-    expect(styles).toContain(
-      '.anatomy-selection-summary[data-selected="true"]',
-    );
-    expect(selectorSource).toContain("Selected muscle");
+    expect(styles).toContain("stroke: var(--anatomy-selected-outline)");
+    expect(styles).toContain("stroke-width: 1.35");
+    expect(selectorSource).not.toContain("anatomy-selection-summary");
     expect(listSource).toContain("Selected");
+  });
+
+  it("uses selector-local theme tokens without a selected glow", () => {
+    for (const token of [
+      "--anatomy-canvas-surface",
+      "--anatomy-body-fill",
+      "--anatomy-passive-fill",
+      "--anatomy-passive-seam",
+      "--anatomy-hover-fill",
+      "--anatomy-hover-outline",
+      "--anatomy-focus-outline",
+      "--anatomy-selected-fill",
+      "--anatomy-selected-outline",
+      "--anatomy-disabled-fill",
+    ]) {
+      expect(styles).toContain(token);
+    }
+
+    const selectedRule = styles.slice(
+      styles.indexOf(
+        '.anatomy-art-muscle[data-selected="true"] .anatomy-art-shape',
+      ),
+      styles.indexOf(
+        '.anatomy-art-muscle[data-interaction="focus"] .anatomy-art-shape',
+      ),
+    );
+    expect(selectedRule).not.toContain("filter:");
+  });
+
+  it("removes redundant canvas copy while retaining accessible figure naming", () => {
+    expect(selectorSource).not.toContain("Select a muscle");
+    expect(selectorSource).not.toContain("{activeSurface} view");
+    expect(selectorSource).toContain("{activeSurface} anatomical muscle map");
+    expect(selectorSource).toContain('className="sr-only"');
+    expect(figureSource).toContain("aria-labelledby={labelledBy}");
+    expect(selectorSource).not.toContain("anatomy-selection-summary");
+    expect(selectorSource).not.toContain("min-h-14");
+  });
+
+  it("reframes artwork and hit regions through one shared transform", () => {
+    expect(adapterSource).toContain("scale(1.25 1)");
+    expect(adapterSource).toContain('viewBox: surface === "front"');
+    expect(figureSource).toContain('className="anatomy-content-layer"');
+    expect(figureSource).toContain("transform={artwork.contentTransform}");
+    expect(figureSource.indexOf("<BaseSilhouette")).toBeLessThan(
+      figureSource.indexOf('className="anatomy-hit-layer"'),
+    );
+  });
+
+  it("keeps refined hip artwork smaller than its transparent hit geometry", () => {
+    for (const id of [
+      "front-hip-flexors",
+      "front-hip-abductors",
+      "back-hip-abductors",
+    ]) {
+      const overlay = REPSYNC_ANATOMY_OVERLAYS.find(
+        (candidate) => candidate.id === id,
+      );
+      expect(overlay?.hitPaths).toBeDefined();
+      expect(overlay?.hitPaths?.left?.[0]).not.toBe(overlay?.paths.left?.[0]);
+      expect(overlay?.hitPaths?.right?.[0]).not.toBe(overlay?.paths.right?.[0]);
+    }
+  });
+
+  it("keeps the mobile support launcher clear of an expanded filter panel", () => {
+    expect(browserSource).toContain("exercise-library-mobile-filters");
+    expect(messageComposeSource).toContain(
+      'data-pt-message-compose-launcher-container="true"',
+    );
+    expect(styles).toContain(
+      "body:has(.exercise-library-mobile-filters[open])",
+    );
   });
 
   it("keeps visible artwork passive and transparent hit areas interactive", () => {
@@ -254,5 +416,8 @@ describe("controlled anatomical selector source contract", () => {
 
   it("contains no provider or Supabase dependency", () => {
     expect(componentSource).not.toMatch(/supabase|exercise-muscle-mapping/i);
+    expect(componentSource).not.toMatch(
+      /from ["']react-muscle-highlighter["']/,
+    );
   });
 });

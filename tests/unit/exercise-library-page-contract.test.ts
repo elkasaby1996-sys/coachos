@@ -25,10 +25,19 @@ const browserComponents = readFileSync(
 describe("rebuilt Exercise Library page contract", () => {
   it("keeps the provider query disabled until Provider Catalog is active", () => {
     expect(page).toContain('enabled: view === "provider"');
-    expect(page).toContain('<TabsTrigger value="provider"');
-    expect(page).toContain(
-      'view: value === "provider" ? "provider" : "library"',
+    expect(page).toContain("view={view}");
+    expect(page).toContain("onViewChange={(nextView)");
+    expect(browserComponents).toContain(
+      '<option value="provider">Provider Catalog</option>',
     );
+  });
+
+  it("places the source selector in the toolbar without a separate count card", () => {
+    expect(browserComponents).toContain('id="exercise-library-view"');
+    expect(browserComponents).toContain('aria-label="Exercise source"');
+    expect(page).not.toContain("<TabsList");
+    expect(page).not.toContain("saved result");
+    expect(page).not.toContain("filteredProviderItems.length} match");
   });
 
   it("maps one Load more action to one cursor request without crawling", () => {
@@ -47,9 +56,7 @@ describe("rebuilt Exercise Library page contract", () => {
   it("uses the shared classification and canonical import contracts", () => {
     expect(page).toContain("<ExerciseMuscleClassificationFields");
     expect(page).toContain("buildCustomExerciseMusclePersistenceFields");
-    expect(page).toContain(
-      "...buildCurrentProviderCanonicalMuscleFields(exercise)",
-    );
+    expect(page).toContain("buildCurrentProviderExerciseInsertPayload(");
   });
 
   it("preserves imported provenance on edits", () => {

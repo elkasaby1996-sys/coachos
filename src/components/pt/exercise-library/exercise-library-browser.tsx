@@ -4,6 +4,7 @@ import { AnatomicalMuscleSelector } from "../anatomical-muscle-selector";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
+import { Select } from "../../ui/select";
 import { Skeleton } from "../../ui/skeleton";
 import {
   BODY_REGIONS,
@@ -14,28 +15,36 @@ import type {
   ExerciseBrowserClassificationFilter,
   ExerciseBrowserItem,
   ExerciseBrowserOriginFilter,
+  ExerciseBrowserView,
   FilteredExerciseBrowserItem,
 } from "../../../lib/exercise-browser";
+import { groupExerciseBrowserMatches } from "../../../lib/exercise-browser";
 import { cn } from "../../../lib/utils";
 
 export function ExerciseLibraryToolbar({
   query,
   tag,
+  view,
   onQueryChange,
   onTagChange,
+  onViewChange,
   onClear,
   hasActiveFilters,
+  action,
 }: {
   query: string;
   tag: string | null;
+  view: ExerciseBrowserView;
   onQueryChange: (value: string) => void;
   onTagChange: (value: string) => void;
+  onViewChange: (value: ExerciseBrowserView) => void;
   onClear: () => void;
   hasActiveFilters: boolean;
+  action: ReactNode;
 }) {
   return (
-    <div className="grid min-w-0 gap-3 rounded-[24px] border border-border/70 bg-card/65 p-3 shadow-card md:grid-cols-[minmax(16rem,1fr)_minmax(12rem,0.42fr)_auto]">
-      <div className="relative min-w-0">
+    <div className="grid min-w-0 gap-3 rounded-[24px] border border-border/70 bg-card/65 p-3 shadow-card md:grid-cols-2 xl:grid-cols-[minmax(16rem,1fr)_minmax(11rem,0.42fr)_minmax(11rem,0.3fr)_auto]">
+      <div className="relative min-w-0 md:col-span-2 xl:col-span-1">
         <label htmlFor="exercise-library-search" className="sr-only">
           Search exercises
         </label>
@@ -60,15 +69,38 @@ export function ExerciseLibraryToolbar({
           placeholder="Tag or equipment"
         />
       </div>
-      <Button
-        type="button"
-        variant="secondary"
-        disabled={!hasActiveFilters}
-        onClick={onClear}
-      >
-        <RotateCcw className="h-4 w-4" aria-hidden="true" />
-        Clear filters
-      </Button>
+      <div className="min-w-0">
+        <label htmlFor="exercise-library-view" className="sr-only">
+          Exercise source
+        </label>
+        <Select
+          id="exercise-library-view"
+          className="w-full"
+          value={view}
+          aria-label="Exercise source"
+          onChange={(event) =>
+            onViewChange(
+              event.target.value === "provider" ? "provider" : "library",
+            )
+          }
+        >
+          <option value="library">My Library</option>
+          <option value="provider">Provider Catalog</option>
+        </Select>
+      </div>
+      <div className="grid min-w-0 grid-cols-2 gap-2 md:col-span-2 md:flex md:items-center xl:col-span-1">
+        <Button
+          type="button"
+          variant="secondary"
+          className="min-w-0 whitespace-nowrap"
+          disabled={!hasActiveFilters}
+          onClick={onClear}
+        >
+          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+          Clear filters
+        </Button>
+        {action}
+      </div>
     </div>
   );
 }
@@ -181,7 +213,9 @@ export function ExerciseLibraryFilterPanel(props: {
       <aside className="sticky top-5 hidden min-w-0 self-start rounded-[26px] border border-border/70 bg-card/58 p-4 shadow-card xl:block">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-foreground">Filters</p>
+            <p className="text-sm font-semibold text-foreground">
+              Filter by muscle
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Selected: {selectedLabel}
             </p>
@@ -191,7 +225,7 @@ export function ExerciseLibraryFilterPanel(props: {
         <MuscleSelectorContent {...props} />
       </aside>
 
-      <details className="group rounded-[24px] border border-border/70 bg-card/58 shadow-card xl:hidden">
+      <details className="exercise-library-mobile-filters group rounded-[24px] border border-border/70 bg-card/58 shadow-card xl:hidden">
         <summary
           className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
           onKeyDown={handleMobileFilterSummaryKeyDown}
@@ -202,7 +236,7 @@ export function ExerciseLibraryFilterPanel(props: {
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-foreground">
-                Muscle and library filters
+                Filter by muscle
               </span>
               <span className="block truncate text-xs text-muted-foreground">
                 Selected: {selectedLabel}
@@ -326,12 +360,14 @@ export function ExerciseLibraryResultRow({
 
 export function ExerciseLibraryResults({
   items,
+  muscleKey,
   loading,
   emptyTitle,
   emptyDescription,
   actionsForItem,
 }: {
   items: FilteredExerciseBrowserItem[];
+  muscleKey: MuscleKey | null;
   loading: boolean;
   emptyTitle: string;
   emptyDescription: string;
@@ -347,31 +383,107 @@ export function ExerciseLibraryResults({
     );
   }
 
-  if (!items.length) {
-    return (
-      <div className="flex min-h-56 flex-col items-center justify-center rounded-[24px] border border-dashed border-border bg-muted/18 px-5 py-10 text-center">
-        <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-card/70 text-muted-foreground">
-          <Dumbbell className="h-5 w-5" aria-hidden="true" />
-        </span>
-        <h3 className="mt-4 text-base font-semibold text-foreground">
-          {emptyTitle}
-        </h3>
-        <p className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
-          {emptyDescription}
-        </p>
-      </div>
-    );
-  }
+  const renderEmpty = () => (
+    <div className="flex min-h-56 flex-col items-center justify-center rounded-[24px] border border-dashed border-border bg-muted/18 px-5 py-10 text-center">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-card/70 text-muted-foreground">
+        <Dumbbell className="h-5 w-5" aria-hidden="true" />
+      </span>
+      <h3 className="mt-4 text-base font-semibold text-foreground">
+        {emptyTitle}
+      </h3>
+      <p className="mt-1 max-w-md text-sm leading-5 text-muted-foreground">
+        {emptyDescription}
+      </p>
+    </div>
+  );
 
-  return (
+  const renderRows = (rows: FilteredExerciseBrowserItem[]) => (
     <div className="space-y-2.5">
-      {items.map((item) => (
+      {rows.map((item) => (
         <ExerciseLibraryResultRow
           key={item.key}
           item={item}
           actions={actionsForItem(item)}
         />
       ))}
+    </div>
+  );
+
+  const groups = groupExerciseBrowserMatches(items, muscleKey);
+  if (!muscleKey) {
+    return groups.ungrouped.length
+      ? renderRows(groups.ungrouped)
+      : renderEmpty();
+  }
+
+  const muscleLabel = getMuscleMetadata(muscleKey).label;
+  if (!groups.directMatches.length && !groups.relatedExercises.length) {
+    return (
+      <div className="space-y-3">
+        <p className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2 text-sm font-medium text-foreground">
+          No direct matches for {muscleLabel}.
+        </p>
+        {renderEmpty()}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <section aria-labelledby="exercise-library-direct-heading">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h3
+            id="exercise-library-direct-heading"
+            className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground"
+          >
+            Direct matches
+          </h3>
+          <span className="text-xs text-muted-foreground">
+            {groups.directMatches.length}
+          </span>
+        </div>
+        {groups.directMatches.length ? (
+          renderRows(groups.directMatches)
+        ) : (
+          <p className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2 text-sm font-medium text-foreground">
+            No direct matches for {muscleLabel}.
+          </p>
+        )}
+      </section>
+
+      {groups.relatedExercises.length ? (
+        groups.directMatches.length ? (
+          <details className="group rounded-2xl border border-border/65 bg-muted/15">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
+                Related exercises · {groups.relatedExercises.length}
+              </span>
+              <ChevronDown
+                className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none"
+                aria-hidden="true"
+              />
+            </summary>
+            <div className="border-t border-border/60 p-2">
+              {renderRows(groups.relatedExercises)}
+            </div>
+          </details>
+        ) : (
+          <section aria-labelledby="exercise-library-related-heading">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h3
+                id="exercise-library-related-heading"
+                className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground"
+              >
+                Related exercises
+              </h3>
+              <span className="text-xs text-muted-foreground">
+                {groups.relatedExercises.length}
+              </span>
+            </div>
+            {renderRows(groups.relatedExercises)}
+          </section>
+        )
+      ) : null}
     </div>
   );
 }

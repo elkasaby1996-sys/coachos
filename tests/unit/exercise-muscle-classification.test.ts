@@ -283,8 +283,9 @@ describe("classification entry-point contracts", () => {
     expect(createHandler).toContain("workspace_id: null");
     expect(createHandler).toContain('source: "manual"');
     expect(createHandler).toContain(
-      'makeExerciseSelectionKey("library", createdId)',
+      "const selectionKey = `library:${createdExercise.id}` as const",
     );
+    expect(createHandler).toContain("next.set(selectionKey");
     expect(createHandler).not.toContain("workout_template_exercises");
   });
 });

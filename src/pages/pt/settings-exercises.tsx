@@ -5,7 +5,6 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import {
@@ -17,7 +16,6 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { ExerciseMuscleClassificationFields } from "../../components/pt/exercise-muscle-classification-fields";
 import {
   ExerciseLibraryFilterPanel,
@@ -28,9 +26,9 @@ import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import {
   ExerciseDatasetError,
   exerciseDatasetConfigured,
+  mergeExerciseDatasetPages,
   searchExerciseDataset,
   type ExerciseDatasetExercise,
-  type ExerciseDatasetPage,
 } from "../../lib/exercise-dataset";
 import type { PersistentExerciseLibraryRecord } from "../../lib/exercise-domain";
 import {
@@ -54,17 +52,14 @@ import {
   initializeExerciseMuscleFormValue,
   type ExerciseMuscleFormValue,
 } from "../../lib/exercise-muscle-classification";
-import { buildCurrentProviderCanonicalMuscleFields } from "../../lib/exercise-muscle-mapping";
-import {
-  getMuscleMetadata,
-  type MuscleKey,
-} from "../../lib/exercise-muscle-taxonomy";
+import { buildCurrentProviderExerciseInsertPayload } from "../../lib/exercise-import";
+import { type MuscleKey } from "../../lib/exercise-muscle-taxonomy";
 import { exerciseQueryKeys } from "../../lib/exercise-query-contracts";
 import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useSearchParams } from "react-router-dom";
-import { Database, Library, Plus, RefreshCcw } from "lucide-react";
+import { Plus, RefreshCcw } from "lucide-react";
 
 type ExerciseFormState = {
   name: string;
@@ -93,22 +88,6 @@ const getErrorDetails = (error: unknown) => {
     };
   }
   return { code: "unknown", message: "Unknown error" };
-};
-
-const joinParagraphs = (values: string[]) =>
-  values
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .join("\n\n");
-
-const mergeProviderPages = (pages: ExerciseDatasetPage[] | undefined) => {
-  const byId = new Map<string, ExerciseDatasetExercise>();
-  pages?.forEach((page) => {
-    page.exercises.forEach((exercise) => {
-      if (!byId.has(exercise.id)) byId.set(exercise.id, exercise);
-    });
-  });
-  return Array.from(byId.values());
 };
 
 const getProviderErrorCopy = (error: unknown) =>
@@ -256,7 +235,7 @@ export function PtExerciseLibraryPage() {
   });
 
   const providerExercises = useMemo(
-    () => mergeProviderPages(providerQuery.data?.pages),
+    () => mergeExerciseDatasetPages(providerQuery.data?.pages),
     [providerQuery.data?.pages],
   );
   const providerById = useMemo(
@@ -379,37 +358,11 @@ export function PtExerciseLibraryPage() {
     if (!libraryOwnerUserId) return;
     setImportingId(exercise.id);
 
-    const { error } = await supabase.from("exercises").insert({
-      owner_user_id: libraryOwnerUserId,
-      workspace_id: null,
-      name: exercise.name,
-      muscle_group: exercise.bodyPart,
-      primary_muscle: exercise.target,
-      secondary_muscles: exercise.secondaryMuscles.length
-        ? exercise.secondaryMuscles
-        : null,
-      equipment: exercise.equipment,
-      instructions: exercise.instructions.length
-        ? joinParagraphs(exercise.instructions)
-        : null,
-      video_url: exercise.videoUrl,
-      notes: exercise.overview,
-      cues: exercise.exerciseTips.length
-        ? joinParagraphs(exercise.exerciseTips)
-        : null,
-      tags: Array.from(
-        new Set(
-          [exercise.bodyPart, exercise.target, exercise.equipment]
-            .map((value) => value?.trim())
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ),
-      category: exercise.bodyPart,
-      ...buildCurrentProviderCanonicalMuscleFields(exercise),
-      source: "exercise_dataset",
-      source_exercise_id: exercise.id,
-      source_payload: exercise.raw,
-    });
+    const { error } = await supabase
+      .from("exercises")
+      .insert(
+        buildCurrentProviderExerciseInsertPayload(libraryOwnerUserId, exercise),
+      );
 
     setImportingId(null);
     if (error) {
@@ -461,9 +414,6 @@ export function PtExerciseLibraryPage() {
     Boolean(filters.muscleKey) ||
     filters.origin !== "all" ||
     filters.classification !== "all";
-  const selectedMuscleLabel = filters.muscleKey
-    ? getMuscleMetadata(filters.muscleKey).label
-    : null;
   const libraryLoading =
     workspaceLoading || ownerScopeQuery.isLoading || libraryQuery.isLoading;
   const libraryError =
@@ -559,7 +509,23 @@ export function PtExerciseLibraryPage() {
         eyebrow="Coaching library"
         title="Exercise Library"
         description="Browse your shared owner library or save movements from the connected provider using one canonical muscle filter."
-        actions={
+      />
+
+      <ExerciseLibraryToolbar
+        query={filters.query}
+        tag={filters.tag}
+        view={view}
+        onQueryChange={(query) => updateFilters({ query }, true)}
+        onTagChange={(tag) => updateFilters({ tag: tag.trim() || null }, true)}
+        onViewChange={(nextView) =>
+          updateSearchState((current) => ({
+            ...current,
+            view: nextView,
+          }))
+        }
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+        action={
           <Button type="button" onClick={openCreate}>
             <Plus className="h-4 w-4" aria-hidden="true" />
             Create exercise
@@ -567,240 +533,200 @@ export function PtExerciseLibraryPage() {
         }
       />
 
-      <ExerciseLibraryToolbar
-        query={filters.query}
-        tag={filters.tag}
-        onQueryChange={(query) => updateFilters({ query }, true)}
-        onTagChange={(tag) => updateFilters({ tag: tag.trim() || null }, true)}
-        onClear={clearFilters}
-        hasActiveFilters={hasActiveFilters}
-      />
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <ExerciseLibraryFilterPanel
+          muscleKey={filters.muscleKey}
+          origin={filters.origin}
+          classification={filters.classification}
+          libraryFiltersVisible={view === "library"}
+          onMuscleChange={handleMuscleChange}
+          onLibraryScopeChange={handleLibraryScopeChange}
+        />
 
-      <Tabs
-        value={view}
-        onValueChange={(value) =>
-          updateSearchState((current) => ({
-            ...current,
-            view: value === "provider" ? "provider" : "library",
-          }))
-        }
-      >
-        <div className="flex flex-col gap-3 rounded-[24px] border border-border/65 bg-card/45 p-3 sm:flex-row sm:items-center sm:justify-between">
-          <TabsList className="grid w-full grid-cols-2 sm:w-auto">
-            <TabsTrigger value="library" className="gap-2">
-              <Library className="h-4 w-4" aria-hidden="true" />
-              My Library
-            </TabsTrigger>
-            <TabsTrigger value="provider" className="gap-2">
-              <Database className="h-4 w-4" aria-hidden="true" />
-              Provider Catalog
-            </TabsTrigger>
-          </TabsList>
-          <div className="flex flex-wrap items-center gap-2" aria-live="polite">
-            {selectedMuscleLabel ? (
-              <Badge variant="info">Muscle: {selectedMuscleLabel}</Badge>
-            ) : null}
-            <Badge variant="muted">
-              {view === "library"
-                ? `${filteredLibraryItems.length} saved result${filteredLibraryItems.length === 1 ? "" : "s"}`
-                : `${filteredProviderItems.length} match${filteredProviderItems.length === 1 ? "" : "es"} in ${providerItems.length} loaded`}
-            </Badge>
-          </div>
-        </div>
+        <section
+          className="min-w-0 rounded-[26px] border border-border/70 bg-card/55 p-3 shadow-card sm:p-4"
+          aria-label={
+            view === "library"
+              ? "My Library results"
+              : "Provider Catalog results"
+          }
+        >
+          {view === "library" ? (
+            <div className="space-y-4">
+              {libraryError ? (
+                <Alert tone="danger">
+                  <AlertTitle>Couldn’t load your exercise library</AlertTitle>
+                  <AlertDescription>
+                    Saved exercises are temporarily unavailable.
+                  </AlertDescription>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="mt-3"
+                    onClick={() => void libraryQuery.refetch()}
+                  >
+                    <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                    Try again
+                  </Button>
+                </Alert>
+              ) : (
+                <ExerciseLibraryResults
+                  items={visibleLibraryItems}
+                  muscleKey={filters.muscleKey}
+                  loading={libraryLoading}
+                  emptyTitle={
+                    exercises.length === 0
+                      ? "Your library is empty"
+                      : filters.classification === "unclassified"
+                        ? "No unclassified exercises"
+                        : "No saved exercises match"
+                  }
+                  emptyDescription={
+                    exercises.length === 0
+                      ? "Create an exercise or open Provider Catalog to save one to this owner-level library."
+                      : filters.classification === "unclassified"
+                        ? "Every saved exercise currently has canonical anatomy metadata."
+                        : "Adjust the search, muscle, tag, or library-scope filters."
+                  }
+                  actionsForItem={libraryActions}
+                />
+              )}
 
-        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-          <ExerciseLibraryFilterPanel
-            muscleKey={filters.muscleKey}
-            origin={filters.origin}
-            classification={filters.classification}
-            libraryFiltersVisible={view === "library"}
-            onMuscleChange={handleMuscleChange}
-            onLibraryScopeChange={handleLibraryScopeChange}
-          />
-
-          <section
-            className="min-w-0 rounded-[26px] border border-border/70 bg-card/55 p-3 shadow-card sm:p-4"
-            aria-label={
-              view === "library"
-                ? "My Library results"
-                : "Provider Catalog results"
-            }
-          >
-            {view === "library" ? (
-              <div className="space-y-4">
-                {libraryError ? (
-                  <Alert tone="danger">
-                    <AlertTitle>Couldn’t load your exercise library</AlertTitle>
-                    <AlertDescription>
-                      Saved exercises are temporarily unavailable.
-                    </AlertDescription>
+              {!libraryLoading &&
+              !libraryError &&
+              filteredLibraryItems.length > 0 ? (
+                <div className="flex flex-col gap-3 border-t border-border/60 pt-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                  <p>
+                    Showing {safeLibraryPage * libraryPageSize + 1}–
+                    {Math.min(
+                      (safeLibraryPage + 1) * libraryPageSize,
+                      filteredLibraryItems.length,
+                    )}{" "}
+                    of {filteredLibraryItems.length}
+                  </p>
+                  <div className="flex items-center gap-2">
                     <Button
                       type="button"
                       size="sm"
                       variant="secondary"
-                      className="mt-3"
-                      onClick={() => void libraryQuery.refetch()}
+                      disabled={safeLibraryPage === 0}
+                      onClick={() =>
+                        setLibraryPage((page) => Math.max(0, page - 1))
+                      }
                     >
-                      <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-                      Try again
+                      Previous
                     </Button>
-                  </Alert>
-                ) : (
+                    <span className="text-xs">
+                      Page {safeLibraryPage + 1} of {libraryPageCount}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={safeLibraryPage >= libraryPageCount - 1}
+                      onClick={() =>
+                        setLibraryPage((page) =>
+                          Math.min(libraryPageCount - 1, page + 1),
+                        )
+                      }
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {!exerciseDatasetConfigured ? (
+                <Alert tone="warning">
+                  <AlertTitle>Provider catalog unavailable</AlertTitle>
+                  <AlertDescription>
+                    The provider is not configured. Your saved library remains
+                    available.
+                  </AlertDescription>
+                </Alert>
+              ) : providerQuery.isError && !providerQuery.data ? (
+                <Alert tone="danger">
+                  <AlertTitle>Provider catalog couldn’t load</AlertTitle>
+                  <AlertDescription>
+                    {getProviderErrorCopy(providerQuery.error)}
+                  </AlertDescription>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="mt-3"
+                    onClick={() => void providerQuery.refetch()}
+                  >
+                    <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                    Retry provider
+                  </Button>
+                </Alert>
+              ) : (
+                <>
                   <ExerciseLibraryResults
-                    items={visibleLibraryItems}
-                    loading={libraryLoading}
+                    items={filteredProviderItems}
+                    muscleKey={filters.muscleKey}
+                    loading={providerQuery.isPending}
                     emptyTitle={
-                      exercises.length === 0
-                        ? "Your library is empty"
-                        : filters.classification === "unclassified"
-                          ? "No unclassified exercises"
-                          : "No saved exercises match"
+                      providerQuery.hasNextPage
+                        ? "No matches in the loaded provider results"
+                        : "No provider results"
                     }
                     emptyDescription={
-                      exercises.length === 0
-                        ? "Create an exercise or open Provider Catalog to save one to this owner-level library."
-                        : filters.classification === "unclassified"
-                          ? "Every saved exercise currently has canonical anatomy metadata."
-                          : "Adjust the search, muscle, tag, or library-scope filters."
+                      providerQuery.hasNextPage
+                        ? "More provider records are available. Load one additional page to continue searching."
+                        : providerItems.length
+                          ? "The loaded provider stream has ended without a match for these filters."
+                          : "The provider result stream ended without returning exercises."
                     }
-                    actionsForItem={libraryActions}
+                    actionsForItem={providerActions}
                   />
-                )}
 
-                {!libraryLoading &&
-                !libraryError &&
-                filteredLibraryItems.length > 0 ? (
-                  <div className="flex flex-col gap-3 border-t border-border/60 pt-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                    <p>
-                      Showing {safeLibraryPage * libraryPageSize + 1}–
-                      {Math.min(
-                        (safeLibraryPage + 1) * libraryPageSize,
-                        filteredLibraryItems.length,
-                      )}{" "}
-                      of {filteredLibraryItems.length}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        disabled={safeLibraryPage === 0}
-                        onClick={() =>
-                          setLibraryPage((page) => Math.max(0, page - 1))
-                        }
-                      >
-                        Previous
-                      </Button>
-                      <span className="text-xs">
-                        Page {safeLibraryPage + 1} of {libraryPageCount}
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        disabled={safeLibraryPage >= libraryPageCount - 1}
-                        onClick={() =>
-                          setLibraryPage((page) =>
-                            Math.min(libraryPageCount - 1, page + 1),
-                          )
-                        }
-                      >
-                        Next
-                      </Button>
+                  {providerQuery.isFetchNextPageError &&
+                  providerItems.length ? (
+                    <Alert tone="warning">
+                      <AlertTitle>
+                        Couldn’t load the next provider page
+                      </AlertTitle>
+                      <AlertDescription>
+                        Existing loaded results are still available. Try loading
+                        one more page again.
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+
+                  {!providerQuery.isPending ? (
+                    <div className="flex flex-col gap-3 border-t border-border/60 pt-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                      <p>
+                        {providerItems.length} provider record
+                        {providerItems.length === 1 ? "" : "s"} loaded
+                        {providerQuery.hasNextPage
+                          ? "; more available"
+                          : "; end reached"}
+                      </p>
+                      {providerQuery.hasNextPage ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={providerQuery.isFetchingNextPage}
+                          onClick={() => void providerQuery.fetchNextPage()}
+                        >
+                          {providerQuery.isFetchingNextPage
+                            ? "Loading one page…"
+                            : "Load more"}
+                        </Button>
+                      ) : null}
                     </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {!exerciseDatasetConfigured ? (
-                  <Alert tone="warning">
-                    <AlertTitle>Provider catalog unavailable</AlertTitle>
-                    <AlertDescription>
-                      The provider is not configured. Your saved library remains
-                      available.
-                    </AlertDescription>
-                  </Alert>
-                ) : providerQuery.isError && !providerQuery.data ? (
-                  <Alert tone="danger">
-                    <AlertTitle>Provider catalog couldn’t load</AlertTitle>
-                    <AlertDescription>
-                      {getProviderErrorCopy(providerQuery.error)}
-                    </AlertDescription>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="mt-3"
-                      onClick={() => void providerQuery.refetch()}
-                    >
-                      <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-                      Retry provider
-                    </Button>
-                  </Alert>
-                ) : (
-                  <>
-                    <ExerciseLibraryResults
-                      items={filteredProviderItems}
-                      loading={providerQuery.isPending}
-                      emptyTitle={
-                        providerQuery.hasNextPage
-                          ? "No matches in the loaded provider results"
-                          : "No provider results"
-                      }
-                      emptyDescription={
-                        providerQuery.hasNextPage
-                          ? "More provider records are available. Load one additional page to continue searching."
-                          : providerItems.length
-                            ? "The loaded provider stream has ended without a match for these filters."
-                            : "The provider result stream ended without returning exercises."
-                      }
-                      actionsForItem={providerActions}
-                    />
-
-                    {providerQuery.isFetchNextPageError &&
-                    providerItems.length ? (
-                      <Alert tone="warning">
-                        <AlertTitle>
-                          Couldn’t load the next provider page
-                        </AlertTitle>
-                        <AlertDescription>
-                          Existing loaded results are still available. Try
-                          loading one more page again.
-                        </AlertDescription>
-                      </Alert>
-                    ) : null}
-
-                    {!providerQuery.isPending ? (
-                      <div className="flex flex-col gap-3 border-t border-border/60 pt-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                        <p>
-                          {providerItems.length} provider record
-                          {providerItems.length === 1 ? "" : "s"} loaded
-                          {providerQuery.hasNextPage
-                            ? "; more available"
-                            : "; end reached"}
-                        </p>
-                        {providerQuery.hasNextPage ? (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            disabled={providerQuery.isFetchingNextPage}
-                            onClick={() => void providerQuery.fetchNextPage()}
-                          >
-                            {providerQuery.isFetchingNextPage
-                              ? "Loading one page…"
-                              : "Load more"}
-                          </Button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </>
-                )}
-              </div>
-            )}
-          </section>
-        </div>
-      </Tabs>
+                  ) : null}
+                </>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
 
       <Dialog
         open={modalOpen}

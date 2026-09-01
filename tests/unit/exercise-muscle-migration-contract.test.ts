@@ -27,6 +27,10 @@ const builderSource = readFileSync(
   join(process.cwd(), "src", "pages", "pt", "workout-template-builder.tsx"),
   "utf8",
 );
+const importMapperSource = readFileSync(
+  join(process.cwd(), "src", "lib", "exercise-import.ts"),
+  "utf8",
+);
 
 describe("canonical exercise muscle migration contract", () => {
   it("adds canonical arrays and a smallint taxonomy version", () => {
@@ -113,11 +117,14 @@ describe("canonical exercise muscle migration contract", () => {
   });
 
   it("persists one shared canonical payload in both provider import paths", () => {
-    expect(settingsSource).toContain(
+    expect(importMapperSource).toContain(
       "...buildCurrentProviderCanonicalMuscleFields(exercise)",
     );
+    expect(settingsSource).toContain(
+      "buildCurrentProviderExerciseInsertPayload(",
+    );
     expect(builderSource).toContain(
-      "...buildCurrentProviderCanonicalMuscleFields(candidate.exercise)",
+      "buildCurrentProviderExerciseInsertPayload(",
     );
   });
 

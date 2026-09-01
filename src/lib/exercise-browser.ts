@@ -66,6 +66,12 @@ export type FilteredExerciseBrowserItem = ExerciseBrowserItem & {
   matchReason: ExerciseBrowserMatchReason;
 };
 
+export type ExerciseBrowserMatchGroups = {
+  directMatches: FilteredExerciseBrowserItem[];
+  relatedExercises: FilteredExerciseBrowserItem[];
+  ungrouped: FilteredExerciseBrowserItem[];
+};
+
 export const DEFAULT_EXERCISE_BROWSER_FILTERS: ExerciseBrowserFilters = {
   query: "",
   muscleKey: null,
@@ -257,6 +263,25 @@ export function filterExerciseBrowserItems(
     if (leftName > rightName) return 1;
     return left.key < right.key ? -1 : left.key > right.key ? 1 : 0;
   });
+}
+
+export function groupExerciseBrowserMatches(
+  items: readonly FilteredExerciseBrowserItem[],
+  muscleKey: MuscleKey | null,
+): ExerciseBrowserMatchGroups {
+  if (!muscleKey) {
+    return {
+      directMatches: [],
+      relatedExercises: [],
+      ungrouped: [...items],
+    };
+  }
+
+  return {
+    directMatches: items.filter(({ matchRank }) => matchRank >= 2),
+    relatedExercises: items.filter(({ matchRank }) => matchRank === 1),
+    ungrouped: [],
+  };
 }
 
 const isOriginFilter = (

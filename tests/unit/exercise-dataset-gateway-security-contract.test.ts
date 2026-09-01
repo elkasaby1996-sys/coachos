@@ -71,18 +71,23 @@ describe("exercise dataset gateway security wiring", () => {
       "pt",
       "workout-template-builder.tsx",
     );
+    const picker = readSource(
+      "src",
+      "components",
+      "pt",
+      "exercise-picker",
+      "exercise-picker.tsx",
+    );
 
     expect(settings).toContain('{view === "library" ? (');
     expect(settings).toContain(
       ") : providerQuery.isError && !providerQuery.data ? (",
     );
     expect(settings).toContain("Saved exercises remain available.");
-    expect(builder).toMatch(
-      /filteredExercises\.length > 0 \|\|\s+datasetExercises\.length > 0/,
-    );
+    expect(builder).toContain("<ExercisePicker");
+    expect(picker).toContain('view === "library" && libraryError');
+    expect(picker).toContain("My Library remains available");
     expect(settings).toContain("getProviderErrorCopy(providerQuery.error)");
-    expect(builder).toContain(
-      "setDatasetSearchError(`${details.code}: ${details.message}`)",
-    );
+    expect(picker).toContain("providerErrorCopy(providerQuery.error)");
   });
 });

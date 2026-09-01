@@ -706,6 +706,7 @@ export function PtLayout() {
     ],
   );
   const pageHeader = getPtRouteHeader(location.pathname, navGroups);
+  const isExerciseLibraryPage = location.pathname === "/pt/settings/exercises";
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
   const workspaceSwitcherItems = workspaces.map((workspace) => ({
     id: workspace.id,
@@ -1372,10 +1373,14 @@ export function PtLayout() {
                         >
                           <p
                             className={cn(
-                              "truncate font-semibold uppercase tracking-[0.06em] text-foreground transition-[font-size,line-height] duration-200",
-                              headerCondensed
-                                ? "text-[1.58rem] leading-none sm:text-[1.86rem]"
-                                : "text-[2rem] sm:text-[2.25rem]",
+                              "font-semibold uppercase tracking-[0.06em] text-foreground transition-[font-size,line-height] duration-200",
+                              isExerciseLibraryPage
+                                ? "whitespace-normal break-words text-[1.55rem] leading-tight sm:truncate sm:text-[2.25rem]"
+                                : "truncate",
+                              !isExerciseLibraryPage &&
+                                (headerCondensed
+                                  ? "text-[1.58rem] leading-none sm:text-[1.86rem]"
+                                  : "text-[2rem] sm:text-[2.25rem]"),
                               currentModuleClasses.title,
                             )}
                           >

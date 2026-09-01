@@ -6,6 +6,7 @@ import {
   classifyProviderSavedMatch,
   exerciseBrowserItemMatchesQuery,
   filterExerciseBrowserItems,
+  groupExerciseBrowserMatches,
   isExerciseBrowserItemUnclassified,
   parseExerciseBrowserSearchParams,
   serializeExerciseBrowserSearchState,
@@ -278,6 +279,63 @@ describe("canonical exercise browser filtering", () => {
     });
     expect(result).toHaveLength(2);
     expect(result.every(({ matchRank }) => matchRank === 3)).toBe(true);
+  });
+
+  it("groups primary and secondary separately from region and full-body fallbacks", () => {
+    const items = filterExerciseBrowserItems(
+      [
+        browserItem({
+          key: "persisted:primary",
+          muscleProfile: {
+            bodyRegionKeys: ["arms"],
+            primaryMuscleKeys: ["biceps"],
+            secondaryMuscleKeys: [],
+            unmappedLabels: [],
+          },
+        }),
+        browserItem({
+          key: "persisted:secondary",
+          muscleProfile: {
+            bodyRegionKeys: ["arms"],
+            primaryMuscleKeys: [],
+            secondaryMuscleKeys: ["biceps"],
+            unmappedLabels: [],
+          },
+        }),
+        browserItem({
+          key: "persisted:region",
+          muscleProfile: {
+            bodyRegionKeys: ["arms"],
+            primaryMuscleKeys: [],
+            secondaryMuscleKeys: [],
+            unmappedLabels: [],
+          },
+        }),
+        browserItem({
+          key: "persisted:full-body",
+          muscleProfile: {
+            bodyRegionKeys: ["full_body"],
+            primaryMuscleKeys: [],
+            secondaryMuscleKeys: [],
+            unmappedLabels: [],
+          },
+        }),
+      ],
+      { ...defaultFilters, muscleKey: "biceps" },
+    );
+
+    const groups = groupExerciseBrowserMatches(items, "biceps");
+    expect(groups.directMatches.map(({ key }) => key)).toEqual([
+      "persisted:primary",
+      "persisted:secondary",
+    ]);
+    expect(groups.relatedExercises.map(({ key }) => key)).toEqual([
+      "persisted:full-body",
+      "persisted:region",
+    ]);
+    expect(
+      groups.relatedExercises.every(({ matchRank }) => matchRank === 1),
+    ).toBe(true);
   });
 
   it("detects unclassified items and filters by source", () => {
