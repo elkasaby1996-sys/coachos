@@ -59,6 +59,21 @@ describe("exercise dataset normalization", () => {
     expect(exercise?.imageUrl).toBe("https://example.com/row.jpg");
   });
 
+  it("preserves V2 MP4 detail media", () => {
+    const exercise = normalizeExerciseDatasetRecord({
+      exerciseId: "exr_video-1",
+      name: "Bench Press",
+      videoUrl: "https://cdn.example/bench.mp4",
+      imageUrl: "https://cdn.example/bench.webp",
+    });
+
+    expect(exercise).toMatchObject({
+      id: "exr_video-1",
+      videoUrl: "https://cdn.example/bench.mp4",
+      imageUrl: "https://cdn.example/bench.webp",
+    });
+  });
+
   it("extracts only a non-empty string cursor from provider metadata", () => {
     expect(
       extractExerciseDatasetNextCursor({ meta: { nextCursor: " next-2 " } }),

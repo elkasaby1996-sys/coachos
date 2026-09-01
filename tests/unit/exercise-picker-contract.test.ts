@@ -123,7 +123,12 @@ describe("PR-EXLIB-06 shared picker contracts", () => {
     ).toBeGreaterThan(handler.indexOf("for (const candidate of candidates)"));
     expect(handler).toContain("partitionNewExerciseSelections(");
     expect(handler).toContain("buildWorkoutTemplateExerciseInsertRows(");
-    expect(handler).not.toContain("candidate.exercise.id,");
+    expect(handler).toContain("getExerciseDatasetExercise(");
+    expect(handler).toContain("buildCurrentProviderExerciseInsertPayload(");
+    expect(handler).toContain("importExercise,");
+    expect(handler).not.toContain(
+      "resolvedSelections.push({ exerciseId: candidate.exercise.id",
+    );
   });
 
   it("preserves inline canonical creation and selects without inserting WTE", () => {

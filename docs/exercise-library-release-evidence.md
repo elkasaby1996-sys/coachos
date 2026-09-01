@@ -282,3 +282,34 @@ The owner first-page request was bounded by the gateway's ten-second provider ti
 ### Final recommendation
 
 **Local runtime gate passed; staging/production remains blocked pending credential rotation.** Authentication, authorization, a bounded real first page, distinct forward pagination, normalized string IDs, canonical mapping, exact-source reconciliation, name-conflict blocking, provider import, mixed WTE addition, reload, prescription, reorder, superset persistence, gateway-only browser traffic, application secret non-exposure, and cleanup are proven. Revoke the credential exposed outside the application and install a replacement server-only key before deployment.
+
+## 18. Provider exercise video preview
+
+The current provider's list response is intentionally lightweight in the live
+account: it contains `imageUrl` but not `videoUrl`. The documented and live
+`GET /api/v1/exercises/{exerciseId}` response returned HTTP 200 with a matching
+string exercise ID plus both `imageUrl` and `videoUrl`. The gateway now supports
+that exact fixed detail route through the existing RepSync authentication and
+PT authorization boundary. Unknown fields, mixed search/detail bodies,
+malformed IDs, oversized responses, and invalid detail shapes are rejected.
+
+Headed verification loaded 24 Provider Catalog rows with lazy, fixed-size
+starting-position thumbnails. Opening the first row's **Preview** issued one
+`exercise_dataset_detail` gateway request, which succeeded in 243 ms. The
+dialog rendered the real exercise title, overview, instructions, poster, and
+MP4 controls. Before playback the video was paused with `preload="none"`,
+`readyState = 0`, and a poster present. A bounded media request returned HTTP
+206 with `video/mp4`, proving the referenced media is playable without loading
+the entire asset during the gate.
+
+Provider API traffic remained server-side. The browser received only the
+normalized detail payload through Supabase and loaded credential-free media
+from `cdn.exercisedb.dev`. The production build contained zero matches for the
+configured provider secret value, `supabase/.env.local` remained ignored, and
+the structured function log contained no credential or authorization value.
+Saving an unsaved provider exercise—either directly from Exercise Library or
+through the workout picker—now resolves and caches this same detail record
+before import, so `video_url` is persisted instead of importing the lightweight
+list record without media. Focused provider gateway, normalization,
+exercise-browser, library/picker contract, and WTE mutation coverage passed,
+and the production build passed.

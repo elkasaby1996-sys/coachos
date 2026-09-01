@@ -70,6 +70,22 @@ describe("rebuilt Exercise Library page contract", () => {
     expect(page).toContain("buildCurrentProviderExerciseInsertPayload(");
   });
 
+  it("loads provider video detail on demand and preserves it on import", () => {
+    expect(page).toContain("getExerciseDatasetExercise");
+    expect(page).toContain('queryKey: ["exercise-provider-detail"');
+    expect(page).toContain('preload="none"');
+    expect(page).toContain("providerDetailQuery.data.videoUrl");
+    expect(page).toContain("const importExercise = exercise.videoUrl");
+    const importHandler = page.slice(
+      page.indexOf("const handleImportExercise"),
+      page.indexOf("const handleMuscleChange"),
+    );
+    expect(importHandler).toContain(
+      "buildCurrentProviderExerciseInsertPayload(",
+    );
+    expect(importHandler).toContain("importExercise,");
+  });
+
   it("preserves imported provenance on edits", () => {
     const saveHandler = page.slice(
       page.indexOf("const handleSave"),

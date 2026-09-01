@@ -98,6 +98,7 @@ const browserItem = (
   instructions: [],
   notes: null,
   videoUrl: null,
+  imageUrl: null,
   savedMatch: { status: "exact", exerciseId: "test" },
   ...overrides,
 });
@@ -122,13 +123,17 @@ describe("exercise browser item adapters", () => {
   });
 
   it("adapts provider records through the canonical provider mapper", () => {
-    const item = adaptProviderExerciseBrowserItem(provider(), []);
+    const item = adaptProviderExerciseBrowserItem(
+      provider({ imageUrl: "https://cdn.example/curl.webp" }),
+      [],
+    );
     expect(item).toMatchObject({
       key: "provider:provider-1",
       kind: "provider",
       origin: "provider",
       exerciseId: null,
       providerExerciseId: "provider-1",
+      imageUrl: "https://cdn.example/curl.webp",
       muscleProfile: {
         primaryMuscleKeys: ["biceps"],
         secondaryMuscleKeys: ["forearms"],

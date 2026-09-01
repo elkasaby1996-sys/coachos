@@ -295,27 +295,41 @@ export function ExerciseLibraryResultRow({
   const muscles = getMuscleSummary(item);
   return (
     <article className="grid min-w-0 gap-3 rounded-[22px] border border-border/65 bg-background/38 px-4 py-3 transition-colors hover:border-border hover:bg-muted/22 md:grid-cols-[minmax(13rem,1fr)_minmax(11rem,0.72fr)_minmax(8rem,0.42fr)_auto] md:items-center md:gap-4">
-      <div className="min-w-0">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h3 className="min-w-0 truncate text-sm font-semibold text-foreground sm:text-base">
-            {item.name}
-          </h3>
-          <Badge variant={item.origin === "provider" ? "muted" : "info"}>
-            {sourceLabels[item.origin]}
-          </Badge>
-          {item.matchReason ? (
-            <Badge
-              variant={item.matchReason === "primary" ? "success" : "neutral"}
-            >
-              {matchLabels[item.matchReason]}
+      <div className="flex min-w-0 items-center gap-3">
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={`${item.name} starting position`}
+            width={64}
+            height={64}
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            className="h-16 w-16 shrink-0 rounded-2xl border border-border/60 bg-muted/35 object-cover"
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h3 className="min-w-0 truncate text-sm font-semibold text-foreground sm:text-base">
+              {item.name}
+            </h3>
+            <Badge variant={item.origin === "provider" ? "muted" : "info"}>
+              {sourceLabels[item.origin]}
             </Badge>
+            {item.matchReason ? (
+              <Badge
+                variant={item.matchReason === "primary" ? "success" : "neutral"}
+              >
+                {matchLabels[item.matchReason]}
+              </Badge>
+            ) : null}
+          </div>
+          {item.tags.length ? (
+            <p className="mt-1 truncate text-xs text-muted-foreground">
+              {item.tags.slice(0, 3).join(" · ")}
+            </p>
           ) : null}
         </div>
-        {item.tags.length ? (
-          <p className="mt-1 truncate text-xs text-muted-foreground">
-            {item.tags.slice(0, 3).join(" · ")}
-          </p>
-        ) : null}
       </div>
 
       <div className="min-w-0 text-xs text-muted-foreground">

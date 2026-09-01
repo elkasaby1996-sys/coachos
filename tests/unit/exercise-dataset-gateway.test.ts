@@ -140,6 +140,59 @@ describe("exercise dataset gateway", () => {
     );
   });
 
+  it("fetches one validated provider detail record without caller-controlled routing", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({
+        success: true,
+        data: {
+          exerciseId: "exr_detail-1",
+          name: "Bench Press",
+          videoUrl: "https://cdn.example/bench.mp4",
+        },
+      }),
+    ) as unknown as typeof fetch;
+    const response = await handleExerciseDatasetGatewayRequest(
+      request({ exerciseId: " exr_detail-1 " }),
+      dependencies({ fetchImpl }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://provider.example/api/v1/exercises/exr_detail-1",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          "X-Provider-Key": "server-secret",
+        }),
+      }),
+    );
+  });
+
+  it("rejects mixed or malformed detail requests and invalid detail payloads", async () => {
+    expect(
+      validateExerciseDatasetGatewayInput({
+        exerciseId: "provider-1",
+        name: "caller-controlled",
+      }),
+    ).toEqual({ ok: false });
+    expect(validateExerciseDatasetGatewayInput({ exerciseId: "../" })).toEqual({
+      ok: false,
+    });
+
+    const response = await handleExerciseDatasetGatewayRequest(
+      request({ exerciseId: "provider-1" }),
+      dependencies({
+        fetchImpl: vi.fn(async () =>
+          Response.json({ data: { name: "Missing id" } }),
+        ) as unknown as typeof fetch,
+      }),
+    );
+    expect(response.status).toBe(502);
+    expect((await readBody(response)).error.code).toBe(
+      "provider_invalid_response",
+    );
+  });
+
   it("maps provider 429 responses without exposing provider content", async () => {
     const response = await handleExerciseDatasetGatewayRequest(
       request(validBody),

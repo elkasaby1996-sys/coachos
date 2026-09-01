@@ -22,7 +22,8 @@ export type ExerciseDatasetGatewayErrorCode =
   | "provider_invalid_response"
   | "unknown_provider_error";
 
-export type ExerciseDatasetGatewayInput = {
+export type ExerciseDatasetGatewaySearchInput = {
+  operation: "search";
   name: string;
   bodyPart: string;
   equipment: string;
@@ -30,6 +31,15 @@ export type ExerciseDatasetGatewayInput = {
   limit: number;
   cursor: string | null;
 };
+
+export type ExerciseDatasetGatewayDetailInput = {
+  operation: "detail";
+  exerciseId: string;
+};
+
+export type ExerciseDatasetGatewayInput =
+  | ExerciseDatasetGatewaySearchInput
+  | ExerciseDatasetGatewayDetailInput;
 
 export type ExerciseDatasetProviderConfig = {
   baseUrl: string;
@@ -40,7 +50,7 @@ export type ExerciseDatasetProviderConfig = {
 
 export type ExerciseDatasetGatewayLog = {
   correlationId: string;
-  operation: "exercise_dataset_search";
+  operation: "exercise_dataset_search" | "exercise_dataset_detail";
   provider: "exercise_dataset";
   statusCategory: "success" | "rejected" | "failure";
   elapsedMs: number;
@@ -76,6 +86,7 @@ const errorMessages: Record<ExerciseDatasetGatewayErrorCode, string> = {
 };
 
 const allowedRequestKeys = new Set([
+  "exerciseId",
   "name",
   "bodyPart",
   "equipment",
@@ -85,6 +96,7 @@ const allowedRequestKeys = new Set([
 ]);
 
 const stringLimits = {
+  exerciseId: 200,
   name: 200,
   bodyPart: 120,
   equipment: 120,
@@ -143,6 +155,22 @@ export function validateExerciseDatasetGatewayInput(
     return { ok: false };
   }
 
+  if (record.exerciseId !== undefined) {
+    if (
+      Object.keys(record).some((key) => key !== "exerciseId") ||
+      typeof record.exerciseId !== "string" ||
+      !record.exerciseId.trim() ||
+      record.exerciseId.length > stringLimits.exerciseId ||
+      !/^[A-Za-z0-9_-]+$/.test(record.exerciseId.trim())
+    ) {
+      return { ok: false };
+    }
+    return {
+      ok: true,
+      value: { operation: "detail", exerciseId: record.exerciseId.trim() },
+    };
+  }
+
   const name = readOptionalString(record, "name");
   const bodyPart = readOptionalString(record, "bodyPart");
   const equipment = readOptionalString(record, "equipment");
@@ -182,7 +210,15 @@ export function validateExerciseDatasetGatewayInput(
 
   return {
     ok: true,
-    value: { name, bodyPart, equipment, target, limit, cursor },
+    value: {
+      operation: "search",
+      name,
+      bodyPart,
+      equipment,
+      target,
+      limit,
+      cursor,
+    },
   };
 }
 
@@ -243,7 +279,20 @@ export function buildExerciseDatasetProviderRequest(
     apiHost: string;
   },
 ) {
-  const url = new URL(`${config.baseUrl}/api/v1/exercises`);
+  const url = new URL(
+    input.operation === "detail"
+      ? `${config.baseUrl}/api/v1/exercises/${encodeURIComponent(input.exerciseId)}`
+      : `${config.baseUrl}/api/v1/exercises`,
+  );
+  if (input.operation === "detail") {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      [config.apiKeyHeader]: config.apiKey,
+    };
+    if (config.apiHost) headers["X-RapidAPI-Host"] = config.apiHost;
+    return { url: url.toString(), headers };
+  }
+
   url.searchParams.set("limit", String(input.limit));
   if (input.name) url.searchParams.set("name", input.name);
   if (input.bodyPart) url.searchParams.set("bodyParts", input.bodyPart);
@@ -265,6 +314,26 @@ export function hasExerciseDatasetList(payload: unknown) {
   const record = payload as Record<string, unknown>;
   return ["data", "results", "items", "exercises"].some((key) =>
     Array.isArray(record[key]),
+  );
+}
+
+export function hasExerciseDatasetDetail(payload: unknown) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return false;
+  }
+  const record = payload as Record<string, unknown>;
+  const candidate =
+    record.data &&
+    typeof record.data === "object" &&
+    !Array.isArray(record.data)
+      ? (record.data as Record<string, unknown>)
+      : record;
+  return (
+    (typeof candidate.exerciseId === "string" ||
+      typeof candidate.exerciseId === "number" ||
+      typeof candidate.id === "string" ||
+      typeof candidate.id === "number") &&
+    typeof candidate.name === "string"
   );
 }
 
@@ -312,13 +381,15 @@ export async function handleExerciseDatasetGatewayRequest(
   const now = dependencies.now ?? Date.now;
   const startedAt = now();
   let userId: string | undefined;
+  let operation: ExerciseDatasetGatewayLog["operation"] =
+    "exercise_dataset_search";
   const log = (
     statusCategory: ExerciseDatasetGatewayLog["statusCategory"],
     errorCode?: ExerciseDatasetGatewayErrorCode,
   ) =>
     dependencies.log?.({
       correlationId,
-      operation: "exercise_dataset_search",
+      operation,
       provider: "exercise_dataset",
       statusCategory,
       elapsedMs: Math.max(0, now() - startedAt),
@@ -361,6 +432,10 @@ export async function handleExerciseDatasetGatewayRequest(
     }
     const validation = validateExerciseDatasetGatewayInput(body);
     if (!validation.ok) return reject("invalid_request", 400);
+    operation =
+      validation.value.operation === "detail"
+        ? "exercise_dataset_detail"
+        : "exercise_dataset_search";
 
     const config = normalizeExerciseDatasetProviderConfig(
       dependencies.getProviderConfig(),
@@ -418,7 +493,11 @@ export async function handleExerciseDatasetGatewayRequest(
       } catch {
         return reject("provider_invalid_response", 502, "failure");
       }
-      if (!hasExerciseDatasetList(providerPayload)) {
+      const hasExpectedPayload =
+        validation.value.operation === "detail"
+          ? hasExerciseDatasetDetail(providerPayload)
+          : hasExerciseDatasetList(providerPayload);
+      if (!hasExpectedPayload) {
         return reject("provider_invalid_response", 502, "failure");
       }
 

@@ -8,6 +8,7 @@ vi.mock("../../src/lib/supabase", () => ({
 
 import {
   ExerciseDatasetError,
+  getExerciseDatasetExercise,
   searchExerciseDataset,
 } from "../../src/lib/exercise-dataset";
 
@@ -80,6 +81,35 @@ describe("exercise dataset gateway client", () => {
       code: "provider_rate_limited",
       message:
         "The exercise provider rate-limited this request. Wait a moment and try again.",
+    });
+  });
+
+  it("loads and normalizes one provider detail record through the gateway", async () => {
+    invokeMock.mockResolvedValue({
+      data: {
+        providerPayload: {
+          success: true,
+          data: {
+            exerciseId: "exr_video-1",
+            name: "Bench Press",
+            videoUrl: "https://cdn.example/bench.mp4",
+            imageUrl: "https://cdn.example/bench.webp",
+          },
+        },
+      },
+      error: null,
+    });
+
+    const exercise = await getExerciseDatasetExercise("exr_video-1");
+
+    expect(invokeMock).toHaveBeenCalledWith(
+      "exercise-dataset-search",
+      expect.objectContaining({ body: { exerciseId: "exr_video-1" } }),
+    );
+    expect(exercise).toMatchObject({
+      id: "exr_video-1",
+      videoUrl: "https://cdn.example/bench.mp4",
+      imageUrl: "https://cdn.example/bench.webp",
     });
   });
 });

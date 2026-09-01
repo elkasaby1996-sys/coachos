@@ -51,6 +51,7 @@ import {
   classifyProviderSavedMatch,
 } from "../../lib/exercise-browser";
 import { buildCurrentProviderExerciseInsertPayload } from "../../lib/exercise-import";
+import { getExerciseDatasetExercise } from "../../lib/exercise-dataset";
 import {
   emptyExercisePickerSelection,
   resolveExercisePickerSelections,
@@ -548,12 +549,23 @@ export function PtWorkoutTemplateBuilderPage() {
         if (candidate.source === "library") {
           resolvedSelections.push({ exerciseId: candidate.exerciseId });
         } else {
+          const importExercise = candidate.exercise.videoUrl
+            ? candidate.exercise
+            : await queryClient.fetchQuery({
+                queryKey: [
+                  "exercise-provider-detail",
+                  candidate.exercise.id,
+                ] as const,
+                queryFn: ({ signal }) =>
+                  getExerciseDatasetExercise(candidate.exercise.id, signal),
+                staleTime: 5 * 60 * 1000,
+              });
           const { data, error } = await supabase
             .from("exercises")
             .insert(
               buildCurrentProviderExerciseInsertPayload(
                 libraryOwnerUserId,
-                candidate.exercise,
+                importExercise,
               ),
             )
             .select("id")

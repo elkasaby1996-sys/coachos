@@ -206,6 +206,18 @@ const extractExerciseList = (payload: unknown) => {
   return [];
 };
 
+const extractExerciseDetail = (payload: unknown) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+  const record = payload as Record<string, unknown>;
+  return record.data &&
+    typeof record.data === "object" &&
+    !Array.isArray(record.data)
+    ? record.data
+    : record;
+};
+
 export const extractExerciseDatasetNextCursor = (payload: unknown) => {
   if (!payload || typeof payload !== "object") return null;
   const meta = (payload as Record<string, unknown>).meta;
@@ -382,4 +394,29 @@ export async function searchExerciseDataset(
       .filter((item): item is ExerciseDatasetExercise => Boolean(item)),
     nextCursor: extractExerciseDatasetNextCursor(payload),
   };
+}
+
+export async function getExerciseDatasetExercise(
+  exerciseId: string,
+  signal?: AbortSignal,
+): Promise<ExerciseDatasetExercise> {
+  const { data, error } = await supabase.functions.invoke<{
+    providerPayload?: unknown;
+  }>("exercise-dataset-search", {
+    body: { exerciseId },
+    signal,
+    timeout: 15_000,
+  });
+  if (error) throw new ExerciseDatasetError(await readGatewayErrorCode(error));
+  if (!data || !("providerPayload" in data)) {
+    throw new ExerciseDatasetError("provider_invalid_response");
+  }
+
+  const exercise = normalizeExerciseDatasetRecord(
+    extractExerciseDetail(data.providerPayload),
+  );
+  if (!exercise || exercise.id !== exerciseId.trim()) {
+    throw new ExerciseDatasetError("provider_invalid_response");
+  }
+  return exercise;
 }

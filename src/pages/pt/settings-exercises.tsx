@@ -26,6 +26,7 @@ import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import {
   ExerciseDatasetError,
   exerciseDatasetConfigured,
+  getExerciseDatasetExercise,
   mergeExerciseDatasetPages,
   searchExerciseDataset,
   type ExerciseDatasetExercise,
@@ -59,7 +60,7 @@ import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useSearchParams } from "react-router-dom";
-import { Plus, RefreshCcw } from "lucide-react";
+import { Play, Plus, RefreshCcw } from "lucide-react";
 
 type ExerciseFormState = {
   name: string;
@@ -114,6 +115,10 @@ export function PtExerciseLibraryPage() {
   );
   const [libraryPage, setLibraryPage] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(
+    null,
+  );
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selected, setSelected] =
     useState<PersistentExerciseLibraryRecord | null>(null);
@@ -242,6 +247,17 @@ export function PtExerciseLibraryPage() {
     () => new Map(providerExercises.map((exercise) => [exercise.id, exercise])),
     [providerExercises],
   );
+  const previewExercise = previewExerciseId
+    ? providerById.get(previewExerciseId)
+    : null;
+  const providerDetailQuery = useQuery({
+    queryKey: ["exercise-provider-detail", previewExerciseId] as const,
+    enabled: previewOpen && Boolean(previewExerciseId),
+    queryFn: ({ signal }) =>
+      getExerciseDatasetExercise(previewExerciseId ?? "", signal),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
   const providerItems = useMemo(
     () =>
       providerExercises.map((exercise) =>
@@ -357,28 +373,39 @@ export function PtExerciseLibraryPage() {
   const handleImportExercise = async (exercise: ExerciseDatasetExercise) => {
     if (!libraryOwnerUserId) return;
     setImportingId(exercise.id);
+    try {
+      const importExercise = exercise.videoUrl
+        ? exercise
+        : await queryClient.fetchQuery({
+            queryKey: ["exercise-provider-detail", exercise.id] as const,
+            queryFn: ({ signal }) =>
+              getExerciseDatasetExercise(exercise.id, signal),
+            staleTime: 5 * 60 * 1000,
+          });
+      const { error } = await supabase
+        .from("exercises")
+        .insert(
+          buildCurrentProviderExerciseInsertPayload(
+            libraryOwnerUserId,
+            importExercise,
+          ),
+        );
+      if (error) throw error;
 
-    const { error } = await supabase
-      .from("exercises")
-      .insert(
-        buildCurrentProviderExerciseInsertPayload(libraryOwnerUserId, exercise),
-      );
-
-    setImportingId(null);
-    if (error) {
+      await queryClient.invalidateQueries({
+        queryKey: exerciseQueryKeys.library.owner(libraryOwnerUserId),
+      });
+      setToastMessage("Exercise saved to your library");
+    } catch (error) {
       const details = getErrorDetails(error);
       setToastMessage(
         details.code === "23505"
           ? "That exercise name already exists in your library."
           : "The exercise could not be saved to your library.",
       );
-      return;
+    } finally {
+      setImportingId(null);
     }
-
-    await queryClient.invalidateQueries({
-      queryKey: exerciseQueryKeys.library.owner(libraryOwnerUserId),
-    });
-    setToastMessage("Exercise saved to your library");
   };
 
   const handleMuscleChange = (muscleKey: MuscleKey | null) => {
@@ -452,31 +479,22 @@ export function PtExerciseLibraryPage() {
   };
 
   const providerActions = (item: FilteredExerciseBrowserItem) => {
-    if (libraryLoading) {
-      return (
-        <Button type="button" size="sm" variant="secondary" disabled>
-          Checking library…
-        </Button>
-      );
-    }
-    if (item.savedMatch.status === "exact") {
-      return (
-        <Button type="button" size="sm" variant="secondary" disabled>
-          In library
-        </Button>
-      );
-    }
-    if (item.savedMatch.status === "name_conflict") {
-      return (
-        <Button type="button" size="sm" variant="secondary" disabled>
-          Name already exists
-        </Button>
-      );
-    }
     const providerExercise = item.providerExerciseId
       ? providerById.get(item.providerExerciseId)
       : null;
-    return (
+    const libraryAction = libraryLoading ? (
+      <Button type="button" size="sm" variant="secondary" disabled>
+        Checking library…
+      </Button>
+    ) : item.savedMatch.status === "exact" ? (
+      <Button type="button" size="sm" variant="secondary" disabled>
+        In library
+      </Button>
+    ) : item.savedMatch.status === "name_conflict" ? (
+      <Button type="button" size="sm" variant="secondary" disabled>
+        Name already exists
+      </Button>
+    ) : (
       <Button
         type="button"
         size="sm"
@@ -489,6 +507,25 @@ export function PtExerciseLibraryPage() {
           ? "Saving…"
           : "Save to library"}
       </Button>
+    );
+    return (
+      <>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={!providerExercise}
+          onClick={() => {
+            if (!providerExercise) return;
+            setPreviewExerciseId(providerExercise.id);
+            setPreviewOpen(true);
+          }}
+        >
+          <Play className="h-3.5 w-3.5" aria-hidden="true" />
+          Preview
+        </Button>
+        {libraryAction}
+      </>
     );
   };
 
@@ -727,6 +764,118 @@ export function PtExerciseLibraryPage() {
           )}
         </section>
       </div>
+
+      <Dialog
+        open={previewOpen}
+        onOpenChange={(open) => {
+          setPreviewOpen(open);
+          if (!open) setPreviewExerciseId(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {providerDetailQuery.data?.name ??
+                previewExercise?.name ??
+                "Exercise preview"}
+            </DialogTitle>
+            <DialogDescription>
+              Provider demonstration and exercise guidance. Video playback
+              starts only when you press play.
+            </DialogDescription>
+          </DialogHeader>
+
+          {providerDetailQuery.isPending ? (
+            <div className="space-y-3" aria-label="Loading exercise preview">
+              <div className="aspect-video animate-pulse rounded-2xl bg-muted" />
+              <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+            </div>
+          ) : providerDetailQuery.isError ? (
+            <Alert tone="danger">
+              <AlertTitle>Preview couldn’t load</AlertTitle>
+              <AlertDescription>
+                {getProviderErrorCopy(providerDetailQuery.error)}
+              </AlertDescription>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="mt-3"
+                onClick={() => void providerDetailQuery.refetch()}
+              >
+                <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                Retry preview
+              </Button>
+            </Alert>
+          ) : providerDetailQuery.data ? (
+            <div className="space-y-5">
+              {providerDetailQuery.data.videoUrl ? (
+                <video
+                  controls
+                  playsInline
+                  preload="none"
+                  poster={
+                    providerDetailQuery.data.imageUrl ??
+                    previewExercise?.imageUrl ??
+                    undefined
+                  }
+                  className="aspect-video w-full rounded-2xl border border-border bg-black object-contain"
+                  aria-label={`${providerDetailQuery.data.name} demonstration video`}
+                >
+                  <source
+                    src={providerDetailQuery.data.videoUrl}
+                    type="video/mp4"
+                  />
+                  Your browser does not support embedded video playback.
+                </video>
+              ) : providerDetailQuery.data.imageUrl ? (
+                <img
+                  src={providerDetailQuery.data.imageUrl}
+                  alt={`${providerDetailQuery.data.name} starting position`}
+                  width={960}
+                  height={540}
+                  referrerPolicy="no-referrer"
+                  className="aspect-video w-full rounded-2xl border border-border bg-muted object-contain"
+                />
+              ) : (
+                <Alert tone="warning">
+                  <AlertTitle>No demonstration media</AlertTitle>
+                  <AlertDescription>
+                    This provider record does not currently include a playable
+                    video or image.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {providerDetailQuery.data.overview ? (
+                <p className="text-sm leading-6 text-muted-foreground">
+                  {providerDetailQuery.data.overview}
+                </p>
+              ) : null}
+
+              {providerDetailQuery.data.instructions.length ? (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Instructions
+                  </h3>
+                  <ol className="mt-2 space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
+                    {providerDetailQuery.data.instructions.map(
+                      (instruction, index) => (
+                        <li
+                          key={`${index}-${instruction}`}
+                          className="list-decimal"
+                        >
+                          {instruction}
+                        </li>
+                      ),
+                    )}
+                  </ol>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={modalOpen}

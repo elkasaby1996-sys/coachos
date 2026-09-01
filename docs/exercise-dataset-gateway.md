@@ -72,12 +72,22 @@ Request body:
 }
 ```
 
+An exercise preview uses the same authenticated gateway with a strict detail
+body:
+
+```json
+{
+  "exerciseId": "provider-exercise-id"
+}
+```
+
 The gateway validates every field, rejects unknown fields, permits limits from
-1 through 50, and makes exactly one fixed-route provider request per call.
-Name, body-part, equipment, and target filtering remain frontend-local because
-the current provider integration does not document equivalent upstream query
-parameters. Upstream filtering belongs in PR-EXLIB-02 after the provider
-contract is confirmed.
+1 through 50, and makes exactly one fixed-route provider request per call. The
+current provider adapter maps neutral search fields to its documented `name`,
+`bodyParts`, `equipments`, `targetMuscles`, and `after` parameters. Detail
+requests accept only a bounded provider ID and map it to the provider's fixed
+`/api/v1/exercises/{exerciseId}` route; caller-controlled URLs and mixed
+search/detail bodies are rejected.
 
 Success returns the bounded provider payload to the exercise dataset service:
 
@@ -91,9 +101,12 @@ Success returns the bounded provider payload to the exercise dataset service:
 ```
 
 The frontend service continues normalizing that payload into
-`ExerciseDatasetPage { exercises, nextCursor }`. Errors return only a stable
-code, safe copy, and correlation ID—never provider headers, credentials, raw
-tokens, stack traces, or large provider payloads.
+`ExerciseDatasetPage { exercises, nextCursor }` for list requests and one
+`ProviderNormalizedExercise` for detail requests. The provider catalog renders
+lazy static thumbnails, then requests detail only when a trainer opens Preview.
+The returned MP4 uses click-to-play browser controls with `preload="none"`.
+Errors return only a stable code, safe copy, and correlation ID—never provider
+headers, credentials, raw tokens, stack traces, or large provider payloads.
 
 ## Deployment and credential rotation
 
@@ -132,7 +145,9 @@ After deployment:
    `forbidden`.
 3. Call it with an authorized PT owner/coach and confirm normalized provider
    results render in the existing library and builder.
-4. Inspect browser network traffic and confirm the provider hostname is absent.
+4. Inspect browser network traffic and confirm provider API requests go only
+   through the Supabase gateway. Exercise images and videos may load directly
+   from the provider's credential-free media CDN.
 5. Search the production bundle for the retired browser credential and the
    removed `VITE_EXERCISE_DATASET_*` names.
 6. Temporarily use an invalid local provider configuration and confirm saved

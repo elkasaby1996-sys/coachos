@@ -39,6 +39,7 @@ export type ExerciseBrowserItem = {
   instructions: string[];
   notes: string | null;
   videoUrl: string | null;
+  imageUrl: string | null;
   savedMatch: ExerciseBrowserSavedMatch;
 };
 
@@ -135,6 +136,7 @@ export function adaptPersistedExerciseBrowserItem(
     instructions: splitPersistedInstructions(exercise.instructions),
     notes: exercise.notes?.trim() || null,
     videoUrl: exercise.video_url?.trim() || null,
+    imageUrl: null,
     savedMatch: { status: "exact", exerciseId: exercise.id },
   };
 }
@@ -176,6 +178,7 @@ export function adaptProviderExerciseBrowserItem(
     instructions: compactTextList(exercise.instructions),
     notes: exercise.overview?.trim() || null,
     videoUrl: exercise.videoUrl?.trim() || null,
+    imageUrl: exercise.imageUrl?.trim() || null,
     savedMatch: classifyProviderSavedMatch(exercise, libraryExercises),
   };
 }
