@@ -68,6 +68,12 @@ import {
   workoutTemplateExerciseQueryKeys,
 } from "../../lib/exercise-query-contracts";
 import {
+  WorkoutTemplateExerciseMutationResultError,
+  assertWorkoutTemplateExerciseMutationResult,
+  getWorkoutTemplateExerciseMutationMessage,
+  type WorkoutTemplateExerciseMutationRow,
+} from "../../lib/workout-template-exercise-mutations";
+import {
   ASSIGNMENT_SNAPSHOT_NOTICE,
   ASSIGNMENT_SNAPSHOT_WARNING_TITLE,
 } from "../../lib/assignment-semantics";
@@ -107,6 +113,27 @@ const getTemplateMutationErrorMessage = (error: unknown) => {
   if (isDeleteProtectionError(error)) return DELETE_PROTECTION_MESSAGE;
   const details = getErrorDetails(error);
   return `${details.code}: ${details.message}`;
+};
+
+const reportWorkoutTemplateExerciseMutationFailure = (params: {
+  operation: string;
+  templateId: string;
+  expectedIds: readonly string[];
+  error: unknown;
+}) => {
+  const details = getErrorDetails(params.error);
+  const returnedIds =
+    params.error instanceof WorkoutTemplateExerciseMutationResultError
+      ? params.error.returnedIds
+      : [];
+  console.error("WTE_MUTATION_FAILED", {
+    operation: params.operation,
+    templateId: params.templateId,
+    wteRowIds: params.expectedIds,
+    expectedRowCount: params.expectedIds.length,
+    returnedRowCount: returnedIds.length,
+    databaseErrorCode: details.code,
+  });
 };
 
 const formatWorkoutTypeTag = (value: string | null | undefined) =>
@@ -703,6 +730,8 @@ export function PtWorkoutTemplateBuilderPage() {
 
   const handleEditSave = async () => {
     if (!selectedRow || !templateId) return;
+    const operation = "single-row prescription save";
+    const expectedIds = [selectedRow.id];
     setActionStatus("saving");
     setActionError(null);
 
@@ -721,27 +750,40 @@ export function PtWorkoutTemplateBuilderPage() {
       notes: form.notes.trim() || null,
     };
 
-    const { error } = await supabase
-      .from("workout_template_exercises")
-      .update(payload)
-      .eq("id", selectedRow.id);
+    try {
+      const { data, error } = await supabase
+        .from("workout_template_exercises")
+        .update(payload)
+        .eq("id", selectedRow.id)
+        .select("id");
+      if (error) throw error;
+      assertWorkoutTemplateExerciseMutationResult({
+        operation,
+        expectedIds,
+        rows: data as WorkoutTemplateExerciseMutationRow[] | null,
+      });
 
-    if (error) {
-      setActionError(getTemplateMutationErrorMessage(error));
+      setEditOpen(false);
+      setSelectedRow(null);
+      await queryClient.invalidateQueries({
+        queryKey: workoutTemplateExerciseQueryKeys.builder(templateId),
+      });
+    } catch (error) {
+      reportWorkoutTemplateExerciseMutationFailure({
+        operation,
+        templateId,
+        expectedIds,
+        error,
+      });
+      setActionError(getWorkoutTemplateExerciseMutationMessage(error));
+      await templateExercisesQuery.refetch();
+    } finally {
       setActionStatus("idle");
-      return;
     }
-
-    setActionStatus("idle");
-    setEditOpen(false);
-    setSelectedRow(null);
-    await queryClient.invalidateQueries({
-      queryKey: workoutTemplateExerciseQueryKeys.template(templateId),
-    });
   };
 
   const handleBulkEditSave = async () => {
-    if (bulkExerciseIds.length === 0) return;
+    if (!templateId || bulkExerciseIds.length === 0) return;
     const hasAnyField =
       bulkForm.sets.trim() ||
       bulkForm.reps.trim() ||
@@ -753,6 +795,8 @@ export function PtWorkoutTemplateBuilderPage() {
       return;
     }
 
+    const operation = "bulk prescription edit";
+    const expectedIds = [...bulkExerciseIds];
     setActionStatus("saving");
     setActionError(null);
     try {
@@ -772,51 +816,82 @@ export function PtWorkoutTemplateBuilderPage() {
           return supabase
             .from("workout_template_exercises")
             .update(payload)
-            .eq("id", id);
+            .eq("id", id)
+            .select("id");
         }),
       );
       const firstError = results.find((result) => result.error)?.error;
-      if (firstError) {
-        setActionError(getTemplateMutationErrorMessage(firstError));
-        setActionStatus("idle");
-        return;
-      }
+      if (firstError) throw firstError;
+      assertWorkoutTemplateExerciseMutationResult({
+        operation,
+        expectedIds,
+        rows: results.flatMap(
+          (result) =>
+            (result.data as WorkoutTemplateExerciseMutationRow[] | null) ?? [],
+        ),
+      });
 
-      setActionStatus("idle");
       setBulkEditOpen(false);
       setBulkForm(emptyBulkExerciseForm);
       setBulkExerciseIds([]);
       await queryClient.invalidateQueries({
-        queryKey: workoutTemplateExerciseQueryKeys.template(templateId),
+        queryKey: workoutTemplateExerciseQueryKeys.builder(templateId),
       });
     } catch (error) {
-      setActionError(getTemplateMutationErrorMessage(error));
+      reportWorkoutTemplateExerciseMutationFailure({
+        operation,
+        templateId,
+        expectedIds,
+        error,
+      });
+      setActionError(getWorkoutTemplateExerciseMutationMessage(error));
+      await templateExercisesQuery.refetch();
+    } finally {
       setActionStatus("idle");
     }
   };
 
   const handleDelete = async () => {
     if (!selectedRow || !templateId) return;
+    const operation = "single-row delete";
+    const expectedIds = [selectedRow.id];
     setActionStatus("saving");
     setActionError(null);
 
-    const { error } = await supabase
-      .from("workout_template_exercises")
-      .delete()
-      .eq("id", selectedRow.id);
+    try {
+      const { data, error } = await supabase
+        .from("workout_template_exercises")
+        .delete()
+        .eq("id", selectedRow.id)
+        .select("id");
+      if (error) throw error;
+      assertWorkoutTemplateExerciseMutationResult({
+        operation,
+        expectedIds,
+        rows: data as WorkoutTemplateExerciseMutationRow[] | null,
+      });
 
-    if (error) {
-      setActionError(getTemplateMutationErrorMessage(error));
+      setDeleteOpen(false);
+      setSelectedRow(null);
+      await queryClient.invalidateQueries({
+        queryKey: workoutTemplateExerciseQueryKeys.builder(templateId),
+      });
+    } catch (error) {
+      reportWorkoutTemplateExerciseMutationFailure({
+        operation,
+        templateId,
+        expectedIds,
+        error,
+      });
+      setActionError(
+        isDeleteProtectionError(error)
+          ? getTemplateMutationErrorMessage(error)
+          : getWorkoutTemplateExerciseMutationMessage(error),
+      );
+      await templateExercisesQuery.refetch();
+    } finally {
       setActionStatus("idle");
-      return;
     }
-
-    setActionStatus("idle");
-    setDeleteOpen(false);
-    setSelectedRow(null);
-    await queryClient.invalidateQueries({
-      queryKey: workoutTemplateExerciseQueryKeys.template(templateId),
-    });
   };
 
   const handleTemplateDelete = async () => {
@@ -843,7 +918,7 @@ export function PtWorkoutTemplateBuilderPage() {
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    if (actionStatus === "saving") return;
+    if (!templateId || actionStatus === "saving") return;
     const { active, over } = event;
     setDragActiveId(null);
     setDragOverId(null);
@@ -853,7 +928,8 @@ export function PtWorkoutTemplateBuilderPage() {
     const newIndex = exerciseRows.findIndex((row) => row.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    const movedRows = arrayMove(exerciseRows, oldIndex, newIndex);
+    const previousRows = exerciseRows;
+    const movedRows = arrayMove(previousRows, oldIndex, newIndex);
     const draggedRow = movedRows.find((row) => row.id === active.id) ?? null;
     const targetRow = movedRows.find((row) => row.id === over.id) ?? null;
     const draggedPrevRow =
@@ -935,6 +1011,8 @@ export function PtWorkoutTemplateBuilderPage() {
 
     if (changedPayload.size === 0) return;
 
+    const operation = "drag reorder and superset save";
+    const expectedIds = Array.from(changedPayload.keys());
     setActionStatus("saving");
     setActionError(null);
 
@@ -944,20 +1022,35 @@ export function PtWorkoutTemplateBuilderPage() {
           supabase
             .from("workout_template_exercises")
             .update(payload)
-            .eq("id", id),
+            .eq("id", id)
+            .select("id"),
         ),
       );
       const firstError = results.find((result) => result.error)?.error;
-      if (firstError) {
-        setActionError(getTemplateMutationErrorMessage(firstError));
-      }
+      if (firstError) throw firstError;
+      assertWorkoutTemplateExerciseMutationResult({
+        operation,
+        expectedIds,
+        rows: results.flatMap(
+          (result) =>
+            (result.data as WorkoutTemplateExerciseMutationRow[] | null) ?? [],
+        ),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: workoutTemplateExerciseQueryKeys.builder(templateId),
+      });
     } catch (error) {
-      setActionError(getTemplateMutationErrorMessage(error));
+      setExerciseRows(previousRows);
+      reportWorkoutTemplateExerciseMutationFailure({
+        operation,
+        templateId,
+        expectedIds,
+        error,
+      });
+      setActionError(getWorkoutTemplateExerciseMutationMessage(error));
+      await templateExercisesQuery.refetch();
     } finally {
       setActionStatus("idle");
-      await queryClient.invalidateQueries({
-        queryKey: workoutTemplateExerciseQueryKeys.template(templateId),
-      });
     }
   };
 
@@ -1137,7 +1230,10 @@ export function PtWorkoutTemplateBuilderPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {actionError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive"
+            >
               {actionError}
             </div>
           ) : null}
@@ -1345,7 +1441,10 @@ export function PtWorkoutTemplateBuilderPage() {
             </div>
           </div>
           {actionError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive"
+            >
               {actionError}
             </div>
           ) : null}
@@ -1484,7 +1583,10 @@ export function PtWorkoutTemplateBuilderPage() {
               />
             </div>
             {createExerciseError ? (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+              <div
+                role="alert"
+                className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive"
+              >
                 {createExerciseError}
               </div>
             ) : null}
@@ -1642,7 +1744,10 @@ export function PtWorkoutTemplateBuilderPage() {
             </div>
           </div>
           {actionError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive"
+            >
               {actionError}
             </div>
           ) : null}
@@ -1669,7 +1774,10 @@ export function PtWorkoutTemplateBuilderPage() {
             </DialogDescription>
           </DialogHeader>
           {actionError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive"
+            >
               {actionError}
             </div>
           ) : null}

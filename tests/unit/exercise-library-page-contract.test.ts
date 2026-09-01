@@ -22,6 +22,17 @@ const browserComponents = readFileSync(
   "utf8",
 );
 
+const normalizeLineEndings = (source: string) => source.replace(/\r\n?/g, "\n");
+
+const getSelfClosingJsxTag = (source: string, componentName: string) => {
+  const normalized = normalizeLineEndings(source);
+  return (
+    normalized.match(
+      new RegExp(`<${componentName}\\b[\\s\\S]*?\\/>`, "m"),
+    )?.[0] ?? ""
+  );
+};
+
 describe("rebuilt Exercise Library page contract", () => {
   it("keeps the provider query disabled until Provider Catalog is active", () => {
     expect(page).toContain('enabled: view === "provider"');
@@ -93,15 +104,39 @@ describe("rebuilt Exercise Library page contract", () => {
   });
 
   it("treats the anatomical selector as a replaceable controlled component", () => {
-    expect(browserComponents).toContain(
-      "<AnatomicalMuscleSelector\n          value={muscleKey}\n          onValueChange={onMuscleChange}\n        />",
+    const normalizedBrowser = normalizeLineEndings(browserComponents);
+    const selectorTag = getSelfClosingJsxTag(
+      normalizedBrowser,
+      "AnatomicalMuscleSelector",
     );
-    expect(browserComponents).toContain('<div className="min-w-0 max-w-full">');
-    expect(browserComponents).not.toMatch(
-      /AnatomicalMuscleSelector[\s\S]{0,160}className=/,
+    expect(selectorTag).not.toBe("");
+    expect(selectorTag).toMatch(/\bvalue\s*=\s*\{\s*muscleKey\s*\}/);
+    expect(selectorTag).toMatch(
+      /\bonValueChange\s*=\s*\{\s*onMuscleChange\s*\}/,
     );
-    expect(page).toContain("xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]");
+    expect(selectorTag).not.toMatch(/\bclassName\s*=/);
+    expect(selectorTag).not.toMatch(
+      /\b(?:front|back|svg|path)\w*ClassName\s*=/i,
+    );
+
+    const selectorOffset = normalizedBrowser.indexOf(selectorTag);
+    const containingTag = normalizedBrowser
+      .slice(0, selectorOffset)
+      .match(/<div\b([^>]*)>\s*$/)?.[1];
+    const containerClasses =
+      containingTag?.match(/\bclassName\s*=\s*"([^"]*)"/)?.[1].split(/\s+/) ??
+      [];
+    expect(containerClasses).toEqual(
+      expect.arrayContaining(["min-w-0", "max-w-full"]),
+    );
+
+    expect(normalizeLineEndings(page)).toMatch(
+      /xl:grid-cols-\[minmax\(0,\s*1fr\)_minmax\(0,\s*2fr\)\]/,
+    );
     expect(page).not.toContain("minmax(21rem");
+    expect(normalizedBrowser).toMatch(
+      /<details\b[^>]*className="[^"]*\bxl:hidden\b[^"]*"/,
+    );
   });
 
   it("keeps the mobile filter disclosure keyboard-operable", () => {
