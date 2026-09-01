@@ -22,6 +22,12 @@ gateway also accepts the server-only `OPEN_WEARABLES_API_URL` and
 precedence when configured. The Open Wearables fallback uses the existing
 `X-Open-Wearables-API-Key` server header and never exposes it to frontend code.
 
+The public RepSync request contract remains provider-neutral. The gateway maps
+`name`, `bodyPart`, `equipment`, and `target` to the current provider's `name`,
+`bodyParts`, `equipments`, and `targetMuscles` query parameters. RepSync's
+opaque `cursor` maps to the provider's documented `after` parameter; provider
+`before` pagination is not exposed because the UI only requests forward pages.
+
 Supabase supplies `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to the
 function runtime. They must also remain server-only.
 

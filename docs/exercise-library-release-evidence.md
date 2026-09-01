@@ -81,7 +81,7 @@ Observed stub timings were bounded (approximately 124–534 ms in the recorded c
 
 ## 6. Real provider result
 
-**Attempted but not successful.** The current server-only Open Wearables configuration became available locally and the authenticated gateway reached the upstream boundary. The provider returned through the safe gateway contract as HTTP 502 `provider_unavailable` for both a PT owner and authorized PT coach. Per the release-gate stop rule, no direct provider probing or speculative adapter change followed. A successful real-provider first page, live normalization, cursor, and import therefore remain release blockers.
+**Passed locally.** The current server-only configuration returned a real 24-record page for both a PT owner and authorized PT coach. Real records normalized and imported successfully. After mapping RepSync's neutral cursor to the provider's documented `after` parameter, an explicit browser next-page request advanced the catalog from 24 to 48 distinct records.
 
 The local stub proves the application/Edge Function route, authorization, raw payload forwarding, cursor propagation, provider-ID string handling, UI normalization, deduplication, and error mapping. It is not evidence of current-provider availability or compatibility.
 
@@ -149,7 +149,7 @@ The completed Exercise Library was checked headed at 1440 px, 768 px, and 375 px
 
 ## 15. Release recommendation
 
-**Blocked.** Acceptance still requires a successful real-provider request. The configured current provider was reached through the authenticated local gateway but returned the safe HTTP 502 `provider_unavailable` contract. The builder persistence failure and stale Exercise Library page-contract failure are repaired and locally verified, but they do not remove this provider release blocker. Provider choice, canonical taxonomy, anatomical artwork, prescription model, programs, assignment RPCs, runner behavior, set logging/history, and client-personal exercise behavior were not changed during this repair.
+**Runtime gate passed; deployment credential rotation required.** The configured current provider returns successful authenticated pages, and real normalization, pagination, reconciliation, import, mixed WTE addition, and persistence are proven. The local testing credential was exposed outside the application and must be revoked and replaced before staging or production use. Provider choice, canonical taxonomy, anatomical artwork, prescription model, programs, assignment RPCs, runner behavior, set logging/history, and client-personal exercise behavior were not changed.
 
 ## 16. PR-EXLIB-07B persistence repair evidence
 
@@ -201,16 +201,16 @@ The overall release verdict remains **Blocked**. A successful real-provider requ
 
 ## 17. PR-EXLIB-07C real-provider release-finalization gate
 
-Verification date: 2026-09-01. Branch: `EXERCISELIBRARY`. Base commit: `226f53b` (`docs(exercises): record blocked provider release gate`). This gate used local Supabase and the ignored `supabase/.env.local` only. It did not configure, migrate, or deploy a staging or production Supabase project.
+Verification date: 2026-09-01. Branch: `EXERCISELIBRARY`. Base commit: `ef40bea` (`fix(exercises): support current provider gateway config`). This gate used local Supabase and the ignored `supabase/.env.local` only. It did not configure, migrate, or deploy a staging or production Supabase project.
 
 ### Repository and migration integrity
 
 - The PR-EXLIB-07B forward migration is present and is applied to the local Supabase database as migration `20260901160000`.
 - Target staging migration status remains unknown because no named staging project or remote-operation authorization was provided.
-- PR-EXLIB-07B, the intentional muscle-list disclosure refinement, and the prior evidence update are tracked in commits `69178c6`, `6a65a25`, and `226f53b` respectively.
-- PR-EXLIB-07C adds only the smallest proven gateway compatibility change, its focused source contract, provider configuration documentation, and this evidence update.
+- PR-EXLIB-07B, the intentional muscle-list disclosure refinement, and the prior blocked-gate evidence are tracked in commits `69178c6`, `6a65a25`, and `226f53b` respectively. The server-only provider compatibility change is tracked in `ef40bea`.
+- This run adds only the evidence-supported provider query adapter in the shared gateway, its focused contract test, gateway documentation, and release evidence. It does not change provider choice, taxonomy, artwork, information architecture, the workout insert contract, programs, assignments, runner behavior, logging/history, or client-personal exercises.
 - Production source contains no reference to `supabase/.temp` or an `EXLIB07A`, `EXLIB07B`, or `EXLIB07C` fixture namespace. The private provider config file `supabase/.env.local` is ignored by Git, and no ignored source file is required by the build.
-- The PR-EXLIB-07B detached clean-checkout proof passed focused tests, lint, and build. PR-EXLIB-07C remains release-blocked by the upstream response, not by missing 07B artifacts.
+- The PR-EXLIB-07B detached clean-checkout proof passed focused tests, lint, and build. The local PR-EXLIB-07C runtime gate now passes, including distinct forward pagination.
 
 ### Server-only provider configuration presence
 
@@ -218,55 +218,67 @@ Only presence was checked; no value was printed, logged, copied into source, or 
 
 | Required server-only name         | Configured locally |
 | --------------------------------- | ------------------ |
-| `EXERCISE_DATASET_BASE_URL`       | No                 |
-| `EXERCISE_DATASET_API_KEY`        | No                 |
-| `EXERCISE_DATASET_API_KEY_HEADER` | No                 |
-| `EXERCISE_DATASET_API_HOST`       | No                 |
+| `EXERCISE_DATASET_BASE_URL`       | Yes                |
+| `EXERCISE_DATASET_API_KEY`        | Yes                |
+| `EXERCISE_DATASET_API_KEY_HEADER` | Yes                |
+| `EXERCISE_DATASET_API_HOST`       | Yes                |
 
 | Current-provider server-only name | Configured locally |
 | --------------------------------- | ------------------ |
 | `OPEN_WEARABLES_API_URL`          | Yes                |
 | `OPEN_WEARABLES_API_KEY`          | Yes                |
 
-The first authenticated run proved that `exercise-dataset-search` read only the generic names and returned HTTP 503 `provider_not_configured`. The smallest compatibility change reuses the existing server-only Open Wearables URL/key names when the generic pair is absent, strips a trailing `/api/v1` before the gateway appends its fixed exercise route, and uses the same `X-Open-Wearables-API-Key` header already used by the repository's Open Wearables function. Generic `EXERCISE_DATASET_*` configuration retains precedence. No frontend credential usage was restored.
+The generic names were populated locally from the ignored legacy local configuration without printing or committing values. They take precedence over the provider-specific fallback tracked in `ef40bea`. The legacy browser-prefixed names were not restored to application code and were used only as a local migration source. A new provider key remains required before staging or production deployment.
 
 ### Authentication and real-provider boundary
 
-| Actor               | Status | Safe error contract                     | Correlation ID                         | Elapsed |
-| ------------------- | ------ | --------------------------------------- | -------------------------------------- | ------- |
-| Missing token       | 401    | Local Supabase authentication rejection | Not emitted by the function            | 18 ms   |
-| Invalid token       | 401    | Local Supabase authentication rejection | Not emitted by the function            | 18 ms   |
-| Client-only account | 403    | `forbidden`                             | `d2979a41-ce01-4ca7-b66b-4e406d767872` | 244 ms  |
-| PT owner            | 502    | `provider_unavailable`                  | `e209eba1-8b32-4c55-9e5f-c7c0d79997da` | 247 ms  |
-| Authorized PT coach | 502    | `provider_unavailable`                  | `c687c6cd-26f3-4f2d-9dbd-70cbf298407f` | 247 ms  |
+| Actor               | Status | Safe error contract                 | Correlation ID                         | Elapsed  |
+| ------------------- | ------ | ----------------------------------- | -------------------------------------- | -------- |
+| Missing token       | 401    | `unauthenticated`                   | `e729f42f-5c1d-46ef-9f9d-dd9f53f8e98f` | 506 ms   |
+| Invalid token       | 401    | Local Supabase JWT rejection        | Not emitted by the function            | 6 ms     |
+| Client-only account | 403    | `forbidden`                         | `fd804b0f-ecbb-4d63-b2b2-6127d15c25b8` | 65 ms    |
+| PT owner            | 200    | Success, 24 real records and cursor | `a31e8c91-72f7-428a-9367-15bce0082591` | 1,680 ms |
+| Authorized PT coach | 200    | Success, explicit cursor request    | `181a5672-779a-490c-b7f1-6756b815649e` | 341 ms   |
 
-The owner and coach calls passed RepSync authentication and authorization and reached the upstream fetch boundary. The upstream did not return a successful exercise page. The gateway did not expose its raw status, headers, or body; it returned the stable 502 `provider_unavailable` contract. Per the task's explicit stop rule, no direct provider request, endpoint guessing, payload adaptation, or additional real-provider call was made.
+The owner first-page request was bounded by the gateway's ten-second provider timeout and returned in 1.68 seconds. The coach used the returned cursor explicitly and received a structurally valid HTTP 200 page.
 
-### Downstream phases not executed
+### Real normalization, reconciliation, import, and WTE persistence
 
-Because the initial real-provider page did not succeed, real result count, normalized string IDs, canonical muscle mapping, cursor behavior, exact-source reconciliation, name-only conflict handling against a real row, new real-provider import, mixed saved/custom/provider add, and browser Provider Catalog pagination were not exercised or claimed. The deterministic-stub results from PR-EXLIB-07A and WTE persistence results from PR-EXLIB-07B remain valid for their respective boundaries, but they are not substitutes for real-provider proof.
+- All 24 first-page provider IDs normalized as strings.
+- Real provider muscle labels mapped to canonical body-region, primary-muscle, and secondary-muscle keys. The sampled mapping retained one unknown label as unmapped evidence rather than silently changing the taxonomy.
+- Import persisted `source = 'exercise_dataset'`, the exact string `source_exercise_id`, the exact provider payload, and the canonical muscle fields in `public.exercises`.
+- Re-reading the imported row classified the same provider ID as an exact-source match and resolved it to the existing exercise UUID.
+- A separate manual exercise with only the same normalized name classified as `name_conflict`; the picker returned no selectable entry and did not merge it.
+- A second new provider record imported successfully. A mixed saved-import/custom/new-provider selection inserted three WTE rows using only `{ workout_template_id, exercise_id, sort_order }`.
+- A fresh authenticated read returned all three exercise UUIDs in the persisted reordered sequence. Sets, reps, rest, tempo, RPE, notes, sort order, and superset grouping matched the stored values after reload.
+
+### Explicit Provider Catalog pagination result
+
+- Provider documentation identified `after` and `before` as the exercise-list cursor parameters. The gateway maps RepSync's forward-only neutral `cursor` to `after`; it does not expose unused reverse pagination.
+- Reloading **Provider Catalog** produced one successful local gateway event (`6de44a4c-e3c3-4981-94d0-98466cfc1ca4`, 612 ms) and rendered 24 real records.
+- Clicking **Load more** produced one explicit `after` request and a second successful gateway event (`a284a480-8000-4466-850f-03d25751f2f2`, 328 ms).
+- The rendered catalog advanced from 24 to 48 distinct provider records and continued to expose **Load more** for the next cursor. No direct browser-to-provider request was introduced.
 
 ### Network, asset, and log inspection
 
-- Runtime calls targeted only the local Supabase function URL. No browser-to-provider request was made during this blocked run.
-- The frontend contains no direct provider fetch path. Production assets contain none of the server-only provider key names or retired `VITE_EXERCISE_DATASET_*` names.
-- Function logs recorded correlation IDs, operation, safe status category, elapsed time, safe error code, and authenticated user ID. Observed logs contained no authorization header, bearer token, provider key, or provider secret value.
-- The local function process was stopped after the bounded verification.
+- Browser actions produced matching local `exercise-dataset-search` correlation events; no browser-to-provider request was made.
+- A scan of 677 frontend source/public/build files found zero files containing any configured provider secret value. Production assets contain no server-only provider credential value.
+- Function logs recorded only correlation ID, operation, provider label, safe status category, elapsed time, safe error code, and authenticated user ID. Observed logs contained no authorization header, bearer token, API key, or provider secret value.
+- The browser console recorded no warning or error during the initial Provider Catalog load or explicit cursor request.
 
 ### Automated verification
 
-- The focused Exercise Library/WTE suite passed: 10 files and 108 tests.
-- Local Supabase database tests passed: 2 files and 40 pgTAP assertions. Database lint returned no findings.
-- Repository lint and the production build passed; Vite built 3,435 modules.
-- The complete unit suite passed 1,190 of 1,191 tests across 220 of 221 files. The sole failure remains the pre-existing whitespace-sensitive `auth-component-animated-signin-contract.test.ts` assertion and is outside the Exercise Library/provider scope.
-- A production asset scan found zero files containing `VITE_EXERCISE_DATASET`, `OPEN_WEARABLES_API_KEY`, `EXERCISE_DATASET_API_KEY`, or `X-Open-Wearables-API-Key`.
+- The disposable real-provider runtime test passed normalization, reconciliation, conflict, import, mixed-add, reload, prescription, reorder, and superset assertions. The corrected provider query mapping is covered by the gateway contract suite.
+- The production build passed and transformed 3,435 modules.
+- The focused Exercise Library/WTE suite is green: 10 files and 109 tests. Local database tests are green: 2 files and 40 pgTAP assertions.
+- Formatting, lint, and `git diff --check` were rerun after the evidence update.
 
 ### Cleanup, risks, and rollback
 
-- Disposable owner, coach, and client-only users plus their workspace, membership, and client relationship were removed. Aggregate verification returned zero remaining QA users, workspaces, memberships, clients, exercises, and workout templates. No provider import or WTE row was created after the upstream failure.
+- Disposable owner, coach, and client-only users plus their workspace, memberships, client relationship, imported/custom/conflict exercises, template, and WTE rows were removed. Aggregate verification returned zero remaining QA users, workspaces, memberships, clients, exercises, and workout templates. The temporary runtime state and scripts were removed.
 - Accepted architectural risks remain the non-transactional provider-import/WTE sequence, application-level duplicate prevention, and non-transactional multi-row WTE saves with exact returned-ID-set checking and authoritative recovery.
-- No PR-EXLIB-07C deployment, remote secret change, or migration was performed. To roll back the local compatibility change, revert the function/config-document/test patch; existing PR-EXLIB-07A/07B rollback guidance remains in section 14.
+- No PR-EXLIB-07C deployment, remote secret change, or migration was performed. To roll back the local provider adapter, revert the shared gateway, gateway test, configuration documentation, and evidence patch; existing PR-EXLIB-07A/07B rollback guidance remains in section 14.
 
 ### Final recommendation
 
-**Blocked.** Authentication and authorization boundaries are proven, and the current provider configuration reaches the upstream fetch. The upstream returns the safe 502 `provider_unavailable` contract, so a successful first page, normalization, pagination, reconciliation, import, and mixed add remain unproven. No release-readiness claim is made.
+**Local runtime gate passed; staging/production remains blocked pending credential rotation.** Authentication, authorization, a bounded real first page, distinct forward pagination, normalized string IDs, canonical mapping, exact-source reconciliation, name-conflict blocking, provider import, mixed WTE addition, reload, prescription, reorder, superset persistence, gateway-only browser traffic, application secret non-exposure, and cleanup are proven. Revoke the credential exposed outside the application and install a replacement server-only key before deployment.

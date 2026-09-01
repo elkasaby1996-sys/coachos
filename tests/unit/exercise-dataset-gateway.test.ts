@@ -128,7 +128,7 @@ describe("exercise dataset gateway", () => {
       data: [{ id: 42, name: "Squat" }],
     });
     expect(fetchImpl).toHaveBeenCalledWith(
-      "https://provider.example/api/v1/exercises?limit=24&cursor=next-page",
+      "https://provider.example/api/v1/exercises?limit=24&name=squat&after=next-page",
       expect.objectContaining({
         method: "GET",
         headers: {
@@ -241,8 +241,15 @@ describe("exercise dataset gateway", () => {
     ).toBe(false);
   });
 
-  it("builds upstream requests without local-only filters", () => {
-    const validation = validateExerciseDatasetGatewayInput(validBody);
+  it("maps neutral filters to the current provider query contract", () => {
+    const validation = validateExerciseDatasetGatewayInput({
+      ...validBody,
+      name: "Bench Press",
+      bodyPart: "Chest",
+      equipment: "Barbell",
+      target: "Pectorals",
+      cursor: "next-page",
+    });
     expect(validation.ok).toBe(true);
     if (!validation.ok) return;
     const upstream = buildExerciseDatasetProviderRequest(
@@ -251,8 +258,8 @@ describe("exercise dataset gateway", () => {
     );
 
     expect(upstream.url).toBe(
-      "https://provider.example/api/v1/exercises?limit=24",
+      "https://provider.example/api/v1/exercises?limit=24&name=Bench+Press&bodyParts=Chest&equipments=Barbell&targetMuscles=Pectorals&after=next-page",
     );
-    expect(upstream.url).not.toContain("name=");
+    expect(upstream.url).not.toContain("cursor=");
   });
 });

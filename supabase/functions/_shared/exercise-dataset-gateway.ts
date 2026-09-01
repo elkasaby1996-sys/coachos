@@ -245,7 +245,11 @@ export function buildExerciseDatasetProviderRequest(
 ) {
   const url = new URL(`${config.baseUrl}/api/v1/exercises`);
   url.searchParams.set("limit", String(input.limit));
-  if (input.cursor) url.searchParams.set("cursor", input.cursor);
+  if (input.name) url.searchParams.set("name", input.name);
+  if (input.bodyPart) url.searchParams.set("bodyParts", input.bodyPart);
+  if (input.equipment) url.searchParams.set("equipments", input.equipment);
+  if (input.target) url.searchParams.set("targetMuscles", input.target);
+  if (input.cursor) url.searchParams.set("after", input.cursor);
 
   const headers: Record<string, string> = {
     Accept: "application/json",
