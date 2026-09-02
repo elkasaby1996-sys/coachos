@@ -695,46 +695,51 @@ export function PtExerciseLibraryPage() {
         description="Browse your shared owner library or save movements from the connected provider using one canonical muscle filter."
       />
 
-      <ExerciseLibraryToolbar
-        query={filters.query}
-        equipment={filters.equipment}
-        anatomyState={anatomyState}
-        exerciseType={providerFilters.exerciseType}
-        view={view}
-        equipmentOptions={equipmentOptions}
-        exerciseTypeOptions={exerciseTypeOptions}
-        metadataLoading={view === "provider" && metadataQuery.isPending}
-        onQueryChange={(query) => updateFilters({ query }, true)}
-        onEquipmentChange={(equipment) =>
-          updateFilters({ equipment: equipment.trim() || null }, true)
-        }
-        onBodyPartChange={handleProviderBodyPartChange}
-        onTargetMuscleChange={handleProviderTargetChange}
-        onProviderFilterChange={updateProviderFilter}
-        onViewChange={(nextView) =>
-          updateSearchState((current) => ({
-            ...current,
-            view: nextView,
-          }))
-        }
-        onClear={clearFilters}
-        hasActiveFilters={hasActiveFilters}
-        action={
-          <Button type="button" onClick={openCreate}>
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Create exercise
-          </Button>
-        }
-      />
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,0.88fr)] xl:items-start">
+        <aside
+          className="order-1 min-w-0 space-y-4 xl:order-2 xl:sticky xl:top-5 xl:self-start"
+          aria-label="Exercise library controls"
+        >
+          <ExerciseLibraryToolbar
+            query={filters.query}
+            equipment={filters.equipment}
+            anatomyState={anatomyState}
+            exerciseType={providerFilters.exerciseType}
+            view={view}
+            equipmentOptions={equipmentOptions}
+            exerciseTypeOptions={exerciseTypeOptions}
+            metadataLoading={view === "provider" && metadataQuery.isPending}
+            onQueryChange={(query) => updateFilters({ query }, true)}
+            onEquipmentChange={(equipment) =>
+              updateFilters({ equipment: equipment.trim() || null }, true)
+            }
+            onBodyPartChange={handleProviderBodyPartChange}
+            onTargetMuscleChange={handleProviderTargetChange}
+            onProviderFilterChange={updateProviderFilter}
+            onViewChange={(nextView) =>
+              updateSearchState((current) => ({
+                ...current,
+                view: nextView,
+              }))
+            }
+            onClear={clearFilters}
+            hasActiveFilters={hasActiveFilters}
+            action={
+              <Button type="button" onClick={openCreate}>
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Create exercise
+              </Button>
+            }
+          />
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <ExerciseLibraryFilterPanel
-          muscleKey={filters.muscleKey}
-          onMuscleChange={handleMuscleChange}
-        />
+          <ExerciseLibraryFilterPanel
+            muscleKey={filters.muscleKey}
+            onMuscleChange={handleMuscleChange}
+          />
+        </aside>
 
         <section
-          className="min-w-0 rounded-[26px] border border-border/70 bg-card/55 p-3 shadow-card sm:p-4"
+          className="order-2 min-w-0 rounded-[26px] border border-border/70 bg-card/55 p-3 shadow-card sm:p-4 xl:order-1"
           aria-label={
             view === "library"
               ? "My Library results"

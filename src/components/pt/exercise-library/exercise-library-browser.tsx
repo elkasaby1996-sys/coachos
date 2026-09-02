@@ -64,7 +64,7 @@ export function ExerciseLibraryToolbar({
 }) {
   return (
     <div className="min-w-0 space-y-3 rounded-[24px] border border-border/70 bg-card/65 p-3 shadow-card">
-      <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(16rem,1fr)_minmax(11rem,0.34fr)_auto] md:items-end">
+      <div className="min-w-0 space-y-3">
         <div className="min-w-0">
           <label
             htmlFor="exercise-library-search"
@@ -83,45 +83,47 @@ export function ExerciseLibraryToolbar({
             />
           </div>
         </div>
-        <div className="min-w-0">
-          <label
-            htmlFor="exercise-library-view"
-            className="mb-1.5 block text-xs font-semibold text-foreground"
-          >
-            Source
-          </label>
-          <Select
-            id="exercise-library-view"
-            className="w-full"
-            value={view}
-            aria-label="Exercise source"
-            onChange={(event) =>
-              onViewChange(
-                event.target.value === "provider" ? "provider" : "library",
-              )
-            }
-          >
-            <option value="library">My Library</option>
-            <option value="provider">Provider Catalog</option>
-          </Select>
-        </div>
-        <div className="grid min-w-0 grid-cols-2 gap-2 md:flex md:items-center">
-          <Button
-            type="button"
-            variant="secondary"
-            className="min-w-0 whitespace-nowrap"
-            disabled={!hasActiveFilters}
-            onClick={onClear}
-          >
-            <RotateCcw className="h-4 w-4" aria-hidden="true" />
-            Clear filters
-          </Button>
-          {action}
+        <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-1">
+          <div className="min-w-0">
+            <label
+              htmlFor="exercise-library-view"
+              className="mb-1.5 block text-xs font-semibold text-foreground"
+            >
+              Source
+            </label>
+            <Select
+              id="exercise-library-view"
+              className="w-full"
+              value={view}
+              aria-label="Exercise source"
+              onChange={(event) =>
+                onViewChange(
+                  event.target.value === "provider" ? "provider" : "library",
+                )
+              }
+            >
+              <option value="library">My Library</option>
+              <option value="provider">Provider Catalog</option>
+            </Select>
+          </div>
+          <div className="grid min-w-0 grid-cols-2 gap-2 sm:self-end">
+            <Button
+              type="button"
+              variant="secondary"
+              className="min-w-0 whitespace-nowrap"
+              disabled={!hasActiveFilters}
+              onClick={onClear}
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
+              Clear filters
+            </Button>
+            {action}
+          </div>
         </div>
       </div>
 
       <div
-        className="grid min-w-0 gap-3 border-t border-border/60 pt-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid min-w-0 gap-3 border-t border-border/60 pt-3 sm:grid-cols-2"
         aria-label="Exercise metadata filters"
       >
         <div className="min-w-0">
@@ -220,7 +222,7 @@ export function ExerciseLibraryFilterPanel(props: {
 
   return (
     <>
-      <aside className="sticky top-5 hidden min-w-0 self-start rounded-[26px] border border-border/70 bg-card/58 p-4 shadow-card xl:block">
+      <section className="hidden min-w-0 rounded-[26px] border border-border/70 bg-card/58 p-4 shadow-card xl:block">
         <div className="mb-4">
           <div>
             <p className="text-sm font-semibold text-foreground">
@@ -232,7 +234,7 @@ export function ExerciseLibraryFilterPanel(props: {
           </div>
         </div>
         <MuscleSelectorContent {...props} />
-      </aside>
+      </section>
 
       <details className="exercise-library-mobile-filters group rounded-[24px] border border-border/70 bg-card/58 shadow-card xl:hidden">
         <summary
@@ -328,11 +330,6 @@ export function ExerciseLibraryResultRow({
               </Badge>
             ) : null}
           </div>
-          {item.tags.length ? (
-            <p className="mt-1 truncate text-xs text-muted-foreground">
-              {item.tags.slice(0, 3).join(" · ")}
-            </p>
-          ) : null}
         </div>
       </div>
 

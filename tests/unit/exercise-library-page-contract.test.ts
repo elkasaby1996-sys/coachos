@@ -61,6 +61,14 @@ describe("rebuilt Exercise Library page contract", () => {
     expect(page).not.toContain("filteredProviderItems.length} match");
   });
 
+  it("keeps result cards free of the redundant provider tag line", () => {
+    expect(browserComponents).not.toContain(
+      'item.tags.slice(0, 3).join(" · ")',
+    );
+    expect(browserComponents).toContain("getMuscleSummary(item)");
+    expect(browserComponents).toContain('item.equipment ?? "No equipment"');
+  });
+
   it("uses provider metadata for accessible exact-value dropdown filters", () => {
     expect(page).toContain("getExerciseDatasetMetadataCatalog");
     expect(browserComponents).toContain('id="exercise-library-equipment"');
@@ -185,9 +193,12 @@ describe("rebuilt Exercise Library page contract", () => {
     );
 
     expect(normalizeLineEndings(page)).toMatch(
-      /xl:grid-cols-\[minmax\(0,\s*1fr\)_minmax\(0,\s*2fr\)\]/,
+      /xl:grid-cols-\[minmax\(0,\s*2fr\)_minmax\(20rem,\s*0\.88fr\)\]/,
     );
-    expect(page).not.toContain("minmax(21rem");
+    expect(page).toContain('aria-label="Exercise library controls"');
+    expect(page).toContain("xl:order-1");
+    expect(page).toContain("xl:order-2");
+    expect(page).toContain("xl:sticky xl:top-5 xl:self-start");
     expect(normalizedBrowser).toMatch(
       /<details\b[^>]*className="[^"]*\bxl:hidden\b[^"]*"/,
     );
