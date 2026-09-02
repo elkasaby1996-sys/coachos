@@ -56,38 +56,46 @@ const stitchImages = {
 };
 
 const journey = [
-  ["01", "Public profile", "The relationship starts before an application."],
   [
-    "02",
-    "Application",
-    "Prospect answers stay attached to the coaching context.",
+    "01",
+    "Public profile",
+    "Prospects can review your coaching and available packages.",
   ],
-  ["03", "Conversation", "Lead conversations remain part of the record."],
-  ["04", "Approval", "The right prospects move forward with clarity."],
+  ["02", "Application", "Answers are stored with the prospect's record."],
+  [
+    "03",
+    "Conversation",
+    "Messages and notes give coaches the history they need.",
+  ],
+  ["04", "Approval", "Approved prospects move directly into onboarding."],
   [
     "05",
     "Onboarding",
-    "Setup, expectations, and first actions stay connected.",
+    "Clients complete setup and receive their first actions.",
   ],
   [
     "06",
     "Coaching",
-    "Programs, nutrition, habits, and messages share context.",
+    "Programs, nutrition, habits, and messages are managed together.",
   ],
   [
     "07",
     "Check-in",
-    "Progress review becomes part of the relationship history.",
+    "Each review adds results and coach feedback to the record.",
   ],
-  ["08", "Client attention", "Signals show who needs help and why."],
+  [
+    "08",
+    "Client attention",
+    "Recent activity and overdue tasks help coaches prioritize follow-up.",
+  ],
 ];
 
 const productChapters: Chapter[] = [
   {
     id: "acquire",
     label: "01 / Acquire",
-    title: "Turn interest into a structured coaching relationship.",
-    body: "Publish a professional coach profile, collect applications, speak with prospects, and move the right people into coaching without losing the context that brought them there.",
+    title: "Turn a new inquiry into an active client.",
+    body: "Publish your profile, accept applications, talk with prospects, and move approved clients into onboarding with their answers and notes attached.",
     points: [
       "Public coach profile",
       "Prospect application",
@@ -99,8 +107,8 @@ const productChapters: Chapter[] = [
   {
     id: "coach",
     label: "02 / Coach",
-    title: "Deliver the work without losing the context around it.",
-    body: "Assign training, nutrition guidance, habits, and recurring check-ins while keeping messages and client history attached to the same coaching relationship.",
+    title: "Build plans and review the work as it happens.",
+    body: "Assign training and nutrition guidance, track habits, schedule check-ins, and keep client messages beside their progress history.",
     points: [
       "Training programs",
       "Nutrition guidance",
@@ -112,8 +120,8 @@ const productChapters: Chapter[] = [
   {
     id: "retain",
     label: "03 / Retain",
-    title: "Know who needs attention and why.",
-    body: "See the difference between where a client is in the journey and whether that client needs attention. Review the specific signal, then decide what to do next.",
+    title: "Prioritize clients who need follow-up.",
+    body: "RepSync separates lifecycle status from attention signals, then shows the missed check-in, inactivity, or overdue task behind each alert.",
     points: [
       "Lifecycle: Active",
       "Attention: At risk",
@@ -125,15 +133,15 @@ const productChapters: Chapter[] = [
 const switchingSteps = [
   {
     label: "01 Review",
-    body: "Map your current platform, active clients, programs, check-ins, and team workflow.",
+    body: "List the clients, programs, check-ins, and team access you use today.",
   },
   {
     label: "02 Prepare",
-    body: "Identify what can move, what should be recreated, and what should remain archived.",
+    body: "Decide which records to import, recreate, or archive.",
   },
   {
     label: "03 Launch",
-    body: "Configure access, verify active assignments, and move coaching over deliberately.",
+    body: "Set up access, confirm active assignments, and invite clients when the new workspace is ready.",
   },
 ];
 
@@ -386,7 +394,7 @@ function ProductMotion({
 function HeroProductMotion() {
   return (
     <ProductMotion
-      alt="RepSync workflow showing an application becoming an active coaching relationship."
+      alt="RepSync showing an approved application converted into an active client account."
       poster="/media/repsync-workflow-poster.png?v=20260729-light-tour"
       src="/media/repsync-workflow-motion.webm?v=20260729-light-tour"
     />
@@ -409,8 +417,8 @@ function JourneyGrid() {
       <div className="rs-stitch-container">
         <SectionIntro
           eyebrow="Client journey"
-          title="The coaching relationship does not begin with a workout."
-          body="The original context should remain attached as a prospect becomes a client. RepSync keeps each stage connected to the relationship that follows."
+          title="Keep the full client record from application onward."
+          body="Answers, conversations, onboarding details, plans, and check-ins stay on the same client record when coaching begins."
         />
         <div className="rs-stitch-journey-grid">
           {journey.map(([number, title, body]) => (
@@ -510,11 +518,10 @@ function HomeSwitching() {
         <div className="rs-stitch-switching__intro rs-stitch-reveal">
           <SyncRail />
           <p className="rs-stitch-kicker">Switching</p>
-          <h2>Move more than your workout library.</h2>
+          <h2>Bring active coaching work with you.</h2>
           <p>
-            Changing platforms affects active clients, current programs,
-            check-in routines, communication, and team access, not only exercise
-            templates.
+            A platform change can include client records, current programs,
+            check-in schedules, messages, team access, and exercise templates.
           </p>
         </div>
         <div className="rs-stitch-switching__grid">
@@ -543,8 +550,8 @@ function HomeSwitching() {
 }
 
 function FinalCta({
-  title = "Start building a more connected coaching operation.",
-  body = "Use the full Growth workflow for seven days, then choose the capacity that fits your clients, team, and workspaces.",
+  title = "Try RepSync free for seven days.",
+  body = "The trial includes the Growth plan. After seven days, choose a plan based on active clients, coach seats, and workspaces.",
 }: {
   title?: string;
   body?: string;
@@ -568,7 +575,7 @@ export function MarketingHomePage() {
   usePublicSeo({
     title: "RepSync | Connected coaching operations",
     description:
-      "RepSync connects lead management, onboarding, coaching delivery, communication, and client attention in one operating system.",
+      "RepSync gives independent coaches one place to manage applications, onboarding, programs, nutrition, check-ins, messages, and client follow-up.",
   });
 
   return (
@@ -578,13 +585,13 @@ export function MarketingHomePage() {
         <section className="rs-stitch-hero">
           <div className="rs-stitch-hero__copy rs-stitch-reveal is-visible">
             <p className="rs-stitch-kicker">
-              Coaching infrastructure for independent trainers and small teams
+              Built for independent trainers and small teams
             </p>
-            <h1>From first inquiry to every check-in.</h1>
+            <h1>Manage clients and deliver coaching.</h1>
             <p>
-              RepSync connects the work before a client joins with the coaching
-              that follows: leads, onboarding, programs, nutrition, habits,
-              check-ins, messaging, and client attention.
+              RepSync keeps applications, onboarding, programs, nutrition,
+              habits, messages, and check-ins in one place. Coaches can see the
+              full client history and act on the next task.
             </p>
             <div className="rs-stitch-hero__actions">
               <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
@@ -595,8 +602,8 @@ export function MarketingHomePage() {
           </div>
           <ProductPreview
             image="/media/repsync-workflow-poster.png?v=20260729-light-tour"
-            alt="RepSync workflow showing an application becoming an active coaching relationship."
-            caption="One client relationship, connected from application to active coaching."
+            alt="RepSync showing an approved application converted into an active client account."
+            caption="An approved application opens the client account with its history intact."
             media={<HeroProductMotion />}
           />
         </section>
@@ -604,20 +611,19 @@ export function MarketingHomePage() {
         <section className="rs-stitch-section">
           <div className="rs-stitch-container">
             <SectionIntro
-              eyebrow="Audience pathways"
-              title="Two sides of the coaching relationship."
-              body="RepSync gives coaches the operational view and clients the focused experience they need, without forcing both sides through the same interface."
+              eyebrow="Built for coaches and clients"
+              title="A workspace for coaches and an app for clients."
+              body="The workspace brings delivery, communication, and follow-up together. The client app keeps daily training and progress straightforward."
             />
             <div className="rs-stitch-pathways">
               <article className="rs-stitch-pathway rs-stitch-reveal">
                 <p className="rs-stitch-kicker">For Coaches</p>
                 <h3>
-                  Run the work before, during, and around every client
-                  relationship.
+                  Manage the business and the coaching from one workspace.
                 </h3>
                 <p>
-                  Capture interest, move the right people into coaching, deliver
-                  the work, run check-ins, and see who needs attention.
+                  Review new applications, onboard clients, assign plans, run
+                  check-ins, and follow up when someone needs help.
                 </p>
                 <SiteLink to="/for-coaches" variant="secondary">
                   Explore RepSync for coaches
@@ -626,10 +632,10 @@ export function MarketingHomePage() {
               <SyncRail orientation="v" />
               <article className="rs-stitch-pathway rs-stitch-pathway--client rs-stitch-reveal">
                 <p className="rs-stitch-kicker">For Clients</p>
-                <h3>Open RepSync and know what matters today.</h3>
+                <h3>See today's plan and record your progress.</h3>
                 <p>
-                  See your training, nutrition guidance, habits, check-ins,
-                  messages, and progress in one clear coaching experience.
+                  Open RepSync to find your workout, nutrition guidance, habits,
+                  messages, and next check-in.
                 </p>
                 <SiteLink to="/for-clients" variant="secondary">
                   Explore the client experience
@@ -644,9 +650,9 @@ export function MarketingHomePage() {
         <section className="rs-stitch-section">
           <div className="rs-stitch-container">
             <SectionIntro
-              eyebrow="Acquire / Coach / Retain"
-              title="Acquire, coach, and retain from the same operating rhythm."
-              body="Turn interest into a structured relationship, deliver the work in context, and see who needs attention before silence becomes churn."
+              eyebrow="Day-to-day workflow"
+              title="Handle sales, delivery, and follow-up in RepSync."
+              body="Applications, onboarding notes, and coaching activity stay together, giving coaches the information they need for the next decision."
             />
             <ChapterGrid />
           </div>
@@ -657,23 +663,20 @@ export function MarketingHomePage() {
             <ProductPreview
               image="/media/repsync-client-experience-poster.png?v=20260729-client-workout-tour"
               alt="RepSync client app showing today's plan, workouts, an active exercise logger and rest timer, nutrition, habits, check-ins, messages, and progress."
-              caption="The operational system stays with the coach. The client gets a focused coaching experience."
+              caption="The client app keeps daily tasks, messages, and progress easy to reach."
               media={<ClientExperienceMotion />}
             />
             <div className="rs-stitch-reveal">
               <SyncRail />
-              <p className="rs-stitch-kicker">
-                Clear for the coach. Calm for the client.
-              </p>
-              <h2>Clear for the coach. Calm for the client.</h2>
+              <p className="rs-stitch-kicker">Client app</p>
+              <h2>Give clients a clear view of today's coaching.</h2>
               <p>
-                Clients open RepSync and see what matters now: today's workout,
-                nutrition guidance, active habits, their next check-in, recent
-                messages, and progress.
+                The home screen shows today's workout, nutrition guidance,
+                active habits, the next check-in, recent messages, and progress.
               </p>
               <p>
-                The operational system stays with the coach. The client gets a
-                focused coaching experience.
+                Coaches keep the wider account history in their workspace while
+                clients see the information they use each day.
               </p>
               <SiteLink to="/for-clients" variant="secondary">
                 See the client experience
