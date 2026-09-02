@@ -210,7 +210,7 @@ function ProductReferenceSideNav({
 }) {
   return (
     <aside className="rs-product-ref-side" aria-label="Product chapters">
-      <nav aria-label="Product deep-dive chapters">
+      <nav aria-label="Product chapter navigation">
         {visibleProductChapters.map((chapter) => (
           <a
             aria-current={activeChapter === chapter.id ? "location" : undefined}
@@ -261,18 +261,23 @@ function ProductMobileChapterSelector({
 
 function ProductReferenceHero() {
   const hero = productPageContent.hero;
+  const [headingStart, headingEnd = ""] = hero.heading.split(
+    hero.emphasizedText,
+  );
   return (
     <section className="rs-product-ref-hero" aria-labelledby="product-title">
       <SyncRail />
       <p className="rs-product-ref-label">{hero.eyebrow}</p>
       <h1 id="product-title">
-        The Whole <em>Coaching Relationship</em>, Connected.
+        {headingStart}
+        <em>{hero.emphasizedText}</em>
+        {headingEnd}
       </h1>
       <p>{hero.body}</p>
       <p className="rs-product-ref-hero__note">{hero.supportingCopy}</p>
       <div
         className="rs-product-ref-journey rs-product-ref-journey--eleven"
-        aria-label="RepSync relationship journey"
+        aria-label="RepSync client workflow"
       >
         {visibleProductChapters.map((chapter) => (
           <span key={chapter.id}>{chapter.navLabel}</span>
@@ -302,13 +307,13 @@ function ProductReferenceModuleMap({
       aria-labelledby="product-module-map"
     >
       <div className="rs-product-ref-modules__intro">
-        <p className="rs-product-ref-label">Operating system map</p>
+        <p className="rs-product-ref-label">Product map</p>
         <h2 id="product-module-map">
-          {visibleProductChapters.length} chapters. One coaching relationship.
+          Review each part of the client workflow.
         </h2>
         <p>
-          Each chapter owns a clear part of the coaching operation, then keeps
-          its context connected to what follows.
+          Each chapter handles a defined task and keeps its information
+          available to the next step.
         </p>
       </div>
       <div className="rs-product-ref-module-carousel">
@@ -510,9 +515,9 @@ function ProductCaptureCanvas({ mediaId }: { mediaId: ProductMediaId }) {
   };
   const model = models[mediaId] ?? {
     eyebrow: "RepSync workspace",
-    title: "Coaching relationship",
+    title: "Client workspace",
     metric: "Live",
-    metricLabel: "connected context",
+    metricLabel: "current status",
     rows: [
       ["Plan", "Assigned"],
       ["Check-in", "Scheduled"],
@@ -683,7 +688,7 @@ function AcquireWorkflowPreview({
 
 function OnboardingRail({ chapter }: { chapter: ProductChapterContent }) {
   const stages = [
-    ["Approved lead", "Decision recorded with the lead context."],
+    ["Approved lead", "The approval is recorded on the lead."],
     ["Workspace", "Place the client in the appropriate coaching workspace."],
     ["Invitation", "Give the client a secure route into RepSync."],
     [
@@ -758,16 +763,16 @@ function NutritionHabitsSplit({ chapter }: { chapter: ProductChapterContent }) {
             <CheckCircle2 />
           </span>
           <p className="rs-product-ref-label">Habits</p>
-          <h3>Repeatable actions and completion context</h3>
+          <h3>Habit schedule and completion</h3>
           <p>
             Track active habits, frequency, completion, and coach-defined
-            context such as steps, sleep, energy, hunger, and stress.
+            measures such as steps, sleep, energy, hunger, and stress.
           </p>
         </article>
       </div>
       <ProductMediaFallback
         compact
-        description="Nutrition assignment and active habits shown as separate, connected coaching surfaces."
+        description="Nutrition guidance and active habits shown side by side."
         mediaId={chapter.mediaId}
         title="Nutrition and habits"
       />
@@ -796,9 +801,9 @@ function MessagingContextComparison({
           </p>
           <FeatureList
             items={[
-              "Application context",
+              "Application answers",
               "Lead chat and unread state",
-              "Approval or decline context",
+              "Approval or decline",
             ]}
           />
           <div
@@ -818,13 +823,13 @@ function MessagingContextComparison({
           <p className="rs-product-ref-label">After approval</p>
           <h3>Client messaging</h3>
           <p>
-            Keep ongoing coaching questions and feedback connected to the
-            client's workspace, assignments, check-ins, and recent activity.
+            Keep coaching questions and feedback with the client's workspace,
+            assignments, check-ins, and recent activity.
           </p>
           <FeatureList
             items={[
               "Coach-client thread",
-              "Client and workspace context",
+              "Client and workspace details",
               "Unread state and recent message",
             ]}
           />
@@ -923,7 +928,7 @@ function ClientAttentionChapter({
           </article>
         </div>
         <p className="rs-product-ref-attention-signals">
-          Additional signals: {signals.join(" · ")}
+          Additional signals: {signals.join(", ")}
         </p>
         <div
           className="rs-product-ref-lifecycle-list"
@@ -935,12 +940,8 @@ function ClientAttentionChapter({
         </div>
       </div>
       <div className="rs-product-ref-pulse">
-        <span>Attention model</span>
-        <strong>
-          Specific signals.
-          <br />
-          Human decisions.
-        </strong>
+        <span>Example alert</span>
+        <strong>Missed latest check-in</strong>
         <p>{chapter.supportingCopy}</p>
       </div>
     </section>

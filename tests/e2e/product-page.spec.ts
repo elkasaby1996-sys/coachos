@@ -19,7 +19,7 @@ test.describe("public product page", () => {
   }) => {
     await page.goto("/product");
     const nav = page.getByRole("navigation", {
-      name: "Product deep-dive chapters",
+      name: "Product chapter navigation",
     });
     await expect(nav.getByRole("link")).toHaveCount(chapterIds.length);
 
@@ -64,7 +64,11 @@ test.describe("public product page", () => {
       attention.getByText("Active", { exact: true }).first(),
     ).toBeVisible();
     await expect(attention.getByText("At risk", { exact: true })).toBeVisible();
-    await expect(attention.getByText("Missed latest check-in")).toBeVisible();
+    await expect(
+      attention.locator(".rs-product-attention-reason", {
+        hasText: "Missed latest check-in",
+      }),
+    ).toBeVisible();
     await expect(page.getByText("Lifecycle: At risk")).toHaveCount(0);
 
     await expect(page.getByText("WHOOP", { exact: true })).toHaveCount(0);
@@ -93,7 +97,7 @@ test.describe("public product page", () => {
     await expect(page.locator(".rs-product-capture").first()).toBeVisible();
     await expect(page.getByText("MEDIA PLACEHOLDER")).toHaveCount(0);
     await expect(page).toHaveTitle(
-      "RepSync Product | The Whole Coaching Relationship",
+      "RepSync product | Coaching software for trainers",
     );
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
@@ -101,7 +105,7 @@ test.describe("public product page", () => {
     );
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
       "content",
-      "The Whole Coaching Relationship, Connected | RepSync",
+      "Run your client workflow in RepSync",
     );
   });
 

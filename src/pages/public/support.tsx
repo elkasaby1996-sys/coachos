@@ -7,8 +7,8 @@ export function SupportPage() {
   return (
     <PublicInfoLayout
       eyebrow="Help desk"
-      title="Support"
-      description="Tell us what happened and we will help you get back into your RepSync workspace. Include the account email, what you were trying to do, and any relevant screenshots."
+      title="Contact RepSync support."
+      description="Describe the problem, include the email linked to your account, and attach relevant screenshots."
       aside={
         <div className="space-y-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-3 text-foreground">
@@ -34,7 +34,7 @@ export function SupportPage() {
     >
       <PublicInfoCard
         icon={<LifeBuoy className="h-4 w-4" />}
-        title="What to include"
+        title="Include these details"
       >
         <ul className="space-y-2">
           <li>Workspace or account email.</li>
@@ -56,13 +56,14 @@ export function SupportPage() {
         title="Account safety"
       >
         <p>
-          We will never ask for your password. If you cannot sign in, use the
-          password reset flow or email support from your account address.
+          RepSync support will never ask for your password. If you cannot sign
+          in, use the password reset flow or email support from your account
+          address.
         </p>
       </PublicInfoCard>
       <PublicInfoCard
         icon={<CheckCircle2 className="h-4 w-4" />}
-        title="Before you write"
+        title="Check before sending"
       >
         <p>
           Refresh the page, check your internet connection, and note any error
