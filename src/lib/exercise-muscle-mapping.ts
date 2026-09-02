@@ -1,5 +1,9 @@
 import type { ProviderNormalizedExercise } from "./exercise-domain";
 import {
+  resolveProviderBodyPartMapping,
+  resolveProviderTargetMuscleMapping,
+} from "./exercise-provider-anatomy";
+import {
   EXERCISE_MUSCLE_TAXONOMY_VERSION,
   normalizeCanonicalExerciseMuscleProfile,
   type BodyRegionKey,
@@ -263,20 +267,82 @@ export function mapCurrentProviderMuscleProfile(
     "secondaryMuscles",
   ]);
 
-  return mapExerciseLabelsToCanonicalProfile(
+  const bodyRegionKeys: BodyRegionKey[] = [];
+  const primaryMuscleKeys: MuscleKey[] = [];
+  const secondaryMuscleKeys: MuscleKey[] = [];
+  const unmappedLabels: string[] = [];
+
+  const addProviderBodyPart = (label: string) => {
+    const resolution = resolveProviderBodyPartMapping(label);
+    if (
+      resolution.status === "mapped" &&
+      resolution.mapping.canonicalBodyRegionKey
+    ) {
+      bodyRegionKeys.push(resolution.mapping.canonicalBodyRegionKey);
+      return;
+    }
+    unmappedLabels.push(label);
+  };
+  const addProviderTarget = (label: string, destination: MuscleKey[]) => {
+    const resolution = resolveProviderTargetMuscleMapping(label);
+    if (resolution.status === "mapped") {
+      const { mapping } = resolution;
+      if (
+        (mapping.disposition === "exact" ||
+          mapping.disposition === "grouped") &&
+        mapping.canonicalMuscleKey
+      ) {
+        destination.push(mapping.canonicalMuscleKey);
+        return;
+      }
+      if (
+        mapping.disposition === "region_only" &&
+        mapping.canonicalBodyRegionKey
+      ) {
+        bodyRegionKeys.push(mapping.canonicalBodyRegionKey);
+        return;
+      }
+    }
+    unmappedLabels.push(label);
+  };
+
+  if (rawBodyRegions.found) {
+    rawBodyRegions.values.forEach(addProviderBodyPart);
+  }
+  if (rawPrimaryMuscles.found) {
+    rawPrimaryMuscles.values.forEach((label) =>
+      addProviderTarget(label, primaryMuscleKeys),
+    );
+  }
+  if (rawSecondaryMuscles.found) {
+    rawSecondaryMuscles.values.forEach((label) =>
+      addProviderTarget(label, secondaryMuscleKeys),
+    );
+  }
+
+  const legacyFallback = mapExerciseLabelsToCanonicalProfile(
     {
-      bodyRegionLabels: rawBodyRegions.found
-        ? rawBodyRegions.values
-        : exercise.bodyPart,
-      primaryMuscleLabels: rawPrimaryMuscles.found
-        ? rawPrimaryMuscles.values
-        : exercise.target,
+      bodyRegionLabels: rawBodyRegions.found ? [] : exercise.bodyPart,
+      primaryMuscleLabels: rawPrimaryMuscles.found ? [] : exercise.target,
       secondaryMuscleLabels: rawSecondaryMuscles.found
-        ? rawSecondaryMuscles.values
+        ? []
         : exercise.secondaryMuscles,
     },
     CURRENT_PROVIDER_EXERCISE_MUSCLE_ALIASES,
   );
+
+  return normalizeCanonicalExerciseMuscleProfile({
+    bodyRegionKeys: [...bodyRegionKeys, ...legacyFallback.bodyRegionKeys],
+    primaryMuscleKeys: [
+      ...primaryMuscleKeys,
+      ...legacyFallback.primaryMuscleKeys,
+    ],
+    secondaryMuscleKeys: [
+      ...secondaryMuscleKeys,
+      ...legacyFallback.secondaryMuscleKeys,
+    ],
+    unmappedLabels: [...unmappedLabels, ...legacyFallback.unmappedLabels],
+  });
 }
 
 export function buildCurrentProviderCanonicalMuscleFields(

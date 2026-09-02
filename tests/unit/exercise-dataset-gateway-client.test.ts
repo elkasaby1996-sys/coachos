@@ -9,6 +9,7 @@ vi.mock("../../src/lib/supabase", () => ({
 import {
   ExerciseDatasetError,
   getExerciseDatasetExercise,
+  getExerciseDatasetMetadataCatalog,
   searchExerciseDataset,
 } from "../../src/lib/exercise-dataset";
 
@@ -31,6 +32,7 @@ describe("exercise dataset gateway client", () => {
       bodyPart: "",
       equipment: "",
       target: "",
+      exerciseType: "",
       limit: 10,
       cursor: null,
     });
@@ -43,6 +45,7 @@ describe("exercise dataset gateway client", () => {
           bodyPart: "",
           equipment: "",
           target: "",
+          exerciseType: "",
           limit: 10,
           cursor: null,
         },
@@ -76,6 +79,7 @@ describe("exercise dataset gateway client", () => {
         bodyPart: "",
         equipment: "",
         target: "",
+        exerciseType: "",
       }),
     ).rejects.toMatchObject<Partial<ExerciseDatasetError>>({
       code: "provider_rate_limited",
@@ -111,5 +115,35 @@ describe("exercise dataset gateway client", () => {
       videoUrl: "https://cdn.example/bench.mp4",
       imageUrl: "https://cdn.example/bench.webp",
     });
+  });
+
+  it("loads every provider metadata catalog through the protected gateway", async () => {
+    invokeMock.mockResolvedValue({
+      data: {
+        providerPayload: {
+          data: [
+            {
+              name: "BODY WEIGHT",
+              imageUrl: "https://cdn.example/metadata.webp",
+            },
+          ],
+        },
+      },
+      error: null,
+    });
+
+    const catalog = await getExerciseDatasetMetadataCatalog();
+
+    expect(invokeMock).toHaveBeenCalledTimes(4);
+    expect(
+      invokeMock.mock.calls.map(([, options]) => options.body.metadata),
+    ).toEqual(["muscles", "bodyparts", "equipments", "exercisetypes"]);
+    expect(catalog.equipments).toEqual([
+      {
+        value: "BODY WEIGHT",
+        label: "Bodyweight",
+        imageUrl: "https://cdn.example/metadata.webp",
+      },
+    ]);
   });
 });

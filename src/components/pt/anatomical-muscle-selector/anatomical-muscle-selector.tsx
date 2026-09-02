@@ -53,7 +53,7 @@ export function AnatomicalMuscleSelector({
 
       <Tabs defaultValue="map" className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
-          <TabsList className="grid min-w-0 flex-1 grid-cols-2">
+          <TabsList className="anatomy-view-tabs grid min-w-0 flex-1 grid-cols-2">
             <TabsTrigger value="map" className="gap-2">
               <ScanSearch className="h-4 w-4" aria-hidden="true" />
               Body map

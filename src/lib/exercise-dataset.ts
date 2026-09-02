@@ -6,6 +6,7 @@ export type ExerciseDatasetSearchFilters = {
   bodyPart: string;
   equipment: string;
   target: string;
+  exerciseType: string;
   limit?: number;
   cursor?: string | null;
   signal?: AbortSignal;
@@ -23,7 +24,25 @@ export type ExerciseDatasetFilterInput = {
   bodyPart?: string;
   equipment?: string;
   target?: string;
+  exerciseType?: string;
 };
+
+export type ExerciseDatasetMetadataKind =
+  | "muscles"
+  | "bodyparts"
+  | "equipments"
+  | "exercisetypes";
+
+export type ExerciseDatasetMetadataOption = {
+  value: string;
+  label: string;
+  imageUrl: string | null;
+};
+
+export type ExerciseDatasetMetadataCatalog = Record<
+  ExerciseDatasetMetadataKind,
+  ExerciseDatasetMetadataOption[]
+>;
 
 export function mergeExerciseDatasetPages(
   pages: readonly ExerciseDatasetPage[] | undefined,
@@ -139,6 +158,19 @@ const normalizeEquipmentLabel = (value: string | null) => {
     .join(" ");
 };
 
+const normalizeMetadataLabel = (
+  value: string,
+  kind: ExerciseDatasetMetadataKind,
+) => {
+  if (kind === "equipments") return normalizeEquipmentLabel(value) ?? value;
+  return value
+    .trim()
+    .toLocaleLowerCase()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toLocaleUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 const readStringList = (value: unknown) => {
   if (Array.isArray(value)) {
     return value
@@ -178,6 +210,11 @@ export const normalizeExerciseDatasetRecord = (
     target: normalizeFriendlyLabel(
       firstText(record.target, record.targetMuscles),
     ),
+    exerciseType:
+      normalizeMetadataLabel(
+        firstText(record.exerciseType) ?? "",
+        "exercisetypes",
+      ) || null,
     secondaryMuscles: readStringList(record.secondaryMuscles).map(
       (item) => normalizeFriendlyLabel(item) ?? item,
     ),
@@ -338,6 +375,7 @@ export function filterExerciseDataset(
   const bodyPartFilter = (filters.bodyPart ?? "").trim().toLowerCase();
   const equipmentFilter = (filters.equipment ?? "").trim().toLowerCase();
   const targetFilter = (filters.target ?? "").trim().toLowerCase();
+  const exerciseTypeFilter = (filters.exerciseType ?? "").trim().toLowerCase();
 
   return exercises.filter((exercise) => {
     if (!matchesSearch(exercise, nameFilter)) return false;
@@ -359,8 +397,85 @@ export function filterExerciseDataset(
     ) {
       return false;
     }
+    if (
+      exerciseTypeFilter &&
+      !(exercise.exerciseType ?? "").toLowerCase().includes(exerciseTypeFilter)
+    ) {
+      return false;
+    }
     return true;
   });
+}
+
+const extractExerciseDatasetMetadataList = (payload: unknown) => {
+  const candidates = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object"
+      ? (payload as Record<string, unknown>).data
+      : null;
+  return Array.isArray(candidates) ? candidates : [];
+};
+
+export function normalizeExerciseDatasetMetadata(
+  payload: unknown,
+  kind: ExerciseDatasetMetadataKind,
+): ExerciseDatasetMetadataOption[] {
+  const byValue = new Map<string, ExerciseDatasetMetadataOption>();
+  extractExerciseDatasetMetadataList(payload).forEach((candidate) => {
+    const record =
+      candidate && typeof candidate === "object" && !Array.isArray(candidate)
+        ? (candidate as Record<string, unknown>)
+        : null;
+    const value =
+      typeof candidate === "string" ? candidate.trim() : readText(record?.name);
+    if (!value) return;
+    const dedupeKey = normalizeLookupKey(value);
+    if (!dedupeKey || byValue.has(dedupeKey)) return;
+    byValue.set(dedupeKey, {
+      value,
+      label: normalizeMetadataLabel(value, kind),
+      imageUrl: readText(record?.imageUrl),
+    });
+  });
+  return Array.from(byValue.values()).sort((left, right) =>
+    left.label.localeCompare(right.label),
+  );
+}
+
+export async function getExerciseDatasetMetadata(
+  kind: ExerciseDatasetMetadataKind,
+  signal?: AbortSignal,
+): Promise<ExerciseDatasetMetadataOption[]> {
+  const { data, error } = await supabase.functions.invoke<{
+    providerPayload?: unknown;
+  }>("exercise-dataset-search", {
+    body: { metadata: kind },
+    signal,
+    timeout: 15_000,
+  });
+  if (error) throw new ExerciseDatasetError(await readGatewayErrorCode(error));
+  if (!data || !("providerPayload" in data)) {
+    throw new ExerciseDatasetError("provider_invalid_response");
+  }
+  return normalizeExerciseDatasetMetadata(data.providerPayload, kind);
+}
+
+export async function getExerciseDatasetMetadataCatalog(
+  signal?: AbortSignal,
+): Promise<ExerciseDatasetMetadataCatalog> {
+  const kinds: ExerciseDatasetMetadataKind[] = [
+    "muscles",
+    "bodyparts",
+    "equipments",
+    "exercisetypes",
+  ];
+  const entries = await Promise.all(
+    kinds.map(
+      async (kind) =>
+        [kind, await getExerciseDatasetMetadata(kind, signal)] as const,
+    ),
+  );
+  return Object.fromEntries(entries) as ExerciseDatasetMetadataCatalog;
 }
 
 export async function searchExerciseDataset(

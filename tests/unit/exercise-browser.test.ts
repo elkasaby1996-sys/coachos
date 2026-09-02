@@ -2,14 +2,18 @@ import { describe, expect, it } from "vitest";
 import {
   adaptPersistedExerciseBrowserItem,
   adaptProviderExerciseBrowserItem,
+  applyExerciseBrowserProviderAnatomyState,
   classifyPersistedExerciseOrigin,
   classifyProviderSavedMatch,
   exerciseBrowserItemMatchesQuery,
   filterExerciseBrowserItems,
+  filterExerciseBrowserItemsByProviderFacets,
+  getExerciseBrowserProviderAnatomyState,
   groupExerciseBrowserMatches,
   isExerciseBrowserItemUnclassified,
   parseExerciseBrowserSearchParams,
   serializeExerciseBrowserSearchState,
+  DEFAULT_EXERCISE_BROWSER_SEARCH_STATE,
   type ExerciseBrowserFilters,
   type ExerciseBrowserItem,
 } from "../../src/lib/exercise-browser";
@@ -17,6 +21,7 @@ import type {
   PersistentExerciseLibraryRecord,
   ProviderNormalizedExercise,
 } from "../../src/lib/exercise-domain";
+import { selectProviderTargetMuscle } from "../../src/lib/exercise-provider-anatomy";
 
 const persisted = (
   overrides: Partial<PersistentExerciseLibraryRecord> = {},
@@ -54,6 +59,7 @@ const provider = (
   name: "Provider curl",
   bodyPart: "Arms",
   target: "Biceps",
+  exerciseType: "Strength",
   secondaryMuscles: ["Forearms"],
   equipment: "Dumbbell",
   instructions: ["Curl under control"],
@@ -73,7 +79,7 @@ const provider = (
 const defaultFilters: ExerciseBrowserFilters = {
   query: "",
   muscleKey: null,
-  tag: null,
+  equipment: null,
   origin: "all",
   classification: "all",
 };
@@ -94,6 +100,9 @@ const browserItem = (
     unmappedLabels: [],
   },
   equipment: null,
+  bodyPart: null,
+  targetMuscle: null,
+  exerciseType: null,
   tags: [],
   instructions: [],
   notes: null,
@@ -139,6 +148,23 @@ describe("exercise browser item adapters", () => {
         secondaryMuscleKeys: ["forearms"],
       },
       savedMatch: { status: "none" },
+    });
+  });
+
+  it("preserves saved exercise type and imported anatomy facets", () => {
+    const item = adaptPersistedExerciseBrowserItem(
+      persisted({
+        category: "Conditioning",
+        source_payload: {
+          bodyPart: "UPPER ARMS",
+          target: "BICEPS BRACHII",
+        },
+      }),
+    );
+    expect(item).toMatchObject({
+      bodyPart: "UPPER ARMS",
+      targetMuscle: "BICEPS BRACHII",
+      exerciseType: "Conditioning",
     });
   });
 
@@ -200,6 +226,39 @@ describe("canonical exercise browser filtering", () => {
     );
     expect(exerciseBrowserItemMatchesQuery(item, "CABLE MACHINE")).toBe(true);
     expect(exerciseBrowserItemMatchesQuery(item, "hamstrings")).toBe(false);
+  });
+
+  it("filters saved exercises by visible anatomy and exercise-type facets", () => {
+    const armConditioning = browserItem({
+      exerciseType: "Conditioning",
+      muscleProfile: {
+        bodyRegionKeys: ["arms"],
+        primaryMuscleKeys: ["biceps"],
+        secondaryMuscleKeys: [],
+        unmappedLabels: [],
+      },
+    });
+    const legStrength = browserItem({
+      key: "persisted:leg",
+      exerciseType: "Strength",
+      muscleProfile: {
+        bodyRegionKeys: ["upper_legs"],
+        primaryMuscleKeys: ["quadriceps"],
+        secondaryMuscleKeys: [],
+        unmappedLabels: [],
+      },
+    });
+
+    expect(
+      filterExerciseBrowserItemsByProviderFacets(
+        [armConditioning, legStrength],
+        {
+          bodyPart: "UPPER ARMS",
+          target: "BICEPS BRACHII",
+          exerciseType: "conditioning",
+        },
+      ).map(({ key }) => key),
+    ).toEqual(["persisted:test"]);
   });
 
   it("ranks primary, secondary, region, and full-body fallback deterministically", () => {
@@ -370,6 +429,35 @@ describe("canonical exercise browser filtering", () => {
 });
 
 describe("exercise browser URL state", () => {
+  it("uses a provider-derived canonical muscle to filter custom exercises", () => {
+    const synchronized = applyExerciseBrowserProviderAnatomyState(
+      DEFAULT_EXERCISE_BROWSER_SEARCH_STATE,
+      selectProviderTargetMuscle(
+        getExerciseBrowserProviderAnatomyState(
+          DEFAULT_EXERCISE_BROWSER_SEARCH_STATE,
+        ),
+        "QUADRICEPS",
+      ),
+    );
+    const items = [
+      adaptPersistedExerciseBrowserItem(
+        persisted({
+          id: "quad",
+          primary_muscle_keys: ["quadriceps"],
+          body_region_keys: ["upper_legs"],
+        }),
+      ),
+      adaptPersistedExerciseBrowserItem(persisted({ id: "biceps" })),
+    ];
+
+    expect(synchronized.filters.muscleKey).toBe("quadriceps");
+    expect(
+      filterExerciseBrowserItems(items, synchronized.filters).map(
+        ({ exerciseId }) => exerciseId,
+      ),
+    ).toEqual(["quad"]);
+  });
+
   it("rejects invalid muscles and resolves muscle/unclassified conflicts", () => {
     expect(
       parseExerciseBrowserSearchParams(
@@ -389,23 +477,50 @@ describe("exercise browser URL state", () => {
       filters: {
         query: " squat ",
         muscleKey: "quadriceps" as const,
-        tag: " barbell ",
+        equipment: " BARBELL ",
         origin: "imported" as const,
         classification: "classified" as const,
+      },
+      providerFilters: {
+        bodyPart: " CHEST ",
+        target: " QUADRICEPS ",
+        exerciseType: " STRENGTH ",
+        anatomySource: "provider_target" as const,
+        bodyPartProvenance: "manual" as const,
+        targetProvenance: "manual" as const,
+        muscleProvenance: "derived" as const,
       },
     };
     const params = serializeExerciseBrowserSearchState(state);
     expect(params.toString()).toBe(
-      "view=provider&q=squat&muscle=quadriceps&tag=barbell&origin=imported&classification=classified",
+      "view=provider&q=squat&muscle=quadriceps&equipment=BARBELL&origin=imported&classification=classified&bodyPart=CHEST&target=QUADRICEPS&exerciseType=STRENGTH&anatomySource=provider_target&bodyPartMode=manual&targetMode=manual&muscleMode=derived",
     );
     expect(parseExerciseBrowserSearchParams(params)).toEqual({
       ...state,
-      filters: { ...state.filters, query: "squat", tag: "barbell" },
+      filters: { ...state.filters, query: "squat", equipment: "BARBELL" },
+      providerFilters: {
+        bodyPart: "CHEST",
+        target: "QUADRICEPS",
+        exerciseType: "STRENGTH",
+        anatomySource: "provider_target",
+        bodyPartProvenance: "manual",
+        targetProvenance: "manual",
+        muscleProvenance: "derived",
+      },
     });
     expect(
       serializeExerciseBrowserSearchState({
         view: "library",
         filters: defaultFilters,
+        providerFilters: {
+          bodyPart: null,
+          target: null,
+          exerciseType: null,
+          anatomySource: null,
+          bodyPartProvenance: null,
+          targetProvenance: null,
+          muscleProvenance: null,
+        },
       }).toString(),
     ).toBe("");
   });

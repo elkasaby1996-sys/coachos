@@ -23,10 +23,11 @@ precedence when configured. The Open Wearables fallback uses the existing
 `X-Open-Wearables-API-Key` server header and never exposes it to frontend code.
 
 The public RepSync request contract remains provider-neutral. The gateway maps
-`name`, `bodyPart`, `equipment`, and `target` to the current provider's `name`,
-`bodyParts`, `equipments`, and `targetMuscles` query parameters. RepSync's
-opaque `cursor` maps to the provider's documented `after` parameter; provider
-`before` pagination is not exposed because the UI only requests forward pages.
+`name`, `bodyPart`, `equipment`, `target`, and `exerciseType` to the current
+provider's `name`, `bodyParts`, `equipments`, `targetMuscles`, and
+`exerciseType` query parameters. RepSync's opaque `cursor` maps to the
+provider's documented `after` parameter; provider `before` pagination is not
+exposed because the UI only requests forward pages.
 
 Supabase supplies `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to the
 function runtime. They must also remain server-only.
@@ -67,10 +68,24 @@ Request body:
   "bodyPart": "",
   "equipment": "",
   "target": "",
+  "exerciseType": "",
   "limit": 24,
   "cursor": null
 }
 ```
+
+Exercise-library dropdown metadata uses the same authenticated gateway. The
+body contains exactly one allow-listed metadata key:
+
+```json
+{
+  "metadata": "equipments"
+}
+```
+
+Allowed metadata values are `muscles`, `bodyparts`, `equipments`, and
+`exercisetypes`. They map only to the matching fixed `/api/v1/...` provider
+routes; arbitrary paths and mixed metadata/search bodies are rejected.
 
 An exercise preview uses the same authenticated gateway with a strict detail
 body:
@@ -84,10 +99,10 @@ body:
 The gateway validates every field, rejects unknown fields, permits limits from
 1 through 50, and makes exactly one fixed-route provider request per call. The
 current provider adapter maps neutral search fields to its documented `name`,
-`bodyParts`, `equipments`, `targetMuscles`, and `after` parameters. Detail
-requests accept only a bounded provider ID and map it to the provider's fixed
-`/api/v1/exercises/{exerciseId}` route; caller-controlled URLs and mixed
-search/detail bodies are rejected.
+`bodyParts`, `equipments`, `targetMuscles`, `exerciseType`, and `after`
+parameters. Detail requests accept only a bounded provider ID and map it to the
+provider's fixed `/api/v1/exercises/{exerciseId}` route; caller-controlled URLs
+and mixed search/detail bodies are rejected.
 
 Success returns the bounded provider payload to the exercise dataset service:
 

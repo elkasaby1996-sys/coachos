@@ -27,6 +27,12 @@ import {
 } from "../../../lib/exercise-dataset";
 import type { PersistentExerciseLibraryRecord } from "../../../lib/exercise-domain";
 import {
+  clearProviderAnatomyFilters,
+  selectCanonicalMuscle,
+  selectProviderBodyPart,
+  selectProviderTargetMuscle,
+} from "../../../lib/exercise-provider-anatomy";
+import {
   createExercisePickerSelectionEntry,
   emptyExercisePickerSelection,
   getExercisePickerSelectionKey,
@@ -35,7 +41,6 @@ import {
   type ExercisePickerSelectionEntry,
   type ExercisePickerSelectionState,
 } from "../../../lib/exercise-picker";
-import type { MuscleKey } from "../../../lib/exercise-muscle-taxonomy";
 import { ExercisePickerFilterPanel } from "./exercise-picker-filter-panel";
 import { ExercisePickerResults } from "./exercise-picker-results";
 import { ExercisePickerSelectionTray } from "./exercise-picker-selection-tray";
@@ -83,7 +88,8 @@ export function ExercisePicker({
   const [view, setView] = useState<ExerciseBrowserView>("library");
   const [query, setQuery] = useState("");
   const [debouncedProviderQuery, setDebouncedProviderQuery] = useState("");
-  const [muscleKey, setMuscleKey] = useState<MuscleKey | null>(null);
+  const [anatomyState, setAnatomyState] = useState(clearProviderAnatomyFilters);
+  const muscleKey = anatomyState.canonicalMuscleKey;
   const [libraryPage, setLibraryPage] = useState(0);
   const [selectionFeedback, setSelectionFeedback] = useState<string | null>(
     null,
@@ -97,7 +103,15 @@ export function ExercisePicker({
     return () => window.clearTimeout(timeout);
   }, [query]);
 
-  useEffect(() => setLibraryPage(0), [query, muscleKey]);
+  useEffect(
+    () => setLibraryPage(0),
+    [
+      query,
+      muscleKey,
+      anatomyState.providerBodyPart,
+      anatomyState.providerTargetMuscle,
+    ],
+  );
 
   const libraryItems = useMemo(
     () => libraryExercises.map(adaptPersistedExerciseBrowserItem),
@@ -127,15 +141,21 @@ export function ExercisePicker({
   );
 
   const providerQuery = useInfiniteQuery({
-    queryKey: ["exercise-provider-picker", debouncedProviderQuery] as const,
+    queryKey: [
+      "exercise-provider-picker",
+      debouncedProviderQuery,
+      anatomyState.providerBodyPart,
+      anatomyState.providerTargetMuscle,
+    ] as const,
     enabled: open && view === "provider" && exerciseDatasetConfigured,
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) =>
       searchExerciseDataset({
         name: debouncedProviderQuery,
-        bodyPart: "",
+        bodyPart: anatomyState.providerBodyPart ?? "",
         equipment: "",
-        target: "",
+        target: anatomyState.providerTargetMuscle ?? "",
+        exerciseType: "",
         limit: providerPageSize,
         cursor: pageParam,
         signal,
@@ -222,7 +242,7 @@ export function ExercisePicker({
 
   const clearFilters = () => {
     setQuery("");
-    setMuscleKey(null);
+    setAnatomyState(clearProviderAnatomyFilters());
   };
 
   const resultCount =
@@ -235,7 +255,12 @@ export function ExercisePicker({
       <div className="space-y-3 border-b border-border/70 px-3 pb-3 sm:px-5">
         <ExercisePickerToolbar
           query={query}
-          hasActiveFilters={Boolean(query.trim() || muscleKey)}
+          hasActiveFilters={Boolean(
+            query.trim() ||
+            muscleKey ||
+            anatomyState.providerBodyPart ||
+            anatomyState.providerTargetMuscle,
+          )}
           onQueryChange={setQuery}
           onClearFilters={clearFilters}
           onCreateExercise={onCreateExercise}
@@ -274,8 +299,23 @@ export function ExercisePicker({
         <div className="grid min-w-0 gap-3 lg:h-full lg:grid-cols-[minmax(16rem,0.72fr)_minmax(0,1.6fr)]">
           <div className="min-w-0 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             <ExercisePickerFilterPanel
-              muscleKey={muscleKey}
-              onMuscleChange={setMuscleKey}
+              anatomyState={anatomyState}
+              providerFiltersVisible={view === "provider"}
+              onMuscleChange={(value) =>
+                setAnatomyState((current) =>
+                  selectCanonicalMuscle(current, value),
+                )
+              }
+              onBodyPartChange={(value) =>
+                setAnatomyState((current) =>
+                  selectProviderBodyPart(current, value),
+                )
+              }
+              onTargetMuscleChange={(value) =>
+                setAnatomyState((current) =>
+                  selectProviderTargetMuscle(current, value),
+                )
+              }
             />
           </div>
 

@@ -89,12 +89,24 @@ describe("PR-EXLIB-06 shared picker contracts", () => {
     expect(pickerModel).toContain("Map<");
     expect(picker).toContain("selection.has(key)");
     expect(picker).toContain('setQuery("")');
-    expect(picker).toContain("setMuscleKey(null)");
+    expect(picker).toContain("setAnatomyState(clearProviderAnatomyFilters())");
     expect(picker).not.toContain(
       "onSelectionChange(emptyExercisePickerSelection())\n    setQuery",
     );
     expect(pickerTray).toContain("Clear selection");
     expect(pickerTray).toContain("onRemove(entry)");
+  });
+
+  it("shares provider anatomy synchronization with the dedicated library", () => {
+    for (const source of [picker, libraryPage]) {
+      expect(source).toContain("selectCanonicalMuscle");
+      expect(source).toContain("selectProviderBodyPart");
+      expect(source).toContain("selectProviderTargetMuscle");
+    }
+    expect(pickerFilters).toContain("<ProviderAnatomyFilterFields");
+    expect(libraryComponents).toContain("<ProviderAnatomyFilterFields");
+    expect(picker).toContain("bodyPart: anatomyState.providerBodyPart");
+    expect(picker).toContain("target: anatomyState.providerTargetMuscle");
   });
 
   it("canonicalizes exact matches and blocks name conflicts", () => {

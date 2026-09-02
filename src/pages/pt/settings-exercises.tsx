@@ -27,6 +27,7 @@ import {
   ExerciseDatasetError,
   exerciseDatasetConfigured,
   getExerciseDatasetExercise,
+  getExerciseDatasetMetadataCatalog,
   mergeExerciseDatasetPages,
   searchExerciseDataset,
   type ExerciseDatasetExercise,
@@ -34,17 +35,26 @@ import {
 import type { PersistentExerciseLibraryRecord } from "../../lib/exercise-domain";
 import {
   DEFAULT_EXERCISE_BROWSER_FILTERS,
+  DEFAULT_EXERCISE_PROVIDER_FACET_FILTERS,
   adaptPersistedExerciseBrowserItem,
   adaptProviderExerciseBrowserItem,
+  applyExerciseBrowserProviderAnatomyState,
   filterExerciseBrowserItems,
+  filterExerciseBrowserItemsByProviderFacets,
+  getExerciseBrowserProviderAnatomyState,
   getExerciseDeleteErrorMessage,
   parseExerciseBrowserSearchParams,
   serializeExerciseBrowserSearchState,
-  type ExerciseBrowserClassificationFilter,
-  type ExerciseBrowserOriginFilter,
   type ExerciseBrowserSearchState,
   type FilteredExerciseBrowserItem,
 } from "../../lib/exercise-browser";
+import {
+  selectCanonicalMuscle,
+  selectProviderBodyPart,
+  selectProviderTargetMuscle,
+  type ProviderBodyPartValue,
+  type ProviderTargetMuscleValue,
+} from "../../lib/exercise-provider-anatomy";
 import {
   adaptPersistedExerciseMuscleProfile,
   buildCustomExerciseMusclePersistenceFields,
@@ -109,7 +119,11 @@ export function PtExerciseLibraryPage() {
     () => parseExerciseBrowserSearchParams(searchParams),
     [searchParams],
   );
-  const { view, filters } = searchState;
+  const { view, filters, providerFilters } = searchState;
+  const anatomyState = useMemo(
+    () => getExerciseBrowserProviderAnatomyState(searchState),
+    [searchState],
+  );
   const [debouncedProviderQuery, setDebouncedProviderQuery] = useState(
     filters.query,
   );
@@ -151,11 +165,12 @@ export function PtExerciseLibraryPage() {
   useEffect(() => {
     setLibraryPage(0);
   }, [
-    filters.classification,
     filters.muscleKey,
-    filters.origin,
     filters.query,
-    filters.tag,
+    filters.equipment,
+    providerFilters.bodyPart,
+    providerFilters.exerciseType,
+    providerFilters.target,
   ]);
 
   const updateSearchState = (
@@ -179,6 +194,46 @@ export function PtExerciseLibraryPage() {
       replace,
     );
 
+  const updateProviderFilter = (field: "exerciseType", value: string) =>
+    updateSearchState(
+      (current) => ({
+        ...current,
+        providerFilters: {
+          ...current.providerFilters,
+          [field]: value.trim() || null,
+        },
+      }),
+      true,
+    );
+
+  const handleProviderBodyPartChange = (value: ProviderBodyPartValue | null) =>
+    updateSearchState(
+      (current) =>
+        applyExerciseBrowserProviderAnatomyState(
+          current,
+          selectProviderBodyPart(
+            getExerciseBrowserProviderAnatomyState(current),
+            value,
+          ),
+        ),
+      true,
+    );
+
+  const handleProviderTargetChange = (
+    value: ProviderTargetMuscleValue | null,
+  ) =>
+    updateSearchState(
+      (current) =>
+        applyExerciseBrowserProviderAnatomyState(
+          current,
+          selectProviderTargetMuscle(
+            getExerciseBrowserProviderAnatomyState(current),
+            value,
+          ),
+        ),
+      true,
+    );
+
   const ownerScopeQuery = useQuery({
     queryKey: ["workspace-owner", workspaceId],
     enabled: !!workspaceId && !ownerUserId,
@@ -200,13 +255,104 @@ export function PtExerciseLibraryPage() {
     exerciseLibraryFullQueryOptions(libraryOwnerUserId),
   );
   const exercises = useMemo(() => libraryQuery.data ?? [], [libraryQuery.data]);
+  const metadataQuery = useQuery({
+    queryKey: ["exercise-provider-metadata"] as const,
+    enabled: view === "provider" && exerciseDatasetConfigured,
+    queryFn: ({ signal }) => getExerciseDatasetMetadataCatalog(signal),
+    staleTime: 60 * 60 * 1000,
+    retry: 1,
+  });
   const libraryItems = useMemo(
     () => exercises.map(adaptPersistedExerciseBrowserItem),
     [exercises],
   );
+  const equipmentOptions = useMemo(() => {
+    const byValue = new Map<string, { value: string; label: string }>();
+    metadataQuery.data?.equipments.forEach(({ value, label }) => {
+      byValue.set(value.toLocaleLowerCase().replace(/[^a-z0-9]/g, ""), {
+        value,
+        label,
+      });
+    });
+    exercises.forEach((exercise) => {
+      const value = exercise.equipment?.trim();
+      if (!value) return;
+      const key = value.toLocaleLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!byValue.has(key)) byValue.set(key, { value, label: value });
+    });
+    const selectedEquipment = filters.equipment?.trim();
+    if (selectedEquipment) {
+      const selectedKey = selectedEquipment
+        .toLocaleLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+      const existing = byValue.get(selectedKey);
+      byValue.set(selectedKey, {
+        value: selectedEquipment,
+        label: existing?.label ?? selectedEquipment,
+      });
+    }
+    return Array.from(byValue.values()).sort((left, right) =>
+      left.label.localeCompare(right.label),
+    );
+  }, [exercises, filters.equipment, metadataQuery.data?.equipments]);
+  const exerciseTypeOptions = useMemo(() => {
+    const byValue = new Map<string, { value: string; label: string }>();
+    metadataQuery.data?.exercisetypes.forEach(({ value, label }) => {
+      byValue.set(value.toLocaleLowerCase().replace(/[^a-z0-9]/g, ""), {
+        value,
+        label,
+      });
+    });
+    libraryItems.forEach((item) => {
+      const value = item.exerciseType?.trim();
+      if (!value) return;
+      const key = value.toLocaleLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!byValue.has(key)) byValue.set(key, { value, label: value });
+    });
+    const selectedType = providerFilters.exerciseType?.trim();
+    if (selectedType) {
+      const selectedKey = selectedType
+        .toLocaleLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+      const existing = byValue.get(selectedKey);
+      byValue.set(selectedKey, {
+        value: selectedType,
+        label: existing?.label ?? selectedType,
+      });
+    }
+    return Array.from(byValue.values()).sort((left, right) =>
+      left.label.localeCompare(right.label),
+    );
+  }, [
+    libraryItems,
+    metadataQuery.data?.exercisetypes,
+    providerFilters.exerciseType,
+  ]);
+  const providerEquipmentFilter = useMemo(() => {
+    const selected = filters.equipment?.trim();
+    if (!selected) return "";
+    const selectedKey = selected.toLocaleLowerCase().replace(/[^a-z0-9]/g, "");
+    return (
+      metadataQuery.data?.equipments.find(
+        ({ value }) =>
+          value.toLocaleLowerCase().replace(/[^a-z0-9]/g, "") === selectedKey,
+      )?.value ?? selected
+    );
+  }, [filters.equipment, metadataQuery.data?.equipments]);
   const filteredLibraryItems = useMemo(
-    () => filterExerciseBrowserItems(libraryItems, filters),
-    [filters, libraryItems],
+    () =>
+      filterExerciseBrowserItems(
+        filterExerciseBrowserItemsByProviderFacets(
+          libraryItems,
+          providerFilters,
+        ),
+        {
+          ...filters,
+          origin: "all",
+          classification: "all",
+        },
+      ),
+    [filters, libraryItems, providerFilters],
   );
   const libraryPageCount = Math.max(
     1,
@@ -221,15 +367,23 @@ export function PtExerciseLibraryPage() {
   }, [filteredLibraryItems, libraryPage, libraryPageCount]);
 
   const providerQuery = useInfiniteQuery({
-    queryKey: ["exercise-provider-browser", debouncedProviderQuery] as const,
+    queryKey: [
+      "exercise-provider-browser",
+      debouncedProviderQuery,
+      providerFilters.bodyPart,
+      providerEquipmentFilter,
+      providerFilters.target,
+      providerFilters.exerciseType,
+    ] as const,
     enabled: view === "provider" && exerciseDatasetConfigured,
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) =>
       searchExerciseDataset({
         name: debouncedProviderQuery,
-        bodyPart: "",
-        equipment: "",
-        target: "",
+        bodyPart: providerFilters.bodyPart ?? "",
+        equipment: providerEquipmentFilter,
+        target: providerFilters.target ?? "",
+        exerciseType: providerFilters.exerciseType ?? "",
         limit: providerPageSize,
         cursor: pageParam,
         signal,
@@ -409,38 +563,31 @@ export function PtExerciseLibraryPage() {
   };
 
   const handleMuscleChange = (muscleKey: MuscleKey | null) => {
-    updateFilters({
-      muscleKey,
-      classification:
-        muscleKey && filters.classification === "unclassified"
-          ? "all"
-          : filters.classification,
-    });
-  };
-
-  const handleLibraryScopeChange = (
-    origin: ExerciseBrowserOriginFilter,
-    classification: ExerciseBrowserClassificationFilter,
-  ) => {
-    updateFilters({
-      origin,
-      classification,
-      muscleKey: classification === "unclassified" ? null : filters.muscleKey,
-    });
+    updateSearchState((current) =>
+      applyExerciseBrowserProviderAnatomyState(
+        current,
+        selectCanonicalMuscle(
+          getExerciseBrowserProviderAnatomyState(current),
+          muscleKey,
+        ),
+      ),
+    );
   };
 
   const clearFilters = () =>
     updateSearchState((current) => ({
       ...current,
       filters: DEFAULT_EXERCISE_BROWSER_FILTERS,
+      providerFilters: DEFAULT_EXERCISE_PROVIDER_FACET_FILTERS,
     }));
 
   const hasActiveFilters =
     Boolean(filters.query.trim()) ||
-    Boolean(filters.tag) ||
+    Boolean(filters.equipment) ||
     Boolean(filters.muscleKey) ||
-    filters.origin !== "all" ||
-    filters.classification !== "all";
+    Boolean(providerFilters.bodyPart) ||
+    Boolean(providerFilters.target) ||
+    Boolean(providerFilters.exerciseType);
   const libraryLoading =
     workspaceLoading || ownerScopeQuery.isLoading || libraryQuery.isLoading;
   const libraryError =
@@ -550,10 +697,20 @@ export function PtExerciseLibraryPage() {
 
       <ExerciseLibraryToolbar
         query={filters.query}
-        tag={filters.tag}
+        equipment={filters.equipment}
+        anatomyState={anatomyState}
+        exerciseType={providerFilters.exerciseType}
         view={view}
+        equipmentOptions={equipmentOptions}
+        exerciseTypeOptions={exerciseTypeOptions}
+        metadataLoading={view === "provider" && metadataQuery.isPending}
         onQueryChange={(query) => updateFilters({ query }, true)}
-        onTagChange={(tag) => updateFilters({ tag: tag.trim() || null }, true)}
+        onEquipmentChange={(equipment) =>
+          updateFilters({ equipment: equipment.trim() || null }, true)
+        }
+        onBodyPartChange={handleProviderBodyPartChange}
+        onTargetMuscleChange={handleProviderTargetChange}
+        onProviderFilterChange={updateProviderFilter}
         onViewChange={(nextView) =>
           updateSearchState((current) => ({
             ...current,
@@ -573,11 +730,7 @@ export function PtExerciseLibraryPage() {
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <ExerciseLibraryFilterPanel
           muscleKey={filters.muscleKey}
-          origin={filters.origin}
-          classification={filters.classification}
-          libraryFiltersVisible={view === "library"}
           onMuscleChange={handleMuscleChange}
-          onLibraryScopeChange={handleLibraryScopeChange}
         />
 
         <section
@@ -615,16 +768,12 @@ export function PtExerciseLibraryPage() {
                   emptyTitle={
                     exercises.length === 0
                       ? "Your library is empty"
-                      : filters.classification === "unclassified"
-                        ? "No unclassified exercises"
-                        : "No saved exercises match"
+                      : "No saved exercises match"
                   }
                   emptyDescription={
                     exercises.length === 0
                       ? "Create an exercise or open Provider Catalog to save one to this owner-level library."
-                      : filters.classification === "unclassified"
-                        ? "Every saved exercise currently has canonical anatomy metadata."
-                        : "Adjust the search, muscle, tag, or library-scope filters."
+                      : "Adjust the search, muscle, or equipment filters."
                   }
                   actionsForItem={libraryActions}
                 />
@@ -676,6 +825,25 @@ export function PtExerciseLibraryPage() {
             </div>
           ) : (
             <div className="space-y-4">
+              {metadataQuery.isError ? (
+                <Alert tone="warning">
+                  <AlertTitle>Provider filters couldn’t load</AlertTitle>
+                  <AlertDescription>
+                    Exercise search remains available, but provider metadata
+                    dropdowns are temporarily unavailable.
+                  </AlertDescription>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="mt-3"
+                    onClick={() => void metadataQuery.refetch()}
+                  >
+                    <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                    Retry filters
+                  </Button>
+                </Alert>
+              ) : null}
               {!exerciseDatasetConfigured ? (
                 <Alert tone="warning">
                   <AlertTitle>Provider catalog unavailable</AlertTitle>

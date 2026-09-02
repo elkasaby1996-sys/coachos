@@ -1,6 +1,7 @@
 import type { KeyboardEvent, ReactNode } from "react";
-import { ChevronDown, Dumbbell, Filter, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, Dumbbell, RotateCcw, Search } from "lucide-react";
 import { AnatomicalMuscleSelector } from "../anatomical-muscle-selector";
+import { ProviderAnatomyFilterFields } from "../provider-anatomy-filter-fields";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -12,187 +13,196 @@ import {
   type MuscleKey,
 } from "../../../lib/exercise-muscle-taxonomy";
 import type {
-  ExerciseBrowserClassificationFilter,
   ExerciseBrowserItem,
-  ExerciseBrowserOriginFilter,
   ExerciseBrowserView,
   FilteredExerciseBrowserItem,
 } from "../../../lib/exercise-browser";
 import { groupExerciseBrowserMatches } from "../../../lib/exercise-browser";
 import { cn } from "../../../lib/utils";
+import type {
+  ProviderAnatomyFilterState,
+  ProviderBodyPartValue,
+  ProviderTargetMuscleValue,
+} from "../../../lib/exercise-provider-anatomy";
 
 export function ExerciseLibraryToolbar({
   query,
-  tag,
+  equipment,
+  anatomyState,
+  exerciseType,
   view,
+  equipmentOptions,
+  exerciseTypeOptions,
+  metadataLoading,
   onQueryChange,
-  onTagChange,
+  onEquipmentChange,
+  onBodyPartChange,
+  onTargetMuscleChange,
+  onProviderFilterChange,
   onViewChange,
   onClear,
   hasActiveFilters,
   action,
 }: {
   query: string;
-  tag: string | null;
+  equipment: string | null;
+  anatomyState: ProviderAnatomyFilterState;
+  exerciseType: string | null;
   view: ExerciseBrowserView;
+  equipmentOptions: Array<{ value: string; label: string }>;
+  exerciseTypeOptions: Array<{ value: string; label: string }>;
+  metadataLoading: boolean;
   onQueryChange: (value: string) => void;
-  onTagChange: (value: string) => void;
+  onEquipmentChange: (value: string) => void;
+  onBodyPartChange: (value: ProviderBodyPartValue | null) => void;
+  onTargetMuscleChange: (value: ProviderTargetMuscleValue | null) => void;
+  onProviderFilterChange: (field: "exerciseType", value: string) => void;
   onViewChange: (value: ExerciseBrowserView) => void;
   onClear: () => void;
   hasActiveFilters: boolean;
   action: ReactNode;
 }) {
   return (
-    <div className="grid min-w-0 gap-3 rounded-[24px] border border-border/70 bg-card/65 p-3 shadow-card md:grid-cols-2 xl:grid-cols-[minmax(16rem,1fr)_minmax(11rem,0.42fr)_minmax(11rem,0.3fr)_auto]">
-      <div className="relative min-w-0 md:col-span-2 xl:col-span-1">
-        <label htmlFor="exercise-library-search" className="sr-only">
-          Search exercises
-        </label>
-        <Search className="app-search-icon h-4 w-4" aria-hidden="true" />
-        <Input
-          id="exercise-library-search"
-          className="app-search-input w-full"
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Search names, muscles, equipment, or notes"
+    <div className="min-w-0 space-y-3 rounded-[24px] border border-border/70 bg-card/65 p-3 shadow-card">
+      <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(16rem,1fr)_minmax(11rem,0.34fr)_auto] md:items-end">
+        <div className="min-w-0">
+          <label
+            htmlFor="exercise-library-search"
+            className="mb-1.5 block text-xs font-semibold text-foreground"
+          >
+            Search exercises
+          </label>
+          <div className="relative">
+            <Search className="app-search-icon h-4 w-4" aria-hidden="true" />
+            <Input
+              id="exercise-library-search"
+              className="app-search-input w-full"
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Name, muscle, equipment, or notes"
+            />
+          </div>
+        </div>
+        <div className="min-w-0">
+          <label
+            htmlFor="exercise-library-view"
+            className="mb-1.5 block text-xs font-semibold text-foreground"
+          >
+            Source
+          </label>
+          <Select
+            id="exercise-library-view"
+            className="w-full"
+            value={view}
+            aria-label="Exercise source"
+            onChange={(event) =>
+              onViewChange(
+                event.target.value === "provider" ? "provider" : "library",
+              )
+            }
+          >
+            <option value="library">My Library</option>
+            <option value="provider">Provider Catalog</option>
+          </Select>
+        </div>
+        <div className="grid min-w-0 grid-cols-2 gap-2 md:flex md:items-center">
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-w-0 whitespace-nowrap"
+            disabled={!hasActiveFilters}
+            onClick={onClear}
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            Clear filters
+          </Button>
+          {action}
+        </div>
+      </div>
+
+      <div
+        className="grid min-w-0 gap-3 border-t border-border/60 pt-3 sm:grid-cols-2 xl:grid-cols-4"
+        aria-label="Exercise metadata filters"
+      >
+        <div className="min-w-0">
+          <label
+            htmlFor="exercise-library-equipment"
+            className="mb-1.5 block text-xs font-semibold text-foreground"
+          >
+            Equipment
+          </label>
+          <Select
+            id="exercise-library-equipment"
+            className="w-full"
+            value={equipment ?? ""}
+            onChange={(event) => onEquipmentChange(event.target.value)}
+          >
+            <option value="">All equipment</option>
+            {equipmentOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <ProviderAnatomyFilterFields
+          idPrefix="exercise-library"
+          state={anatomyState}
+          onBodyPartChange={onBodyPartChange}
+          onTargetMuscleChange={onTargetMuscleChange}
         />
-      </div>
-      <div className="min-w-0">
-        <label htmlFor="exercise-library-tag" className="sr-only">
-          Filter by tag or equipment
-        </label>
-        <Input
-          id="exercise-library-tag"
-          className="w-full"
-          value={tag ?? ""}
-          onChange={(event) => onTagChange(event.target.value)}
-          placeholder="Tag or equipment"
-        />
-      </div>
-      <div className="min-w-0">
-        <label htmlFor="exercise-library-view" className="sr-only">
-          Exercise source
-        </label>
-        <Select
-          id="exercise-library-view"
-          className="w-full"
-          value={view}
-          aria-label="Exercise source"
-          onChange={(event) =>
-            onViewChange(
-              event.target.value === "provider" ? "provider" : "library",
-            )
-          }
-        >
-          <option value="library">My Library</option>
-          <option value="provider">Provider Catalog</option>
-        </Select>
-      </div>
-      <div className="grid min-w-0 grid-cols-2 gap-2 md:col-span-2 md:flex md:items-center xl:col-span-1">
-        <Button
-          type="button"
-          variant="secondary"
-          className="min-w-0 whitespace-nowrap"
-          disabled={!hasActiveFilters}
-          onClick={onClear}
-        >
-          <RotateCcw className="h-4 w-4" aria-hidden="true" />
-          Clear filters
-        </Button>
-        {action}
+        <div className="min-w-0">
+          <label
+            htmlFor="exercise-library-type"
+            className="mb-1.5 block text-xs font-semibold text-foreground"
+          >
+            Exercise type
+          </label>
+          <Select
+            id="exercise-library-type"
+            className="w-full"
+            value={exerciseType ?? ""}
+            disabled={metadataLoading}
+            onChange={(event) =>
+              onProviderFilterChange("exerciseType", event.target.value)
+            }
+          >
+            <option value="">
+              {metadataLoading ? "Loading types…" : "All exercise types"}
+            </option>
+            {exerciseTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
     </div>
   );
 }
 
-const libraryScopeOptions: Array<{
-  label: string;
-  origin: ExerciseBrowserOriginFilter;
-  classification: ExerciseBrowserClassificationFilter;
-}> = [
-  { label: "All", origin: "all", classification: "all" },
-  { label: "Custom", origin: "custom", classification: "all" },
-  { label: "Imported", origin: "imported", classification: "all" },
-  { label: "Unclassified", origin: "all", classification: "unclassified" },
-];
-
 function MuscleSelectorContent({
   muscleKey,
-  origin,
-  classification,
-  libraryFiltersVisible,
   onMuscleChange,
-  onLibraryScopeChange,
 }: {
   muscleKey: MuscleKey | null;
-  origin: ExerciseBrowserOriginFilter;
-  classification: ExerciseBrowserClassificationFilter;
-  libraryFiltersVisible: boolean;
   onMuscleChange: (value: MuscleKey | null) => void;
-  onLibraryScopeChange: (
-    origin: ExerciseBrowserOriginFilter,
-    classification: ExerciseBrowserClassificationFilter,
-  ) => void;
 }) {
   return (
-    <div className="space-y-4">
-      {libraryFiltersVisible ? (
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Library scope
-          </p>
-          <div
-            className="grid grid-cols-2 gap-2"
-            role="group"
-            aria-label="Library scope"
-          >
-            {libraryScopeOptions.map((option) => {
-              const selected =
-                origin === option.origin &&
-                classification === option.classification;
-              return (
-                <button
-                  key={option.label}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() =>
-                    onLibraryScopeChange(option.origin, option.classification)
-                  }
-                  className={cn(
-                    "min-h-11 cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    selected
-                      ? "border-primary/55 bg-primary/14 text-foreground shadow-[inset_0_-2px_0_oklch(var(--accent))]"
-                      : "border-border/65 bg-muted/30 text-muted-foreground hover:border-border hover:text-foreground",
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="min-w-0 max-w-full">
-        <AnatomicalMuscleSelector
-          value={muscleKey}
-          onValueChange={onMuscleChange}
-        />
-      </div>
+    <div className="min-w-0 max-w-full [&_.anatomy-view-tabs]:hidden">
+      <AnatomicalMuscleSelector
+        value={muscleKey}
+        onValueChange={onMuscleChange}
+      />
     </div>
   );
 }
 
 export function ExerciseLibraryFilterPanel(props: {
   muscleKey: MuscleKey | null;
-  origin: ExerciseBrowserOriginFilter;
-  classification: ExerciseBrowserClassificationFilter;
-  libraryFiltersVisible: boolean;
   onMuscleChange: (value: MuscleKey | null) => void;
-  onLibraryScopeChange: (
-    origin: ExerciseBrowserOriginFilter,
-    classification: ExerciseBrowserClassificationFilter,
-  ) => void;
 }) {
   const selectedLabel = props.muscleKey
     ? getMuscleMetadata(props.muscleKey).label
@@ -211,7 +221,7 @@ export function ExerciseLibraryFilterPanel(props: {
   return (
     <>
       <aside className="sticky top-5 hidden min-w-0 self-start rounded-[26px] border border-border/70 bg-card/58 p-4 shadow-card xl:block">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="mb-4">
           <div>
             <p className="text-sm font-semibold text-foreground">
               Filter by muscle
@@ -220,7 +230,6 @@ export function ExerciseLibraryFilterPanel(props: {
               Selected: {selectedLabel}
             </p>
           </div>
-          <Filter className="h-4 w-4 text-primary" aria-hidden="true" />
         </div>
         <MuscleSelectorContent {...props} />
       </aside>
@@ -230,17 +239,12 @@ export function ExerciseLibraryFilterPanel(props: {
           className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
           onKeyDown={handleMobileFilterSummaryKeyDown}
         >
-          <span className="flex min-w-0 items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary">
-              <Filter className="h-4 w-4" aria-hidden="true" />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-foreground">
+              Filter by muscle
             </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold text-foreground">
-                Filter by muscle
-              </span>
-              <span className="block truncate text-xs text-muted-foreground">
-                Selected: {selectedLabel}
-              </span>
+            <span className="block truncate text-xs text-muted-foreground">
+              Selected: {selectedLabel}
             </span>
           </span>
           <ChevronDown

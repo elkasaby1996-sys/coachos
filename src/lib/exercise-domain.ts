@@ -31,6 +31,7 @@ export type ProviderNormalizedExercise = {
   name: string;
   bodyPart: string | null;
   target: string | null;
+  exerciseType: string | null;
   secondaryMuscles: string[];
   equipment: string | null;
   instructions: string[];

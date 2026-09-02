@@ -49,6 +49,7 @@ const providerExercise = (
   name,
   bodyPart: "Chest",
   target: "Chest",
+  exerciseType: "Strength",
   secondaryMuscles: [],
   equipment: "Barbell",
   instructions: [],

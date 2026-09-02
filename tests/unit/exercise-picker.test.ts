@@ -51,6 +51,7 @@ const provider = (
   name: "Provider curl",
   bodyPart: "Arms",
   target: "Biceps",
+  exerciseType: "Strength",
   secondaryMuscles: ["Forearms"],
   equipment: "Dumbbell",
   instructions: ["Stand tall", "Curl slowly"],

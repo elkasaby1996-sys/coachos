@@ -21,6 +21,16 @@ const browserComponents = readFileSync(
   ),
   "utf8",
 );
+const providerAnatomyFields = readFileSync(
+  resolve(
+    process.cwd(),
+    "src",
+    "components",
+    "pt",
+    "provider-anatomy-filter-fields.tsx",
+  ),
+  "utf8",
+);
 
 const normalizeLineEndings = (source: string) => source.replace(/\r\n?/g, "\n");
 
@@ -49,6 +59,30 @@ describe("rebuilt Exercise Library page contract", () => {
     expect(page).not.toContain("<TabsList");
     expect(page).not.toContain("saved result");
     expect(page).not.toContain("filteredProviderItems.length} match");
+  });
+
+  it("uses provider metadata for accessible exact-value dropdown filters", () => {
+    expect(page).toContain("getExerciseDatasetMetadataCatalog");
+    expect(browserComponents).toContain('id="exercise-library-equipment"');
+    expect(browserComponents).toContain("<ProviderAnatomyFilterFields");
+    expect(providerAnatomyFields).toContain("PROVIDER_BODY_PART_OPTIONS");
+    expect(providerAnatomyFields).toContain("PROVIDER_TARGET_MUSCLE_OPTIONS");
+    expect(browserComponents).toContain('id="exercise-library-type"');
+    expect(browserComponents).toContain("All equipment");
+    expect(page).toContain("Retry filters");
+  });
+
+  it("keeps all metadata dropdowns visible and functional in My Library", () => {
+    const filterRow = browserComponents.slice(
+      browserComponents.indexOf('aria-label="Exercise metadata filters"'),
+      browserComponents.indexOf("function MuscleSelectorContent"),
+    );
+    expect(filterRow).toContain('id="exercise-library-equipment"');
+    expect(filterRow).toContain("<ProviderAnatomyFilterFields");
+    expect(filterRow).toContain('id="exercise-library-type"');
+    expect(filterRow).not.toContain('view === "provider"');
+    expect(page).toContain("filterExerciseBrowserItemsByProviderFacets(");
+    expect(page).toContain("exerciseTypeOptions={exerciseTypeOptions}");
   });
 
   it("maps one Load more action to one cursor request without crawling", () => {
@@ -143,7 +177,11 @@ describe("rebuilt Exercise Library page contract", () => {
       containingTag?.match(/\bclassName\s*=\s*"([^"]*)"/)?.[1].split(/\s+/) ??
       [];
     expect(containerClasses).toEqual(
-      expect.arrayContaining(["min-w-0", "max-w-full"]),
+      expect.arrayContaining([
+        "min-w-0",
+        "max-w-full",
+        "[&_.anatomy-view-tabs]:hidden",
+      ]),
     );
 
     expect(normalizeLineEndings(page)).toMatch(
@@ -153,6 +191,15 @@ describe("rebuilt Exercise Library page contract", () => {
     expect(normalizedBrowser).toMatch(
       /<details\b[^>]*className="[^"]*\bxl:hidden\b[^"]*"/,
     );
+  });
+
+  it("keeps the library muscle filter focused on the body map", () => {
+    expect(browserComponents).toContain("[&_.anatomy-view-tabs]:hidden");
+    expect(browserComponents).not.toContain("<Filter");
+    expect(browserComponents).not.toContain("Library scope");
+    expect(page).toContain('origin: "all"');
+    expect(page).toContain('classification: "all"');
+    expect(page).not.toContain("handleLibraryScopeChange");
   });
 
   it("keeps the mobile filter disclosure keyboard-operable", () => {

@@ -28,6 +28,7 @@ export type ExerciseDatasetGatewaySearchInput = {
   bodyPart: string;
   equipment: string;
   target: string;
+  exerciseType: string;
   limit: number;
   cursor: string | null;
 };
@@ -37,9 +38,21 @@ export type ExerciseDatasetGatewayDetailInput = {
   exerciseId: string;
 };
 
+export type ExerciseDatasetMetadataKind =
+  | "muscles"
+  | "bodyparts"
+  | "equipments"
+  | "exercisetypes";
+
+export type ExerciseDatasetGatewayMetadataInput = {
+  operation: "metadata";
+  metadata: ExerciseDatasetMetadataKind;
+};
+
 export type ExerciseDatasetGatewayInput =
   | ExerciseDatasetGatewaySearchInput
-  | ExerciseDatasetGatewayDetailInput;
+  | ExerciseDatasetGatewayDetailInput
+  | ExerciseDatasetGatewayMetadataInput;
 
 export type ExerciseDatasetProviderConfig = {
   baseUrl: string;
@@ -50,7 +63,10 @@ export type ExerciseDatasetProviderConfig = {
 
 export type ExerciseDatasetGatewayLog = {
   correlationId: string;
-  operation: "exercise_dataset_search" | "exercise_dataset_detail";
+  operation:
+    | "exercise_dataset_search"
+    | "exercise_dataset_detail"
+    | "exercise_dataset_metadata";
   provider: "exercise_dataset";
   statusCategory: "success" | "rejected" | "failure";
   elapsedMs: number;
@@ -87,12 +103,21 @@ const errorMessages: Record<ExerciseDatasetGatewayErrorCode, string> = {
 
 const allowedRequestKeys = new Set([
   "exerciseId",
+  "metadata",
   "name",
   "bodyPart",
   "equipment",
   "target",
+  "exerciseType",
   "limit",
   "cursor",
+]);
+
+const exerciseDatasetMetadataKinds = new Set<ExerciseDatasetMetadataKind>([
+  "muscles",
+  "bodyparts",
+  "equipments",
+  "exercisetypes",
 ]);
 
 const stringLimits = {
@@ -101,6 +126,7 @@ const stringLimits = {
   bodyPart: 120,
   equipment: 120,
   target: 120,
+  exerciseType: 120,
   cursor: 1_024,
 } as const;
 
@@ -133,7 +159,7 @@ function errorResponse(
 
 function readOptionalString(
   record: Record<string, unknown>,
-  key: "name" | "bodyPart" | "equipment" | "target",
+  key: "name" | "bodyPart" | "equipment" | "target" | "exerciseType",
 ) {
   const value = record[key];
   if (value === undefined || value === null) return "";
@@ -153,6 +179,25 @@ export function validateExerciseDatasetGatewayInput(
   const record = value as Record<string, unknown>;
   if (Object.keys(record).some((key) => !allowedRequestKeys.has(key))) {
     return { ok: false };
+  }
+
+  if (record.metadata !== undefined) {
+    if (
+      Object.keys(record).some((key) => key !== "metadata") ||
+      typeof record.metadata !== "string" ||
+      !exerciseDatasetMetadataKinds.has(
+        record.metadata as ExerciseDatasetMetadataKind,
+      )
+    ) {
+      return { ok: false };
+    }
+    return {
+      ok: true,
+      value: {
+        operation: "metadata",
+        metadata: record.metadata as ExerciseDatasetMetadataKind,
+      },
+    };
   }
 
   if (record.exerciseId !== undefined) {
@@ -175,11 +220,13 @@ export function validateExerciseDatasetGatewayInput(
   const bodyPart = readOptionalString(record, "bodyPart");
   const equipment = readOptionalString(record, "equipment");
   const target = readOptionalString(record, "target");
+  const exerciseType = readOptionalString(record, "exerciseType");
   if (
     name === null ||
     bodyPart === null ||
     equipment === null ||
-    target === null
+    target === null ||
+    exerciseType === null
   ) {
     return { ok: false };
   }
@@ -216,6 +263,7 @@ export function validateExerciseDatasetGatewayInput(
       bodyPart,
       equipment,
       target,
+      exerciseType,
       limit,
       cursor,
     },
@@ -282,9 +330,11 @@ export function buildExerciseDatasetProviderRequest(
   const url = new URL(
     input.operation === "detail"
       ? `${config.baseUrl}/api/v1/exercises/${encodeURIComponent(input.exerciseId)}`
-      : `${config.baseUrl}/api/v1/exercises`,
+      : input.operation === "metadata"
+        ? `${config.baseUrl}/api/v1/${input.metadata}`
+        : `${config.baseUrl}/api/v1/exercises`,
   );
-  if (input.operation === "detail") {
+  if (input.operation === "detail" || input.operation === "metadata") {
     const headers: Record<string, string> = {
       Accept: "application/json",
       [config.apiKeyHeader]: config.apiKey,
@@ -298,6 +348,9 @@ export function buildExerciseDatasetProviderRequest(
   if (input.bodyPart) url.searchParams.set("bodyParts", input.bodyPart);
   if (input.equipment) url.searchParams.set("equipments", input.equipment);
   if (input.target) url.searchParams.set("targetMuscles", input.target);
+  if (input.exerciseType) {
+    url.searchParams.set("exerciseType", input.exerciseType);
+  }
   if (input.cursor) url.searchParams.set("after", input.cursor);
 
   const headers: Record<string, string> = {
@@ -335,6 +388,27 @@ export function hasExerciseDatasetDetail(payload: unknown) {
       typeof candidate.id === "number") &&
     typeof candidate.name === "string"
   );
+}
+
+export function hasExerciseDatasetMetadataList(payload: unknown) {
+  const candidates = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object"
+      ? (payload as Record<string, unknown>).data
+      : null;
+  if (!Array.isArray(candidates)) return false;
+  return candidates.every((candidate) => {
+    if (typeof candidate === "string") return Boolean(candidate.trim());
+    if (
+      !candidate ||
+      typeof candidate !== "object" ||
+      Array.isArray(candidate)
+    ) {
+      return false;
+    }
+    const name = (candidate as Record<string, unknown>).name;
+    return typeof name === "string" && Boolean(name.trim());
+  });
 }
 
 function isAbortError(error: unknown) {
@@ -435,7 +509,9 @@ export async function handleExerciseDatasetGatewayRequest(
     operation =
       validation.value.operation === "detail"
         ? "exercise_dataset_detail"
-        : "exercise_dataset_search";
+        : validation.value.operation === "metadata"
+          ? "exercise_dataset_metadata"
+          : "exercise_dataset_search";
 
     const config = normalizeExerciseDatasetProviderConfig(
       dependencies.getProviderConfig(),
@@ -496,7 +572,9 @@ export async function handleExerciseDatasetGatewayRequest(
       const hasExpectedPayload =
         validation.value.operation === "detail"
           ? hasExerciseDatasetDetail(providerPayload)
-          : hasExerciseDatasetList(providerPayload);
+          : validation.value.operation === "metadata"
+            ? hasExerciseDatasetMetadataList(providerPayload)
+            : hasExerciseDatasetList(providerPayload);
       if (!hasExpectedPayload) {
         return reject("provider_invalid_response", 502, "failure");
       }

@@ -50,6 +50,7 @@ const validBody = {
   bodyPart: "",
   equipment: "",
   target: "",
+  exerciseType: "",
   limit: 24,
   cursor: null,
 };
@@ -165,6 +166,51 @@ describe("exercise dataset gateway", () => {
           "X-Provider-Key": "server-secret",
         }),
       }),
+    );
+  });
+
+  it("allows only the four fixed metadata routes", async () => {
+    for (const metadata of [
+      "muscles",
+      "bodyparts",
+      "equipments",
+      "exercisetypes",
+    ] as const) {
+      const validation = validateExerciseDatasetGatewayInput({ metadata });
+      expect(validation.ok).toBe(true);
+      if (!validation.ok) continue;
+      expect(
+        buildExerciseDatasetProviderRequest(validation.value, providerConfig)
+          .url,
+      ).toBe(`https://provider.example/api/v1/${metadata}`);
+    }
+    expect(
+      validateExerciseDatasetGatewayInput({ metadata: "../../secrets" }),
+    ).toEqual({ ok: false });
+    expect(
+      validateExerciseDatasetGatewayInput({
+        metadata: "muscles",
+        name: "mixed request",
+      }),
+    ).toEqual({ ok: false });
+  });
+
+  it("proxies and validates provider metadata lists", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({
+        success: true,
+        data: [{ name: "BARBELL", imageUrl: "https://cdn.example/bar.webp" }],
+      }),
+    ) as unknown as typeof fetch;
+    const response = await handleExerciseDatasetGatewayRequest(
+      request({ metadata: "equipments" }),
+      dependencies({ fetchImpl }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://provider.example/api/v1/equipments",
+      expect.objectContaining({ method: "GET" }),
     );
   });
 
@@ -301,6 +347,7 @@ describe("exercise dataset gateway", () => {
       bodyPart: "Chest",
       equipment: "Barbell",
       target: "Pectorals",
+      exerciseType: "STRENGTH",
       cursor: "next-page",
     });
     expect(validation.ok).toBe(true);
@@ -311,7 +358,7 @@ describe("exercise dataset gateway", () => {
     );
 
     expect(upstream.url).toBe(
-      "https://provider.example/api/v1/exercises?limit=24&name=Bench+Press&bodyParts=Chest&equipments=Barbell&targetMuscles=Pectorals&after=next-page",
+      "https://provider.example/api/v1/exercises?limit=24&name=Bench+Press&bodyParts=Chest&equipments=Barbell&targetMuscles=Pectorals&exerciseType=STRENGTH&after=next-page",
     );
     expect(upstream.url).not.toContain("cursor=");
   });

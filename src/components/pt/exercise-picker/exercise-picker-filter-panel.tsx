@@ -1,34 +1,57 @@
 import type { KeyboardEvent } from "react";
 import { ChevronDown, Filter } from "lucide-react";
 import { AnatomicalMuscleSelector } from "../anatomical-muscle-selector";
+import { ProviderAnatomyFilterFields } from "../provider-anatomy-filter-fields";
 import {
   getMuscleMetadata,
   type MuscleKey,
 } from "../../../lib/exercise-muscle-taxonomy";
+import type {
+  ProviderAnatomyFilterState,
+  ProviderBodyPartValue,
+  ProviderTargetMuscleValue,
+} from "../../../lib/exercise-provider-anatomy";
+
+type ExercisePickerFilterPanelProps = {
+  anatomyState: ProviderAnatomyFilterState;
+  providerFiltersVisible: boolean;
+  onMuscleChange: (value: MuscleKey | null) => void;
+  onBodyPartChange: (value: ProviderBodyPartValue | null) => void;
+  onTargetMuscleChange: (value: ProviderTargetMuscleValue | null) => void;
+};
 
 function FilterContent({
-  muscleKey,
+  anatomyState,
+  providerFiltersVisible,
   onMuscleChange,
-}: {
-  muscleKey: MuscleKey | null;
-  onMuscleChange: (value: MuscleKey | null) => void;
-}) {
+  onBodyPartChange,
+  onTargetMuscleChange,
+}: ExercisePickerFilterPanelProps) {
   return (
-    <div className="min-w-0 max-w-full">
+    <div className="min-w-0 max-w-full space-y-3">
+      {providerFiltersVisible ? (
+        <div className="grid min-w-0 gap-3 rounded-2xl border border-border/70 bg-card/55 p-3 sm:grid-cols-2 lg:grid-cols-1">
+          <ProviderAnatomyFilterFields
+            idPrefix="exercise-picker"
+            state={anatomyState}
+            onBodyPartChange={onBodyPartChange}
+            onTargetMuscleChange={onTargetMuscleChange}
+          />
+        </div>
+      ) : null}
       <AnatomicalMuscleSelector
-        value={muscleKey}
+        value={anatomyState.canonicalMuscleKey}
         onValueChange={onMuscleChange}
       />
     </div>
   );
 }
 
-export function ExercisePickerFilterPanel(props: {
-  muscleKey: MuscleKey | null;
-  onMuscleChange: (value: MuscleKey | null) => void;
-}) {
-  const selectedLabel = props.muscleKey
-    ? getMuscleMetadata(props.muscleKey).label
+export function ExercisePickerFilterPanel(
+  props: ExercisePickerFilterPanelProps,
+) {
+  const selectedLabel = props.anatomyState.canonicalMuscleKey
+    ? getMuscleMetadata(props.anatomyState.canonicalMuscleKey).label
     : "All muscles";
 
   const handleSummaryKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -55,7 +78,7 @@ export function ExercisePickerFilterPanel(props: {
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-foreground">
-                Muscle filter
+                Anatomy filters
               </span>
               <span className="block truncate text-xs text-muted-foreground">
                 {selectedLabel}

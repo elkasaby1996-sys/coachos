@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractExerciseDatasetNextCursor,
+  normalizeExerciseDatasetMetadata,
   normalizeExerciseDatasetRecord,
 } from "../../src/lib/exercise-dataset";
 
@@ -35,12 +36,14 @@ describe("exercise dataset normalization", () => {
       bodyParts: ["upper legs"],
       targetMuscles: ["gluteus maximus"],
       secondaryMuscles: ["quadriceps", "adductor longus"],
+      exerciseType: "STRENGTH",
     });
 
     expect(exercise).toMatchObject({
       bodyPart: "Legs",
       target: "Glutes",
       secondaryMuscles: ["Quads", "Legs"],
+      exerciseType: "Strength",
     });
     expect(exercise?.instructions).toEqual([]);
     expect(exercise?.exerciseTips).toEqual([]);
@@ -82,5 +85,25 @@ describe("exercise dataset normalization", () => {
       extractExerciseDatasetNextCursor({ meta: { nextCursor: 2 } }),
     ).toBeNull();
     expect(extractExerciseDatasetNextCursor({})).toBeNull();
+  });
+
+  it("normalizes and deduplicates provider metadata options", () => {
+    expect(
+      normalizeExerciseDatasetMetadata(
+        {
+          data: [
+            { name: "BODY WEIGHT", imageUrl: "https://cdn.example/body.webp" },
+            { name: " body weight " },
+          ],
+        },
+        "equipments",
+      ),
+    ).toEqual([
+      {
+        value: "BODY WEIGHT",
+        label: "Bodyweight",
+        imageUrl: "https://cdn.example/body.webp",
+      },
+    ]);
   });
 });

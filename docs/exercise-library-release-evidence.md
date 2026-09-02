@@ -203,6 +203,51 @@ The overall release verdict remains **Blocked**. A successful real-provider requ
 
 Verification date: 2026-09-01. Branch: `EXERCISELIBRARY`. Base commit: `ef40bea` (`fix(exercises): support current provider gateway config`). This gate used local Supabase and the ignored `supabase/.env.local` only. It did not configure, migrate, or deploy a staging or production Supabase project.
 
+### 2026-09-02 PR-EXLIB-07C-A resumption
+
+The real-provider gate was rerun from the current working tree using only local
+Supabase and the ignored server-only environment file. No environment value,
+request authorization value, raw provider record, or remote Supabase setting
+was printed, copied, or committed.
+
+- Missing and invalid authentication returned 401; a disposable client-only
+  identity returned 403. Disposable PT owner and authorized PT coach identities
+  each received HTTP 200 from the real provider boundary.
+- The bounded first page contained 24 normalized records. All provider IDs were
+  strings and all 24 records produced supported canonical anatomy context. A
+  synthetic unknown-anatomy seam remained explicitly unmapped.
+- One explicit cursor request returned a second bounded 24-record page. The
+  runtime harness issued exactly one next-page request and performed no cursor
+  crawl.
+- Source-ID reconciliation reused the existing internal exercise UUID. A
+  name-only collision remained `name_conflict`. A new real-provider exercise
+  persisted provider source identity, source payload, and canonical anatomy
+  arrays in `public.exercises`.
+- A disposable saved/custom/provider three-way selection produced three WTE
+  rows, all referencing internal `public.exercises.id` UUIDs. The initial row
+  shape remained exactly `{ workout_template_id, exercise_id, sort_order }`.
+- Reload preserved the three exercises. Prescription fields, reordered rows,
+  and a two-row superset persisted after a fresh authenticated read.
+- The running local database initially lacked the already-tracked
+  `20260901160000_workout_template_exercise_persistence_repair.sql` migration.
+  The gate reproduced the old false-success ordering behavior, applied that
+  pending migration locally, and then passed without a new migration or source
+  correction.
+- Browser measurement recorded zero exercise-search or metadata operations on
+  **My Library**. Opening **Provider Catalog** produced one bounded
+  `exercise_dataset_search` operation plus the four intentional metadata
+  operations. One **Load more** click produced one search operation; the
+  following idle interval produced zero additional searches.
+- Production assets contained zero matches for the configured provider
+  credential, provider host, or provider secret names. Frontend source contained
+  no direct provider host. Structured function-output scans contained no
+  authorization, bearer, provider-secret-name, or JWT-shaped value.
+- Cleanup verification returned zero disposable WTE rows, templates, exercises,
+  workspaces, memberships, and auth identities for the runtime namespace.
+
+Resumption verdict: **the local real-provider runtime gate passes**. No provider
+adapter or gateway correction was supported by the runtime evidence.
+
 ### Repository and migration integrity
 
 - The PR-EXLIB-07B forward migration is present and is applied to the local Supabase database as migration `20260901160000`.
@@ -313,3 +358,179 @@ before import, so `video_url` is persisted instead of importing the lightweight
 list record without media. Focused provider gateway, normalization,
 exercise-browser, library/picker contract, and WTE mutation coverage passed,
 and the production build passed.
+
+## 19. PR-EXLIB-07D final consolidation and release-readiness gate
+
+Verification date: 2026-09-02. Branch: `EXERCISELIBRARY`. Audited HEAD:
+`bd0575d7418dc26e3eecaf8d2a0804d605f12acc`. This section supersedes earlier
+intermediate verdicts where the current working tree differs from the commits
+audited by those sections. No remote Supabase operation was run.
+
+### Tracked-file and clean-checkout status
+
+- The patch contains 20 modified tracked files and three required untracked
+  files: `src/components/pt/provider-anatomy-filter-fields.tsx`,
+  `src/lib/exercise-provider-anatomy.ts`, and
+  `tests/unit/exercise-provider-anatomy.test.ts`.
+- There are no untracked migration files. The release-evidence document,
+  provider/gateway documentation, canonical taxonomy, selector/artwork,
+  provenance, license, gateway entry point, existing migrations, and database
+  tests are tracked.
+- `.env.local`, `.env.e2e.local`, and `supabase/.env.local` are ignored runtime
+  files. No environment value was copied into this document.
+- A detached tracked-only worktree at audited HEAD had the tracked diff applied,
+  installed 444 packages, and failed its build because the three required
+  untracked files were absent. The failure was the expected unresolved imports
+  for the provider anatomy coordinator and filter fields. Therefore the current
+  patch does not pass the clean-checkout gate until those files are added to
+  Git.
+
+### Migration and configuration status
+
+- No migration was added or changed by PR-EXLIB-07D. Local migration status
+  includes both `20260830120000_exercise_canonical_muscle_taxonomy.sql` and
+  `20260901160000_workout_template_exercise_persistence_repair.sql` as applied.
+- Presence-only inspection confirms all required server-only names in the
+  ignored local function environment: `EXERCISE_DATASET_BASE_URL`,
+  `EXERCISE_DATASET_API_KEY`, `EXERCISE_DATASET_API_KEY_HEADER`, and
+  `EXERCISE_DATASET_API_HOST`.
+- Staging/production migration and secret state were not inspected or changed.
+
+### Provider mapping coverage
+
+- Body-part corpus: 18 options, 18 mapping entries, 18 distinct provider
+  values, zero missing entries, and zero extra entries. Dispositions are 5
+  `exact`, 9 `region_only`, and 4 `unsupported`.
+- Target-muscle corpus: 46 options, 46 mapping entries, 46 distinct provider
+  values, zero missing entries, and zero extra entries. Dispositions are 13
+  `exact`, 20 `grouped`, 10 `region_only`, and 3 `unsupported`.
+- Every non-null canonical body-region and muscle key is validated against the
+  locked taxonomy. Unknown runtime values return `unmapped` and retain the
+  source label instead of being guessed.
+- Pectoral heads group to `pectorals`; wrist flexors/extensors group to
+  `forearms`; quadriceps and hamstrings use their existing canonical groups;
+  gastrocnemius/soleus group to `calves`; gluteal, adductor, trapezius, and arm
+  subdivisions use their reviewed broader canonical muscles. Raw quadriceps
+  subdivision aliases remain supported by the existing mapper.
+- Rotator-cuff values remain shoulder-region-only rather than deltoids;
+  serratus remains core-region-only rather than obliques. Fibularis/peroneal
+  names and out-of-corpus hamstring subdivisions remain unmapped rather than
+  being forced into calves or another canonical muscle.
+- `NECK`, `HANDS`, `FEET`, and `FACE` body parts are explicitly unsupported.
+  `SPLENIUS` and `STERNOCLEIDOMASTOID` are also explicitly unsupported because
+  the locked artwork has no neck-muscle region.
+
+### Synchronization parity
+
+- The dedicated library and workout picker both use
+  `ProviderAnatomyFilterFields` and the same coordinator functions:
+  `selectProviderTargetMuscle`, `selectProviderBodyPart`, and
+  `selectCanonicalMuscle`.
+- Exact and grouped provider targets produce only reviewed canonical muscle
+  selections. Region-only and unsupported targets produce no fabricated
+  visual highlight and expose explanatory copy. A manually selected provider
+  body part never chooses an arbitrary muscle.
+- Visualizer selections derive only conservative provider filters. One-to-many
+  reverse mappings use a safe broad body part or no provider target rather than
+  selecting an arbitrary subtype. Clear behavior preserves independent manual
+  values and removes derived values.
+- Custom/saved exercises use the derived canonical muscle in local filtering;
+  provider requests continue to send the raw provider body-part and target
+  values.
+- Both call sites pass only `value` and `onValueChange` to
+  `AnatomicalMuscleSelector`. Provider labels and SVG identifiers do not enter
+  the selector API.
+
+### Real-provider, authorization, and pagination verdict
+
+The PR-EXLIB-07C-A evidence in section 17 is accepted as real-provider evidence,
+not stub evidence. It records 401 for a missing token, 401 for an invalid token,
+403 for a client-only identity, and HTTP 200 for both a PT owner and an
+authorized PT coach. The owner received one bounded page of 24 real normalized
+records with string IDs. One explicit forward-cursor request returned a second
+bounded page and advanced the rendered catalog from 24 to 48 distinct records.
+No automatic cursor crawl occurred.
+
+The same evidence records zero provider requests while My Library was open,
+one bounded search request when Provider Catalog opened, at most one search
+request for one Load more action, no direct browser-to-provider API request,
+and no provider credential or bearer token in frontend assets, browser traffic,
+or structured function logs. This consolidation did not rerun or substitute a
+stub for that real-provider proof.
+
+### Reconciliation, import, mixed add, and WTE persistence
+
+- Exact provider/source identity reuses the internal exercise UUID. A name-only
+  collision remains `name_conflict` and is not silently merged. A new real
+  provider item imports to `public.exercises` with string source ID, source
+  payload, and canonical muscle arrays.
+- Picker selection state remains independent of query, filters, source tabs,
+  and visible pages. No WTE is written before **Add selected**. Already-added
+  checks and in-flight submit protection remain in place.
+- The recorded real-provider mixed saved/custom/provider add resolved every
+  selection to `public.exercises.id`, inserted three WTE rows, and survived a
+  fresh authenticated read.
+- The initial insert builder still emits exactly
+  `{ workout_template_id, exercise_id, sort_order }`. It does not write provider
+  IDs or prescription fields during the initial insert.
+- Focused mutation tests and the prior runtime proof cover sets, reps, rest,
+  tempo, RPE, notes, sort order, supersets, returned-ID checking, rollback after
+  optimistic failure, and persistence after reload. Repeated selections are
+  partitioned against current WTE exercise IDs before insert.
+
+### Current network and secret inspection
+
+- The current production build contains zero occurrences of the configured
+  provider API key and zero occurrences of the four server-only configuration
+  names. Frontend source/public/build files contain zero occurrences of the
+  configured provider base URL or host.
+- Frontend Exercise Library and picker code call the local dataset client only;
+  no direct provider `fetch` or Axios call is present. Provider API access
+  remains behind the Supabase Edge Function.
+- Runtime log secrecy remains supported by the structured safe-log contract and
+  the PR-EXLIB-07C-A inspection recorded in section 17. No environment value is
+  included here.
+
+### Test, database, and CI result
+
+- Focused exercise/provider/WTE suite: 14 files, 171 tests, all passed.
+- Local database tests: 2 files, 40 pgTAP assertions, all passed. Local database
+  lint returned zero errors.
+- Production build passed and transformed 3,408 modules. ESLint, Prettier, and
+  `git diff --check` passed.
+- Full unit suite: 221 files passed and one file failed; 1,214 tests passed and
+  one test failed. The unchanged failure is
+  `auth-component-animated-signin-contract.test.ts` expecting a stale embedded
+  CSS string. Neither that test nor the auth component is modified by this
+  patch.
+- Required `npm run verify:release`: nonzero. Lint, formatting, and build passed;
+  Playwright completed 34 passed, 2 skipped, and 2 failed. The unchanged failures
+  are the auth-guard expectation for a visible Sign in button and the product
+  page expectation for ten deep-dive chapter links. Their tests and relevant
+  source files are unchanged by this patch. CI is not green.
+- The detached tracked-only build also exits nonzero because required source is
+  untracked.
+
+### Accepted limitations, rollback, and final verdict
+
+Existing accepted architectural limitations remain: provider import and WTE
+insert are not atomic, duplicate prevention is application-level, and multi-row
+WTE persistence relies on exact returned-ID checking plus authoritative
+refetch/recovery. Credential rotation remains required before any staging or
+production deployment because the prior credential was exposed outside the
+application.
+
+Rollback requires reverting the Exercise Library/picker/provider coordinator,
+gateway, mapping, tests, documentation, and evidence patch together. No new
+migration or remote state was introduced by this consolidation. The existing
+forward WTE persistence repair should not be rolled back independently while
+its repaired update semantics are required.
+
+**Final PR-EXLIB-07D verdict: Blocked.** Real-provider behavior, mapping
+coverage, synchronization, reconciliation/import, mixed add, WTE identity, and
+persistence are proven. Release readiness is blocked because three required
+files are untracked, the tracked-only clean checkout cannot build, the full unit
+suite exits nonzero, and the required release command exits nonzero. Provider
+choice, canonical taxonomy, anatomical artwork, exercise identity, the initial
+WTE insert contract, programs, assignments, runner behavior, set logging,
+history, and client-personal exercises were unchanged by this gate.
