@@ -534,3 +534,109 @@ suite exits nonzero, and the required release command exits nonzero. Provider
 choice, canonical taxonomy, anatomical artwork, exercise identity, the initial
 WTE insert contract, programs, assignments, runner behavior, set logging,
 history, and client-personal exercises were unchanged by this gate.
+
+## 20. PR-EXLIB-07E final release-gate closure
+
+### Branch, committed checkout, and tracked-file integrity
+
+- Branch: `EXERCISELIBRARY`.
+- Committed Exercise Library baseline: `c702b81` (`feat(exercises): complete
+provider anatomy integration`).
+- `git ls-files` confirms that
+  `src/components/pt/provider-anatomy-filter-fields.tsx`,
+  `src/lib/exercise-provider-anatomy.ts`, and
+  `tests/unit/exercise-provider-anatomy.test.ts` are tracked.
+- A detached worktree created from `c702b81` completed `npm ci` and the
+  TypeScript/Vite production build. The PR-EXLIB-07D missing-file build blocker
+  is resolved. Production source is not loaded from an ignored directory.
+- Runtime verification still requires the configured ignored local environment
+  or equivalent CI-provided environment values. No environment value is
+  recorded in this document.
+
+### Animated-auth source-contract disposition
+
+The failing unit test was stale source-contract coverage, not a production auth
+regression. Commit `1a761ff` intentionally changed the outer
+`.glass-input-single` wrapper from transparent to a surfaced treatment, while
+the test retained an exact multiline copy of the previous CSS. The native input
+still has transparent background, no border, and no shadow.
+
+The test now extracts the native-input CSS rule and asserts those meaningful
+properties. It no longer depends on obsolete wrapper colors, indentation,
+line endings, or exact formatting. Accessibility and interaction coverage was
+retained. The production auth component was not reformatted or changed.
+
+### Playwright failure 1 disposition: auth guard
+
+The reported auth-guard failure expected `/login` but observed the protected
+route and no usable sign-in control. The spec passed independently against a
+fresh repository-owned server: 1 test passed. This ruled out a deterministic
+route/auth regression.
+
+Root cause was test-server identity: local Playwright configuration permitted
+reuse of any process already serving port 4173. That could connect the release
+gate to a stale, differently configured, or different-checkout application.
+Playwright now starts its own server by default. Existing-server reuse requires
+the explicit opt-in `PLAYWRIGHT_REUSE_EXISTING_SERVER=1`.
+
+### Playwright failure 2 disposition: product page
+
+The reported product-page failure found zero chapter links. All five product
+page tests passed independently against a fresh repository-owned server. This
+independently ruled out a deterministic product-page or chapter-rendering
+regression; no product or marketing component was changed.
+
+The same server-identity correction prevents this spec from observing stale
+assets. During full-suite reproduction, additional auth bootstrap and marketing
+readiness timeouts appeared only with four local workers. Each failing file or
+case passed independently with one worker, demonstrating contention in shared
+local auth/seed/server state rather than product behavior. The repository
+`test:e2e:smoke` release command now uses one worker, matching the existing CI
+concurrency policy. No test was skipped, no retry was added, and no assertion
+was weakened.
+
+### Final regression and release results
+
+- Animated-auth contract: 1 file, 7 tests passed.
+- Independently rerun auth guard: 1 test passed.
+- Independently rerun product page: 5 tests passed.
+- Independently rerun auth onboarding: 5 tests passed.
+- Independently rerun auth resilience: 1 test passed.
+- Independently rerun `/coaches` marketing case: 1 test passed.
+- Focused provider anatomy, exercise browser, picker, Exercise Library page,
+  selector, taxonomy, classification, domain, and WTE mutation suite: 10 files,
+  139 tests passed.
+- Full unit suite: 222 files, 1,215 tests passed; exit zero.
+- Local database suite: 2 files, 40 pgTAP assertions passed. Local database
+  lint returned zero errors.
+- ESLint, repository-wide Prettier, TypeScript/Vite production build, and
+  `git diff --check` passed.
+- Required `npm run verify:release`: exit zero. Playwright completed 36 passed
+  and 2 intentional pre-existing skips.
+
+### Credential rotation and deployment sequence
+
+Provider credential rotation remains mandatory before staging or production
+deployment because a previous credential was exposed outside the application.
+The deployment sequence is:
+
+1. Rotate the provider credential at the provider account.
+2. Update only ignored local configuration and repeat the real-provider auth,
+   first-page, pagination, import, and secret-isolation checks.
+3. With explicit authorization for a named remote Supabase project, update the
+   server-side provider secret through the guarded remote workflow.
+4. Deploy the gateway/function and frontend through the approved release path.
+5. Repeat post-deployment provider, browser-network, asset, and log secret
+   inspection before enabling production traffic.
+
+No remote Supabase operation or credential change was performed by
+PR-EXLIB-07E.
+
+**Final PR-EXLIB-07E recommendation: Ready.** The repository-standard release
+command and full unit suite exit zero, the clean committed Exercise Library
+checkout builds, and the remaining credential-rotation/deployment sequence is
+documented. Deployment must not proceed until that sequence is completed.
+Provider choice, provider anatomy mapping, canonical taxonomy, anatomical
+artwork, exercise identity, the initial WTE insert contract, programs,
+assignments, runner behavior, set logging, history, and client-personal
+exercises were unchanged.
