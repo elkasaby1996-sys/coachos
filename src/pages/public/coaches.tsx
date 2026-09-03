@@ -79,7 +79,7 @@ const marketplaceSteps = [
   {
     number: "04",
     title: "Start after approval",
-    body: "After approval, create or sign in to your RepSync account and join the coach's workspace.",
+    body: "Once approved, enter the coaching relationship through the appropriate RepSync account and workspace flow.",
   },
 ];
 
@@ -317,7 +317,7 @@ export function CoachesPage() {
   usePublicSeo({
     title: "Coach marketplace | RepSync",
     description:
-      "Search published coach profiles by specialty, format, availability, and location, then apply through RepSync.",
+      "Explore published coach profiles, compare coaching approaches and services, and apply directly through RepSync.",
     canonicalPath: "/coaches",
     structuredData: {
       "@context": "https://schema.org",
@@ -333,11 +333,11 @@ export function CoachesPage() {
       <section className="rs-marketplace-intro">
         <div className="rs-marketplace-intro__copy">
           <p className="rs-stitch-kicker">Coach marketplace</p>
-          <h1>Search published coach profiles.</h1>
+          <h1>Find a coach who fits how you want to train.</h1>
           <p>
-            Compare specialties, coaching formats, locations, availability, and
-            services. An application sends your information to the coach and
-            carries no subscription charge.
+            Explore published profiles, compare coaching approaches and
+            services, and apply directly to the coach who feels right. Applying
+            starts a conversation, not a subscription.
           </p>
         </div>
       </section>
@@ -508,7 +508,7 @@ export function CoachesPage() {
           <div className="rs-marketplace-section-heading">
             <div>
               <p className="rs-stitch-kicker">How it works</p>
-              <h2>Review a profile, apply, and talk with the coach.</h2>
+              <h2>A direct path from profile to coaching.</h2>
             </div>
           </div>
           <ol className="rs-marketplace-process__steps">
@@ -521,8 +521,8 @@ export function CoachesPage() {
             ))}
           </ol>
           <p className="rs-marketplace-process__note">
-            The coach reviews each application and decides whether to accept the
-            client.
+            Applying does not guarantee acceptance. The coach decides whether
+            the relationship is the right fit.
           </p>
         </div>
       </section>
@@ -531,13 +531,14 @@ export function CoachesPage() {
         <div className="rs-marketplace-section-inner rs-marketplace-trust__grid">
           <div>
             <p className="rs-stitch-kicker">Trust</p>
-            <h2>Review the information supplied by each coach.</h2>
+            <h2>Choose based on fit, not a score.</h2>
           </div>
           <div className="rs-marketplace-trust__body">
             <p>
               Coach profiles, services, availability, qualifications, and public
               pricing are supplied by each coach. Review the full profile and
-              ask the coach about any information that affects your decision.
+              ask the questions that matter before starting a coaching
+              relationship.
             </p>
             <nav aria-label="Marketplace trust resources">
               <Link to="/security">
@@ -561,7 +562,7 @@ export function CoachesPage() {
         <div className="rs-marketplace-section-inner rs-marketplace-entry__grid">
           <div>
             <p className="rs-stitch-kicker">Existing client</p>
-            <h2>Open your existing client account.</h2>
+            <h2>Already working with a coach?</h2>
             <p>
               Use your invitation or sign in to open your current coaching
               experience.

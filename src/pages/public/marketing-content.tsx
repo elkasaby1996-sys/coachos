@@ -56,46 +56,38 @@ const stitchImages = {
 };
 
 const journey = [
+  ["01", "Public profile", "The relationship starts before an application."],
   [
-    "01",
-    "Public profile",
-    "Prospects can review your coaching and available packages.",
+    "02",
+    "Application",
+    "Prospect answers stay attached to the coaching context.",
   ],
-  ["02", "Application", "Answers are stored with the prospect's record."],
-  [
-    "03",
-    "Conversation",
-    "Messages and notes give coaches the history they need.",
-  ],
-  ["04", "Approval", "Approved prospects move directly into onboarding."],
+  ["03", "Conversation", "Lead conversations remain part of the record."],
+  ["04", "Approval", "The right prospects move forward with clarity."],
   [
     "05",
     "Onboarding",
-    "Clients complete setup and receive their first actions.",
+    "Setup, expectations, and first actions stay connected.",
   ],
   [
     "06",
     "Coaching",
-    "Programs, nutrition, habits, and messages are managed together.",
+    "Programs, nutrition, habits, and messages share context.",
   ],
   [
     "07",
     "Check-in",
-    "Each review adds results and coach feedback to the record.",
+    "Progress review becomes part of the relationship history.",
   ],
-  [
-    "08",
-    "Client attention",
-    "Recent activity and overdue tasks help coaches prioritize follow-up.",
-  ],
+  ["08", "Client attention", "Signals show who needs help and why."],
 ];
 
 const productChapters: Chapter[] = [
   {
     id: "acquire",
     label: "01 / Acquire",
-    title: "Turn a new inquiry into an active client.",
-    body: "Publish your profile, accept applications, talk with prospects, and move approved clients into onboarding with their answers and notes attached.",
+    title: "Turn interest into a structured coaching relationship.",
+    body: "Publish a professional coach profile, collect applications, speak with prospects, and move the right people into coaching without losing the context that brought them there.",
     points: [
       "Public coach profile",
       "Prospect application",
@@ -107,8 +99,8 @@ const productChapters: Chapter[] = [
   {
     id: "coach",
     label: "02 / Coach",
-    title: "Build plans and review the work as it happens.",
-    body: "Assign training and nutrition guidance, track habits, schedule check-ins, and keep client messages beside their progress history.",
+    title: "Deliver the work without losing the context around it.",
+    body: "Assign training, nutrition guidance, habits, and recurring check-ins while keeping messages and client history attached to the same coaching relationship.",
     points: [
       "Training programs",
       "Nutrition guidance",
@@ -120,8 +112,8 @@ const productChapters: Chapter[] = [
   {
     id: "retain",
     label: "03 / Retain",
-    title: "Prioritize clients who need follow-up.",
-    body: "RepSync separates lifecycle status from attention signals, then shows the missed check-in, inactivity, or overdue task behind each alert.",
+    title: "Know who needs attention and why.",
+    body: "See the difference between where a client is in the journey and whether that client needs attention. Review the specific signal, then decide what to do next.",
     points: [
       "Lifecycle: Active",
       "Attention: At risk",
@@ -133,15 +125,15 @@ const productChapters: Chapter[] = [
 const switchingSteps = [
   {
     label: "01 Review",
-    body: "List the clients, programs, check-ins, and team access you use today.",
+    body: "Map your current platform, active clients, programs, check-ins, and team workflow.",
   },
   {
     label: "02 Prepare",
-    body: "Decide which records to import, recreate, or archive.",
+    body: "Identify what can move, what should be recreated, and what should remain archived.",
   },
   {
     label: "03 Launch",
-    body: "Set up access, confirm active assignments, and invite clients when the new workspace is ready.",
+    body: "Configure access, verify active assignments, and move coaching over deliberately.",
   },
 ];
 
@@ -158,7 +150,8 @@ const pricingPlans = [
       "1 workspace",
       "3 published packages",
     ],
-    summary: "Core coaching features for up to 10 active clients.",
+    summary:
+      "Everything required to coach professionally, for up to 10 clients.",
   },
   {
     id: "growth" as TrialPlanId,
@@ -173,7 +166,7 @@ const pricingPlans = [
       "3 workspaces",
       "Unlimited published packages",
     ],
-    summary: "Capacity for a full-time coach and one additional coach seat.",
+    summary: "Run a full-time coaching operation with room for an assistant.",
     featured: true,
   },
   {
@@ -189,7 +182,8 @@ const pricingPlans = [
       "10 workspaces",
       "Unlimited published packages",
     ],
-    summary: "Team access and capacity for up to 100 active clients.",
+    summary:
+      "A coaching-business operating system for teams managing up to 100 active clients.",
   },
   {
     id: "studio" as TrialPlanId,
@@ -204,7 +198,8 @@ const pricingPlans = [
       "Unlimited workspaces",
       "Unlimited published packages",
     ],
-    summary: "Capacity for larger teams working across multiple workspaces.",
+    summary:
+      "Central oversight for larger coaching operations and multiple delivery environments.",
   },
 ];
 
@@ -229,7 +224,7 @@ const pricingCoreFeatures = [
 const pricingDefinitions = [
   {
     title: "Active client",
-    body: "Clients with onboarding, active, or paused status count toward the limit. Leads, invitations, completed clients, churned clients, and archived records do not.",
+    body: "A client in an ongoing coaching relationship. Onboarding, active, and paused clients count. Leads, invitations, completed relationships, churned clients, and archived records do not.",
   },
   {
     title: "Coach seat",
@@ -391,7 +386,7 @@ function ProductMotion({
 function HeroProductMotion() {
   return (
     <ProductMotion
-      alt="RepSync showing an approved application converted into an active client account."
+      alt="RepSync workflow showing an application becoming an active coaching relationship."
       poster="/media/repsync-workflow-poster.png?v=20260729-light-tour"
       src="/media/repsync-workflow-motion.webm?v=20260729-light-tour"
     />
@@ -414,8 +409,8 @@ function JourneyGrid() {
       <div className="rs-stitch-container">
         <SectionIntro
           eyebrow="Client journey"
-          title="Keep the full client record from application onward."
-          body="Answers, conversations, onboarding details, plans, and check-ins stay on the same client record when coaching begins."
+          title="The coaching relationship does not begin with a workout."
+          body="The original context should remain attached as a prospect becomes a client. RepSync keeps each stage connected to the relationship that follows."
         />
         <div className="rs-stitch-journey-grid">
           {journey.map(([number, title, body]) => (
@@ -472,23 +467,23 @@ function ChapterGrid() {
 function OperationsCards() {
   const cards = [
     {
-      title: "Applications and onboarding",
-      body: "Keep application answers, approval status, onboarding, and workspace setup on the client record.",
+      title: "Lead-to-client continuity",
+      body: "Inquiry context, approval state, onboarding, and workspace setup move as one relationship.",
       icon: <MousePointerClick />,
     },
     {
       title: "Coaching delivery",
-      body: "Manage programs, nutrition, habits, check-ins, progress, notes, and messages for each client.",
+      body: "Programs, nutrition, habits, check-ins, progress, notes, and messages stay visible together.",
       icon: <Dumbbell />,
     },
     {
       title: "Attention signals",
-      body: "Review specific reasons such as missed check-ins, stale leads, and client inactivity.",
+      body: "Missed check-ins, stale leads, and client inactivity become operational cues instead of surprises.",
       icon: <ClipboardCheck />,
     },
     {
-      title: "Workspace access",
-      body: "Set access for owners, coaches, assistants, and viewers by role and client assignment.",
+      title: "Small-team workspaces",
+      body: "Owners, coaches, assistants, and viewers can work from the right level of visibility.",
       icon: <Network />,
     },
   ];
@@ -515,10 +510,11 @@ function HomeSwitching() {
         <div className="rs-stitch-switching__intro rs-stitch-reveal">
           <SyncRail />
           <p className="rs-stitch-kicker">Switching</p>
-          <h2>Bring active coaching work with you.</h2>
+          <h2>Move more than your workout library.</h2>
           <p>
-            A platform change can include client records, current programs,
-            check-in schedules, messages, team access, and exercise templates.
+            Changing platforms affects active clients, current programs,
+            check-in routines, communication, and team access, not only exercise
+            templates.
           </p>
         </div>
         <div className="rs-stitch-switching__grid">
@@ -547,8 +543,8 @@ function HomeSwitching() {
 }
 
 function FinalCta({
-  title = "Try RepSync free for seven days.",
-  body = "The trial includes the Growth plan. After seven days, choose a plan based on active clients, coach seats, and workspaces.",
+  title = "Start building a more connected coaching operation.",
+  body = "Use the full Growth workflow for seven days, then choose the capacity that fits your clients, team, and workspaces.",
 }: {
   title?: string;
   body?: string;
@@ -572,7 +568,7 @@ export function MarketingHomePage() {
   usePublicSeo({
     title: "RepSync | Connected coaching operations",
     description:
-      "RepSync gives independent coaches one place to manage applications, onboarding, programs, nutrition, check-ins, messages, and client follow-up.",
+      "RepSync connects lead management, onboarding, coaching delivery, communication, and client attention in one operating system.",
   });
 
   return (
@@ -582,13 +578,13 @@ export function MarketingHomePage() {
         <section className="rs-stitch-hero">
           <div className="rs-stitch-hero__copy rs-stitch-reveal is-visible">
             <p className="rs-stitch-kicker">
-              Built for independent trainers and small teams
+              Coaching infrastructure for independent trainers and small teams
             </p>
-            <h1>Manage clients and deliver coaching.</h1>
+            <h1>From first inquiry to every check-in.</h1>
             <p>
-              RepSync keeps applications, onboarding, programs, nutrition,
-              habits, messages, and check-ins in one place. Coaches can see the
-              full client history and act on the next task.
+              RepSync connects the work before a client joins with the coaching
+              that follows: leads, onboarding, programs, nutrition, habits,
+              check-ins, messaging, and client attention.
             </p>
             <div className="rs-stitch-hero__actions">
               <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
@@ -599,8 +595,8 @@ export function MarketingHomePage() {
           </div>
           <ProductPreview
             image="/media/repsync-workflow-poster.png?v=20260729-light-tour"
-            alt="RepSync showing an approved application converted into an active client account."
-            caption="An approved application opens the client account with its history intact."
+            alt="RepSync workflow showing an application becoming an active coaching relationship."
+            caption="One client relationship, connected from application to active coaching."
             media={<HeroProductMotion />}
           />
         </section>
@@ -608,19 +604,20 @@ export function MarketingHomePage() {
         <section className="rs-stitch-section">
           <div className="rs-stitch-container">
             <SectionIntro
-              eyebrow="Built for coaches and clients"
-              title="A workspace for coaches and an app for clients."
-              body="The workspace brings delivery, communication, and follow-up together. The client app keeps daily training and progress straightforward."
+              eyebrow="Audience pathways"
+              title="Two sides of the coaching relationship."
+              body="RepSync gives coaches the operational view and clients the focused experience they need, without forcing both sides through the same interface."
             />
             <div className="rs-stitch-pathways">
               <article className="rs-stitch-pathway rs-stitch-reveal">
                 <p className="rs-stitch-kicker">For Coaches</p>
                 <h3>
-                  Manage the business and the coaching from one workspace.
+                  Run the work before, during, and around every client
+                  relationship.
                 </h3>
                 <p>
-                  Review new applications, onboard clients, assign plans, run
-                  check-ins, and follow up when someone needs help.
+                  Capture interest, move the right people into coaching, deliver
+                  the work, run check-ins, and see who needs attention.
                 </p>
                 <SiteLink to="/for-coaches" variant="secondary">
                   Explore RepSync for coaches
@@ -629,10 +626,10 @@ export function MarketingHomePage() {
               <SyncRail orientation="v" />
               <article className="rs-stitch-pathway rs-stitch-pathway--client rs-stitch-reveal">
                 <p className="rs-stitch-kicker">For Clients</p>
-                <h3>See today's plan and record your progress.</h3>
+                <h3>Open RepSync and know what matters today.</h3>
                 <p>
-                  Open RepSync to find your workout, nutrition guidance, habits,
-                  messages, and next check-in.
+                  See your training, nutrition guidance, habits, check-ins,
+                  messages, and progress in one clear coaching experience.
                 </p>
                 <SiteLink to="/for-clients" variant="secondary">
                   Explore the client experience
@@ -647,9 +644,9 @@ export function MarketingHomePage() {
         <section className="rs-stitch-section">
           <div className="rs-stitch-container">
             <SectionIntro
-              eyebrow="Day-to-day workflow"
-              title="Handle sales, delivery, and follow-up in RepSync."
-              body="Applications, onboarding notes, and coaching activity stay together, giving coaches the information they need for the next decision."
+              eyebrow="Acquire / Coach / Retain"
+              title="Acquire, coach, and retain from the same operating rhythm."
+              body="Turn interest into a structured relationship, deliver the work in context, and see who needs attention before silence becomes churn."
             />
             <ChapterGrid />
           </div>
@@ -660,20 +657,23 @@ export function MarketingHomePage() {
             <ProductPreview
               image="/media/repsync-client-experience-poster.png?v=20260729-client-workout-tour"
               alt="RepSync client app showing today's plan, workouts, an active exercise logger and rest timer, nutrition, habits, check-ins, messages, and progress."
-              caption="The client app keeps daily tasks, messages, and progress easy to reach."
+              caption="The operational system stays with the coach. The client gets a focused coaching experience."
               media={<ClientExperienceMotion />}
             />
             <div className="rs-stitch-reveal">
               <SyncRail />
-              <p className="rs-stitch-kicker">Client app</p>
-              <h2>Give clients a clear view of today's coaching.</h2>
+              <p className="rs-stitch-kicker">
+                Clear for the coach. Calm for the client.
+              </p>
+              <h2>Clear for the coach. Calm for the client.</h2>
               <p>
-                The home screen shows today's workout, nutrition guidance,
-                active habits, the next check-in, recent messages, and progress.
+                Clients open RepSync and see what matters now: today's workout,
+                nutrition guidance, active habits, their next check-in, recent
+                messages, and progress.
               </p>
               <p>
-                Coaches keep the wider account history in their workspace while
-                clients see the information they use each day.
+                The operational system stays with the coach. The client gets a
+                focused coaching experience.
               </p>
               <SiteLink to="/for-clients" variant="secondary">
                 See the client experience
@@ -726,9 +726,9 @@ function HomeIntroGate() {
 
 export function ProductPage() {
   usePublicSeo({
-    title: "RepSync product | Client management and coaching delivery",
+    title: "RepSync | Product Deep-Dive",
     description:
-      "Review how RepSync handles applications, onboarding, coaching delivery, messages, check-ins, client follow-up, and team access.",
+      "An architectural walkthrough of the RepSync ecosystem, from client acquisition to automated revenue tracking for high-performance coaches.",
   });
 
   useEffect(() => {
@@ -927,8 +927,8 @@ function ProductReferenceSideNav() {
       aria-label="Product deep-dive chapters"
     >
       <div className="rs-product-ref-side__title">
-        <p>RepSync</p>
-        <h2>Product guide</h2>
+        <p>The OS</p>
+        <h2>Product Deep Dive</h2>
       </div>
       <nav>
         {productReferenceNav.map(([href, label, icon], index) => (
@@ -939,7 +939,7 @@ function ProductReferenceSideNav() {
         ))}
       </nav>
       <div className="rs-product-ref-side__trial">
-        <p>Use the Growth plan free for seven days.</p>
+        <p>Ready to configure the workflow around your own clients?</p>
         <Link to="/start-trial">Start 7-day trial</Link>
       </div>
     </aside>
@@ -953,26 +953,25 @@ function ProductReferenceHero() {
     "Onboard",
     "Coach",
     "Check in",
-    "Follow up",
+    "Attention",
   ];
 
   return (
     <section className="rs-product-ref-hero">
       <SyncRail />
       <p className="rs-product-ref-label">The product</p>
-      <h1>Manage applications, coaching, and follow-up in RepSync.</h1>
+      <h1>The Whole Coaching Relationship, Connected.</h1>
       <p>
-        Publish your profile, review applicants, onboard clients, assign plans,
-        run check-ins, send messages, and manage team access from the same
-        account.
+        RepSync connects the journey from public profile and application through
+        onboarding, coaching delivery, check-ins, communication, client
+        attention, and team access.
       </p>
       <p className="rs-product-ref-hero__note">
-        Client details remain available as the work moves from one stage to the
-        next.
+        One operating model from first inquiry to ongoing coaching.
       </p>
       <div
         className="rs-product-ref-journey"
-        aria-label="RepSync client workflow"
+        aria-label="RepSync relationship journey"
       >
         {journey.map((item, index) => (
           <span key={item} style={{ "--step-index": index } as CSSProperties}>
@@ -992,14 +991,14 @@ function ProductReferenceModuleMap() {
       href: "#acquire",
       number: "01",
       title: "Acquire",
-      body: "Public profile, applications, lead messages, and approval decisions.",
+      body: "Profile, applications, lead context, and approval decisions.",
       icon: <MousePointerClick />,
     },
     {
       href: "#onboard",
       number: "02",
       title: "Onboard",
-      body: "Workspace assignment, client invitation, initial plan, and check-in schedule.",
+      body: "Workspace assignment, secure invite, initial plan, and cadence.",
       icon: <UserRound />,
     },
     {
@@ -1013,7 +1012,7 @@ function ProductReferenceModuleMap() {
       href: "#communicate",
       number: "04",
       title: "Communicate",
-      body: "Coach-client messages stored with the client account.",
+      body: "Coach-client messages tied to the active relationship.",
       icon: <MessageSquare />,
     },
     {
@@ -1027,21 +1026,21 @@ function ProductReferenceModuleMap() {
       href: "#attention",
       number: "06",
       title: "Attention",
-      body: "Lifecycle status, risk signals, reasons, and follow-up priorities.",
+      body: "Lifecycle, risk signals, reasons, and next coaching decisions.",
       icon: <AlertTriangle />,
     },
     {
       href: "#operate",
       number: "07",
       title: "Operate",
-      body: "A starting view for leads, check-ins, client alerts, and workspace activity.",
+      body: "The operational starting point for work that needs a decision.",
       icon: <Settings />,
     },
     {
       href: "#experience",
       number: "08",
       title: "Client Experience",
-      body: "A client home for today's plan, messages, and progress.",
+      body: "A focused client home for today's plan, context, and progress.",
       icon: <UserRound />,
     },
     {
@@ -1088,13 +1087,13 @@ function ProductReferenceModuleMap() {
       aria-labelledby="product-module-map"
     >
       <div className="rs-product-ref-modules__intro">
-        <p className="rs-product-ref-label">Product map</p>
+        <p className="rs-product-ref-label">Operating system map</p>
         <h2 id="product-module-map">
-          Review each part of the client workflow.
+          Nine modules. One coaching relationship.
         </h2>
         <p>
-          Each module handles a defined task and keeps its information available
-          to the next step.
+          Each module owns a specific decision point in the coaching operation,
+          then passes context forward without fragmenting the relationship.
         </p>
       </div>
       <div
@@ -1208,7 +1207,7 @@ function ProductProductMockup({
           <p>Workout complete. Energy was better today.</p>
           <p>Coach: Keep the same load and send your check-in tonight.</p>
           <aside>
-            <span>Client details</span>
+            <span>Context attached</span>
             <strong>Week 4 / Lower day</strong>
           </aside>
         </div>
@@ -1242,16 +1241,16 @@ function ProductReferenceAcquire() {
     >
       <div>
         <p className="rs-product-ref-label">01 Acquire</p>
-        <h2>Manage applications and approvals.</h2>
+        <h2>Turn Interest into a Coaching Relationship.</h2>
         <p>
-          Publish your coach profile, collect applications, review prospect
-          messages, and approve the people you want to coach.
+          Publish a professional coach profile, collect applications, keep the
+          conversation attached to the lead, and decide who moves forward.
         </p>
         <ul className="rs-product-ref-checks">
           {[
             "Public coach profile and application",
-            "Application answers and lead messages",
-            "Approval and onboarding handoff",
+            "Lead context and conversations",
+            "Approval into the coaching workflow",
           ].map((item) => (
             <li key={item}>
               <CheckCircle2 size={16} aria-hidden="true" />
@@ -1262,7 +1261,7 @@ function ProductReferenceAcquire() {
       </div>
       <ProductProductMockup
         title="Public profile and lead pipeline"
-        body="The lead view shows the published profile, application answers, conversation, and approval status."
+        body="Show the published profile, application context, lead record, and next decision in one focused product view."
         variant="pipeline"
       />
     </section>
@@ -1271,9 +1270,9 @@ function ProductReferenceAcquire() {
 
 function ProductReferenceOnboard() {
   const steps = [
-    ["Assign", "Place the client in the appropriate workspace."],
-    ["Invite", "Send the client an invitation to create their account."],
-    ["Configure", "Add the first plan, habits, and check-in schedule."],
+    ["Assign", "Place the client in the appropriate coaching workspace."],
+    ["Invite", "Give the client a secure route into RepSync."],
+    ["Configure", "Set the initial coaching plan and recurring workflow."],
   ] as const;
 
   return (
@@ -1283,10 +1282,10 @@ function ProductReferenceOnboard() {
     >
       <span className="rs-product-ref-vertical-rail" aria-hidden="true" />
       <p className="rs-product-ref-label">02 Onboard</p>
-      <h2>Set up the client account.</h2>
+      <h2>Start Each Client with the Right Context.</h2>
       <p>
-        Move an approved lead into a workspace, invite the client, and add their
-        starting plan, habits, and check-in schedule.
+        Move an approved lead into the right workspace, invite the client, and
+        configure the starting plan, habits, and check-in cadence.
       </p>
       <div className="rs-product-ref-mini-grid">
         {steps.map(([title, body]) => (
@@ -1327,10 +1326,10 @@ function ProductReferenceDeliver() {
       <span className="rs-product-ref-vertical-rail" aria-hidden="true" />
       <div className="rs-product-ref-section__center-copy">
         <p className="rs-product-ref-label">03 Deliver</p>
-        <h2>Assign coaching from one workspace.</h2>
+        <h2>Deliver the Plan in One Coaching Workspace.</h2>
         <p>
-          Create training programs, add nutrition guidance and habits, then
-          assign each item to the client.
+          Keep training, nutrition guidance, and habits connected to the client
+          relationship instead of distributing them across separate tools.
         </p>
       </div>
       <div className="rs-product-ref-card-grid">
@@ -1354,19 +1353,19 @@ function ProductReferenceCommunicate() {
     >
       <div>
         <p className="rs-product-ref-label">04 Communicate</p>
-        <h2>Keep messages beside the client's coaching history.</h2>
+        <h2>Keep Every Conversation in Context.</h2>
         <p>
-          Send messages from the workspace that holds the client's plan,
-          check-ins, and progress.
+          Message clients from the same workspace that holds their plan,
+          check-ins, and coaching history.
         </p>
         <p className="rs-product-ref-section-note">
-          Client status and assigned work remain available when a coach returns
-          to the conversation.
+          The conversation stays attached to the coaching relationship it
+          supports.
         </p>
       </div>
       <ProductProductMockup
         title="Coach-client messaging"
-        body="The messaging view shows the current thread, unread state, and client account using demo data."
+        body="Show the current thread, unread state, and client relationship context without exposing private data."
         variant="chat"
       />
     </section>
@@ -1382,10 +1381,10 @@ function ProductReferenceCheckin() {
       id="checkin"
     >
       <p className="rs-product-ref-label">05 Check-ins</p>
-      <h2>Run recurring check-ins and track every review.</h2>
+      <h2>Structured Check-ins. Clear Follow-up.</h2>
       <p>
-        Schedule each check-in, review the client's response, add feedback, and
-        track the remaining follow-up.
+        Run check-ins on a recurring cadence, review the response, add feedback,
+        and see what still requires follow-up.
       </p>
       <div className="rs-product-ref-stage-row">
         {stages.map((stage, index) => (
@@ -1404,10 +1403,10 @@ function ProductReferenceAttention() {
     <section className="rs-product-ref-attention" id="attention">
       <div>
         <p className="rs-product-ref-label">06 Client Attention</p>
-        <h2>See which clients need follow-up.</h2>
+        <h2>See Who Needs Attention and Why.</h2>
         <p>
-          Attention status can flag an active client when a check-in is missed,
-          a reply is overdue, or recent activity changes.
+          RepSync separates lifecycle from attention, so an active client can
+          still require review when a specific signal changes.
         </p>
         <div className="rs-product-ref-alerts">
           <article>
@@ -1448,9 +1447,9 @@ function ProductReferenceAttention() {
         </div>
       </div>
       <div className="rs-product-ref-pulse">
-        <span>Reason for review</span>
-        <strong>Missed latest check-in</strong>
-        <p>RepSync identifies the trigger for the coach to review.</p>
+        <span>Specific signals.</span>
+        <strong>Human decisions.</strong>
+        <p>RepSync surfaces the reason. The coach decides what happens next.</p>
       </div>
     </section>
   );
@@ -1463,13 +1462,14 @@ function ProductReferenceOperate() {
       id="operate"
     >
       <p className="rs-product-ref-label">07 Operate</p>
-      <h2>Start with the work that needs attention.</h2>
+      <h2>See the Work That Needs a Decision.</h2>
       <p>
-        PT Hub shows leads, active clients, overdue check-ins, attention status,
-        lifecycle, and workspace activity.
+        Review leads, active clients, overdue check-ins, client attention,
+        lifecycle, and workspace activity from PT Hub.
       </p>
       <p className="rs-product-ref-section-note">
-        Current priorities appear together in one starting view.
+        The purpose is not another dashboard. It is a clearer starting point for
+        the next action.
       </p>
     </section>
   );
@@ -1483,21 +1483,22 @@ function ProductReferenceClientExperience() {
     >
       <ProductProductMockup
         title="Client home"
-        body="The mobile home shows today's workout, habits, nutrition guidance, and next check-in."
+        body="Use a mobile client screenshot showing today's priorities and recent coaching context."
         variant="phone"
       />
       <div>
         <p className="rs-product-ref-label">08 Client Experience</p>
-        <h2>Show clients today's plan.</h2>
+        <h2>A Client Home Built Around What Comes Next.</h2>
         <p>
-          The client home shows the current workout, nutrition guidance, habits,
-          next check-in, messages, and progress.
+          Clients see today's workout, nutrition guidance, habits, next
+          check-in, messages, and progress without the operational layer behind
+          it.
         </p>
         <article className="rs-product-ref-note">
-          <h3>Daily client view</h3>
+          <h3>Focused by design</h3>
           <p>
-            Clients see assigned work and progress. Coaches manage scheduling,
-            history, and follow-up in the workspace.
+            The coach keeps the operational context. The client gets a clear
+            next action.
           </p>
         </article>
       </div>
@@ -1517,10 +1518,10 @@ function ProductReferenceTeamAccess() {
   return (
     <section className="rs-product-ref-section rs-product-ref-team" id="team">
       <p className="rs-product-ref-label">09 Team Access</p>
-      <h2>Set access for every workspace role.</h2>
+      <h2>Bring in Support Without Giving Away Control.</h2>
       <p>
-        Add team members, assign client visibility by responsibility, and keep
-        owner actions restricted to the account owner.
+        Add workspace members with role-based access, keep client visibility
+        tied to responsibility, and protect owner-level actions.
       </p>
       <div className="rs-product-ref-role-row">
         {roles.map((role) => (
@@ -1543,8 +1544,8 @@ function ProductReferenceCta() {
   return (
     <section className="rs-product-ref-cta">
       <SyncRail />
-      <p className="rs-product-ref-label">7-day trial</p>
-      <h2>Use the Growth plan free for seven days.</h2>
+      <p className="rs-product-ref-label">Start with Growth</p>
+      <h2>Run the Full Coaching Workflow for Seven Days.</h2>
       <div>
         <Link to="/start-trial">Start 7-day trial</Link>
         <Link to="/for-coaches">Explore for coaches</Link>
@@ -1999,7 +2000,7 @@ export function ForCoachesPage() {
   usePublicSeo({
     title: "For coaches | RepSync",
     description:
-      "Manage applications, client delivery, check-ins, follow-up, and team access with RepSync.",
+      "Run the business around your coaching with RepSync lead continuity, delivery workflows, attention signals, and team workspaces.",
   });
 
   const audienceTypes = [
@@ -2022,16 +2023,16 @@ export function ForCoachesPage() {
 
   const deliveryBlocks = [
     {
-      title: "Assign each client's current plan.",
-      body: "Build reusable coaching material, assign the appropriate plan, and preserve the version delivered to that client.",
+      title: "Assign the plan without losing the client-specific version.",
+      body: "Build reusable coaching material, assign the appropriate plan, and keep the client's delivered work clear as coaching continues.",
     },
     {
-      title: "Include nutrition guidance and habits.",
-      body: "Add nutrition guidance and recurring habits to the client's assigned work.",
+      title: "Keep the actions outside training visible.",
+      body: "Nutrition guidance and habits remain part of the same coaching relationship rather than living in separate documents or message threads.",
     },
     {
-      title: "Review check-ins and follow up.",
-      body: "Schedule recurring check-ins, review each response, and record the next coaching action.",
+      title: "Make reflection and follow-up part of delivery.",
+      body: "Run recurring check-ins, review the response, and continue the conversation with the client context still visible.",
     },
   ];
 
@@ -2059,11 +2060,11 @@ export function ForCoachesPage() {
     "Leads currently sit outside the coaching platform.",
     "Public profile and application activity are disconnected from delivery.",
     "Check-ins are central to the coaching service.",
-    "Client information is spread across several tools.",
+    "Client context is spread across several tools.",
     "Specific client-attention reasons are useful.",
     "An assistant or small team needs controlled access.",
     "The client experience should better reflect the coaching brand.",
-    "Business reporting and client delivery use separate systems.",
+    "Business visibility and delivery currently live in separate systems.",
   ];
 
   const weakerFit = [
@@ -2082,10 +2083,12 @@ export function ForCoachesPage() {
           <p className="rs-stitch-kicker">
             For independent coaches and small coaching teams
           </p>
-          <h1>Manage the work around your coaching.</h1>
+          <h1>Run the business around your coaching.</h1>
           <p>
-            Use RepSync to handle applications, onboarding, assigned plans,
-            check-ins, messages, and follow-up for every client.
+            RepSync connects the journey from public profile and application to
+            active delivery, recurring check-ins, communication, and client
+            attention without splitting the relationship across separate
+            systems.
           </p>
           <div className="rs-stitch-hero__actions">
             <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
@@ -2106,8 +2109,8 @@ export function ForCoachesPage() {
         <div className="rs-stitch-container">
           <SectionIntro
             eyebrow="Audience"
-            title="RepSync supports several coaching models."
-            body="Independent, hybrid, in-person, and small-team coaches can manage the work that happens between sessions."
+            title="Built for the way coaching actually runs."
+            body="Whether delivery happens online, in person, or across both, the operational work between sessions still needs a clear home."
           />
           <div className="rs-coaches-audience rs-stitch-reveal">
             {audienceTypes.map((type) => (
@@ -2120,9 +2123,9 @@ export function ForCoachesPage() {
       <section className="rs-stitch-section rs-stitch-section--sage">
         <div className="rs-stitch-container">
           <SectionIntro
-            eyebrow="Lead process"
-            title="Track each prospect through one process."
-            body="Record the initial inquiry, application, approval, onboarding, and active client status in RepSync."
+            eyebrow="Fragmented operation"
+            title="The operation breaks where the tools change."
+            body="A prospect starts in a message, fills out a separate form, becomes a row in a spreadsheet, and eventually appears in a delivery platform. Each handoff creates another place to check and another chance to lose context."
           />
           <div className="rs-coaches-flow rs-stitch-reveal">
             <article>
@@ -2157,8 +2160,8 @@ export function ForCoachesPage() {
             </article>
           </div>
           <p className="rs-coaches-section-note rs-stitch-reveal">
-            RepSync records the leads you receive and the steps required to turn
-            an approved applicant into a client.
+            RepSync does not generate leads for you. It gives the relationship a
+            structured place to begin and continue.
           </p>
         </div>
       </section>
@@ -2169,15 +2172,15 @@ export function ForCoachesPage() {
             <div className="rs-stitch-reveal">
               <SyncRail />
               <p className="rs-stitch-kicker">01 / Before coaching starts</p>
-              <h2>Keep the application when a prospect becomes a client.</h2>
+              <h2>Keep the context when a prospect becomes a client.</h2>
               <p>
                 Publish a professional profile, collect an application, qualify
-                the lead, approve the applicant, and assign the new client to a
-                workspace.
+                the lead, approve the relationship, and move the client into the
+                right workspace without starting from zero.
               </p>
               <p className="rs-coaches-section-note">
-                Application answers and lead conversations remain available on
-                the client record.
+                The handoff from lead to client should not erase the
+                conversation that came before it.
               </p>
               <SiteLink to="/product" variant="secondary">
                 Explore acquisition and onboarding
@@ -2199,8 +2202,8 @@ export function ForCoachesPage() {
         <div className="rs-stitch-container">
           <SectionIntro
             eyebrow="02 / The weekly work"
-            title="Manage each client's weekly coaching work."
-            body="Programs, nutrition guidance, habits, check-ins, messages, and notes remain available in the client's workspace."
+            title="One workspace for the work around each client."
+            body="Programs, nutrition guidance, habits, check-ins, messages, and client context stay attached to the same coaching relationship."
           />
           <div className="rs-stitch-card-grid">
             {deliveryBlocks.map((block) => (
@@ -2213,10 +2216,10 @@ export function ForCoachesPage() {
               </article>
             ))}
             <article className="rs-stitch-card rs-stitch-reveal">
-              <h3>Message clients from the same workspace.</h3>
+              <h3>Continue the thread after every action.</h3>
               <p>
-                Review the client's assigned work, check-ins, and history while
-                writing a follow-up message.
+                Messages stay beside delivery, check-ins, and client history, so
+                follow-up is not detached from the work being coached.
               </p>
             </article>
           </div>
@@ -2234,11 +2237,11 @@ export function ForCoachesPage() {
             <div className="rs-stitch-reveal">
               <SyncRail />
               <p className="rs-stitch-kicker">03 / When support is needed</p>
-              <h2>Review client status and follow-up signals.</h2>
+              <h2>Know where the client is and whether they need you.</h2>
               <p>
-                Lifecycle records whether a client is onboarding, active,
-                paused, completed, or churned. Attention signals identify a
-                current item for review.
+                Lifecycle answers where the client is in the coaching
+                relationship. Attention answers whether a current signal needs
+                review.
               </p>
               <div className="rs-coaches-lifecycle">
                 {[
@@ -2284,13 +2287,17 @@ export function ForCoachesPage() {
             <div className="rs-stitch-reveal">
               <SyncRail />
               <p className="rs-stitch-kicker">Client experience</p>
-              <h2>Give clients a focused daily view.</h2>
+              <h2>
+                Your operation can be detailed. Their experience should not be.
+              </h2>
               <p>
                 Clients see their assigned work, nutrition guidance, habits,
-                next check-in, messages, and progress in their own account.
+                next check-in, messages, and progress without seeing the
+                operational layer behind the coaching.
               </p>
               <p className="rs-coaches-section-note">
-                Business reporting and team controls remain in the coach view.
+                The coach keeps the context. The client gets a clear next
+                action.
               </p>
               <SiteLink to="/for-clients" variant="secondary">
                 See the client experience
@@ -2310,16 +2317,16 @@ export function ForCoachesPage() {
         <div className="rs-stitch-container">
           <SectionIntro
             eyebrow="04 / Operating structure"
-            title="Use PT Hub for the business and workspaces for delivery."
-            body="PT Hub covers the coach account and business activity. Each workspace contains its own clients, team access, and delivery settings."
+            title="Separate the business view from each coaching environment."
+            body="RepSync uses two clear scopes: PT Hub for the coach and business account, and workspaces for the environments in which client delivery happens."
           />
           <div className="rs-coaches-scope-grid">
             <article className="rs-stitch-reveal">
               <p className="rs-stitch-kicker">PT Hub</p>
               <h3>Business and owner view</h3>
               <p>
-                Review leads, clients, follow-up signals, public profiles,
-                account preferences, and workspaces.
+                Review the operation across leads, clients, signals, public
+                presence, global preferences, and coaching spaces.
               </p>
             </article>
             <article className="rs-stitch-reveal">
@@ -2339,8 +2346,8 @@ export function ForCoachesPage() {
         <div className="rs-stitch-container">
           <SectionIntro
             eyebrow="Team access"
-            title="Set access by role and client assignment."
-            body="Owners can add assistant coaches and viewers, then limit access according to each person's work."
+            title="Bring in support without giving everyone owner access."
+            body="A workspace can support collaboration while keeping access tied to role, assignment, and coaching responsibility."
           />
           <div className="rs-coaches-team-grid">
             {["Owner", "Assistant coach", "Viewer"].map((role) => (
@@ -2358,7 +2365,7 @@ export function ForCoachesPage() {
                 <ul>
                   {[
                     "Workspace membership",
-                    "Assigned client access",
+                    "Assigned-client visibility",
                     "Shared client communication",
                     "Controlled permissions",
                   ].map((item) => (
@@ -2375,8 +2382,8 @@ export function ForCoachesPage() {
         <div className="rs-stitch-container">
           <SectionIntro
             eyebrow="05 / Across the operation"
-            title="Review the work that needs your decision."
-            body="PT Hub shows new leads, active clients, overdue check-ins, follow-up signals, and recent workspace activity."
+            title="See the work that needs a decision."
+            body="PT Hub should help answer what entered the pipeline, what moved forward, which clients are active, which check-ins are overdue, and where attention is required."
           />
           <div className="rs-coaches-check-grid rs-stitch-reveal">
             {visibilityItems.map((item) => (
@@ -2387,7 +2394,8 @@ export function ForCoachesPage() {
             ))}
           </div>
           <p className="rs-coaches-section-note rs-stitch-reveal">
-            Use these summaries to choose the next lead or client to review.
+            The purpose is not another dashboard. It is a clearer starting point
+            for the next coaching decision.
           </p>
         </div>
       </section>
@@ -2396,8 +2404,8 @@ export function ForCoachesPage() {
         <div className="rs-stitch-container">
           <SectionIntro
             eyebrow="Product fit"
-            title="Check whether RepSync matches your coaching business."
-            body="Review the available workflows and current limitations before starting a trial."
+            title="Know whether RepSync fits before you start."
+            body="RepSync is designed for a specific operating model. Being clear about that makes the evaluation more useful."
           />
           <div className="rs-coaches-fit-grid">
             <article className="rs-coaches-fit-card rs-stitch-reveal">
@@ -2436,11 +2444,11 @@ export function ForCoachesPage() {
             <div className="rs-stitch-reveal">
               <SyncRail />
               <p className="rs-stitch-kicker">Switching</p>
-              <h2>Plan a move from your current platform.</h2>
+              <h2>Already coaching on another platform?</h2>
               <p>
-                List active clients, current programs, check-in routines,
-                messages, team access, and what needs to remain archived before
-                moving live work.
+                A useful transition plan accounts for active clients, current
+                programs, check-in routines, messages, team access, and what
+                should remain archived, not only the exercise library.
               </p>
               <div className="rs-stitch-hero__actions">
                 <SiteLink to="/switch">Plan your switch</SiteLink>
@@ -2461,8 +2469,8 @@ export function ForCoachesPage() {
       </section>
 
       <FinalCta
-        title="Try the full Growth plan for seven days."
-        body="Configure a workspace, review the client workflow, and choose a plan based on your active clients, team, and workspace needs."
+        title="Start with the full coaching workflow."
+        body="Use Growth access for seven days, configure your operation, and choose a plan after you understand how RepSync fits the way you coach."
       />
     </PublicLayout>
   );
@@ -2488,11 +2496,7 @@ export function ForClientsPage() {
     ],
     ["Active habits", "See the actions you are working on.", <CheckCircle2 />],
     ["Next check-in", "Know when it opens or is due.", <ClipboardCheck />],
-    [
-      "Coach message",
-      "Read the latest message from your coach.",
-      <MessageSquare />,
-    ],
+    ["Coach message", "Read the latest coaching context.", <MessageSquare />],
   ] as const;
 
   const checkInFlow = [
@@ -2511,9 +2515,9 @@ export function ForClientsPage() {
   ];
 
   const privacyItems = [
-    "You sign in to see your own coaching account.",
+    "You sign in to see your own coaching experience.",
     "Your assigned plan, check-ins, and messages are not part of the coach's public profile.",
-    "Workspace roles and client assignments control coaching-team access.",
+    "Access by the coaching team is controlled through the coaching relationship.",
     "Other clients are not part of your client view.",
   ];
 
@@ -2528,7 +2532,7 @@ export function ForClientsPage() {
     },
     {
       title: "I already have an account",
-      body: "Sign in to open your client home and continue with your current plan.",
+      body: "Sign in to open your client home and continue with your current coaching relationship.",
       action: "Log in",
       to: "/login",
       icon: <UserRound />,
@@ -2552,12 +2556,12 @@ export function ForClientsPage() {
       "Ask your coach to issue a new invitation. RepSync should not ask you to reuse an expired or invalid link.",
     ],
     [
-      "Can I use RepSync on my own?",
-      "RepSync client accounts are used with a coach. Most clients join from an invitation sent by their coach.",
+      "Can I use RepSync without a coach?",
+      "RepSync is currently designed around an active coaching relationship. Most client access begins with a coach invitation.",
     ],
     [
       "Can another client see my information?",
-      "Other clients are not shown your assigned plan, check-ins, or messages.",
+      "Your client area is intended for your own coaching relationship. Other clients are not shown your assigned plan, check-ins, or messages.",
     ],
     [
       "Do I need to install an app?",
@@ -2570,10 +2574,10 @@ export function ForClientsPage() {
       <section className="rs-stitch-page-hero">
         <div className="rs-stitch-reveal is-visible">
           <p className="rs-stitch-kicker">For coaching clients</p>
-          <h1>See today's coaching in one place.</h1>
+          <h1>Your coaching, without the clutter.</h1>
           <p>
-            Review your training, nutrition guidance, habits, check-ins,
-            messages, and progress from your client account.
+            See your training, nutrition guidance, habits, check-ins, messages,
+            and progress in one clear place so you always know what to do next.
           </p>
           <div className="rs-stitch-hero__actions">
             <SiteLink to="/signup/client">I have an invitation</SiteLink>
@@ -2597,8 +2601,8 @@ export function ForClientsPage() {
         <div className="rs-stitch-container">
           <SectionIntro
             eyebrow="01 / Today"
-            title="Start with today's assigned work."
-            body="Your client home shows the next workout, active habits, coach messages, and upcoming check-in."
+            title="Open RepSync and know what matters today."
+            body="Start with the next useful action, not a screen full of business administration."
           />
           <div className="rs-clients-today-grid">
             {todayItems.map(([title, body, icon]) => (
@@ -2620,8 +2624,13 @@ export function ForClientsPage() {
             <div className="rs-stitch-reveal">
               <SyncRail />
               <p className="rs-stitch-kicker">02 / Your plan</p>
-              <h2>Follow your plan, guidance, and next actions.</h2>
-              <p>See what your coach assigned and what you have completed.</p>
+              <h2>
+                Your plan, guidance, and next actions in one coaching space.
+              </h2>
+              <p>
+                What your coach assigns stays clear. What you complete is easy
+                to see.
+              </p>
             </div>
             <div className="rs-clients-plan-stack">
               <article className="rs-stitch-reveal">
@@ -2631,14 +2640,17 @@ export function ForClientsPage() {
                 <h3>Follow the training your coach has set for you.</h3>
                 <p>
                   See scheduled sessions, exercise details, completion state,
-                  and upcoming work in the same client account.
+                  and what comes next without searching through separate
+                  documents or message threads.
                 </p>
               </article>
               <article className="rs-stitch-reveal">
                 <span className="rs-stitch-card__icon" aria-hidden="true">
                   <Utensils />
                 </span>
-                <h3>Review nutrition guidance and active habits.</h3>
+                <h3>
+                  Keep the actions outside training connected to the plan.
+                </h3>
                 <p>
                   View nutrition guidance and the habits your coach wants you to
                   focus on alongside the rest of your coaching.
@@ -2654,8 +2666,8 @@ export function ForClientsPage() {
           <div className="rs-clients-split rs-clients-split--dark">
             <div className="rs-stitch-reveal">
               <SyncRail />
-              <p className="rs-stitch-kicker">03 / Check-ins and messages</p>
-              <h2>Complete check-ins and message your coach.</h2>
+              <p className="rs-stitch-kicker">03 / Stay connected</p>
+              <h2>Keep the coaching conversation moving between sessions.</h2>
               <p>
                 Check-ins give you a structured place to reflect. Messages give
                 you a direct place to ask questions and continue the
@@ -2673,17 +2685,18 @@ export function ForClientsPage() {
           </div>
           <div className="rs-clients-connection-grid">
             <article className="rs-stitch-reveal">
-              <h3>Complete each scheduled check-in.</h3>
+              <h3>Review with the coaching relationship attached.</h3>
               <p>
                 See when a check-in is available, submit your responses, and
-                read your coach's review when it is ready.
+                return to the coaching plan with the review attached to the
+                relationship.
               </p>
             </article>
             <article className="rs-stitch-reveal">
-              <h3>Ask questions in your client account.</h3>
+              <h3>Ask questions without separating the context.</h3>
               <p>
-                Send your coach questions and keep their replies with your
-                coaching history.
+                Ask questions and share context without separating the
+                conversation from the rest of your coaching.
               </p>
             </article>
           </div>
@@ -2696,7 +2709,7 @@ export function ForClientsPage() {
             <div className="rs-stitch-reveal">
               <SyncRail />
               <p className="rs-stitch-kicker">04 / Progress</p>
-              <h2>Review your completed work and coaching history.</h2>
+              <h2>Progress makes more sense with context.</h2>
               <p>
                 Review completed work, habits, check-ins, and the information
                 your coach uses to understand how the plan is going.
@@ -2718,8 +2731,8 @@ export function ForClientsPage() {
         <div className="rs-stitch-container">
           <SectionIntro
             eyebrow="05 / Your information"
-            title="Your coaching information is private to your account."
-            body="A coach's public profile is separate from your assigned plan, check-ins, messages, and progress."
+            title="Your coaching information stays with your coaching relationship."
+            body="The public information about a coach is separate from the private information used to deliver your coaching."
           />
           <div className="rs-clients-privacy-grid rs-stitch-reveal">
             {privacyItems.map((item) => (
@@ -2744,8 +2757,8 @@ export function ForClientsPage() {
         <div className="rs-stitch-container">
           <SectionIntro
             eyebrow="How to join"
-            title="Choose how you are entering RepSync."
-            body="Open a coach invitation, sign in to an existing account, or browse published coach profiles."
+            title="How do you want to enter RepSync?"
+            body="Use the path that matches your relationship with RepSync today."
           />
           <div className="rs-clients-join-grid">
             {joinPaths.map((path) => (
@@ -2798,8 +2811,8 @@ export function ForClientsPage() {
 
       <section className="rs-clients-final rs-stitch-reveal">
         <SyncRail />
-        <p className="rs-stitch-kicker">Client access</p>
-        <h2>Open your client account.</h2>
+        <p className="rs-stitch-kicker">Final actions</p>
+        <h2>Ready to return to your coaching?</h2>
         <div className="rs-stitch-cta__actions">
           <SiteLink to="/login">Log in</SiteLink>
           <SiteLink to="/signup/client" variant="secondary">
@@ -2817,9 +2830,9 @@ export function ForClientsPage() {
 
 export function SwitchPage() {
   usePublicSeo({
-    title: "Switch to RepSync | Migration planning",
+    title: "Switch to RepSync | Migration protocol",
     description:
-      "Plan a move to RepSync by reviewing active clients, current assignments, available transfer methods, and launch steps.",
+      "Plan a move to RepSync by mapping your current platform, active client workflow, supported migration paths, and launch handoff.",
   });
 
   const reviewSteps = [
@@ -2843,7 +2856,7 @@ export function SwitchPage() {
   const moveCategories = [
     [
       "People and access",
-      "Active clients, coaches, assistants, viewers, workspace memberships, and invitation status.",
+      "Active clients, coaches, assistants, viewers, workspace relationships, and invitation status.",
     ],
     [
       "Active coaching",
@@ -2851,7 +2864,7 @@ export function SwitchPage() {
     ],
     [
       "Current communication",
-      "Active client conversations, unread items, current follow-up, and the channel the team will use during the transition.",
+      "Active client conversations, unread items, current follow-up, and the communication channel that will remain authoritative during the transition.",
     ],
     [
       "Operating structure",
@@ -2948,11 +2961,12 @@ export function SwitchPage() {
     <PublicLayout>
       <section className="rs-switch-hero">
         <div className="rs-switch-hero__copy rs-stitch-reveal is-visible">
-          <p className="rs-stitch-kicker">Migration planning</p>
-          <h1>Plan your move to RepSync.</h1>
+          <p className="rs-stitch-kicker">Migration protocol</p>
+          <h1>Move only after the workflow is clear.</h1>
           <p>
-            Review the client work that must continue, the records available for
-            transfer, and the items that should remain archived.
+            RepSync does not promise an instant one-click migration. The safest
+            switch starts by mapping what you use today, what must keep running,
+            and what can move without disrupting active coaching.
           </p>
           <div className="rs-stitch-hero__actions">
             <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
@@ -2977,19 +2991,20 @@ export function SwitchPage() {
             </article>
           ))}
           <p>
-            Keep current coaching work available throughout the move. Historical
-            records can remain in an export or read-only archive when needed.
+            The objective is continuity, not forcing every historical record
+            into a new platform.
           </p>
         </aside>
       </section>
 
       <section className="rs-switch-section rs-switch-section--move">
         <div className="rs-switch-section__intro rs-stitch-reveal">
-          <p className="rs-stitch-kicker">Data review</p>
-          <h2>List the active work and the records to archive.</h2>
+          <p className="rs-stitch-kicker">What may need to move</p>
+          <h2>Map the active relationship before the historical archive.</h2>
           <p>
-            Identify the information required for current coaching, then decide
-            how to preserve older records for reference.
+            The information required to continue coaching is not always the same
+            as the information worth preserving for reference. Review the two
+            separately.
           </p>
         </div>
         <div className="rs-switch-category-grid">
@@ -3012,7 +3027,7 @@ export function SwitchPage() {
       >
         <div className="rs-switch-section__intro rs-stitch-reveal">
           <p className="rs-stitch-kicker">Migration support</p>
-          <h2>Confirm the transfer method for each data type.</h2>
+          <h2>Every category needs an honest support state.</h2>
           <p>
             Migration support depends on the source platform, data format,
             volume, and whether the information is needed for active coaching or
@@ -3032,15 +3047,17 @@ export function SwitchPage() {
       <section className="rs-switch-section rs-switch-section--handoff">
         <div className="rs-switch-handoff__copy rs-stitch-reveal">
           <p className="rs-stitch-kicker">During the handoff</p>
-          <h2>Assign one active system to each workflow.</h2>
+          <h2>
+            Keep one source of truth until each part of the move is complete.
+          </h2>
           <p>
-            Decide where the team will update assignments, check-ins, and
-            messages during each stage of the move. This prevents conflicting
-            versions across the two systems.
+            A transition becomes risky when the same information is edited in
+            two systems without a clear owner. Decide which platform is
+            authoritative for each workflow until the handoff is confirmed.
           </p>
           <strong>
-            Start with a small client group and verify access, assignments, and
-            messages before inviting the remaining clients.
+            A smaller verified first group is usually safer than inviting the
+            entire client roster at once.
           </strong>
         </div>
         <div className="rs-switch-handoff-list">
@@ -3059,7 +3076,7 @@ export function SwitchPage() {
       <section className="rs-switch-section rs-switch-section--platforms">
         <div className="rs-switch-section__intro rs-stitch-reveal">
           <p className="rs-stitch-kicker">Current platform</p>
-          <h2>Review how your current platform handles each workflow.</h2>
+          <h2>Start with the workflow you are leaving.</h2>
           <p>
             The transition plan should reflect how the current platform handles
             delivery, client communication, check-ins, team access, and
@@ -3081,8 +3098,10 @@ export function SwitchPage() {
 
       <section className="rs-switch-section rs-switch-section--faq">
         <div className="rs-switch-section__intro rs-stitch-reveal">
-          <p className="rs-stitch-kicker">Migration questions</p>
-          <h2>Confirm migration limits before rollout.</h2>
+          <p className="rs-stitch-kicker">
+            Questions to resolve before the move
+          </p>
+          <h2>Clarify the limits before the rollout begins.</h2>
         </div>
         <div className="rs-switch-faq-list">
           {questions.map(([question, answer]) => (
@@ -3096,8 +3115,8 @@ export function SwitchPage() {
 
       <section className="rs-switch-final rs-stitch-reveal">
         <SyncRail />
-        <p className="rs-stitch-kicker">First group</p>
-        <h2>Configure RepSync with a small group first.</h2>
+        <p className="rs-stitch-kicker">Start deliberately</p>
+        <h2>Prepare the workflow, then start with a controlled first group.</h2>
         <p>
           Use the seven-day Growth trial to configure your workspace, verify
           access, and understand what should move before inviting active
@@ -3110,7 +3129,7 @@ export function SwitchPage() {
           </SiteLink>
         </div>
         <p className="rs-switch-final__note">
-          Migration support depends on the source platform and available data.
+          Focused on continuity, current limitations, and the safest next step.
         </p>
       </section>
     </PublicLayout>
@@ -3133,11 +3152,14 @@ export function PricingPage() {
       <section className="rs-pricing-hero">
         <div className="rs-pricing-hero__copy rs-stitch-reveal is-visible">
           <p className="rs-stitch-kicker">Plans</p>
-          <h1>Choose a plan for your current client load.</h1>
+          <h1>
+            Start with the clients you coach today. Grow when the operation
+            does.
+          </h1>
           <p>
-            Every plan includes applications, client delivery, check-ins,
-            messaging, and follow-up. Plan limits are based on active clients,
-            coach seats, workspaces, and published packages.
+            Every RepSync plan includes the core coaching workflow. Choose based
+            on active clients, team size, and workspace needs - not by giving up
+            the tools required to coach properly.
           </p>
           <div
             className="rs-pricing-hero__assurances"
@@ -3225,11 +3247,11 @@ export function PricingPage() {
       <section className="rs-pricing-core">
         <div className="rs-pricing-section-heading rs-stitch-reveal">
           <p className="rs-stitch-kicker">All plans include</p>
-          <h2>Every plan includes the core coaching features.</h2>
+          <h2>The coaching core is included on every plan.</h2>
           <p>
-            Launch includes the same core workflows as the larger plans, with
-            lower limits for active clients, coach seats, workspaces, and
-            published packages.
+            Launch is not a restricted starter tier. Every coach receives the
+            core workflows required to manage leads and deliver coaching
+            professionally.
           </p>
         </div>
         <ul className="rs-pricing-core__grid rs-stitch-reveal">
@@ -3249,7 +3271,7 @@ export function PricingPage() {
       <section className="rs-pricing-seats">
         <div className="rs-pricing-seats__intro rs-stitch-reveal">
           <p className="rs-stitch-kicker">Additional coach seats</p>
-          <h2>Add coach seats separately from client capacity.</h2>
+          <h2>Add support without changing the client limit.</h2>
           <p>
             Additional coach seats cost $9 per month. An additional seat adds
             team access but does not increase the active-client allowance.
@@ -3277,8 +3299,8 @@ export function PricingPage() {
 
       <section className="rs-pricing-counts">
         <div className="rs-pricing-section-heading rs-stitch-reveal">
-          <p className="rs-stitch-kicker">Plan limits</p>
-          <h2>Plan limits use four definitions.</h2>
+          <p className="rs-stitch-kicker">What counts</p>
+          <h2>What counts toward a plan?</h2>
         </div>
         <div className="rs-pricing-counts__grid">
           {pricingDefinitions.map((definition, index) => (
@@ -3294,7 +3316,7 @@ export function PricingPage() {
       <section className="rs-pricing-client-access">
         <div className="rs-stitch-reveal">
           <p className="rs-stitch-kicker">Client access</p>
-          <h2>Client accounts are free.</h2>
+          <h2>Clients use RepSync free.</h2>
         </div>
         <div className="rs-stitch-reveal">
           <p>
@@ -3312,10 +3334,11 @@ export function PricingPage() {
       <section className="rs-pricing-trial">
         <div className="rs-pricing-trial__copy rs-stitch-reveal">
           <p className="rs-stitch-kicker">7-day Growth trial</p>
-          <h2>Try Growth for seven days before choosing a plan.</h2>
+          <h2>Use the full Growth workflow before choosing a plan.</h2>
           <p>
-            Explore a sample workspace, configure your own workspace, and
-            compare the plan limits after testing the available features.
+            Start with Growth capacity and features for seven days. Explore a
+            sample workspace, configure your own coaching environment, and
+            decide which plan fits after you understand the workflow.
           </p>
           <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
         </div>
@@ -3338,7 +3361,7 @@ export function PricingPage() {
       <section className="rs-pricing-final rs-stitch-reveal">
         <SyncRail />
         <p className="rs-stitch-kicker">Get started</p>
-        <h2>Start a seven-day Growth trial.</h2>
+        <h2>Start with Growth access for seven days.</h2>
         <p>
           Explore the full coaching workflow, then choose the capacity that fits
           your client base, team, and workspace structure.
@@ -3411,8 +3434,8 @@ export function FaqPage() {
   return (
     <SimpleInfoPage
       eyebrow="FAQ"
-      title="Answers about using RepSync."
-      description="Review product features, client access, plans, migration, integrations, security, and privacy."
+      title="Useful answers. No inflated claims."
+      description="RepSync is a coaching operating system focused on lead continuity, delivery clarity, and attention visibility."
     >
       <div className="rs-public-faq-groups">
         {publicFaqGroups.map((group, groupIndex) => {
@@ -3445,8 +3468,8 @@ export function SecurityPage() {
   return (
     <SimpleInfoPage
       eyebrow="Security"
-      title="Private coaching data requires authenticated access."
-      description="RepSync separates published coach profiles from private client records and uses workspace roles to control access."
+      title="Access should follow the coaching relationship."
+      description="RepSync separates public profile surfaces from private coaching data and keeps security claims conservative until formal reviews are complete."
     >
       <InfoGrid
         items={[
@@ -3495,7 +3518,7 @@ export function PrivacyPage() {
   return (
     <SimpleInfoPage
       eyebrow="Privacy"
-      title="Interim privacy notice"
+      title="Interim Privacy Notice"
       description="This interim notice explains the categories of account, profile, coaching, application, and marketing information RepSync may process while the final policy is under review."
       robots={legalReviewRequired ? "noindex,nofollow" : "index,follow"}
     >
@@ -3509,12 +3532,12 @@ export function PrivacyPage() {
           [
             <ClipboardCheck />,
             "Coaching information",
-            "Private coaching areas may include programs, nutrition, habits, check-ins, messages, notes, progress, and wearable information.",
+            "Private coaching areas may include programs, nutrition, habits, check-ins, messages, notes, progress, and wearable context.",
           ],
           [
             <MessageSquare />,
             "Marketing forms",
-            "Switch-planning forms collect contact details and information about the requested move so the team can respond.",
+            "Switch-planning forms collect contact details and operational context so the team can respond.",
           ],
         ]}
       />
@@ -3526,7 +3549,7 @@ export function TermsPage() {
   return (
     <SimpleInfoPage
       eyebrow="Terms"
-      title="Interim terms of use"
+      title="Interim Terms of Use"
       description="These interim terms describe responsible use of RepSync's public and authenticated surfaces while the final terms are under review."
       robots={legalReviewRequired ? "noindex,nofollow" : "index,follow"}
     >
@@ -3583,10 +3606,10 @@ export function SupportPage() {
   return (
     <SimpleInfoPage
       eyebrow="Support"
-      title="Contact RepSync support."
-      description="Send the support team questions about the product, billing, privacy, or security."
+      title="Support"
+      description="For product, billing, privacy, or security questions, contact the RepSync support team."
     >
-      <FinalCta title="Request a product walkthrough." />
+      <FinalCta title="Need a product walkthrough?" />
     </SimpleInfoPage>
   );
 }
@@ -3603,8 +3626,8 @@ function ComparisonPage({ competitor }: { competitor: string }) {
   return (
     <SimpleInfoPage
       eyebrow="Comparison"
-      title={`Compare RepSync with ${competitor}`}
-      description={`Review applications, client delivery, check-ins, follow-up signals, team access, and current RepSync limitations before moving from ${competitor}.`}
+      title={`RepSync compared with ${competitor}`}
+      description={`Compare how RepSync approaches lead continuity, delivery context, attention visibility, and small-team operations when moving from ${competitor}.`}
     >
       <OperationsCards />
     </SimpleInfoPage>

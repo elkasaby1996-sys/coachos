@@ -1008,7 +1008,7 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "What is RepSync?",
-        a: "RepSync is coaching software for public profiles, applications, onboarding, assigned plans, check-ins, messages, client follow-up, and team workspaces.",
+        a: "RepSync is a coaching operating system for public profiles, applications, onboarding, delivery, check-ins, messages, client attention, and workspace visibility.",
         href: "/product",
       },
       {
@@ -1022,7 +1022,7 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "What does RepSync manage?",
-        a: "RepSync manages public profiles, applications, leads, workspaces, clients, programs, nutrition assignments, habits, check-ins, messages, client status, follow-up signals, and business summaries.",
+        a: "RepSync manages public profiles, applications, leads, workspaces, clients, programs, nutrition assignments, habits, check-ins, messages, lifecycle state, attention signals, and PT Hub visibility.",
       },
       {
         q: "Does RepSync replace every tool?",
@@ -1035,7 +1035,7 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "Can I use RepSync as a solo coach?",
-        a: "Yes. A solo coach can manage a public profile, leads, client delivery, check-ins, messages, and follow-up in RepSync.",
+        a: "Yes. RepSync supports solo coach workflows with profile, lead, delivery, check-in, message, and client attention surfaces.",
       },
       {
         q: "Can a small team use RepSync?",
@@ -1051,7 +1051,7 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "How do workspaces work?",
-        a: "Each workspace has its own clients, team access, delivery settings, templates, and coaching records.",
+        a: "Workspaces group coaching relationships, team access, client delivery, and visibility within a controlled business context.",
       },
     ],
   },
@@ -1060,7 +1060,7 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "What does a client see?",
-        a: "Clients see their own coaching plan, workouts, nutrition guidance, habits, check-ins, messages, progress, and supported wearable information.",
+        a: "Clients see their own coaching plan, workouts, nutrition guidance, habits, check-ins, messages, progress, and supported wearable context.",
         href: "/for-clients",
       },
       {
@@ -1068,12 +1068,12 @@ export const publicFaqGroups: FaqGroup[] = [
         a: "Clients typically join through an invitation or public application flow created by their coach.",
       },
       {
-        q: "Can a client use RepSync on their own?",
-        a: "RepSync client accounts are used with a coach. Most clients join from an invitation sent by their coach.",
+        q: "Can a client use RepSync without a coach?",
+        a: "RepSync is designed around an active coaching relationship. Most client access begins with an invitation from a coach.",
       },
       {
         q: "Can clients see another client's data?",
-        a: "No. A client account shows that client's coaching information. It does not show other clients or coach business reports.",
+        a: "No. The client experience is described as showing the client's own coaching information, not other clients or coach business operations.",
       },
       {
         q: "Is there a native mobile app?",
@@ -1113,7 +1113,7 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "Is RepSync available now?",
-        a: "Yes. Coaches can use the Growth plan for seven days with no card required, then choose a plan based on their client and team limits.",
+        a: "Yes. Coaches can start with the full Growth workflow for seven days, with no card required, then choose the plan that fits their operation.",
         href: "/start-trial",
       },
       {
@@ -1132,7 +1132,7 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "Does RepSync have a marketplace?",
-        a: "Yes. A coach can publish a profile in the public directory and control whether it appears there.",
+        a: "Yes. Published coach profiles can appear in the public coach directory when the coach enables marketplace visibility.",
       },
     ],
   },
@@ -1149,7 +1149,7 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "What wearable data is shown?",
-        a: "Wearable information appears only when the coach and client use an integration supported by RepSync.",
+        a: "Wearable information appears only when a supported integration is enabled for the coaching relationship.",
       },
       {
         q: "Does RepSync provide medical advice?",
@@ -1162,7 +1162,7 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "How is access controlled?",
-        a: "Private areas require an authenticated account. Workspace roles and client assignments determine which records each team member can access.",
+        a: "Private areas require authenticated accounts, workspace roles, client relationships, and route guards.",
         href: "/security",
       },
       {
@@ -1332,15 +1332,15 @@ export const repSyncOperatingFlow = [
 export const switchingSteps = [
   {
     title: "Review",
-    body: "Review the current platform, active clients, programs, check-ins, team structure, and daily workflows.",
+    body: "We review your current platform, active-client setup, programs, check-ins, team structure, and key workflows.",
   },
   {
     title: "Prepare",
-    body: "Identify which records can be imported, recreated, or kept in an archive.",
+    body: "We identify what can be imported, what should be recreated, and what may need to remain archived.",
   },
   {
     title: "Launch",
-    body: "Verify coach access, configure the workspace, confirm active assignments, and invite the first clients.",
+    body: "We verify coach access, configure the workspace, confirm active assignments, invite clients, and move delivery into RepSync.",
   },
 ];
 
@@ -1722,7 +1722,7 @@ const repSyncComparisonBase: Array<
     label: "Migration support",
     repSync: {
       availability: "included",
-      note: "RepSync supports switch planning. Available transfer methods depend on the source data.",
+      note: "RepSync supports deliberate switch planning without promising full automated migration.",
     },
     competitorByPage: {
       truecoach: {
@@ -1759,16 +1759,16 @@ export const comparisonPages: Record<ComparisonCompetitor, ComparisonPageData> =
       competitorName: "TrueCoach",
       canonicalPath: "/compare/truecoach",
       heroEyebrow: "REPSYNC VS TRUECOACH",
-      heroTitle: "Compare RepSync with TrueCoach",
+      heroTitle: "Considering a move from TrueCoach?",
       heroBody:
-        "Review delivery, applications, check-ins, team access, billing, wearables, and migration requirements.",
+        "Compare how each product fits your coaching operation, not just the workout builder.",
       primaryCta: "Plan your switch from TrueCoach",
       secondaryCta: "Explore RepSync",
       lastReviewed: "2026-07-16",
       trademarkDisclaimer,
       summary: [
         "TrueCoach has official materials for workout delivery, nutrition, habits, messaging, public profiles, payments, wearables, and team accounts.",
-        "RepSync includes public profiles, applications, lead management, onboarding, client delivery, and follow-up signals.",
+        "RepSync emphasizes the connected lead-to-client path: public profile, applications, lead workflow, onboarding, delivery, and attention visibility.",
         "Switch planning should focus on the active client workflow and what historical data must be preserved.",
       ],
       switchingConsiderations: [
@@ -1803,16 +1803,16 @@ export const comparisonPages: Record<ComparisonCompetitor, ComparisonPageData> =
       competitorName: "FITR",
       canonicalPath: "/compare/fitr",
       heroEyebrow: "REPSYNC VS FITR",
-      heroTitle: "Compare RepSync with FITR",
+      heroTitle: "Considering a move from FITR?",
       heroBody:
-        "Review programming, client delivery, applications, check-ins, payments, team access, and migration requirements.",
+        "Compare the coaching workflow, client journey, and business operating model.",
       primaryCta: "Plan your switch from FITR",
       secondaryCta: "Explore RepSync",
       lastReviewed: "2026-07-16",
       trademarkDisclaimer,
       summary: [
         "FITR official materials describe programming, client management, communication, progress tracking, marketing/storefront features, payments, teams, mobile apps, and program types.",
-        "RepSync includes applications, client delivery, follow-up signals, workspace roles, and migration planning.",
+        "RepSync emphasizes acquisition-to-delivery continuity, client attention, workspace roles, and honest switch planning.",
         "Program commerce and automated payments should be treated as FITR strengths and RepSync limitations until RepSync billing is verified.",
       ],
       switchingConsiderations: [
@@ -1860,73 +1860,73 @@ export type MarketingRouteMetadata = {
 
 export const marketingRouteMetadata: Record<string, MarketingRouteMetadata> = {
   "/": {
-    title: "RepSync | Coaching software for client management",
+    title: "RepSync | Run the whole coaching business",
     description:
-      "Manage public profiles, applications, client delivery, check-ins, messages, follow-up, and team access with RepSync.",
+      "RepSync is a coaching operating system for public profiles, applications, client delivery, attention cues, and workspace visibility.",
     canonicalPath: "/",
   },
   "/product": {
-    title: "RepSync product | Coaching software for trainers",
+    title: "RepSync Product | The Whole Coaching Relationship",
     description:
-      "Review how RepSync handles applications, onboarding, training, nutrition, habits, messages, check-ins, client follow-up, operations, and team access.",
+      "Explore how RepSync connects public profiles, leads, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, integrations, and the client experience.",
     canonicalPath: "/product",
   },
   "/for-coaches": {
-    title: "RepSync for personal trainers and online coaches",
+    title: "RepSync for Personal Trainers and Online Coaches",
     description:
       "Manage leads, onboard clients, deliver coaching, run check-ins, collaborate with your team, and see who needs attention.",
     canonicalPath: "/for-coaches",
   },
   "/for-clients": {
-    title: "RepSync for coaching clients",
+    title: "RepSync for Coaching Clients",
     description:
-      "View assigned workouts, nutrition guidance, habits, check-ins, messages, and progress from your RepSync client account.",
+      "View workouts, nutrition guidance, habits, check-ins, messages, and coaching progress in one clear client experience.",
     canonicalPath: "/for-clients",
   },
   "/switch": {
-    title: "Switch coaching platforms to RepSync",
+    title: "Switch Coaching Platforms to RepSync",
     description:
-      "Plan a move to RepSync by reviewing active clients, current assignments, available transfer methods, and launch steps.",
+      "Plan your move to RepSync and connect lead management, onboarding, coaching delivery, check-ins, communication, and client attention.",
     canonicalPath: "/switch",
   },
   "/compare/truecoach": {
-    title: "RepSync vs TrueCoach | Coaching platform comparison",
+    title: "RepSync vs TrueCoach | Coaching Platform Comparison",
     description:
       "Compare RepSync and TrueCoach across coaching delivery, client workflows, lead management, check-ins, team access, and switching considerations.",
     canonicalPath: "/compare/truecoach",
   },
   "/compare/fitr": {
-    title: "RepSync vs FITR | Coaching platform comparison",
+    title: "RepSync vs FITR | Coaching Platform Comparison",
     description:
       "Compare RepSync and FITR across programming, client delivery, lead workflows, check-ins, analytics, team structure, and migration considerations.",
     canonicalPath: "/compare/fitr",
   },
   "/faq": {
-    title: "RepSync FAQ | Product, security, switching, and trials",
+    title: "RepSync FAQ | Product, Security, Switching, and Trials",
     description:
       "Answers about RepSync product scope, coaches, clients, switching, trials, integrations, security, and privacy.",
     canonicalPath: "/faq",
   },
   "/security": {
-    title: "RepSync security | Public profiles and private coaching data",
+    title: "RepSync Security | Public Profiles and Private Coaching Data",
     description:
       "Learn how RepSync separates public profile information from private coaching data with authentication, workspace roles, client boundaries, and invite checks.",
     canonicalPath: "/security",
   },
   "/privacy": {
-    title: "RepSync interim privacy notice",
+    title: "RepSync Interim Privacy Notice",
     description:
       "Read the interim RepSync privacy notice covering account information, coach profiles, applications, marketing forms, analytics, and coaching information.",
     canonicalPath: "/privacy",
   },
   "/terms": {
-    title: "RepSync interim terms of use",
+    title: "RepSync Interim Terms of Use",
     description:
       "Read the interim RepSync terms covering accounts, acceptable use, coach responsibilities, trials, and service limitations.",
     canonicalPath: "/terms",
   },
   "/cookies": {
-    title: "RepSync cookie notice and analytics preferences",
+    title: "RepSync Cookie Notice and Analytics Preferences",
     description:
       "Review RepSync essential storage, analytics preferences, local storage use, and cookie consent controls.",
     canonicalPath: "/cookies",

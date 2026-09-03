@@ -1,21 +1,23 @@
 import { expect, test } from "@playwright/test";
 
 const publicRoutes = [
-  ["/", "Manage clients and deliver coaching."],
-  ["/product", "Run your client workflow in RepSync."],
-  ["/pricing", "Choose a plan for your current client load."],
-  ["/coaches", "Search published coach profiles."],
-  ["/for-coaches", "Manage the work around your coaching."],
-  ["/for-clients", "See today's coaching in one place."],
-  ["/switch", "Plan your move to RepSync."],
-  ["/compare/truecoach", "Compare RepSync with TrueCoach"],
-  ["/compare/fitr", "Compare RepSync with FITR"],
-  ["/faq", "Answers about using RepSync."],
-  ["/security", "Private coaching data requires authenticated access."],
-  ["/privacy", "Interim privacy notice"],
-  ["/terms", "Interim terms of use"],
+  ["/", "From first inquiry to every check-in."],
+  ["/product", "The Whole Coaching Relationship, Connected."],
+  [
+    "/pricing",
+    "Start with the clients you coach today. Grow when the operation does.",
+  ],
+  ["/coaches", "Find a coach who fits how you want to train."],
+  ["/for-coaches", "Run the business around your coaching."],
+  ["/for-clients", "Your coaching, without the clutter."],
+  ["/switch", "Move only after the workflow is clear."],
+  ["/compare/truecoach", "RepSync compared with TrueCoach"],
+  ["/compare/fitr", "RepSync compared with FITR"],
+  ["/faq", "Useful answers. No inflated claims."],
+  ["/security", "Access should follow the coaching relationship."],
+  ["/privacy", "Interim Privacy Notice"],
+  ["/terms", "Interim Terms of Use"],
   ["/cookies", "Cookie notice"],
-  ["/support", "Contact RepSync support."],
 ] as const;
 
 test.describe("public marketing site", () => {
@@ -43,17 +45,17 @@ test.describe("public marketing site", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: "Keep the full client record from application onward.",
+        name: "The coaching relationship does not begin with a workout.",
       }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "Handle sales, delivery, and follow-up in RepSync.",
+        name: "Acquire, coach, and retain from the same operating rhythm.",
       }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "Give clients a clear view of today's coaching.",
+        name: "Clear for the coach. Calm for the client.",
       }),
     ).toBeVisible();
     await expect(page.getByText("Lifecycle: Active").first()).toBeVisible();
@@ -134,7 +136,7 @@ test.describe("public marketing site", () => {
     await page.goto("/switch");
     await expect(
       page.getByRole("heading", {
-        name: "Confirm the transfer method for each data type.",
+        name: "Every category needs an honest support state.",
       }),
     ).toBeVisible();
     await expect(page.getByText("Not currently supported")).toBeVisible();
@@ -189,7 +191,7 @@ test.describe("public marketing site", () => {
     await page.getByRole("button", { name: "Decline" }).click();
     await page.getByText("How is access controlled?").click();
     await expect(
-      page.getByText("Private areas require an authenticated account"),
+      page.getByText("Private areas require authenticated accounts"),
     ).toBeVisible();
 
     await page.goto("/privacy");
@@ -223,7 +225,7 @@ test.describe("public marketing site", () => {
     await page.goto("/product");
     await expect(
       page.getByRole("heading", {
-        name: "Review each part of the client workflow.",
+        name: "10 chapters. One coaching relationship.",
         exact: true,
       }),
     ).toBeVisible();
@@ -235,7 +237,7 @@ test.describe("public marketing site", () => {
     await page.goto("/for-coaches");
     await expect(
       page.getByRole("heading", {
-        name: "Check whether RepSync matches your coaching business.",
+        name: "Know whether RepSync fits before you start.",
       }),
     ).toBeVisible();
     await expect(

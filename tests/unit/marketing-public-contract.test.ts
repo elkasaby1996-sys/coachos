@@ -106,13 +106,13 @@ describe("marketing public configuration", () => {
       expect(marketingRouteMetadata[route]?.canonicalPath).toBe(route);
     }
     expect(marketingRouteMetadata["/product"].title).toBe(
-      "RepSync product | Coaching software for trainers",
+      "RepSync Product | The Whole Coaching Relationship",
     );
     expect(marketingRouteMetadata["/for-coaches"].title).toBe(
-      "RepSync for personal trainers and online coaches",
+      "RepSync for Personal Trainers and Online Coaches",
     );
     expect(marketingRouteMetadata["/for-clients"].title).toBe(
-      "RepSync for coaching clients",
+      "RepSync for Coaching Clients",
     );
   });
 
