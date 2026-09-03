@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { closeSync, fstatSync, openSync, readSync } from "node:fs";
 import { resolve } from "node:path";
 
 const DEFAULT_SAMPLE_PATH = "tmp/exercise-catalog/exercisedb-pro-sample.json";
@@ -19,44 +19,89 @@ const maximumBytes = Number(option("--max-bytes") ?? DEFAULT_MAX_BYTES);
 if (!Number.isSafeInteger(maximumBytes) || maximumBytes < 1) {
   throw new Error("--max-bytes must be a positive safe integer.");
 }
-if (!existsSync(samplePath)) {
+let sampleFileDescriptor;
+try {
+  sampleFileDescriptor = openSync(samplePath, "r");
+} catch (error) {
+  if (error?.code !== "ENOENT") throw error;
+
   console.error(
     `Exercise catalog sample not found at ${samplePath}. Place the licensed local-only sample there or pass another local path.`,
   );
   process.exitCode = 2;
-} else {
-  const file = statSync(samplePath);
-  if (file.size > maximumBytes) {
-    throw new Error(
-      `Sample is ${file.size} bytes, above the ${maximumBytes}-byte audit limit. Raise --max-bytes intentionally if this is expected.`,
+}
+
+if (sampleFileDescriptor !== undefined) {
+  try {
+    const file = fstatSync(sampleFileDescriptor);
+    if (!file.isFile()) {
+      throw new Error("Exercise catalog sample must be a regular file.");
+    }
+    if (file.size > maximumBytes) {
+      throw sampleTooLargeError(file.size);
+    }
+
+    const sourceBuffer = readBoundedFile(sampleFileDescriptor, maximumBytes);
+    const source = sourceBuffer.toString("utf8");
+    const payload = JSON.parse(source);
+    const located = locateRecords(payload, recordsPath);
+    const report = {
+      auditVersion: 1,
+      file: {
+        byteLength: sourceBuffer.byteLength,
+        sha256: createHash("sha256").update(source).digest("hex"),
+      },
+      topLevel: summarizeTopLevel(payload),
+      records: located
+        ? {
+            path: located.path,
+            count: located.records.length,
+            fields: summarizeRecordFields(located.records),
+          }
+        : null,
+      limitations: [
+        "No record values or complete records are emitted.",
+        "A selected record path is structural evidence only; configure the mapper contract after human review.",
+        "This audit does not establish licensing rights or a production schema.",
+      ],
+    };
+
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  } finally {
+    closeSync(sampleFileDescriptor);
+  }
+}
+
+function readBoundedFile(fileDescriptor, byteLimit) {
+  const chunks = [];
+  const chunkSize = 64 * 1024;
+  let totalBytes = 0;
+
+  while (true) {
+    const remainingBytes = byteLimit - totalBytes;
+    const bytesToRead = Math.min(
+      chunkSize,
+      remainingBytes > 0 ? remainingBytes : 1,
     );
+    const chunk = Buffer.allocUnsafe(bytesToRead);
+    const bytesRead = readSync(fileDescriptor, chunk, 0, bytesToRead, null);
+
+    if (bytesRead === 0) break;
+
+    totalBytes += bytesRead;
+    if (totalBytes > byteLimit) {
+      throw sampleTooLargeError(totalBytes);
+    }
+    chunks.push(chunk.subarray(0, bytesRead));
   }
 
-  const source = readFileSync(samplePath, "utf8");
-  const payload = JSON.parse(source);
-  const located = locateRecords(payload, recordsPath);
-  const report = {
-    auditVersion: 1,
-    file: {
-      byteLength: file.size,
-      sha256: createHash("sha256").update(source).digest("hex"),
-    },
-    topLevel: summarizeTopLevel(payload),
-    records: located
-      ? {
-          path: located.path,
-          count: located.records.length,
-          fields: summarizeRecordFields(located.records),
-        }
-      : null,
-    limitations: [
-      "No record values or complete records are emitted.",
-      "A selected record path is structural evidence only; configure the mapper contract after human review.",
-      "This audit does not establish licensing rights or a production schema.",
-    ],
-  };
+  return Buffer.concat(chunks, totalBytes);
+}
 
-  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+function sampleTooLargeError(byteLength) {
+  return new Error(
+    `Sample is ${byteLength} bytes, above the ${maximumBytes}-byte audit limit. Raise --max-bytes intentionally if this is expected.`,
+  );
 }
 
 function valueKind(value) {

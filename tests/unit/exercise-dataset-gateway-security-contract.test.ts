@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -6,12 +6,11 @@ const readSource = (...segments: string[]) =>
   readFileSync(join(process.cwd(), ...segments), "utf8");
 
 const readTree = (directory: string): string =>
-  readdirSync(directory)
-    .map((entry) => join(directory, entry))
-    .map((path) =>
-      statSync(path).isDirectory()
-        ? readTree(path)
-        : readFileSync(path, "utf8"),
+  readdirSync(directory, { withFileTypes: true })
+    .map((entry) =>
+      entry.isDirectory()
+        ? readTree(join(directory, entry.name))
+        : readFileSync(join(directory, entry.name), "utf8"),
     )
     .join("\n");
 
@@ -29,6 +28,23 @@ describe("exercise dataset gateway security wiring", () => {
     "_shared",
     "exercise-dataset-gateway.ts",
   );
+  const catalogAudit = readSource(
+    "scripts",
+    "audit-exercise-catalog-sample.mjs",
+  );
+
+  it("keeps one file identity throughout catalog sample inspection", () => {
+    expect(catalogAudit).toContain('openSync(samplePath, "r")');
+    expect(catalogAudit).toContain("fstatSync(sampleFileDescriptor)");
+    expect(catalogAudit).toContain("file.isFile()");
+    expect(catalogAudit).toContain(
+      "readBoundedFile(sampleFileDescriptor, maximumBytes)",
+    );
+    expect(catalogAudit).toContain("readSync(");
+    expect(catalogAudit).not.toContain("existsSync(samplePath)");
+    expect(catalogAudit).not.toContain("statSync(samplePath)");
+    expect(catalogAudit).not.toContain("readFileSync(sampleFileDescriptor)");
+  });
 
   it("verifies the session and existing PT access evidence server-side", () => {
     expect(edgeFunction).toContain("supabase.auth.getUser(accessToken)");

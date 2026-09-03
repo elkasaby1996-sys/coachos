@@ -18,7 +18,6 @@ import type {
   FilteredExerciseBrowserItem,
 } from "../../../lib/exercise-browser";
 import { groupExerciseBrowserMatches } from "../../../lib/exercise-browser";
-import { cn } from "../../../lib/utils";
 import type {
   ProviderAnatomyFilterState,
   ProviderBodyPartValue,
