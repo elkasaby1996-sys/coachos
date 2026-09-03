@@ -1075,6 +1075,16 @@ body.pt-hub-portal-light .app-dropdown-utility-row {
   gap: 1.25rem;
 }
 
+.pt-hub-theme .pt-content-zoom > div > .pt-hub-page-stack {
+  padding-top: 21px;
+}
+
+@media (min-width: 1024px) {
+  .pt-hub-theme .pt-content-zoom > div > .pt-hub-page-stack {
+    margin-top: -47px;
+  }
+}
+
 .pt-hub-theme .pt-hub-page-stack[data-density="roomy"] {
   gap: 1.5rem;
 }

@@ -488,18 +488,32 @@ function HealthMetric({
   value,
   detail,
   onClick,
+  className,
+  valueClassName,
 }: {
   label: string;
   value: string;
   detail: string;
   onClick?: (() => void) | null;
+  className?: string;
+  valueClassName?: string;
 }) {
   const content = (
-    <div className="space-y-2 rounded-[22px] border border-border/60 bg-background/28 p-4">
+    <div
+      className={cn(
+        "space-y-2 rounded-[22px] border border-border/60 bg-background/28 p-4",
+        className,
+      )}
+    >
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
-      <p className="text-xl font-semibold tracking-tight text-foreground">
+      <p
+        className={cn(
+          "text-xl font-semibold tracking-tight text-foreground",
+          valueClassName,
+        )}
+      >
         {value}
       </p>
       <span className="sr-only">{detail}</span>
@@ -882,6 +896,7 @@ export function PtHubAnalyticsPage() {
           title="Business Command Center"
           description="Current performance at a glance."
           module="analytics"
+          headerClassName="mt-[25px]"
           contentClassName="space-y-5"
           actions={
             <AnalyticsRangeRail
@@ -1306,28 +1321,26 @@ export function PtHubAnalyticsPage() {
               ))}
             </div>
           ) : snapshot.workspacePerformance.length === 1 ? (
-            <div className="space-y-3 rounded-[24px] border border-border/60 bg-background/24 p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="muted">Single workspace</Badge>
-                <p className="text-sm text-muted-foreground">
-                  Add another space to compare.
-                </p>
-              </div>
+            <div className="rounded-[24px] border border-border/60 bg-background/24 p-4">
               <div className="grid gap-3 md:grid-cols-4">
                 <HealthMetric
                   label="Workspace"
                   value={snapshot.workspacePerformance[0]!.workspaceName}
                   detail="Current coaching space"
+                  className="h-[92.5px] space-y-1 p-3"
+                  valueClassName="text-[13px] leading-[1.15]"
                 />
                 <HealthMetric
                   label="Attributed leads"
                   value={String(snapshot.workspacePerformance[0]!.leads)}
                   detail="Leads already attached to this space"
+                  className="h-[92.5px] space-y-1 p-3"
                 />
                 <HealthMetric
                   label="Conversions"
                   value={String(snapshot.workspacePerformance[0]!.conversions)}
                   detail="Converted in the selected range"
+                  className="h-[92.5px] space-y-1 p-3"
                 />
                 <HealthMetric
                   label="At-risk rate"
@@ -1335,6 +1348,7 @@ export function PtHubAnalyticsPage() {
                     snapshot.workspacePerformance[0]!.atRiskRate,
                   )}
                   detail="Across active clients in this space"
+                  className="h-[92.5px] space-y-1 p-3"
                 />
               </div>
             </div>
