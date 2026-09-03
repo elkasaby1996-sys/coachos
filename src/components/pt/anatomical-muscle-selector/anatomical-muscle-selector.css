@@ -1,0 +1,163 @@
+.anatomy-selector {
+  --anatomy-canvas-surface: color-mix(
+    in oklch,
+    oklch(var(--card)) 72%,
+    oklch(var(--bg-muted)) 28%
+  );
+  --anatomy-body-fill: color-mix(
+    in oklch,
+    oklch(var(--bg-muted)) 78%,
+    oklch(var(--text-muted)) 22%
+  );
+  --anatomy-body-outline: oklch(var(--border-strong) / 0.62);
+  --anatomy-passive-fill: color-mix(
+    in oklch,
+    var(--anatomy-body-fill) 82%,
+    oklch(var(--accent)) 18%
+  );
+  --anatomy-passive-seam: color-mix(
+    in oklch,
+    oklch(var(--border)) 76%,
+    var(--anatomy-body-fill) 24%
+  );
+  --anatomy-muscle-fill: color-mix(
+    in oklch,
+    var(--anatomy-passive-fill) 86%,
+    oklch(var(--accent)) 14%
+  );
+  --anatomy-hover-fill: oklch(var(--accent) / 0.4);
+  --anatomy-hover-outline: oklch(var(--accent-hover) / 0.62);
+  --anatomy-focus-outline: oklch(var(--ring));
+  --anatomy-selected-fill: oklch(var(--accent) / 0.68);
+  --anatomy-selected-outline: oklch(var(--accent-hover) / 0.92);
+  --anatomy-disabled-fill: color-mix(
+    in oklch,
+    oklch(var(--bg-muted)) 88%,
+    oklch(var(--text-muted)) 12%
+  );
+}
+
+.anatomy-canvas {
+  background: var(--anatomy-canvas-surface);
+}
+
+.anatomy-figure-stage {
+  container-type: inline-size;
+}
+
+.anatomy-figure {
+  display: block;
+  width: min(100%, 21rem);
+  height: auto;
+  max-height: 32rem;
+  overflow: visible;
+  touch-action: manipulation;
+}
+
+.anatomy-base-layer,
+.anatomy-art-layer {
+  pointer-events: none;
+}
+
+.anatomy-body {
+  fill: var(--anatomy-body-fill);
+  stroke: var(--anatomy-body-outline);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.1;
+  vector-effect: non-scaling-stroke;
+}
+
+.anatomy-passive-shape {
+  fill: var(--anatomy-passive-fill);
+  stroke: var(--anatomy-passive-seam);
+  stroke-linejoin: round;
+  stroke-width: 0.4;
+  vector-effect: non-scaling-stroke;
+}
+
+.anatomy-art-shape {
+  fill: var(--anatomy-muscle-fill);
+  stroke: var(--anatomy-passive-seam);
+  stroke-linejoin: round;
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+  transition:
+    fill 180ms ease,
+    stroke 180ms ease,
+    stroke-width 180ms ease,
+    opacity 180ms ease;
+}
+
+.anatomy-art-muscle[data-interaction="hover"] .anatomy-art-shape {
+  fill: var(--anatomy-hover-fill);
+  stroke: var(--anatomy-hover-outline);
+  stroke-width: 1.05;
+}
+
+.anatomy-art-muscle[data-selected="true"] .anatomy-art-shape {
+  fill: var(--anatomy-selected-fill);
+  stroke: var(--anatomy-selected-outline);
+  stroke-width: 1.35;
+}
+
+.anatomy-art-muscle[data-interaction="focus"] .anatomy-art-shape {
+  stroke: var(--anatomy-focus-outline);
+  stroke-width: 2.8;
+}
+
+.anatomy-hit-region {
+  cursor: pointer;
+  outline: none;
+}
+
+.anatomy-hit-area {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: all;
+  vector-effect: non-scaling-stroke;
+}
+
+.anatomy-hit-area[style*="stroke-width"] {
+  pointer-events: stroke;
+}
+
+.anatomy-selector.is-disabled {
+  --anatomy-body-fill: var(--anatomy-disabled-fill);
+  --anatomy-passive-fill: var(--anatomy-disabled-fill);
+  --anatomy-muscle-fill: var(--anatomy-disabled-fill);
+}
+
+.anatomy-selector.is-disabled .anatomy-hit-region {
+  cursor: not-allowed;
+}
+
+.anatomy-selector.is-disabled .anatomy-passive-shape,
+.anatomy-selector.is-disabled .anatomy-art-shape {
+  opacity: 0.68;
+}
+
+@container (max-width: 20rem) {
+  .anatomy-figure {
+    width: min(100%, 16.5rem);
+    max-height: 25.5rem;
+  }
+}
+
+@media (max-width: 79.999rem) {
+  body:has(.exercise-library-mobile-filters[open])
+    [data-pt-message-compose-launcher-container="true"]:has(
+      button[aria-expanded="false"]
+    ) {
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anatomy-art-shape,
+  .anatomy-surface-switch button {
+    transition: none;
+  }
+}

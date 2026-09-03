@@ -1,41 +1,18 @@
-const datasetBaseUrl = (import.meta.env.VITE_EXERCISE_DATASET_BASE_URL ?? "")
-  .trim()
-  .replace(/\/+$/, "");
-const datasetApiKey = (
-  import.meta.env.VITE_EXERCISE_DATASET_API_KEY ?? ""
-).trim();
-const datasetApiKeyHeader =
-  (
-    import.meta.env.VITE_EXERCISE_DATASET_API_KEY_HEADER ?? "x-api-key"
-  ).trim() || "x-api-key";
-const datasetApiHost = (
-  import.meta.env.VITE_EXERCISE_DATASET_API_HOST ?? ""
-).trim();
+import type { ProviderNormalizedExercise } from "./exercise-domain";
+import { supabase } from "./supabase";
 
 export type ExerciseDatasetSearchFilters = {
   name: string;
   bodyPart: string;
   equipment: string;
   target: string;
+  exerciseType: string;
   limit?: number;
   cursor?: string | null;
+  signal?: AbortSignal;
 };
 
-export type ExerciseDatasetExercise = {
-  id: string;
-  name: string;
-  bodyPart: string | null;
-  target: string | null;
-  secondaryMuscles: string[];
-  equipment: string | null;
-  instructions: string[];
-  exerciseTips: string[];
-  overview: string | null;
-  keywords: string[];
-  videoUrl: string | null;
-  imageUrl: string | null;
-  raw: Record<string, unknown>;
-};
+export type ExerciseDatasetExercise = ProviderNormalizedExercise;
 
 export type ExerciseDatasetPage = {
   exercises: ExerciseDatasetExercise[];
@@ -47,10 +24,48 @@ export type ExerciseDatasetFilterInput = {
   bodyPart?: string;
   equipment?: string;
   target?: string;
+  exerciseType?: string;
 };
+
+export type ExerciseDatasetMetadataKind =
+  | "muscles"
+  | "bodyparts"
+  | "equipments"
+  | "exercisetypes";
+
+export type ExerciseDatasetMetadataOption = {
+  value: string;
+  label: string;
+  imageUrl: string | null;
+};
+
+export type ExerciseDatasetMetadataCatalog = Record<
+  ExerciseDatasetMetadataKind,
+  ExerciseDatasetMetadataOption[]
+>;
+
+export function mergeExerciseDatasetPages(
+  pages: readonly ExerciseDatasetPage[] | undefined,
+) {
+  const byId = new Map<string, ExerciseDatasetExercise>();
+  pages?.forEach((page) => {
+    page.exercises.forEach((exercise) => {
+      if (!byId.has(exercise.id)) byId.set(exercise.id, exercise);
+    });
+  });
+  return Array.from(byId.values());
+}
 
 const readText = (value: unknown) =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+
+const readIdentifier = (value: unknown) => {
+  const text = readText(value);
+  if (text) return text;
+  return typeof value === "number" && Number.isFinite(value)
+    ? String(value)
+    : null;
+};
 
 const normalizeLookupKey = (value: string | null) =>
   (value ?? "")
@@ -143,6 +158,19 @@ const normalizeEquipmentLabel = (value: string | null) => {
     .join(" ");
 };
 
+const normalizeMetadataLabel = (
+  value: string,
+  kind: ExerciseDatasetMetadataKind,
+) => {
+  if (kind === "equipments") return normalizeEquipmentLabel(value) ?? value;
+  return value
+    .trim()
+    .toLocaleLowerCase()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toLocaleUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 const readStringList = (value: unknown) => {
   if (Array.isArray(value)) {
     return value
@@ -163,11 +191,14 @@ const firstText = (...values: unknown[]) => {
   return null;
 };
 
-const normalizeExercise = (value: unknown): ExerciseDatasetExercise | null => {
+export const normalizeExerciseDatasetRecord = (
+  value: unknown,
+): ExerciseDatasetExercise | null => {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
   const name = readText(record.name);
-  const sourceId = firstText(record.exerciseId, record.id);
+  const sourceId =
+    readIdentifier(record.exerciseId) ?? readIdentifier(record.id);
   if (!name || !sourceId) return null;
 
   return {
@@ -179,6 +210,11 @@ const normalizeExercise = (value: unknown): ExerciseDatasetExercise | null => {
     target: normalizeFriendlyLabel(
       firstText(record.target, record.targetMuscles),
     ),
+    exerciseType:
+      normalizeMetadataLabel(
+        firstText(record.exerciseType) ?? "",
+        "exercisetypes",
+      ) || null,
     secondaryMuscles: readStringList(record.secondaryMuscles).map(
       (item) => normalizeFriendlyLabel(item) ?? item,
     ),
@@ -207,7 +243,19 @@ const extractExerciseList = (payload: unknown) => {
   return [];
 };
 
-const extractNextCursor = (payload: unknown) => {
+const extractExerciseDetail = (payload: unknown) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+  const record = payload as Record<string, unknown>;
+  return record.data &&
+    typeof record.data === "object" &&
+    !Array.isArray(record.data)
+    ? record.data
+    : record;
+};
+
+export const extractExerciseDatasetNextCursor = (payload: unknown) => {
   if (!payload || typeof payload !== "object") return null;
   const meta = (payload as Record<string, unknown>).meta;
   if (!meta || typeof meta !== "object") return null;
@@ -215,45 +263,6 @@ const extractNextCursor = (payload: unknown) => {
   return typeof nextCursor === "string" && nextCursor.trim().length > 0
     ? nextCursor.trim()
     : null;
-};
-
-const datasetHeaders = () => {
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-  };
-
-  if (datasetApiKey) {
-    headers[datasetApiKeyHeader] = datasetApiKey;
-  }
-  if (datasetApiHost) {
-    headers["X-RapidAPI-Host"] = datasetApiHost;
-  }
-
-  return headers;
-};
-
-const fetchJson = async (url: string) => {
-  const response = await fetch(url, {
-    method: "GET",
-    headers: datasetHeaders(),
-  });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Dataset request failed (${response.status}).`);
-  }
-
-  return response.json();
-};
-
-const buildRequestUrl = ({
-  limit = 24,
-  cursor,
-}: ExerciseDatasetSearchFilters) => {
-  const params = new URLSearchParams();
-  params.set("limit", String(limit));
-  if (cursor) params.set("cursor", cursor);
-  return `${datasetBaseUrl}/api/v1/exercises?${params.toString()}`;
 };
 
 const matchesSearch = (exercise: ExerciseDatasetExercise, search: string) =>
@@ -267,7 +276,96 @@ const matchesSearch = (exercise: ExerciseDatasetExercise, search: string) =>
   ) ||
   exercise.keywords.some((item) => item.toLowerCase().includes(search));
 
-export const exerciseDatasetConfigured = Boolean(datasetBaseUrl);
+export const exerciseDatasetConfigured = true;
+
+export type ExerciseDatasetErrorCode =
+  | "unauthenticated"
+  | "forbidden"
+  | "invalid_request"
+  | "provider_not_configured"
+  | "provider_rate_limited"
+  | "provider_timeout"
+  | "provider_unavailable"
+  | "provider_invalid_response"
+  | "unknown_provider_error";
+
+const exerciseDatasetErrorMessages: Record<ExerciseDatasetErrorCode, string> = {
+  unauthenticated: "Sign in again to search provider exercises.",
+  forbidden: "Your account does not have access to provider exercises.",
+  invalid_request: "The exercise search request is invalid.",
+  provider_not_configured:
+    "The exercise provider is not configured. Saved exercises remain available.",
+  provider_rate_limited:
+    "The exercise provider rate-limited this request. Wait a moment and try again.",
+  provider_timeout:
+    "The exercise provider took too long to respond. Try again shortly.",
+  provider_unavailable:
+    "The exercise provider is temporarily unavailable. Saved exercises remain available.",
+  provider_invalid_response:
+    "The exercise provider returned an invalid response. Saved exercises remain available.",
+  unknown_provider_error:
+    "The exercise provider request failed. Saved exercises remain available.",
+};
+
+const exerciseDatasetErrorCodes = new Set<ExerciseDatasetErrorCode>(
+  Object.keys(exerciseDatasetErrorMessages) as ExerciseDatasetErrorCode[],
+);
+
+export class ExerciseDatasetError extends Error {
+  readonly code: ExerciseDatasetErrorCode;
+
+  constructor(code: ExerciseDatasetErrorCode) {
+    super(exerciseDatasetErrorMessages[code]);
+    this.name = "ExerciseDatasetError";
+    this.code = code;
+  }
+}
+
+const isExerciseDatasetErrorCode = (
+  value: unknown,
+): value is ExerciseDatasetErrorCode =>
+  typeof value === "string" &&
+  exerciseDatasetErrorCodes.has(value as ExerciseDatasetErrorCode);
+
+const readGatewayErrorCode = async (
+  error: unknown,
+): Promise<ExerciseDatasetErrorCode> => {
+  const context =
+    error && typeof error === "object" && "context" in error
+      ? (error as { context?: unknown }).context
+      : null;
+  if (
+    (context instanceof DOMException || context instanceof Error) &&
+    (context.name === "AbortError" || context.name === "TimeoutError")
+  ) {
+    return "provider_timeout";
+  }
+  if (context instanceof Response) {
+    try {
+      const body = (await context.clone().json()) as {
+        error?: { code?: unknown };
+      };
+      if (isExerciseDatasetErrorCode(body.error?.code)) {
+        return body.error.code;
+      }
+    } catch {
+      // Fall back to the status-only mapping below.
+    }
+    if (context.status === 401) return "unauthenticated";
+    if (context.status === 403) return "forbidden";
+    if (context.status === 400) return "invalid_request";
+    if (context.status === 429) return "provider_rate_limited";
+    if (context.status === 504) return "provider_timeout";
+  }
+
+  if (
+    (error instanceof DOMException || error instanceof Error) &&
+    (error.name === "AbortError" || error.name === "TimeoutError")
+  ) {
+    return "provider_timeout";
+  }
+  return "provider_unavailable";
+};
 
 export function filterExerciseDataset(
   exercises: ExerciseDatasetExercise[],
@@ -277,6 +375,7 @@ export function filterExerciseDataset(
   const bodyPartFilter = (filters.bodyPart ?? "").trim().toLowerCase();
   const equipmentFilter = (filters.equipment ?? "").trim().toLowerCase();
   const targetFilter = (filters.target ?? "").trim().toLowerCase();
+  const exerciseTypeFilter = (filters.exerciseType ?? "").trim().toLowerCase();
 
   return exercises.filter((exercise) => {
     if (!matchesSearch(exercise, nameFilter)) return false;
@@ -298,53 +397,141 @@ export function filterExerciseDataset(
     ) {
       return false;
     }
+    if (
+      exerciseTypeFilter &&
+      !(exercise.exerciseType ?? "").toLowerCase().includes(exerciseTypeFilter)
+    ) {
+      return false;
+    }
     return true;
   });
+}
+
+const extractExerciseDatasetMetadataList = (payload: unknown) => {
+  const candidates = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object"
+      ? (payload as Record<string, unknown>).data
+      : null;
+  return Array.isArray(candidates) ? candidates : [];
+};
+
+export function normalizeExerciseDatasetMetadata(
+  payload: unknown,
+  kind: ExerciseDatasetMetadataKind,
+): ExerciseDatasetMetadataOption[] {
+  const byValue = new Map<string, ExerciseDatasetMetadataOption>();
+  extractExerciseDatasetMetadataList(payload).forEach((candidate) => {
+    const record =
+      candidate && typeof candidate === "object" && !Array.isArray(candidate)
+        ? (candidate as Record<string, unknown>)
+        : null;
+    const value =
+      typeof candidate === "string" ? candidate.trim() : readText(record?.name);
+    if (!value) return;
+    const dedupeKey = normalizeLookupKey(value);
+    if (!dedupeKey || byValue.has(dedupeKey)) return;
+    byValue.set(dedupeKey, {
+      value,
+      label: normalizeMetadataLabel(value, kind),
+      imageUrl: readText(record?.imageUrl),
+    });
+  });
+  return Array.from(byValue.values()).sort((left, right) =>
+    left.label.localeCompare(right.label),
+  );
+}
+
+export async function getExerciseDatasetMetadata(
+  kind: ExerciseDatasetMetadataKind,
+  signal?: AbortSignal,
+): Promise<ExerciseDatasetMetadataOption[]> {
+  const { data, error } = await supabase.functions.invoke<{
+    providerPayload?: unknown;
+  }>("exercise-dataset-search", {
+    body: { metadata: kind },
+    signal,
+    timeout: 15_000,
+  });
+  if (error) throw new ExerciseDatasetError(await readGatewayErrorCode(error));
+  if (!data || !("providerPayload" in data)) {
+    throw new ExerciseDatasetError("provider_invalid_response");
+  }
+  return normalizeExerciseDatasetMetadata(data.providerPayload, kind);
+}
+
+export async function getExerciseDatasetMetadataCatalog(
+  signal?: AbortSignal,
+): Promise<ExerciseDatasetMetadataCatalog> {
+  const kinds: ExerciseDatasetMetadataKind[] = [
+    "muscles",
+    "bodyparts",
+    "equipments",
+    "exercisetypes",
+  ];
+  const entries = await Promise.all(
+    kinds.map(
+      async (kind) =>
+        [kind, await getExerciseDatasetMetadata(kind, signal)] as const,
+    ),
+  );
+  return Object.fromEntries(entries) as ExerciseDatasetMetadataCatalog;
 }
 
 export async function searchExerciseDataset(
   filters: ExerciseDatasetSearchFilters,
 ): Promise<ExerciseDatasetPage> {
-  if (!datasetBaseUrl) {
-    throw new Error(
-      "Exercise dataset API is not configured. Set VITE_EXERCISE_DATASET_BASE_URL first.",
-    );
+  const { signal, ...requestBody } = filters;
+  const { data, error } = await supabase.functions.invoke<{
+    providerPayload?: unknown;
+  }>("exercise-dataset-search", {
+    body: {
+      ...requestBody,
+      limit: filters.limit ?? 24,
+      cursor: filters.cursor ?? null,
+    },
+    signal,
+    timeout: 15_000,
+  });
+  if (error) throw new ExerciseDatasetError(await readGatewayErrorCode(error));
+  if (!data || !("providerPayload" in data)) {
+    throw new ExerciseDatasetError("provider_invalid_response");
   }
 
-  const pageLimit = filters.limit ?? 24;
-  let payload: unknown;
-  try {
-    payload = await fetchJson(
-      buildRequestUrl({
-        ...filters,
-        limit: pageLimit,
-        cursor: filters.cursor ?? null,
-      }),
-    );
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Exercise dataset search failed.";
-    if (message.includes("(403)")) {
-      throw new Error(
-        "The dataset provider rejected this request. Check the provider plan, key, and route configuration.",
-      );
-    }
-    if (message.includes("(429)")) {
-      throw new Error(
-        "The dataset provider rate-limited this request. Wait a moment and try again.",
-      );
-    }
-    throw error instanceof Error
-      ? error
-      : new Error("Exercise dataset search failed.");
+  const payload = data.providerPayload;
+  if (!Array.isArray(payload) && (!payload || typeof payload !== "object")) {
+    throw new ExerciseDatasetError("provider_invalid_response");
   }
 
   return {
     exercises: extractExerciseList(payload)
-      .map(normalizeExercise)
+      .map(normalizeExerciseDatasetRecord)
       .filter((item): item is ExerciseDatasetExercise => Boolean(item)),
-    nextCursor: extractNextCursor(payload),
+    nextCursor: extractExerciseDatasetNextCursor(payload),
   };
+}
+
+export async function getExerciseDatasetExercise(
+  exerciseId: string,
+  signal?: AbortSignal,
+): Promise<ExerciseDatasetExercise> {
+  const { data, error } = await supabase.functions.invoke<{
+    providerPayload?: unknown;
+  }>("exercise-dataset-search", {
+    body: { exerciseId },
+    signal,
+    timeout: 15_000,
+  });
+  if (error) throw new ExerciseDatasetError(await readGatewayErrorCode(error));
+  if (!data || !("providerPayload" in data)) {
+    throw new ExerciseDatasetError("provider_invalid_response");
+  }
+
+  const exercise = normalizeExerciseDatasetRecord(
+    extractExerciseDetail(data.providerPayload),
+  );
+  if (!exercise || exercise.id !== exerciseId.trim()) {
+    throw new ExerciseDatasetError("provider_invalid_response");
+  }
+  return exercise;
 }

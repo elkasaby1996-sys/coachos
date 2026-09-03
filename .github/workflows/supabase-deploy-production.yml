@@ -100,3 +100,6 @@ jobs:
 
       - name: Deploy Open Wearables function to production
         run: supabase functions deploy open-wearables --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Deploy exercise dataset gateway to production
+        run: supabase functions deploy exercise-dataset-search --project-ref "$SUPABASE_PROJECT_ID"

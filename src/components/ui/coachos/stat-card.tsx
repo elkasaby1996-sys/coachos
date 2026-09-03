@@ -16,12 +16,11 @@ export function StatCard({
   label,
   value,
   helper,
-  icon: Icon,
-  iconClassName,
   accent,
   delta,
   surface = "default",
   className,
+  headerClassName,
   disableHoverMotion = false,
   module,
   onClick,
@@ -30,7 +29,9 @@ export function StatCard({
   label: string;
   value: string | number;
   helper?: string;
+  /** @deprecated Shared KPI cards intentionally render without decorative icons. */
   icon?: React.ComponentType<{ className?: string }>;
+  /** @deprecated Shared KPI cards intentionally render without decorative icons. */
   iconClassName?: string;
   accent?: boolean;
   delta?: {
@@ -39,6 +40,7 @@ export function StatCard({
   } | null;
   surface?: "default" | "pt-hub";
   className?: string;
+  headerClassName?: string;
   disableHoverMotion?: boolean;
   module?: ModuleTone;
   onClick?: (() => void) | null;
@@ -86,8 +88,9 @@ export function StatCard({
       )}
       <CardHeader
         className={cn(
-          "space-y-3",
+          "gap-6 space-y-0",
           isPtHub && "relative flex h-full px-4 py-4 sm:px-5",
+          headerClassName,
         )}
       >
         <div
@@ -106,15 +109,6 @@ export function StatCard({
           >
             {label}
           </span>
-          {Icon ? (
-            <Icon
-              className={cn(
-                "h-5 w-5 shrink-0 [stroke-width:1.9]",
-                module ? moduleClasses?.title : "text-foreground",
-                iconClassName,
-              )}
-            />
-          ) : null}
         </div>
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0 flex-1">

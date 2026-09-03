@@ -17,6 +17,8 @@ const useExternalBaseUrl =
   (!process.env.CI || !isLoopbackBaseUrl(configuredBaseUrl));
 const baseURL = useExternalBaseUrl ? configuredBaseUrl : defaultBaseUrl;
 const useWebServer = !useExternalBaseUrl;
+const reuseExistingServer =
+  process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "1";
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -35,7 +37,7 @@ export default defineConfig({
     ? {
         command: "npm run dev -- --host 127.0.0.1 --port 4173",
         url: baseURL,
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer,
         timeout: 120_000,
       }
     : undefined,

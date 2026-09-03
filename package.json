@@ -21,6 +21,7 @@
     "supabase:db:lint": "npx supabase@latest db lint --local --level error --fail-on error",
     "supabase:db:test": "npx supabase@latest test db",
     "seed:local:pt-demo": "node scripts/seed-local-pt-demo.mjs",
+    "exercise-catalog:audit": "node scripts/audit-exercise-catalog-sample.mjs",
     "render:public-coach-profiles-media": "node scripts/render-public-coach-profiles-media.mjs",
     "supabase:remote": "node scripts/supabase-remote-guard.mjs",
     "verify:release": "npm run lint && npm run format && npm run build && npm run test:e2e:smoke",
