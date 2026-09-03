@@ -277,16 +277,16 @@ function getPtHubRouteTransitionKey(pathname: string) {
 
 function getPtHubHeaderPillClassName(isLightMode: boolean) {
   return cn(
-    "group hidden h-12 min-w-[180px] flex-1 items-center gap-2.5 rounded-[18px] border px-3 py-1.5 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:flex sm:max-w-[224px] xl:w-[208px] xl:flex-none 2xl:w-[224px]",
+    "group hidden h-10 min-w-[136px] flex-1 items-center gap-2 rounded-[12px] border border-transparent px-2 text-left transition-colors duration-200 sm:flex sm:max-w-[156px] xl:w-[150px] xl:flex-none 2xl:w-[156px]",
     isLightMode
-      ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.94),oklch(var(--bg-surface)/0.82))] hover:shadow-[0_24px_54px_-36px_oklch(var(--accent)/0.16)]"
-      : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.92),oklch(var(--bg-surface)/0.78))] hover:shadow-[0_24px_52px_-36px_oklch(var(--accent)/0.18)]",
+      ? "bg-transparent hover:bg-secondary/70"
+      : "bg-transparent hover:bg-background/65",
   );
 }
 
 function getPtHubHeaderPillIconClassName(isLightMode: boolean) {
   return cn(
-    "flex h-8 w-8 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] border border-border/60 bg-background/50 text-foreground transition-colors duration-200",
     isLightMode
       ? "text-primary group-hover:text-foreground"
       : "text-primary group-hover:text-foreground",
@@ -304,10 +304,10 @@ function getPtHubHeaderPillChevronClassName(isLightMode: boolean) {
 
 function getPtHubStatusPillClassName(isLightMode: boolean) {
   return cn(
-    "hidden h-12 min-w-[168px] flex-none items-center gap-2.5 rounded-[18px] border px-3 py-1.5 text-left backdrop-blur-3xl sm:flex",
+    "hidden h-10 min-w-[154px] flex-none items-center gap-2 rounded-[12px] border px-2.5 text-left sm:flex",
     isLightMode
-      ? "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)]"
-      : "border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)]",
+      ? "border-border/70 bg-background/45"
+      : "border-border/70 bg-background/35",
   );
 }
 
@@ -338,14 +338,14 @@ function getPtHubStatusPillToneClassName(params: {
 
 function sidebarLinkClasses(isActive: boolean, isLightMode: boolean) {
   return cn(
-    "group relative flex items-start gap-3 rounded-[22px] border px-3.5 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
+    "group relative flex min-h-11 cursor-pointer items-center gap-2.5 rounded-[14px] border px-2.5 py-2 text-sm font-medium transition-colors duration-200",
     isActive
       ? isLightMode
-        ? "translate-x-1 border-transparent bg-transparent text-foreground"
-        : "translate-x-1 border-transparent bg-transparent text-foreground"
+        ? "border-transparent bg-transparent text-foreground"
+        : "border-transparent bg-transparent text-foreground"
       : isLightMode
-        ? "border-transparent bg-transparent text-muted-foreground hover:border-border/80 hover:bg-secondary/55 hover:text-foreground"
-        : "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground",
+        ? "border-transparent bg-transparent text-muted-foreground hover:bg-secondary/55 hover:text-foreground"
+        : "border-transparent bg-transparent text-muted-foreground hover:bg-background/55 hover:text-foreground",
   );
 }
 
@@ -390,9 +390,6 @@ export function PtHubLayout() {
   const routeTransitionKey = getPtHubRouteTransitionKey(location.pathname);
 
   const meta = getPtHubRouteMeta(location.pathname);
-  const metaTitle = t(meta.titleKey, meta.title);
-  const metaDescription = t(meta.descriptionKey, meta.description);
-  const currentModuleClasses = getModuleToneClasses(meta.module);
   const workspaces = useMemo(
     () => workspacesQuery.data ?? [],
     [workspacesQuery.data],
@@ -561,29 +558,11 @@ export function PtHubLayout() {
         />
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-[320px] max-w-[calc(100vw-1rem)] p-3 transition lg:hidden",
+            "fixed inset-y-0 left-0 z-50 w-[304px] max-w-[calc(100vw-1rem)] p-2 transition lg:hidden",
             mobileOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
-          <div className="surface-panel-strong flex h-full flex-col overflow-hidden rounded-[32px] border-border/70">
-            <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
-              <div>
-                <p className="text-xl font-semibold tracking-normal text-foreground">
-                  {t("common.repsyncPtHub", "Repsync PT Hub")}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {t("common.trainerWorkspace", "Trainer workspace")}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMobileOpen(false)}
-                aria-label={t("common.closeNavigation", "Close navigation")}
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
+          <div className="pt-hub-workspace-rail surface-panel-strong flex h-full flex-col overflow-hidden rounded-[24px] border-border/70">
             <SidebarContent
               className="min-h-0"
               onLogout={signOut}
@@ -591,6 +570,7 @@ export function PtHubLayout() {
               themeMode={themeMode}
               navIndicators={navIndicators}
               onNavigate={() => setMobileOpen(false)}
+              onClose={() => setMobileOpen(false)}
             />
           </div>
         </aside>
@@ -600,12 +580,12 @@ export function PtHubLayout() {
           align="left"
           className="relative z-10 flex-1 py-4 sm:py-5 lg:min-h-0 lg:overflow-hidden lg:py-4"
         >
-          <div className="lg:h-full lg:pl-[312px]">
-            <aside className="hidden lg:fixed lg:bottom-[72px] lg:left-0 lg:top-0 lg:z-30 lg:block lg:w-[304px] lg:p-3">
+          <div className="lg:h-full lg:pl-[276px]">
+            <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[268px]">
               <div className="h-full min-h-0">
                 <div
                   className={cn(
-                    "surface-panel-strong h-full min-h-0 overflow-hidden rounded-[34px] border-border/70",
+                    "pt-hub-workspace-rail pt-hub-workspace-rail-desktop surface-panel-strong h-full min-h-0 overflow-hidden border-border/70",
                     isLightMode
                       ? "shadow-[var(--surface-strong-shadow)]"
                       : "shadow-[var(--surface-strong-shadow)]",
@@ -622,282 +602,218 @@ export function PtHubLayout() {
             </aside>
 
             <div className="min-w-0 space-y-5 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
-              <header
-                className={cn(
-                  "pt-hub-shell-header surface-panel-strong relative overflow-hidden rounded-[30px] border-border/70 px-4 transition-[padding,transform,box-shadow] duration-200 sm:px-5 lg:sticky lg:top-0 lg:z-20 lg:px-5",
-                  "py-3",
-                  isLightMode
-                    ? "shadow-[var(--surface-strong-shadow)]"
-                    : "shadow-[var(--surface-strong-shadow)]",
-                )}
-              >
-                <div className="pt-hub-shell-header-wash pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--accent)/0.04))]" />
-                <div
-                  className={cn(
-                    "pointer-events-none absolute inset-x-6 top-0 h-px",
-                    isLightMode
-                      ? "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.22),transparent)]"
-                      : "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]",
-                  )}
-                />
-                <div
-                  className={cn(
-                    "relative flex flex-wrap items-start justify-between transition-[gap] duration-200 lg:items-center xl:flex-nowrap",
-                    "gap-3",
-                  )}
+              <div className="pt-hub-shell-utilities flex min-h-[48px] items-center justify-between gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-[12px] border border-border/60 bg-background/45 lg:hidden"
+                  onClick={() => setMobileOpen(true)}
                 >
-                  <div className="flex min-w-[min(100%,20rem)] flex-1 items-start gap-3">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="mt-1 lg:hidden"
-                      onClick={() => setMobileOpen(true)}
-                    >
-                      <Menu className="h-5 w-5 [stroke-width:1.7]" />
-                      <span className="sr-only">
-                        {t("ptHub.openNavigation", "Open PT Hub navigation")}
-                      </span>
-                    </Button>
-                    <div
-                      className={cn(
-                        "min-w-0 transition-[gap] duration-200",
-                        "space-y-2",
-                      )}
-                    >
+                  <Menu className="h-5 w-5 [stroke-width:1.7]" />
+                  <span className="sr-only">
+                    {t("ptHub.openNavigation", "Open PT Hub navigation")}
+                  </span>
+                </Button>
+
+                <div className="pt-hub-header-action-cluster ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1 rounded-[16px] bg-background/60 p-1 shadow-[var(--surface-shadow)] xl:flex-nowrap">
+                  {showProfileStatusPill ? (
+                    <div className={getPtHubStatusPillClassName(isLightMode)}>
                       <div
-                        className={cn(
-                          "transition-[gap] duration-200",
-                          "space-y-1",
-                        )}
+                        className={getPtHubStatusPillIconClassName({
+                          isLightMode,
+                          published: publishedProfile,
+                        })}
                       >
-                        <p
-                          className={cn(
-                            "font-semibold uppercase tracking-[0.055em] text-foreground transition-[font-size,line-height] duration-200",
-                            "text-[1.55rem] leading-none sm:text-[1.85rem]",
-                            currentModuleClasses.title,
-                          )}
-                        >
-                          {metaTitle}
+                        <Globe className="h-4 w-4 [stroke-width:1.7]" />
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <p className="pt-hub-minor-label">
+                          {t("common.profileStatus", "Profile status")}
                         </p>
-                        <p
-                          className={cn(
-                            "max-w-3xl text-muted-foreground transition-[font-size,line-height,opacity] duration-200",
-                            "text-[12px] leading-4 opacity-80",
-                          )}
-                        >
-                          {metaDescription}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <span
+                            aria-hidden
+                            className={cn(
+                              "h-2 w-2 rounded-full",
+                              getSemanticToneClasses(
+                                getSemanticToneForStatus(
+                                  publishedProfile
+                                    ? "Published"
+                                    : "Unpublished",
+                                ),
+                              ).marker,
+                            )}
+                          />
+                          <p
+                            className={getPtHubStatusPillToneClassName({
+                              isLightMode,
+                              published: publishedProfile,
+                            })}
+                          >
+                            {publishedProfile
+                              ? t("common.published", "Published")
+                              : t("common.unpublished", "Unpublished")}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 xl:flex-none xl:flex-nowrap">
-                    {showProfileStatusPill ? (
-                      <div className={getPtHubStatusPillClassName(isLightMode)}>
-                        <div
-                          className={getPtHubStatusPillIconClassName({
-                            isLightMode,
-                            published: publishedProfile,
-                          })}
-                        >
-                          <Globe className="h-4 w-4 [stroke-width:1.7]" />
-                        </div>
-                        <div className="min-w-0 flex-1 space-y-0.5">
-                          <p className="pt-hub-minor-label">
-                            {t("common.profileStatus", "Profile status")}
+                  ) : null}
+                  <NotificationBell
+                    viewAllHref="/pt-hub/notifications"
+                    buttonClassName={cn(
+                      "h-10 w-10 rounded-[12px] border border-transparent bg-transparent shadow-none",
+                      isLightMode
+                        ? "hover:bg-secondary/70"
+                        : "hover:bg-background/65",
+                    )}
+                    iconClassName="h-4 w-4 [stroke-width:1.7]"
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={workspaces.length === 0}
+                        className={cn(
+                          getPtHubHeaderPillClassName(isLightMode),
+                          workspaces.length === 0 &&
+                            "cursor-not-allowed opacity-50",
+                        )}
+                      >
+                        <div className="min-w-0 flex-1 text-left">
+                          <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                            {workspacePillLabel}
                           </p>
-                          <div className="flex items-center gap-2">
-                            <span
-                              aria-hidden
-                              className={cn(
-                                "h-2 w-2 rounded-full",
-                                getSemanticToneClasses(
-                                  getSemanticToneForStatus(
-                                    publishedProfile
-                                      ? "Published"
-                                      : "Unpublished",
-                                  ),
-                                ).marker,
-                              )}
-                            />
-                            <p
-                              className={getPtHubStatusPillToneClassName({
-                                isLightMode,
-                                published: publishedProfile,
-                              })}
-                            >
-                              {publishedProfile
-                                ? t("common.published", "Published")
-                                : t("common.unpublished", "Unpublished")}
-                            </p>
-                          </div>
                         </div>
-                      </div>
-                    ) : null}
-                    <NotificationBell
-                      viewAllHref="/pt-hub/notifications"
-                      buttonClassName={cn(
-                        "h-12 w-12 rounded-[18px] border border-border/70",
-                        isLightMode
-                          ? "bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.76))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.94),oklch(var(--bg-surface)/0.82))]"
-                          : "bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[var(--surface-shadow)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.92),oklch(var(--bg-surface)/0.78))]",
-                      )}
-                      iconClassName="h-4 w-4 [stroke-width:1.7]"
-                    />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          disabled={workspaces.length === 0}
-                          className={cn(
-                            getPtHubHeaderPillClassName(isLightMode),
-                            workspaces.length === 0 &&
-                              "cursor-not-allowed opacity-50",
+                        <span
+                          className={getPtHubHeaderPillChevronClassName(
+                            isLightMode,
                           )}
                         >
-                          <div
-                            className={getPtHubHeaderPillIconClassName(
-                              isLightMode,
-                            )}
-                          >
-                            <Building className="h-4 w-4 [stroke-width:1.7]" />
-                          </div>
-                          <div className="min-w-0 flex-1 text-left">
-                            <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
-                              {workspacePillLabel}
-                            </p>
-                          </div>
-                          <span
-                            className={getPtHubHeaderPillChevronClassName(
-                              isLightMode,
-                            )}
-                          >
-                            <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                          </span>
-                        </button>
-                      </DropdownMenuTrigger>
-                      <WorkspaceSwitcherMenu
-                        label={t("common.activeWorkspace", "Active workspace")}
-                        hubLabel={t("common.repsyncPtHub", "Repsync PT Hub")}
-                        hubMeta={t(
-                          "ptHub.workspaceSwitcher.hubMeta",
-                          "Business and admin workspace",
-                        )}
-                        hubActive={inPtHubWorkspace}
-                        onSelectHub={() => navigate("/pt-hub")}
-                        workspaces={workspaceSwitcherItems}
-                        currentWorkspaceId={
-                          !inPtHubWorkspace ? workspaceId : null
-                        }
-                        onSelectWorkspace={(selectedWorkspace) => {
-                          switchWorkspace(selectedWorkspace.id);
-                          navigate(
-                            routes.workspaceOverview(selectedWorkspace.slug),
-                          );
-                        }}
-                        loading={workspacesQuery.isLoading}
-                        loadingLabel={t(
-                          "common.loadingWorkspaces",
-                          "Loading workspaces...",
-                        )}
-                        emptyLabel={t(
-                          "common.noWorkspacesFound",
-                          "No workspaces found",
-                        )}
-                      />
-                    </DropdownMenu>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          className={getPtHubHeaderPillClassName(isLightMode)}
-                        >
-                          <div
-                            className={getPtHubHeaderPillIconClassName(
-                              isLightMode,
-                            )}
-                          >
-                            {userInitial}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
-                              {coachDisplayName}
-                            </p>
-                          </div>
-                          <span
-                            className={getPtHubHeaderPillChevronClassName(
-                              isLightMode,
-                            )}
-                          >
-                            <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                          </span>
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        variant="menu"
-                        align="end"
-                        sideOffset={10}
-                        className="w-64"
+                          <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                        </span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <WorkspaceSwitcherMenu
+                      label={t("common.activeWorkspace", "Active workspace")}
+                      hubLabel={t("common.repsyncPtHub", "Repsync PT Hub")}
+                      hubMeta={t(
+                        "ptHub.workspaceSwitcher.hubMeta",
+                        "Business and admin workspace",
+                      )}
+                      hubActive={inPtHubWorkspace}
+                      onSelectHub={() => navigate("/pt-hub")}
+                      workspaces={workspaceSwitcherItems}
+                      currentWorkspaceId={
+                        !inPtHubWorkspace ? workspaceId : null
+                      }
+                      onSelectWorkspace={(selectedWorkspace) => {
+                        switchWorkspace(selectedWorkspace.id);
+                        navigate(
+                          routes.workspaceOverview(selectedWorkspace.slug),
+                        );
+                      }}
+                      loading={workspacesQuery.isLoading}
+                      loadingLabel={t(
+                        "common.loadingWorkspaces",
+                        "Loading workspaces...",
+                      )}
+                      emptyLabel={t(
+                        "common.noWorkspacesFound",
+                        "No workspaces found",
+                      )}
+                    />
+                  </DropdownMenu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className={getPtHubHeaderPillClassName(isLightMode)}
                       >
-                        <DropdownMenuLabel>
-                          <span className="pt-hub-kicker block">
-                            {t("common.account", "Account")}
-                          </span>
-                          <span className="mt-1 block truncate text-sm font-medium text-foreground">
-                            {coachDisplayName}
-                          </span>
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <div className="app-dropdown-utility-row">
-                          <div className="flex min-w-0 items-center gap-2.5">
-                            <span className="app-dropdown-icon-badge">
-                              <Moon className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
-                            </span>
-                            <span className="truncate font-medium text-foreground">
-                              {t("common.theme", "Theme")}
-                            </span>
-                          </div>
-                          <ThemeModeSwitch
-                            mode={themeMode}
-                            onToggle={() =>
-                              setThemeMode((current) =>
-                                current === "dark" ? "light" : "dark",
-                              )
-                            }
-                          />
+                        <div
+                          className={getPtHubHeaderPillIconClassName(
+                            isLightMode,
+                          )}
+                        >
+                          {userInitial}
                         </div>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="mt-1"
-                          onClick={() => navigate("/pt-hub/settings")}
+                        <div className="min-w-0 flex-1">
+                          <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                            {coachDisplayName}
+                          </p>
+                        </div>
+                        <span
+                          className={getPtHubHeaderPillChevronClassName(
+                            isLightMode,
+                          )}
                         >
+                          <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                        </span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      variant="menu"
+                      align="end"
+                      sideOffset={10}
+                      className="w-64"
+                    >
+                      <DropdownMenuLabel>
+                        <span className="pt-hub-kicker block">
+                          {t("common.account", "Account")}
+                        </span>
+                        <span className="mt-1 block truncate text-sm font-medium text-foreground">
+                          {coachDisplayName}
+                        </span>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <div className="app-dropdown-utility-row">
+                        <div className="flex min-w-0 items-center gap-2.5">
                           <span className="app-dropdown-icon-badge">
-                            <SlidersHorizontal className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
+                            <Moon className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
                           </span>
-                          <span className="font-medium text-foreground">
-                            {t("common.settings", "Settings")}
+                          <span className="truncate font-medium text-foreground">
+                            {t("common.theme", "Theme")}
                           </span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={isSigningOut}
-                          onClick={() => {
-                            void signOut();
-                          }}
-                        >
-                          <span className="app-dropdown-icon-badge">
-                            <LogOut className="h-4 w-4 text-[var(--state-danger-text)] [stroke-width:1.7]" />
-                          </span>
-                          <span className="font-medium text-foreground">
-                            {isSigningOut
-                              ? t("common.signingOut", "Signing out...")
-                              : t("common.signOut", "Sign out")}
-                          </span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                        </div>
+                        <ThemeModeSwitch
+                          mode={themeMode}
+                          onToggle={() =>
+                            setThemeMode((current) =>
+                              current === "dark" ? "light" : "dark",
+                            )
+                          }
+                        />
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="mt-1"
+                        onClick={() => navigate("/pt-hub/settings")}
+                      >
+                        <span className="app-dropdown-icon-badge">
+                          <SlidersHorizontal className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {t("common.settings", "Settings")}
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={isSigningOut}
+                        onClick={() => {
+                          void signOut();
+                        }}
+                      >
+                        <span className="app-dropdown-icon-badge">
+                          <LogOut className="h-4 w-4 text-[var(--state-danger-text)] [stroke-width:1.7]" />
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {isSigningOut
+                            ? t("common.signingOut", "Signing out...")
+                            : t("common.signOut", "Sign out")}
+                        </span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              </header>
+              </div>
 
               <main
                 ref={mainScrollRef}
@@ -914,7 +830,7 @@ export function PtHubLayout() {
             </div>
           </div>
         </PageContainer>
-        <AppFooter enableRegionLanguageSwitcher />
+        <AppFooter enableRegionLanguageSwitcher className="lg:pl-[268px]" />
       </div>
     </PtMessageComposeProvider>
   );
@@ -927,6 +843,7 @@ function SidebarContent({
   themeMode,
   navIndicators,
   onNavigate,
+  onClose,
 }: {
   className?: string;
   onLogout: () => Promise<void>;
@@ -934,25 +851,40 @@ function SidebarContent({
   themeMode: PtHubThemeMode;
   navIndicators?: Record<string, number | string | null | undefined>;
   onNavigate?: () => void;
+  onClose?: () => void;
 }) {
   const { t } = useI18n();
   const isLightMode = themeMode === "light";
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className={cn("flex h-full min-h-0 flex-col px-5 py-5", className)}>
-      <div className="space-y-4 border-b border-border/60 pb-5">
-        <div className="min-w-0">
-          <p className="text-[1.15rem] font-semibold tracking-normal text-foreground">
-            {t("common.repsyncHub", "Repsync Hub")}
+    <div className={cn("flex h-full min-h-0 flex-col px-3 py-3", className)}>
+      <div className="px-1 pb-4">
+        <div className="flex min-h-10 items-center justify-between gap-3 px-1">
+          <p
+            className="truncate text-[0.82rem] font-semibold uppercase tracking-[0.28em] text-foreground"
+            aria-label="RepSync"
+          >
+            R E P S Y N C
           </p>
+          {onClose ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 shrink-0 rounded-[12px]"
+              onClick={onClose}
+              aria-label={t("common.closeNavigation", "Close navigation")}
+            >
+              <X className="h-4.5 w-4.5" />
+            </Button>
+          ) : null}
         </div>
       </div>
 
-      <nav className="mt-5 min-h-0 flex-1 overflow-y-auto pb-8 pr-1">
+      <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto pb-8 pr-1">
         {hubNavGroups.map((group) => (
-          <div key={group.label} className="space-y-2.5">
-            <p className="pt-hub-minor-label px-2">
+          <div key={group.label} className="space-y-2">
+            <p className="px-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {t(group.labelKey, group.label)}
             </p>
             <div className="space-y-1">
@@ -980,7 +912,7 @@ function SidebarContent({
                           <motion.span
                             layoutId="pt-hub-nav-active-pill"
                             className={cn(
-                              "absolute inset-0 rounded-[24px] border",
+                              "absolute inset-0 rounded-[14px] border",
                               getModuleToneClasses(item.module).navActive,
                             )}
                             style={getModuleToneStyle(item.module)}
@@ -998,9 +930,9 @@ function SidebarContent({
                         <span
                           style={getModuleToneStyle(item.module)}
                           className={cn(
-                            "relative z-10 flex h-10 w-10 shrink-0 items-center justify-center transition-colors",
+                            "relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] transition-colors",
                             isActive
-                              ? "section-accent-nav-icon-active"
+                              ? "section-accent-nav-icon-active bg-background/55"
                               : isLightMode
                                 ? "text-muted-foreground group-hover:text-foreground"
                                 : "text-muted-foreground group-hover:text-foreground",
@@ -1009,15 +941,7 @@ function SidebarContent({
                         >
                           <Icon className="h-4 w-4 [stroke-width:1.7]" />
                         </span>
-                        <motion.div
-                          className="min-w-0 flex-1 self-center"
-                          animate={
-                            reduceMotion
-                              ? { opacity: 1, x: 0 }
-                              : { opacity: 1, x: isActive ? 2 : 0 }
-                          }
-                          transition={{ duration: 0.18, ease: "easeOut" }}
-                        >
+                        <div className="min-w-0 flex-1 self-center">
                           <div className="relative z-10 flex min-w-0 items-center justify-between gap-2">
                             <p
                               className={cn(
@@ -1035,7 +959,7 @@ function SidebarContent({
                               </span>
                             ) : null}
                           </div>
-                        </motion.div>
+                        </div>
                       </>
                     )}
                   </NavLink>

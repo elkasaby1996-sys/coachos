@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type ComponentType,
+  type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +13,6 @@ import {
   Apple,
   ArrowUpRight,
   BookOpen,
-  Building2,
   CalendarDays,
   Check,
   ChevronDown,
@@ -326,57 +326,18 @@ const ptSearchRoutes: SearchResult[] = [
   },
 ];
 
-function getPtRouteHeader(
-  pathname: string,
-  navGroups: Array<{
-    label: string;
-    items: PtNavItem[];
-  }>,
-) {
-  if (
-    pathname.startsWith("/settings/") ||
-    pathname.startsWith("/workspace/") ||
-    pathname.match(/^\/w\/[^/]+\/settings(?:\/|$)/)
-  ) {
-    return {
-      title: "Settings",
-      description: "Adjust workspace defaults and account controls.",
-    };
-  }
-
-  if (
-    pathname.startsWith("/pt/clients/") ||
-    pathname.match(/^\/w\/[^/]+\/clients\/[^/]+/)
-  ) {
-    return {
-      title: "Client Detail",
-      description:
-        "Review client state, planning, communication, and follow-ups in one place.",
-    };
-  }
-
-  const matchedItem = [...navGroups.flatMap((group) => group.items)]
-    .sort((a, b) => b.to.length - a.to.length)
-    .find((item) => pathname.startsWith(item.to));
-
-  return {
-    title: matchedItem?.label ?? "PT Workspace",
-    description: matchedItem?.description ?? null,
-  };
-}
-
 function getHeaderPillClassName(isLightMode: boolean) {
   return cn(
-    "group flex h-[42px] min-w-[172px] items-center gap-2 rounded-[14px] border px-2.5 py-1.5 text-left backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px] sm:w-[182px]",
+    "group hidden h-10 min-w-[136px] flex-1 items-center gap-2 rounded-[12px] border border-transparent px-2 text-left transition-colors duration-200 sm:flex sm:max-w-[156px] xl:w-[150px] xl:flex-none 2xl:w-[156px]",
     isLightMode
-      ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.88),oklch(var(--bg-surface)/0.74))]"
-      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18 hover:bg-[linear-gradient(180deg,rgba(22,29,26,0.88),rgba(12,17,15,0.78))]",
+      ? "bg-transparent hover:bg-secondary/70"
+      : "bg-transparent hover:bg-background/65",
   );
 }
 
 function getHeaderPillIconClassName(isLightMode: boolean) {
   return cn(
-    "flex h-6 w-6 shrink-0 items-center justify-center text-foreground transition-colors duration-200",
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] border border-border/60 bg-background/50 text-foreground transition-colors duration-200",
     isLightMode
       ? "text-primary group-hover:text-[oklch(var(--text-primary))]"
       : "text-primary group-hover:text-foreground",
@@ -385,28 +346,28 @@ function getHeaderPillIconClassName(isLightMode: boolean) {
 
 function getHeaderPillChevronClassName(isLightMode: boolean) {
   return cn(
-    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
+    "flex h-6 w-6 shrink-0 items-center justify-center text-muted-foreground transition-colors duration-200",
     isLightMode
-      ? "border-[oklch(var(--border-default)/0.62)] bg-[oklch(var(--bg-surface-elevated)/0.62)] text-primary group-hover:border-primary/16 group-hover:text-[oklch(var(--text-primary))]"
-      : "border-white/8 bg-white/[0.04] text-muted-foreground group-hover:border-primary/18 group-hover:text-primary",
+      ? "text-primary group-hover:text-foreground"
+      : "text-muted-foreground group-hover:text-primary",
   );
 }
 
 function getHeaderUtilityButtonClassName(isLightMode: boolean) {
   return cn(
-    "inline-flex h-[42px] items-center justify-center gap-1.5 rounded-[14px] border px-3 text-[0.82rem] font-medium backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
+    "inline-flex h-10 items-center justify-center gap-1.5 rounded-[12px] border border-transparent px-3 text-[0.82rem] font-medium transition-colors duration-200",
     isLightMode
-      ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] text-[oklch(var(--text-primary))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18"
-      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18",
+      ? "bg-transparent text-[oklch(var(--text-primary))] hover:bg-secondary/70"
+      : "bg-transparent text-foreground hover:bg-background/65",
   );
 }
 
 function getHeaderBellButtonClassName(isLightMode: boolean) {
   return cn(
-    "h-[42px] w-[42px] rounded-[14px] border backdrop-blur-3xl transition-all duration-200 hover:-translate-y-[1px]",
+    "h-10 w-10 rounded-[12px] border border-transparent bg-transparent shadow-none transition-colors duration-200",
     isLightMode
-      ? "border-[oklch(var(--border-default)/0.7)] bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.68))] text-[oklch(var(--text-primary))] shadow-[0_22px_48px_-34px_oklch(0.28_0.02_190/0.16),inset_0_1px_0_oklch(1_0_0/0.34)] hover:border-primary/18"
-      : "border-white/10 bg-[linear-gradient(180deg,rgba(18,24,22,0.8),rgba(10,14,13,0.72))] text-foreground shadow-[0_22px_46px_-34px_rgba(0,0,0,0.82),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-primary/18",
+      ? "text-[oklch(var(--text-primary))] hover:bg-secondary/70"
+      : "text-foreground hover:bg-background/65",
   );
 }
 
@@ -595,7 +556,6 @@ export function PtLayout() {
     });
   }, [loading, location.pathname, workspaceId]);
   const headerWorkspaceId = routeWorkspaceId ?? workspaceId;
-  const currentModuleClasses = getModuleToneClasses(currentModule);
   const errorMessage =
     error?.message ??
     authError?.message ??
@@ -623,9 +583,11 @@ export function PtLayout() {
     top: number;
     left: number;
     width: number;
+    compact: boolean;
   } | null>(null);
   const searchShellRef = useRef<HTMLDivElement | null>(null);
-  const searchTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const searchInlineInputRef = useRef<HTMLInputElement | null>(null);
+  const searchCompactTriggerRef = useRef<HTMLButtonElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mainScrollRef = useRef<HTMLElement | null>(null);
   const workspaceSwitcherQuery = usePtHubWorkspaces();
@@ -700,8 +662,6 @@ export function PtLayout() {
       workspaceSettingsPath,
     ],
   );
-  const pageHeader = getPtRouteHeader(location.pathname, navGroups);
-  const isExerciseLibraryPage = location.pathname === "/pt/settings/exercises";
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
   const workspaceSwitcherItems = workspaces.map((workspace) => ({
     id: workspace.id,
@@ -736,7 +696,8 @@ export function PtLayout() {
       const target = event.target as Node;
       if (
         !searchShellRef.current?.contains(target) &&
-        !searchTriggerRef.current?.contains(target)
+        !searchInlineInputRef.current?.contains(target) &&
+        !searchCompactTriggerRef.current?.contains(target)
       ) {
         setSearchOpen(false);
       }
@@ -748,6 +709,7 @@ export function PtLayout() {
 
   useEffect(() => {
     if (!searchOpen) return;
+    if (!searchCompactTriggerRef.current?.getClientRects().length) return;
 
     const frame = window.requestAnimationFrame(() => {
       searchInputRef.current?.focus();
@@ -765,18 +727,30 @@ export function PtLayout() {
 
     let frame = 0;
     const updateLayout = () => {
-      const rect = searchTriggerRef.current?.getBoundingClientRect();
+      const inlineInput = searchInlineInputRef.current;
+      const visibleInlineInput =
+        inlineInput && inlineInput.getClientRects().length > 0
+          ? inlineInput
+          : null;
+      const anchor = visibleInlineInput ?? searchCompactTriggerRef.current;
+      const rect = anchor?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.min(448, window.innerWidth - 32);
-      const left = Math.min(
-        Math.max(16, rect.right - width),
-        window.innerWidth - width - 16,
-      );
+      const compact = !visibleInlineInput;
+      const width = compact
+        ? Math.min(448, window.innerWidth - 32)
+        : rect.width;
+      const left = compact
+        ? Math.min(
+            Math.max(16, rect.right - width),
+            window.innerWidth - width - 16,
+          )
+        : rect.left;
 
       setSearchPanelLayout({
-        top: rect.bottom + 12,
+        top: rect.bottom + (compact ? 12 : 8),
         left,
         width,
+        compact,
       });
     };
 
@@ -1010,6 +984,36 @@ export function PtLayout() {
     navigate(result.href);
   };
 
+  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      setSearchOpen(false);
+      event.currentTarget.blur();
+      return;
+    }
+
+    if (!searchResults.length) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSearchHighlightIndex((current) =>
+        Math.min(current + 1, searchResults.length - 1),
+      );
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSearchHighlightIndex((current) => Math.max(current - 1, 0));
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const selected = searchResults[searchHighlightIndex] ?? searchResults[0];
+      if (selected) {
+        handleSearchSelect(selected);
+      }
+    }
+  };
+
   const userInitial = (
     profileDisplayName.charAt(0) ||
     user?.email?.charAt(0) ||
@@ -1031,51 +1035,23 @@ export function PtLayout() {
             }}
           >
             <div className="space-y-2">
-              <div className="relative w-full">
-                <Search className="app-search-icon h-3.5 w-3.5" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Search clients, programs, tags..."
-                  className="app-search-input"
-                  aria-label="Search workspace"
-                  value={searchInput}
-                  onChange={(event) => {
-                    setSearchInput(event.target.value);
-                    setSearchOpen(true);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") {
-                      setSearchOpen(false);
-                      return;
-                    }
-
-                    if (!searchResults.length) return;
-
-                    if (event.key === "ArrowDown") {
-                      event.preventDefault();
-                      setSearchHighlightIndex((current) =>
-                        Math.min(current + 1, searchResults.length - 1),
-                      );
-                    }
-
-                    if (event.key === "ArrowUp") {
-                      event.preventDefault();
-                      setSearchHighlightIndex((current) =>
-                        Math.max(current - 1, 0),
-                      );
-                    }
-
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      const selected =
-                        searchResults[searchHighlightIndex] ?? searchResults[0];
-                      if (selected) {
-                        handleSearchSelect(selected);
-                      }
-                    }
-                  }}
-                />
-              </div>
+              {searchPanelLayout.compact ? (
+                <div className="relative w-full">
+                  <Search className="app-search-icon h-3.5 w-3.5" />
+                  <Input
+                    ref={searchInputRef}
+                    placeholder="Search clients, programs, tags..."
+                    className="app-search-input"
+                    aria-label="Search workspace"
+                    value={searchInput}
+                    onChange={(event) => {
+                      setSearchInput(event.target.value);
+                      setSearchOpen(true);
+                    }}
+                    onKeyDown={handleSearchKeyDown}
+                  />
+                </div>
+              ) : null}
               {normalizedSearch.length > 0 ? (
                 <div className="overflow-hidden rounded-[24px] border border-border/65 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
                   {searchQuery.isLoading ? (
@@ -1197,16 +1173,14 @@ export function PtLayout() {
           mobileNavOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="surface-panel-strong flex h-full flex-col overflow-hidden rounded-[32px] border-border/70">
+        <div className="pt-workspace-rail surface-panel-strong flex h-full flex-col overflow-hidden rounded-[32px] border-border/70">
           <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
-            <div>
-              <p className="text-xl font-semibold uppercase tracking-[0.06em] text-foreground">
-                Repsync PT
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Coaching workspace
-              </p>
-            </div>
+            <p
+              aria-label="RepSync"
+              className="text-xs font-semibold uppercase tracking-[0.46em] text-foreground"
+            >
+              R E P S Y N C
+            </p>
             <Button
               variant="ghost"
               size="icon"
@@ -1235,17 +1209,17 @@ export function PtLayout() {
         <div
           className={cn(
             "lg:h-full",
-            desktopNavCollapsed ? "lg:pl-[136px]" : "lg:pl-[328px]",
+            desktopNavCollapsed ? "lg:pl-[104px]" : "lg:pl-[276px]",
           )}
         >
           <aside
             className={cn(
-              "hidden lg:fixed lg:bottom-[72px] lg:left-0 lg:top-0 lg:z-30 lg:block lg:p-3",
-              desktopNavCollapsed ? "lg:w-[128px]" : "lg:w-[320px]",
+              "hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block",
+              desktopNavCollapsed ? "lg:w-[96px]" : "lg:w-[268px]",
             )}
           >
             <div className="h-full min-h-0">
-              <div className="surface-panel-strong h-full min-h-0 overflow-hidden rounded-[34px] border-border/70">
+              <div className="pt-workspace-rail pt-workspace-rail-desktop surface-panel-strong h-full min-h-0 overflow-hidden border-border/70">
                 <div className="flex h-full min-h-0 flex-col px-4 py-5">
                   <div
                     className={cn(
@@ -1263,11 +1237,11 @@ export function PtLayout() {
                     >
                       {!desktopNavCollapsed ? (
                         <div className="min-w-0">
-                          <p className="text-[1.1rem] font-semibold uppercase tracking-[0.05em] text-foreground">
-                            Repsync PT
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Coaching workspace
+                          <p
+                            aria-label="RepSync"
+                            className="text-xs font-semibold uppercase tracking-[0.46em] text-foreground"
+                          >
+                            R E P S Y N C
                           </p>
                         </div>
                       ) : null}
@@ -1276,8 +1250,8 @@ export function PtLayout() {
                       <Button
                         type="button"
                         size="icon"
-                        variant="secondary"
-                        className="rounded-full border border-border/70 bg-card/68"
+                        variant="ghost"
+                        className="rounded-full border-0 bg-transparent shadow-none hover:bg-secondary/60"
                         onClick={() => setDesktopNavCollapsed(true)}
                         aria-label="Collapse navigation"
                       >
@@ -1290,8 +1264,8 @@ export function PtLayout() {
                       <Button
                         type="button"
                         size="icon"
-                        variant="secondary"
-                        className="rounded-full border border-border/70 bg-card/68"
+                        variant="ghost"
+                        className="rounded-full border-0 bg-transparent shadow-none hover:bg-secondary/60"
                         onClick={() => setDesktopNavCollapsed(false)}
                         aria-label="Expand navigation"
                       >
@@ -1312,248 +1286,207 @@ export function PtLayout() {
           <PtMessageComposeProvider>
             <WorkspaceHeaderModeProvider value="shell">
               <div className="min-w-0 space-y-5 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
-                <header
-                  className={cn(
-                    "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 transition-[padding,transform,box-shadow] duration-200 sm:px-5 lg:sticky lg:top-0 lg:z-20 lg:px-6",
-                    "py-3",
-                    isLightMode
-                      ? "shadow-[0_28px_76px_-56px_oklch(0.28_0.02_190/0.14)]"
-                      : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
-                  )}
-                >
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.16),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.12),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--chart-2)/0.06))]" />
-                  <div
-                    className={cn(
-                      "pointer-events-none absolute inset-x-6 top-0 h-px",
-                      isLightMode
-                        ? "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.32),transparent)]"
-                        : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.24),transparent)]",
-                    )}
-                  />
-                  <div className="relative">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="lg:hidden"
-                          onClick={() => setMobileNavOpen(true)}
-                        >
-                          <Menu className="h-5 w-5 [stroke-width:1.7]" />
-                          <span className="sr-only">Open PT navigation</span>
-                        </Button>
-                        <div
-                          className={cn(
-                            "min-w-0 transition-[gap] duration-200",
-                            "space-y-1",
-                          )}
-                        >
-                          <p
-                            className={cn(
-                              "font-semibold uppercase tracking-[0.06em] text-foreground transition-[font-size,line-height] duration-200",
-                              isExerciseLibraryPage
-                                ? "whitespace-normal break-words text-[1.55rem] leading-tight sm:truncate sm:text-[1.86rem]"
-                                : "truncate",
-                              !isExerciseLibraryPage &&
-                                "text-[1.58rem] leading-none sm:text-[1.86rem]",
-                              currentModuleClasses.title,
-                            )}
-                          >
-                            {pageHeader.title}
-                          </p>
-                          {pageHeader.description ? (
-                            <p
-                              className={cn(
-                                "max-w-3xl text-muted-foreground transition-[font-size,line-height,opacity] duration-200",
-                                "text-[12px] leading-4 opacity-80",
-                              )}
-                            >
-                              {pageHeader.description}
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
+                <div className="pt-workspace-shell-utilities grid min-h-[48px] grid-cols-[auto_minmax(0,1fr)] items-center gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(320px,480px)_minmax(0,1fr)]">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 rounded-[12px] border border-border/60 bg-background/45 lg:hidden"
+                    onClick={() => setMobileNavOpen(true)}
+                  >
+                    <Menu className="h-5 w-5 [stroke-width:1.7]" />
+                    <span className="sr-only">Open PT navigation</span>
+                  </Button>
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="relative">
-                          <Button
-                            ref={searchTriggerRef}
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className={getHeaderBellButtonClassName(
-                              isLightMode,
-                            )}
-                            aria-expanded={searchOpen}
-                            aria-controls="pt-workspace-search-panel"
-                            aria-label="Open workspace search"
-                            title="Search"
-                            onClick={() => {
-                              setSearchOpen((current) => !current);
-                              if (!searchOpen) {
-                                setSearchHighlightIndex(0);
-                              }
-                            }}
-                          >
-                            <Search className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                            <span className="sr-only">Search</span>
-                          </Button>
-                        </div>
-
-                        <NotificationBell
-                          viewAllHref="/pt/notifications"
-                          buttonClassName={getHeaderBellButtonClassName(
-                            isLightMode,
-                          )}
-                          iconClassName="h-4 w-4"
-                        />
-
-                        <InviteClientDialog
-                          trigger={
-                            <Button
-                              className={getHeaderUtilityButtonClassName(
-                                isLightMode,
-                              )}
-                              variant="ghost"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                              Invite client
-                            </Button>
-                          }
-                        />
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              className={getHeaderPillClassName(isLightMode)}
-                              aria-label="Workspace menu"
-                            >
-                              <div
-                                className={getHeaderPillIconClassName(
-                                  isLightMode,
-                                )}
-                              >
-                                <Building2 className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                              </div>
-                              <div className="min-w-0 flex-1 text-left">
-                                <p className="max-w-[118px] truncate text-[0.84rem] font-medium text-foreground">
-                                  {workspaceDisplayName}
-                                </p>
-                              </div>
-                              <span
-                                className={getHeaderPillChevronClassName(
-                                  isLightMode,
-                                )}
-                              >
-                                <ChevronDown className="h-3 w-3 [stroke-width:1.9]" />
-                              </span>
-                            </button>
-                          </DropdownMenuTrigger>
-                          <WorkspaceSwitcherMenu
-                            label="Active workspace"
-                            hubLabel="Repsync PT Hub"
-                            hubMeta="Business and admin workspace"
-                            hubActive={false}
-                            onSelectHub={() => navigate("/pt-hub")}
-                            workspaces={workspaceSwitcherItems}
-                            currentWorkspaceId={headerWorkspaceId}
-                            onSelectWorkspace={(selectedWorkspace) => {
-                              switchWorkspace(selectedWorkspace.id);
-                              navigate(
-                                routes.workspaceOverview(
-                                  selectedWorkspace.slug,
-                                ),
-                              );
-                            }}
-                            loading={workspaceSwitcherQuery.isLoading}
-                            loadingLabel="Loading workspaces..."
-                            emptyLabel="No workspaces found"
-                            createLabel="Create workspace"
-                            createMeta="Start a new coaching workspace"
-                            onCreateWorkspace={() => {
-                              setCreateWorkspaceError(null);
-                              setCreateWorkspaceOpen(true);
-                            }}
-                          />
-                        </DropdownMenu>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              className={getHeaderPillClassName(isLightMode)}
-                              aria-label="Profile menu"
-                            >
-                              <div
-                                className={getHeaderPillIconClassName(
-                                  isLightMode,
-                                )}
-                              >
-                                {userInitial}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="max-w-[118px] truncate text-[0.84rem] font-medium text-foreground">
-                                  {profileDisplayName}
-                                </p>
-                              </div>
-                              <span
-                                className={getHeaderPillChevronClassName(
-                                  isLightMode,
-                                )}
-                              >
-                                <ChevronDown className="h-3 w-3 [stroke-width:1.9]" />
-                              </span>
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            variant="menu"
-                            align="end"
-                            sideOffset={10}
-                            className="w-56"
-                          >
-                            <DropdownMenuLabel>Profile</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => navigate(workspaceSettingsPath)}
-                            >
-                              <span className="app-dropdown-icon-badge">
-                                <Settings className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
-                              </span>
-                              Settings
-                            </DropdownMenuItem>
-                            <div className="app-dropdown-utility-row">
-                              <div className="flex min-w-0 items-center gap-3">
-                                <span className="app-dropdown-icon-badge">
-                                  <Moon className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
-                                </span>
-                                <span className="text-sm font-medium text-foreground">
-                                  Theme
-                                </span>
-                              </div>
-                              <span className="shrink-0">
-                                <ThemeModeSwitch
-                                  mode={resolvedTheme}
-                                  onToggle={toggleTheme}
-                                />
-                              </span>
-                            </div>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              disabled={isSigningOut}
-                              onClick={signOut}
-                            >
-                              <span className="app-dropdown-icon-badge">
-                                <LogOut className="h-4 w-4 text-[var(--state-danger-text)] [stroke-width:1.7]" />
-                              </span>
-                              {isSigningOut ? "Signing out..." : "Sign out"}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                  <div className="hidden w-full xl:col-start-2 xl:block">
+                    <div className="app-search-shell w-full">
+                      <Search className="app-search-icon h-4 w-4 text-primary [stroke-width:1.8]" />
+                      <Input
+                        ref={searchInlineInputRef}
+                        type="search"
+                        className="app-search-input h-10 w-full rounded-[13px]"
+                        placeholder="Search clients, programs, tags..."
+                        value={searchInput}
+                        onFocus={() => {
+                          setSearchOpen(true);
+                          setSearchHighlightIndex(0);
+                        }}
+                        onChange={(event) => {
+                          setSearchInput(event.target.value);
+                          setSearchOpen(true);
+                        }}
+                        onKeyDown={handleSearchKeyDown}
+                        aria-expanded={searchOpen}
+                        aria-controls="pt-workspace-search-panel"
+                        aria-label="Search workspace"
+                      />
                     </div>
                   </div>
-                </header>
+
+                  <div className="pt-workspace-header-action-cluster col-start-2 row-start-1 ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1 rounded-[16px] bg-background/60 p-1 shadow-[var(--surface-shadow)] xl:col-start-3 xl:flex-nowrap">
+                    <div className="relative xl:hidden">
+                      <Button
+                        ref={searchCompactTriggerRef}
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={getHeaderBellButtonClassName(isLightMode)}
+                        aria-expanded={searchOpen}
+                        aria-controls="pt-workspace-search-panel"
+                        aria-label="Open workspace search"
+                        title="Search"
+                        onClick={() => {
+                          setSearchOpen((current) => !current);
+                          if (!searchOpen) {
+                            setSearchHighlightIndex(0);
+                          }
+                        }}
+                      >
+                        <Search className="h-3.5 w-3.5 [stroke-width:1.8]" />
+                        <span className="sr-only">Search</span>
+                      </Button>
+                    </div>
+
+                    <NotificationBell
+                      viewAllHref="/pt/notifications"
+                      buttonClassName={getHeaderBellButtonClassName(
+                        isLightMode,
+                      )}
+                      iconClassName="h-4 w-4"
+                    />
+
+                    <InviteClientDialog
+                      trigger={
+                        <Button
+                          className={getHeaderUtilityButtonClassName(
+                            isLightMode,
+                          )}
+                          variant="ghost"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Invite client
+                        </Button>
+                      }
+                    />
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className={getHeaderPillClassName(isLightMode)}
+                          aria-label="Workspace menu"
+                        >
+                          <div className="min-w-0 flex-1 text-left">
+                            <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                              {workspaceDisplayName}
+                            </p>
+                          </div>
+                          <span
+                            className={getHeaderPillChevronClassName(
+                              isLightMode,
+                            )}
+                          >
+                            <ChevronDown className="h-3 w-3 [stroke-width:1.9]" />
+                          </span>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <WorkspaceSwitcherMenu
+                        label="Active workspace"
+                        hubLabel="Repsync PT Hub"
+                        hubMeta="Business and admin workspace"
+                        hubActive={false}
+                        onSelectHub={() => navigate("/pt-hub")}
+                        workspaces={workspaceSwitcherItems}
+                        currentWorkspaceId={headerWorkspaceId}
+                        onSelectWorkspace={(selectedWorkspace) => {
+                          switchWorkspace(selectedWorkspace.id);
+                          navigate(
+                            routes.workspaceOverview(selectedWorkspace.slug),
+                          );
+                        }}
+                        loading={workspaceSwitcherQuery.isLoading}
+                        loadingLabel="Loading workspaces..."
+                        emptyLabel="No workspaces found"
+                        createLabel="Create workspace"
+                        createMeta="Start a new coaching workspace"
+                        onCreateWorkspace={() => {
+                          setCreateWorkspaceError(null);
+                          setCreateWorkspaceOpen(true);
+                        }}
+                      />
+                    </DropdownMenu>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className={getHeaderPillClassName(isLightMode)}
+                          aria-label="Profile menu"
+                        >
+                          <div
+                            className={getHeaderPillIconClassName(isLightMode)}
+                          >
+                            {userInitial}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
+                              {profileDisplayName}
+                            </p>
+                          </div>
+                          <span
+                            className={getHeaderPillChevronClassName(
+                              isLightMode,
+                            )}
+                          >
+                            <ChevronDown className="h-3 w-3 [stroke-width:1.9]" />
+                          </span>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        variant="menu"
+                        align="end"
+                        sideOffset={10}
+                        className="w-56"
+                      >
+                        <DropdownMenuLabel>Profile</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => navigate(workspaceSettingsPath)}
+                        >
+                          <span className="app-dropdown-icon-badge">
+                            <Settings className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
+                          </span>
+                          Settings
+                        </DropdownMenuItem>
+                        <div className="app-dropdown-utility-row">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span className="app-dropdown-icon-badge">
+                              <Moon className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
+                            </span>
+                            <span className="text-sm font-medium text-foreground">
+                              Theme
+                            </span>
+                          </div>
+                          <span className="shrink-0">
+                            <ThemeModeSwitch
+                              mode={resolvedTheme}
+                              onToggle={toggleTheme}
+                            />
+                          </span>
+                        </div>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          disabled={isSigningOut}
+                          onClick={signOut}
+                        >
+                          <span className="app-dropdown-icon-badge">
+                            <LogOut className="h-4 w-4 text-[var(--state-danger-text)] [stroke-width:1.7]" />
+                          </span>
+                          {isSigningOut ? "Signing out..." : "Sign out"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
 
                 <main
                   ref={mainScrollRef}

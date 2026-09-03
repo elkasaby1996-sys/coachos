@@ -13,6 +13,26 @@
   letter-spacing: 0.03em;
 }
 
+.pt-workspace-theme .pt-workspace-rail {
+  border-color: oklch(var(--border-default) / 0.72);
+  background: oklch(var(--bg-surface) / 0.94);
+}
+
+.pt-workspace-theme.pt-workspace-theme-light .pt-workspace-rail {
+  background: oklch(var(--bg-surface-elevated) / 0.975);
+}
+
+.pt-workspace-theme .pt-workspace-rail-desktop {
+  border-width: 0 1px 0 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.pt-workspace-theme .pt-workspace-rail-desktop::before,
+.pt-workspace-theme .pt-workspace-rail-desktop::after {
+  display: none;
+}
+
 .pt-workspace-theme.pt-workspace-theme-light .theme-shell-canvas::before {
   content: "";
   position: absolute;

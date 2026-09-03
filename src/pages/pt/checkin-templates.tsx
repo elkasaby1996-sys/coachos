@@ -3,12 +3,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   Copy,
-  GripVertical,
-  LayoutTemplate,
   Lock,
   Plus,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -382,10 +380,6 @@ export function PtCheckinTemplatesPage() {
           ? "Save template"
           : "Create template";
 
-  const activeTemplateCount = templateRows.filter(
-    (template) => template.is_active !== false,
-  ).length;
-
   const updateEditor = (
     updater: (current: TemplateEditorState) => TemplateEditorState,
   ) => {
@@ -707,63 +701,8 @@ export function PtCheckinTemplatesPage() {
         }
       />
 
-      <div className="page-kpi-block grid gap-4 sm:grid-cols-3">
-        <DashboardCard title="Templates" subtitle="Workspace library">
-          {workspaceLoading || templatesQuery.isLoading ? (
-            <Skeleton className="h-10 w-full" />
-          ) : (
-            <div className="space-y-1">
-              <p className="text-2xl font-semibold text-foreground">
-                {templateRows.length}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {activeTemplateCount} active,{" "}
-                {templateRows.length - activeTemplateCount} inactive
-              </p>
-            </div>
-          )}
-        </DashboardCard>
-
-        <DashboardCard title="Assignments" subtitle="Explicit client overrides">
-          {clientAssignmentsQuery.isLoading ? (
-            <Skeleton className="h-10 w-full" />
-          ) : (
-            <div className="space-y-1">
-              <p className="text-2xl font-semibold text-foreground">
-                {
-                  (clientAssignmentsQuery.data ?? []).filter(
-                    (client) => !!client.checkin_template_id,
-                  ).length
-                }
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Workspace default stays separate from direct overrides.
-              </p>
-            </div>
-          )}
-        </DashboardCard>
-
-        <DashboardCard
-          title="Submission Safety"
-          subtitle="Historical protection"
-        >
-          <div className="space-y-1">
-            <p className="text-2xl font-semibold text-foreground">
-              {checkinUsageQuery.data?.filter((row) => !!row.submitted_at)
-                .length ?? 0}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Submitted check-ins now keep their original question structure.
-            </p>
-          </div>
-        </DashboardCard>
-      </div>
-
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <DashboardCard
-          title="Template Library"
-          subtitle="Active and archived templates in this workspace."
-        >
+        <DashboardCard title="Template Library">
           {workspaceError ? (
             <EmptyState
               title="Workspace unavailable"
@@ -785,7 +724,6 @@ export function PtCheckinTemplatesPage() {
           ) : (
             <div className="space-y-3">
               {templateRows.map((template) => {
-                const usage = usageByTemplateId.get(template.id);
                 const isSelected = template.id === selectedTemplateId;
                 return (
                   <button
@@ -818,31 +756,6 @@ export function PtCheckinTemplatesPage() {
                         }
                         statusMap={templateStatusMap}
                       />
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {usage?.isWorkspaceDefault ? (
-                        <Badge variant="secondary">Workspace default</Badge>
-                      ) : null}
-                      {usage?.assignedClientCount ? (
-                        <Badge variant="warning">
-                          {usage.assignedClientCount} client override
-                          {usage.assignedClientCount === 1 ? "" : "s"}
-                        </Badge>
-                      ) : null}
-                      {usage?.submittedCheckinCount ? (
-                        <Badge variant="success">
-                          {usage.submittedCheckinCount} submitted
-                        </Badge>
-                      ) : null}
-                      {usage?.totalCheckinCount &&
-                      usage.totalCheckinCount > usage.submittedCheckinCount ? (
-                        <Badge variant="muted">
-                          {usage.totalCheckinCount -
-                            usage.submittedCheckinCount}{" "}
-                          scheduled
-                        </Badge>
-                      ) : null}
                     </div>
                   </button>
                 );
@@ -893,7 +806,7 @@ export function PtCheckinTemplatesPage() {
             ) : null}
 
             <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-              <div className="space-y-4 rounded-[24px] border border-border/70 bg-background/40 p-5">
+              <div className="space-y-4 rounded-[24px] bg-background/40 p-5">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Template name
@@ -1039,9 +952,6 @@ export function PtCheckinTemplatesPage() {
               ) : (
                 <div className="space-y-4">
                   {editor.questions.map((question, index) => {
-                    const typeConfig = checkinQuestionTypeOptions.find(
-                      (option) => option.value === question.type,
-                    );
                     const isChoice = question.type === "choice";
                     const isYesNo = question.type === "yes_no";
 
@@ -1051,20 +961,9 @@ export function PtCheckinTemplatesPage() {
                         className="rounded-[24px] border border-border/70 bg-background/45 p-5 shadow-[0_20px_55px_-40px_rgba(15,23,42,0.75)]"
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <div className="rounded-full border border-border/70 bg-muted/50 p-2 text-muted-foreground">
-                              <GripVertical className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">
-                                Question {index + 1}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {typeConfig?.description ??
-                                  "Configure the prompt and how clients answer it."}
-                              </p>
-                            </div>
-                          </div>
+                          <p className="text-sm font-semibold text-foreground">
+                            Question {index + 1}
+                          </p>
 
                           <div className="flex flex-wrap items-center gap-2">
                             <StatusPill
@@ -1185,32 +1084,41 @@ export function PtCheckinTemplatesPage() {
                               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                                 Question type
                               </label>
-                              <select
-                                className="h-10 w-full app-field px-3 text-sm"
-                                value={question.type}
-                                onChange={(event) =>
-                                  setQuestionDraft(question.id, (current) => ({
-                                    ...current,
-                                    type: event.target
-                                      .value as SupportedCheckinQuestionType,
-                                    options:
-                                      event.target.value === "choice"
-                                        ? current.options.length > 0
-                                          ? current.options
-                                          : ["", ""]
-                                        : current.options,
-                                  }))
-                                }
-                              >
-                                {checkinQuestionTypeOptions.map((option) => (
-                                  <option
-                                    key={option.value}
-                                    value={option.value}
-                                  >
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
+                              <div className="relative">
+                                <select
+                                  className="h-10 w-full appearance-none app-field px-3 pr-10 text-sm"
+                                  value={question.type}
+                                  onChange={(event) =>
+                                    setQuestionDraft(
+                                      question.id,
+                                      (current) => ({
+                                        ...current,
+                                        type: event.target
+                                          .value as SupportedCheckinQuestionType,
+                                        options:
+                                          event.target.value === "choice"
+                                            ? current.options.length > 0
+                                              ? current.options
+                                              : ["", ""]
+                                            : current.options,
+                                      }),
+                                    )
+                                  }
+                                >
+                                  {checkinQuestionTypeOptions.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <ChevronDown
+                                  aria-hidden="true"
+                                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                                />
+                              </div>
                             </div>
 
                             <div className="flex items-start justify-between gap-4 rounded-xl border border-border/60 bg-background/70 px-3 py-3">
@@ -1332,13 +1240,24 @@ export function PtCheckinTemplatesPage() {
                               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                                 Client preview
                               </p>
-                              <div className="mt-3 flex flex-wrap gap-2">
+                              <div
+                                className={cn(
+                                  "mt-3",
+                                  question.type === "scale"
+                                    ? "grid grid-cols-10 gap-1"
+                                    : "flex flex-wrap gap-2",
+                                )}
+                              >
                                 {question.type === "scale" ? (
                                   Array.from(
                                     { length: 10 },
                                     (_, score) => score + 1,
                                   ).map((score) => (
-                                    <Badge key={score} variant="muted">
+                                    <Badge
+                                      key={score}
+                                      variant="muted"
+                                      className="min-w-0 justify-center px-0 tracking-normal"
+                                    >
                                       {score}
                                     </Badge>
                                   ))
@@ -1372,32 +1291,22 @@ export function PtCheckinTemplatesPage() {
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.96),oklch(var(--card)/0.9))] px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full border border-border/70 bg-accent/10 p-2 text-accent">
-                  {selectedTemplate && structuralEditsLocked ? (
-                    <Lock className="h-4 w-4" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    {selectedTemplate && structuralEditsLocked
-                      ? "Question edits create a new version"
-                      : "Ready to publish this template"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedTemplate && structuralEditsLocked
-                      ? "The current version stays attached to existing scheduled and submitted check-ins."
-                      : "Once saved, this template can be assigned from the client detail screen or set as a workspace default."}
-                  </p>
-                </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {selectedTemplate && structuralEditsLocked
+                    ? "Question edits create a new version"
+                    : "Ready to publish this template"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedTemplate && structuralEditsLocked
+                    ? "The current version stays attached to existing scheduled and submitted check-ins."
+                    : "Once saved, this template can be assigned from the client detail screen or set as a workspace default."}
+                </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 {canManageDelivery ? (
                   <Button variant="secondary" onClick={handleStartNewTemplate}>
-                    <LayoutTemplate className="mr-2 h-4 w-4" />
                     Start fresh
                   </Button>
                 ) : null}

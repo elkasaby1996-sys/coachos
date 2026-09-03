@@ -33,7 +33,7 @@ describe("form save dirty-state consistency", () => {
 
   it("keeps check-in template save payloads intact while removing the duplicate header save button", () => {
     const headerSource = checkinTemplatesSource.match(
-      /<WorkspacePageHeader[\s\S]*?\/>\n\n {6}<div className="page-kpi-block/,
+      /<WorkspacePageHeader[\s\S]*?\/>\n\n {6}<div className="grid gap-6/,
     )?.[0];
 
     expect(checkinTemplatesSource).toContain('.from("checkin_templates")');
@@ -42,6 +42,7 @@ describe("form save dirty-state consistency", () => {
       "saveQuestions(createdTemplate.id",
     );
     expect(checkinTemplatesSource).toContain("saveQuestions(clonedTemplate.id");
+    expect(headerSource).toBeDefined();
     expect(headerSource).not.toContain("onClick={handleSaveTemplate}");
   });
 

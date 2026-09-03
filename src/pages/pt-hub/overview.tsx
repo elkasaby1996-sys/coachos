@@ -16,7 +16,6 @@ import {
   PtHubOverviewErrorState,
   PtHubOverviewLoadingState,
   PtHubRecentActivityCard,
-  PtHubSetupNoticeStrip,
   PtHubSummaryCard,
 } from "../../features/pt-hub/components/pt-hub-overview-sections";
 import {
@@ -196,12 +195,6 @@ export function PtHubOverviewPage() {
       data-density="roomy"
       data-testid="pt-hub-page"
     >
-      {showBusinessSetup ? (
-        <PtHubSetupNoticeStrip
-          completionPercent={dashboardModel.setupCompletionPercent}
-        />
-      ) : null}
-
       <div
         className={cn("pt-hub-kpi-ledger pt-hub-kpi-grid", metricGridClassName)}
         data-columns={dashboardModel.metrics.length === 4 ? "4" : undefined}
@@ -272,8 +265,7 @@ export function PtHubOverviewPage() {
           <div id={businessSetupToggleId}>
             <PtHubLaunchChecklistCard
               module="profile"
-              title="Launch checklist"
-              description="Top setup blockers only."
+              title="Profile Checklist"
               items={dashboardModel.launchChecklist}
               completionPercent={dashboardModel.setupCompletionPercent}
               collapsed={businessSetupCollapsed}
@@ -289,8 +281,8 @@ export function PtHubOverviewPage() {
                 >
                   <span className="sr-only">
                     {businessSetupCollapsed
-                      ? "Expand launch checklist"
-                      : "Collapse launch checklist"}
+                      ? "Expand profile checklist"
+                      : "Collapse profile checklist"}
                   </span>
                   <span aria-hidden>
                     {businessSetupCollapsed ? "Show" : "Hide"}

@@ -320,31 +320,6 @@ function PtHubActivationChecklist({
   );
 }
 
-export function PtHubSetupNoticeStrip({
-  completionPercent,
-}: {
-  completionPercent: number;
-}) {
-  return (
-    <div className="surface-panel pt-hub-setup-notice pt-hub-surface-quiet relative overflow-hidden rounded-[22px] border border-border/60 px-4 py-3 shadow-[0_12px_34px_-30px_oklch(var(--accent)/0.3)] sm:px-5">
-      <div className="relative flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-          <Badge
-            variant="warning"
-            className="h-7 px-2.5 text-[11px] normal-case tracking-normal"
-          >
-            Setup not finished
-          </Badge>
-          <p className="pt-hub-meta-text text-sm leading-6">
-            {completionPercent}% ready. Finish the launch checklist below before
-            publishing your coach page.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function PtHubActionCenterRow({
   item,
   onClick,
@@ -748,11 +723,6 @@ export function PtHubLaunchChecklistCard({
   const completedItems = items.filter((item) => item.complete);
   const visibleItems =
     blockers.length > 0 ? blockers.slice(0, 3) : completedItems.slice(0, 3);
-  const hiddenBlockerCount = Math.max(blockers.length - visibleItems.length, 0);
-  const checklistSummary =
-    blockers.length > 0
-      ? `${Math.min(blockers.length, 3)} blocker${Math.min(blockers.length, 3) === 1 ? "" : "s"} shown`
-      : "Launch basics complete";
 
   return (
     <PtHubSectionCard
@@ -765,17 +735,18 @@ export function PtHubLaunchChecklistCard({
     >
       {!collapsed ? (
         <div className="space-y-3">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3 text-[0.78rem] font-semibold text-muted-foreground">
-              <span>{checklistSummary}</span>
-              <span className="tabular-nums">{completionPercent}% ready</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted/55">
-              <div
-                className="h-full rounded-full bg-primary/70 transition-[width]"
-                style={{ width: `${completionPercent}%` }}
-              />
-            </div>
+          <div
+            className="h-1.5 overflow-hidden rounded-full bg-muted/55"
+            role="progressbar"
+            aria-label={`${title} completion`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={completionPercent}
+          >
+            <div
+              className="h-full rounded-full bg-primary/70 transition-[width]"
+              style={{ width: `${completionPercent}%` }}
+            />
           </div>
 
           <div className="divide-y divide-border/55">
@@ -810,12 +781,6 @@ export function PtHubLaunchChecklistCard({
               </div>
             ))}
           </div>
-          {hiddenBlockerCount > 0 ? (
-            <p className="pt-hub-meta-text text-xs">
-              {hiddenBlockerCount} more blocker
-              {hiddenBlockerCount === 1 ? "" : "s"} in the profile editor.
-            </p>
-          ) : null}
         </div>
       ) : null}
     </PtHubSectionCard>

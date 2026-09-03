@@ -37,7 +37,7 @@ export function DashboardCard({
       }
     >
       <SurfaceCard className={cn(className)}>
-        <SurfaceCardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/55 py-1 sm:py-1">
+        <SurfaceCardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/55 py-2.5 sm:py-3">
           <div>
             <SurfaceCardTitle className="text-base">{title}</SurfaceCardTitle>
             {subtitle ? (

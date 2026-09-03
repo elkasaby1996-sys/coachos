@@ -57,9 +57,11 @@ export function NotificationPanel({
       <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-foreground">Notifications</p>
-          <p className="text-xs text-muted-foreground">
-            {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
-          </p>
+          {unreadCount > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {unreadCount} unread
+            </p>
+          ) : null}
         </div>
         <Button
           variant="ghost"

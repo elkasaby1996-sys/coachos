@@ -34,6 +34,13 @@ const bellSource = readSource(
   "components",
   "notification-bell.tsx",
 );
+const panelSource = readSource(
+  "src",
+  "features",
+  "notifications",
+  "components",
+  "notification-panel.tsx",
+);
 const appRoutes = readSource("src", "routes", "app.tsx");
 const ptHubLayout = readSource(
   "src",
@@ -108,5 +115,7 @@ describe("delivery-backed notification center contract", () => {
     expect(bellSource).toContain("useUnreadNotificationCount");
     expect(bellSource).toContain("99+");
     expect(bellSource).toContain("onNotificationClick");
+    expect(panelSource).toContain("unreadCount > 0");
+    expect(panelSource).not.toContain("You're all caught up");
   });
 });
