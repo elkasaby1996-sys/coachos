@@ -1204,6 +1204,7 @@ export function ClientMessagesPage() {
                 <div className="flex items-center gap-2">
                   {canHideSelectedThread ? (
                     <Button
+                      tone="danger"
                       size="sm"
                       variant="ghost"
                       className="text-muted-foreground hover:text-destructive"
@@ -1583,6 +1584,7 @@ export function ClientMessagesPage() {
               </Button>
             </AlertDialogCancel>
             <Button
+              tone="danger"
               variant="secondary"
               className="text-destructive hover:text-destructive"
               onClick={hideConversation}

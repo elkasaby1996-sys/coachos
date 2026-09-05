@@ -40,7 +40,7 @@ function FirstClientGuidanceActions({
 }) {
   return (
     <div className="grid w-full max-w-3xl gap-3 text-left sm:grid-cols-2">
-      <div className="rounded-[20px] border border-border/60 bg-background/34 px-4 py-4">
+      <div className="ui-panel border border-border/60 px-4 py-4">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-success/22 bg-success/10 text-success">
             <UserPlus className="h-4 w-4 [stroke-width:1.8]" />
@@ -64,7 +64,7 @@ function FirstClientGuidanceActions({
         </div>
       </div>
 
-      <div className="rounded-[20px] border border-border/60 bg-background/34 px-4 py-4">
+      <div className="ui-panel border border-border/60 px-4 py-4">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/22 bg-primary/10 text-primary">
             <Globe2 className="h-4 w-4 [stroke-width:1.8]" />
@@ -343,7 +343,10 @@ export function PtHubClientsPage() {
         {isTableLoading ? (
           <div className="pt-hub-data-shell space-y-3 p-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 w-full rounded-[24px]" />
+              <Skeleton
+                key={index}
+                className="h-24 w-full rounded-[var(--ui-radius-card)]"
+              />
             ))}
           </div>
         ) : isEmpty ? (

@@ -43,7 +43,7 @@ function RouteNotFound({ title }: { title: string }) {
         <EmptyState
           title={title}
           centered
-          className="w-full rounded-[32px] border border-border/70 bg-card/82 px-8 py-9 shadow-[0_30px_90px_-64px_oklch(var(--primary)/0.45)] backdrop-blur-2xl"
+          className="w-full rounded-[var(--ui-radius-card)] border border-border/70 bg-card/82 px-8 py-9 shadow-[0_30px_90px_-64px_oklch(var(--primary)/0.45)] backdrop-blur-2xl"
           description="The link may be outdated, or you may not have access to this workspace yet."
           action={
             <>

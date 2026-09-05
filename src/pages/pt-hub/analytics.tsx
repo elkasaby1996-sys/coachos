@@ -111,7 +111,7 @@ function AnalyticsLoadingState() {
   return (
     <section className="space-y-4">
       <div className="space-y-3">
-        <Skeleton className="h-28 w-full rounded-[30px]" />
+        <Skeleton className="h-28 w-full rounded-[var(--ui-radius-card)]" />
         <Skeleton className="ml-auto h-12 w-[15rem] rounded-full" />
       </div>
 
@@ -120,7 +120,7 @@ function AnalyticsLoadingState() {
           {Array.from({ length: 2 }).map((_, index) => (
             <Skeleton
               key={`loading-kpi-left-${index}`}
-              className="h-[172px] w-full rounded-[28px]"
+              className="h-[172px] w-full rounded-[var(--ui-radius-card)]"
             />
           ))}
         </div>
@@ -128,20 +128,20 @@ function AnalyticsLoadingState() {
           {Array.from({ length: 2 }).map((_, index) => (
             <Skeleton
               key={`loading-kpi-right-${index}`}
-              className="h-[172px] w-full rounded-[28px]"
+              className="h-[172px] w-full rounded-[var(--ui-radius-card)]"
             />
           ))}
         </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-        <Skeleton className="h-[22rem] w-full rounded-[30px]" />
-        <Skeleton className="h-[22rem] w-full rounded-[30px]" />
+        <Skeleton className="h-[22rem] w-full rounded-[var(--ui-radius-card)]" />
+        <Skeleton className="h-[22rem] w-full rounded-[var(--ui-radius-card)]" />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-        <Skeleton className="h-[20rem] w-full rounded-[30px]" />
-        <Skeleton className="h-[20rem] w-full rounded-[30px]" />
+        <Skeleton className="h-[20rem] w-full rounded-[var(--ui-radius-card)]" />
+        <Skeleton className="h-[20rem] w-full rounded-[var(--ui-radius-card)]" />
       </div>
     </section>
   );
@@ -203,7 +203,7 @@ function RankedQualityRow({
       type="button"
       onClick={onClick}
       className={cn(
-        "pt-hub-interactive grid w-full gap-4 rounded-[22px] border px-4 py-3.5 text-left transition-colors lg:grid-cols-[56px_minmax(0,1.15fr)_84px_128px_128px]",
+        "pt-hub-interactive grid w-full gap-4 rounded-[var(--ui-radius-card)] border px-4 py-3.5 text-left transition-colors lg:grid-cols-[56px_minmax(0,1.15fr)_84px_128px_128px]",
         selected
           ? "border-primary/32 bg-primary/8"
           : "border-transparent bg-background/28 hover:border-primary/20 hover:bg-background/44",
@@ -276,7 +276,7 @@ function SpeedMetric({
   return (
     <div
       className={cn(
-        "rounded-[22px] border p-4",
+        "kpi-card kpi-card-content border p-4",
         tone === "neutral"
           ? "border-border/60 bg-background/30"
           : getSemanticToneClasses(tone).surface,
@@ -284,10 +284,8 @@ function SpeedMetric({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1.5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {label}
-          </p>
-          <p className="text-xl font-semibold tracking-tight text-foreground">
+          <p className="kpi-label text-muted-foreground">{label}</p>
+          <p className="kpi-value text-xl font-semibold tracking-tight text-foreground">
             {value}
           </p>
         </div>
@@ -325,14 +323,12 @@ function AnalysisMetricCard({
     <button
       type="button"
       onClick={onClick}
-      className="group rounded-[22px] border border-border/60 bg-background/28 p-4 text-left transition-colors hover:border-primary/24 hover:bg-background/42 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+      className="kpi-card kpi-card-content group border border-border/60 bg-background/28 p-4 text-left transition-colors hover:border-primary/24 hover:bg-background/42 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {label}
-          </p>
-          <p className="mt-2 truncate text-xl font-semibold tracking-tight text-foreground">
+          <p className="kpi-label text-muted-foreground">{label}</p>
+          <p className="mt-2 truncate kpi-value text-xl font-semibold tracking-tight text-foreground">
             {kpi.value}
           </p>
         </div>
@@ -376,7 +372,7 @@ function FunnelOverview({
   const maxCount = stages[0]?.count ?? 0;
 
   return (
-    <div className="flex h-full min-h-[22rem] flex-col rounded-[24px] border border-border/60 bg-background/24 p-4">
+    <div className="ui-panel flex h-full min-h-[22rem] flex-col border border-border/60 p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-foreground">
@@ -410,7 +406,7 @@ function FunnelOverview({
               type="button"
               onClick={() => onStageClick(stage)}
               className={cn(
-                "grid min-h-[6.25rem] rounded-[22px] border p-4 text-left transition-colors hover:bg-background/44 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 sm:grid-cols-[minmax(0,0.8fr)_minmax(12rem,1fr)_minmax(7rem,auto)] sm:items-center sm:gap-5",
+                "grid min-h-[6.25rem] rounded-[var(--ui-radius-card)] border p-4 text-left transition-colors hover:bg-background/44 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 sm:grid-cols-[minmax(0,0.8fr)_minmax(12rem,1fr)_minmax(7rem,auto)] sm:items-center sm:gap-5",
                 isLargestDropOff
                   ? "border-warning/35 bg-warning/8"
                   : "border-border/55 bg-background/30",
@@ -501,7 +497,7 @@ function HealthMetric({
   const content = (
     <div
       className={cn(
-        "space-y-2 rounded-[22px] border border-border/60 bg-background/28 p-4",
+        "space-y-2 rounded-[var(--ui-radius-card)] border border-border/60 bg-background/28 p-4",
         className,
       )}
     >
@@ -603,7 +599,7 @@ function TrendDataSummary({
   }>;
 }) {
   return (
-    <div className="rounded-[22px] border border-border/60 bg-background/28 p-4">
+    <div className="ui-panel border border-border/60 p-4">
       <p className="text-sm font-medium text-foreground">
         {rangeLabel}: {totals.leadsCreated} leads, {totals.approvedLeads}{" "}
         approved, {totals.convertedClients} converted.
@@ -617,7 +613,7 @@ function TrendDataSummary({
           View trend data table
         </summary>
         <div className="mt-3 max-h-44 overflow-auto rounded-2xl border border-border/55">
-          <table className="w-full min-w-[32rem] text-left text-sm">
+          <table className="ui-table w-full min-w-[32rem] text-left text-sm">
             <caption className="sr-only">
               {bucketLabel} lead trend data for {rangeLabel}
             </caption>
@@ -686,7 +682,7 @@ function WorkspaceComparisonRow({
       type="button"
       onClick={onClick}
       className={cn(
-        "pt-hub-interactive grid w-full gap-4 rounded-[22px] border px-4 py-3.5 text-left transition-colors lg:grid-cols-[minmax(0,1.1fr)_90px_110px_120px_120px]",
+        "pt-hub-interactive grid w-full gap-4 rounded-[var(--ui-radius-card)] border px-4 py-3.5 text-left transition-colors lg:grid-cols-[minmax(0,1.1fr)_90px_110px_120px_120px]",
         selected
           ? "border-primary/32 bg-primary/8"
           : "border-transparent bg-background/28 hover:border-primary/20 hover:bg-background/44",
@@ -975,7 +971,7 @@ export function PtHubAnalyticsPage() {
                   ? "There are PT Hub leads overall, but none fall inside the selected date range or filter mix."
                   : "New inquiries will appear here."
               }
-              className="rounded-[24px] border-border/70 bg-background/28"
+              className="rounded-[var(--ui-radius-card)] border-border/70 bg-background/28"
             />
           )}
         </PtHubSectionCard>
@@ -1092,7 +1088,7 @@ export function PtHubAnalyticsPage() {
             <EmptyState
               title="No trend to chart yet"
               description="Leads in this range will chart here."
-              className="rounded-[24px] border-border/70 bg-background/28"
+              className="rounded-[var(--ui-radius-card)] border-border/70 bg-background/28"
             />
           )}
         </PtHubSectionCard>
@@ -1123,8 +1119,8 @@ export function PtHubAnalyticsPage() {
           contentClassName="space-y-4"
         >
           {qualityRows.length > 0 ? (
-            <div className="space-y-2 rounded-[26px] border border-border/70 bg-background/24 p-2">
-              <div className="hidden grid-cols-[56px_minmax(0,1.15fr)_84px_128px_128px] gap-4 rounded-[20px] border border-border/60 bg-background/48 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
+            <div className="ui-inset space-y-2 border border-border/70 p-2">
+              <div className="ui-inset hidden grid-cols-[56px_minmax(0,1.15fr)_84px_128px_128px] gap-4 border border-border/60 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
                 <span>Rank</span>
                 <span>{qualityGroup === "source" ? "Source" : "Package"}</span>
                 <span>Leads</span>
@@ -1164,7 +1160,7 @@ export function PtHubAnalyticsPage() {
             <EmptyState
               title="No quality breakdown yet"
               description="Lead volume will rank here."
-              className="rounded-[24px] border-border/70 bg-background/28"
+              className="rounded-[var(--ui-radius-card)] border-border/70 bg-background/28"
             />
           )}
         </PtHubSectionCard>
@@ -1234,7 +1230,7 @@ export function PtHubAnalyticsPage() {
           description="Risk and check-in coverage."
           contentClassName="space-y-4"
         >
-          <div className="rounded-[24px] border border-border/60 bg-background/24 p-4">
+          <div className="ui-inset border border-border/60 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/44 text-warning">
@@ -1297,8 +1293,8 @@ export function PtHubAnalyticsPage() {
           contentClassName="space-y-4"
         >
           {snapshot.workspacePerformance.length > 1 ? (
-            <div className="space-y-2 rounded-[26px] border border-border/70 bg-background/24 p-2">
-              <div className="hidden grid-cols-[minmax(0,1.1fr)_90px_110px_120px_120px] gap-4 rounded-[20px] border border-border/60 bg-background/48 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
+            <div className="ui-inset space-y-2 border border-border/70 p-2">
+              <div className="ui-inset hidden grid-cols-[minmax(0,1.1fr)_90px_110px_120px_120px] gap-4 border border-border/60 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
                 <span>Workspace</span>
                 <span>Leads</span>
                 <span>Conversions</span>
@@ -1321,7 +1317,7 @@ export function PtHubAnalyticsPage() {
               ))}
             </div>
           ) : snapshot.workspacePerformance.length === 1 ? (
-            <div className="rounded-[24px] border border-border/60 bg-background/24 p-4">
+            <div className="ui-inset border border-border/60 p-4">
               <div className="grid gap-3 md:grid-cols-4">
                 <HealthMetric
                   label="Workspace"
@@ -1356,7 +1352,7 @@ export function PtHubAnalyticsPage() {
             <EmptyState
               title="No workspace comparison yet"
               description="Multiple spaces will compare here."
-              className="rounded-[24px] border-border/70 bg-background/28"
+              className="rounded-[var(--ui-radius-card)] border-border/70 bg-background/28"
             />
           )}
         </PtHubSectionCard>
@@ -1378,7 +1374,7 @@ export function PtHubAnalyticsPage() {
           {snapshot.setupItems.map((item) => (
             <div
               key={item.id}
-              className="rounded-[20px] border border-border/55 bg-background/24 p-3.5"
+              className="ui-inset border border-border/55 p-3.5"
             >
               <div className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-4 w-4 text-warning [stroke-width:1.7]" />

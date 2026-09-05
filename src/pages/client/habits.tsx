@@ -430,7 +430,7 @@ export function ClientHabitsPage() {
       ) : null}
 
       {queryErrorDetails ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Unable to load habit log</AlertTitle>
           <AlertDescription>
             <div className="space-y-1 text-xs text-muted-foreground">
@@ -442,7 +442,7 @@ export function ClientHabitsPage() {
       ) : null}
 
       {saveError ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Couldn't save this log</AlertTitle>
           <AlertDescription>
             <div className="space-y-1 text-xs text-muted-foreground">
@@ -454,14 +454,14 @@ export function ClientHabitsPage() {
       ) : null}
 
       {formError ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Update needed</AlertTitle>
           <AlertDescription>{formError}</AlertDescription>
         </Alert>
       ) : null}
 
       {clientQuery.error ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Unable to load habits</AlertTitle>
           <AlertDescription>
             {clientQuery.error instanceof Error

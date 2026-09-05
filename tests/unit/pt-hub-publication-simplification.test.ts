@@ -159,7 +159,7 @@ describe("PT Hub publication simplification", () => {
       '<Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">',
     );
     expect(profileEditorSource).toContain(
-      'className="xl:sticky xl:top-28 xl:col-start-2 xl:row-start-1 xl:self-start"',
+      'className="xl:sticky xl:top-0 xl:col-start-2 xl:row-start-1 xl:self-start"',
     );
     expect(profileEditorSource).not.toContain(
       'className="min-w-0 xl:contents"',

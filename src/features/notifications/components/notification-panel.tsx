@@ -80,12 +80,12 @@ export function NotificationPanel({
             {Array.from({ length: 4 }).map((_, index) => (
               <div
                 key={index}
-                className="h-20 rounded-2xl border border-border/60 bg-secondary/20"
+                className="ui-panel h-20 border border-border/60"
               />
             ))}
           </div>
         ) : notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-secondary/14 px-4 py-10 text-center">
+          <div className="ui-panel flex flex-col items-center justify-center border border-dashed border-border/70 px-4 py-10 text-center">
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-secondary/30 text-muted-foreground">
               <Bell className="h-5 w-5" />
             </div>

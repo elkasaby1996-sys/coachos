@@ -65,7 +65,7 @@ export function PtHubSettingsBillingTab() {
         title="Payment Methods"
         description="Cards and bank details for subscription billing."
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/40 px-4 py-3">
+        <div className="ui-inset flex flex-wrap items-center justify-between gap-3 border border-border/70 px-4 py-3">
           <div className="space-y-0.5">
             <p className="text-sm font-medium text-foreground">
               No payment method connected
@@ -88,7 +88,7 @@ export function PtHubSettingsBillingTab() {
           {invoices.map((invoice) => (
             <div
               key={invoice.id}
-              className="flex items-center justify-between rounded-xl border border-border/70 bg-card/40 px-4 py-3"
+              className="ui-inset flex items-center justify-between border border-border/70 px-4 py-3"
             >
               <div className="space-y-0.5">
                 <p className="text-sm font-medium text-foreground">

@@ -1401,6 +1401,7 @@ export function ClientSettingsPage() {
                 </p>
                 <div className="flex justify-end">
                   <Button
+                    tone="danger"
                     variant="secondary"
                     className="border-danger/45 text-danger hover:bg-danger/12 hover:text-danger"
                     onClick={() => setDeleteDialogOpen(true)}
@@ -1534,6 +1535,7 @@ export function ClientSettingsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <Button
+              tone="danger"
               variant="secondary"
               className="border-danger/45 text-danger hover:bg-danger/12 hover:text-danger"
               onClick={handleRequestAccountDeletion}

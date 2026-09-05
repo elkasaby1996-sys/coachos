@@ -117,7 +117,7 @@ export function DangerZoneSettings() {
           description="These actions are irreversible and should be used carefully."
           noBorder
         >
-          <Alert className="border-danger/40 bg-danger/5">
+          <Alert tone="danger" className="border-danger/40 bg-danger/5">
             <AlertTitle>Destructive operations</AlertTitle>
             <AlertDescription>
               To prevent accidental data loss, workspace deletion is disabled
@@ -130,6 +130,7 @@ export function DangerZoneSettings() {
             hint="Remove your membership from this workspace."
           >
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-danger/40 text-danger hover:bg-danger/10"
@@ -199,6 +200,7 @@ export function DangerZoneSettings() {
               Cancel
             </Button>
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-danger/40 text-danger hover:bg-danger/10"

@@ -1300,7 +1300,7 @@ export function ClientCheckinPage() {
                 previousCheckins.map((item) => (
                   <div
                     key={item.row.id}
-                    className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-3 py-3"
+                    className="ui-inset border border-border/70 px-3 py-3"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 space-y-1">
@@ -1814,7 +1814,7 @@ export function ClientCheckinPage() {
                           className="h-40 w-full rounded-xl border border-border object-cover"
                         />
                       ) : (
-                        <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
+                        <div className="ui-inset flex h-40 items-center justify-center border border-dashed border-border text-xs text-muted-foreground">
                           {slot.required
                             ? "No submitted photo"
                             : "No optional photo added"}
@@ -1854,7 +1854,7 @@ export function ClientCheckinPage() {
                             className="h-40 w-full rounded-xl border border-border object-cover"
                           />
                         ) : (
-                          <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
+                          <div className="ui-inset flex h-40 items-center justify-center border border-dashed border-border text-xs text-muted-foreground">
                             No photo added yet
                           </div>
                         )}

@@ -379,7 +379,7 @@ describe("PT Hub overview dashboard model", () => {
     expect(checklist?.nextItem?.id).toBe("profile");
     expect(checklist?.firstClientGuidance).not.toBeNull();
     expect(overviewSectionsSource).toContain(
-      'checklist.nextItem?.id === "first-client"',
+      'activeChecklist?.nextItem?.id === "first-client"',
     );
   });
 

@@ -48,7 +48,7 @@ export function PtHubProfilePreviewPage() {
           ]}
         />
       ) : (
-        <div className="rounded-[28px] border border-border/70 bg-card/80 p-8 text-sm text-muted-foreground">
+        <div className="ui-panel border border-border/70 p-8 text-sm text-muted-foreground">
           No profile data yet. Add profile details first to see the preview.
         </div>
       )}

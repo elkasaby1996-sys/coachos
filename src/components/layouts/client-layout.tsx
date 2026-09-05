@@ -291,7 +291,7 @@ export function ClientLayout() {
             >
               <div
                 className={cn(
-                  "surface-panel-strong relative w-full overflow-hidden rounded-[34px] border-border/70 px-4 py-3 sm:px-5 lg:px-6",
+                  "surface-panel-strong relative w-full overflow-hidden rounded-[var(--ui-radius-card)] border-border/70 px-4 py-3 sm:px-5 lg:px-6",
                   isLightMode
                     ? "shadow-[0_28px_76px_-56px_oklch(0.28_0.02_190/0.14)]"
                     : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",

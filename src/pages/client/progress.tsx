@@ -971,7 +971,7 @@ export function ClientProgressPage() {
                             </p>
                           </div>
                           <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[18rem]">
-                            <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/35 px-3 py-3">
+                            <div className="ui-inset border border-border/70 px-3 py-3">
                               <p className="field-label">Weight</p>
                               <p className="mt-1 text-sm text-foreground">
                                 {item.weightDelta !== null
@@ -979,7 +979,7 @@ export function ClientProgressPage() {
                                   : "--"}
                               </p>
                             </div>
-                            <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/35 px-3 py-3">
+                            <div className="ui-inset border border-border/70 px-3 py-3">
                               <p className="field-label">Volume</p>
                               <p className="mt-1 text-sm text-foreground">
                                 {item.volumeDelta !== null
@@ -1042,7 +1042,7 @@ export function ClientProgressPage() {
                   </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                  <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/35 px-3 py-3">
+                  <div className="ui-inset border border-border/70 px-3 py-3">
                     <p className="field-label">Weight trend</p>
                     <p className="mt-1 text-sm text-foreground">
                       {getDelta(filteredWeightSeries) !== null
@@ -1050,7 +1050,7 @@ export function ClientProgressPage() {
                         : "Not enough data"}
                     </p>
                   </div>
-                  <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/35 px-3 py-3">
+                  <div className="ui-inset border border-border/70 px-3 py-3">
                     <p className="field-label">Sleep trend</p>
                     <p className="mt-1 text-sm text-foreground">
                       {getDelta(filteredSleepSeries) !== null
@@ -1058,7 +1058,7 @@ export function ClientProgressPage() {
                         : "Not enough data"}
                     </p>
                   </div>
-                  <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/35 px-3 py-3">
+                  <div className="ui-inset border border-border/70 px-3 py-3">
                     <p className="field-label">Step trend</p>
                     <p className="mt-1 text-sm text-foreground">
                       {getDelta(filteredStepsSeries) !== null

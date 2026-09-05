@@ -696,7 +696,7 @@ export function PtMessagesPage() {
                         type="button"
                         onClick={() => setSelectedClientId(row.client.id)}
                         className={cn(
-                          "w-full rounded-[24px] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                          "w-full rounded-[var(--ui-radius-card)] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                           isActive
                             ? "border-primary/28 bg-primary/[0.08] shadow-[0_22px_52px_-38px_rgba(56,189,248,0.75)]"
                             : "border-border/65 bg-background/35 hover:border-border hover:bg-background/55",
@@ -784,7 +784,7 @@ export function PtMessagesPage() {
           }
         >
           {!selectedClient ? (
-            <div className="flex h-[560px] flex-col gap-6 rounded-[24px] border border-dashed border-border/70 bg-background/25 p-6">
+            <div className="ui-inset flex h-[560px] flex-col gap-6 border border-dashed border-border/70 p-6">
               <div className="space-y-4">
                 <EmptyState
                   title="Choose a conversation"
@@ -889,7 +889,7 @@ export function PtMessagesPage() {
                     </>
                   ) : null}
                   {messageRows.length === 0 ? (
-                    <div className="rounded-[20px] border border-dashed border-border/70 bg-background/25 p-5">
+                    <div className="ui-inset border border-dashed border-border/70 p-5">
                       <EmptyState
                         title="No messages yet"
                         description="Start the thread with a short coaching prompt so the client knows what to reply with next."
@@ -966,7 +966,7 @@ export function PtMessagesPage() {
                           >
                             <div
                               className={cn(
-                                "w-fit max-w-[80%] rounded-[22px] border px-3 py-2 text-sm",
+                                "w-fit max-w-[80%] rounded-[var(--ui-radius-card)] border px-3 py-2 text-sm",
                                 isMine
                                   ? "border-primary/20 bg-primary/12 text-foreground"
                                   : "border-border/60 bg-secondary/45 text-foreground",

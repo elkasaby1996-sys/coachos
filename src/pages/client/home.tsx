@@ -1192,7 +1192,7 @@ function ClientWorkspaceHomePage() {
             </div>
 
             {todayWorkout?.coach_note ? (
-              <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
+              <div className="ui-inset border border-border/70 p-4">
                 <p className="field-label">Coach note</p>
                 <p className="mt-2 text-sm leading-6 text-foreground">
                   {todayWorkout.coach_note}
@@ -1678,7 +1678,7 @@ function ClientWorkspaceHomePage() {
                     return (
                       <div
                         key={workout.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-3 py-2"
+                        className="ui-inset flex flex-wrap items-center justify-between gap-2 border border-border/70 px-3 py-2"
                       >
                         <div className="space-y-1">
                           <p className="text-sm font-medium text-foreground">
@@ -1781,7 +1781,7 @@ function ClientWorkspaceHomePage() {
                         return (
                           <div
                             key={String((day as { id?: string }).id ?? "")}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-3 py-2"
+                            className="ui-inset flex flex-wrap items-center justify-between gap-2 border border-border/70 px-3 py-2"
                           >
                             <div className="space-y-1">
                               <p className="text-sm font-medium text-foreground">
@@ -1816,7 +1816,7 @@ function ClientWorkspaceHomePage() {
                       })}
                     </div>
                   ) : null}
-                  <div className="grid grid-cols-2 gap-4 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4 text-center sm:grid-cols-4">
+                  <div className="ui-inset grid grid-cols-2 gap-4 border border-border/70 p-4 text-center sm:grid-cols-4">
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Calories</p>
                       <p className="font-semibold">
@@ -1878,7 +1878,7 @@ function ClientWorkspaceHomePage() {
               ) : (
                 <>
                   <div className="grid gap-4 sm:grid-cols-3">
-                    <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
+                    <div className="ui-inset border border-border/70 p-4">
                       <p className="text-sm text-muted-foreground">Calories</p>
                       <p className="mt-2 text-sm font-semibold text-foreground">
                         {typeof targets?.calories === "number"
@@ -1886,7 +1886,7 @@ function ClientWorkspaceHomePage() {
                           : "Coach setting in progress"}
                       </p>
                     </div>
-                    <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
+                    <div className="ui-inset border border-border/70 p-4">
                       <p className="text-sm text-muted-foreground">Protein</p>
                       <p className="mt-2 text-sm font-semibold text-foreground">
                         {typeof targets?.protein_g === "number"
@@ -1894,7 +1894,7 @@ function ClientWorkspaceHomePage() {
                           : "Prioritize protein today"}
                       </p>
                     </div>
-                    <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
+                    <div className="ui-inset border border-border/70 p-4">
                       <p className="text-sm text-muted-foreground">Steps</p>
                       <p className="mt-2 text-sm font-semibold text-foreground">
                         {typeof targets?.steps === "number"
@@ -1903,7 +1903,7 @@ function ClientWorkspaceHomePage() {
                       </p>
                     </div>
                   </div>
-                  <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
+                  <div className="ui-inset border border-border/70 p-4">
                     <p className="text-sm font-medium text-foreground">
                       Coach note
                     </p>
@@ -1995,7 +1995,7 @@ export function ClientHomePage() {
               .
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-[18px] border border-border/70 bg-background/45 p-3 text-sm text-muted-foreground">
+          <div className="ui-panel border border-border/70 p-3 text-sm text-muted-foreground">
             {inviteJoinContext.message}
           </div>
           <DialogFooter>

@@ -370,8 +370,8 @@ export function PtPerformanceMarkersPage() {
       />
 
       <div className="page-kpi-block grid gap-4 md:grid-cols-3">
-        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <div className="kpi-card kpi-card-content border border-border/70 bg-background/35 px-4 py-4">
+          <div className="kpi-label text-muted-foreground">
             Performance markers
           </div>
           <div className="mt-2 text-sm font-semibold text-foreground">
@@ -382,10 +382,8 @@ export function PtPerformanceMarkersPage() {
             you want to collect.
           </div>
         </div>
-        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Marker order
-          </div>
+        <div className="kpi-card kpi-card-content border border-border/70 bg-background/35 px-4 py-4">
+          <div className="kpi-label text-muted-foreground">Marker order</div>
           <div className="mt-2 text-sm font-semibold text-foreground">
             Control the assessment flow
           </div>
@@ -394,10 +392,8 @@ export function PtPerformanceMarkersPage() {
             baseline.
           </div>
         </div>
-        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Library usage
-          </div>
+        <div className="kpi-card kpi-card-content border border-border/70 bg-background/35 px-4 py-4">
+          <div className="kpi-label text-muted-foreground">Library usage</div>
           <div className="mt-2 text-sm font-semibold text-foreground">
             Reusable assessment system
           </div>
@@ -424,7 +420,7 @@ export function PtPerformanceMarkersPage() {
       ) : null}
 
       {inlineError ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Supabase error</AlertTitle>
           <AlertDescription>
             <div className="space-y-1 text-xs text-muted-foreground">
@@ -447,7 +443,7 @@ export function PtPerformanceMarkersPage() {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : templatesQuery.error ? (
-            <Alert className="border-danger/30">
+            <Alert tone="danger" className="border-danger/30">
               <AlertTitle>Supabase error</AlertTitle>
               <AlertDescription>
                 <div className="space-y-1 text-xs text-muted-foreground">
@@ -466,7 +462,7 @@ export function PtPerformanceMarkersPage() {
             </Alert>
           ) : templates.length === 0 ? (
             <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-[24px] border border-dashed border-border bg-muted/20 p-5">
+              <div className="ui-inset border border-dashed border-border p-5">
                 <div className="text-sm font-semibold text-foreground">
                   No performance markers yet
                 </div>
@@ -492,7 +488,7 @@ export function PtPerformanceMarkersPage() {
                   ].map((group) => (
                     <div
                       key={group.title}
-                      className="rounded-[18px] border border-border/70 bg-background/45 p-4"
+                      className="ui-inset border border-border/70 p-4"
                     >
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         {group.title}
@@ -504,11 +500,11 @@ export function PtPerformanceMarkersPage() {
                   ))}
                 </div>
               </div>
-              <div className="rounded-[24px] border border-border/70 bg-background/35 p-5">
+              <div className="ui-inset border border-border/70 p-5">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Recommended first marker
                 </div>
-                <div className="mt-3 rounded-[20px] border border-border/70 bg-background/45 p-4">
+                <div className="ui-inset mt-3 border border-border/70 p-4">
                   <div className="text-sm font-semibold text-foreground">
                     Bench Press 1RM
                   </div>
@@ -624,7 +620,7 @@ export function PtPerformanceMarkersPage() {
             </DialogDescription>
           </DialogHeader>
           {inlineError ? (
-            <Alert className="border-danger/30">
+            <Alert tone="danger" className="border-danger/30">
               <AlertTitle>Delete failed</AlertTitle>
               <AlertDescription>
                 {inlineError.message ?? "Unable to delete this marker."}
@@ -641,6 +637,7 @@ export function PtPerformanceMarkersPage() {
               Cancel
             </Button>
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
@@ -719,7 +716,8 @@ export function PtPerformanceMarkersPage() {
                 Help text
               </label>
               <textarea
-                className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={formState.help_text}
                 onChange={(event) =>
                   setFormState((prev) => ({
@@ -767,7 +765,7 @@ export function PtPerformanceMarkersPage() {
               </label>
             </div>
             {inlineError ? (
-              <Alert className="border-danger/30 sm:col-span-2">
+              <Alert tone="danger" className="border-danger/30 sm:col-span-2">
                 <AlertTitle>Supabase error</AlertTitle>
                 <AlertDescription>
                   <div className="space-y-1 text-xs text-muted-foreground">

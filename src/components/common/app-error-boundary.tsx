@@ -45,7 +45,7 @@ class AppErrorBoundaryInner extends Component<
     if (this.state.hasError) {
       return (
         <div className="flex min-h-screen items-center justify-center px-4">
-          <div className="surface-panel-strong w-full max-w-md rounded-[28px] border border-border/70 px-6 py-8 text-center">
+          <div className="surface-panel-strong w-full max-w-md rounded-[var(--ui-radius-card)] border border-border/70 px-6 py-8 text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary/80">
               Repsync
             </p>

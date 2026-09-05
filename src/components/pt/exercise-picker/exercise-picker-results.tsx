@@ -55,7 +55,7 @@ function EmptyResults({
   description: string;
 }) {
   return (
-    <div className="flex min-h-52 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/15 px-5 py-8 text-center">
+    <div className="ui-panel flex min-h-52 flex-col items-center justify-center border border-dashed border-border px-5 py-8 text-center">
       <span className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card/70 text-muted-foreground">
         <Dumbbell className="h-5 w-5" aria-hidden="true" />
       </span>
@@ -135,7 +135,7 @@ export function ExercisePickerResults(props: ExercisePickerResultsProps) {
 
       {groups.relatedExercises.length ? (
         groups.directMatches.length ? (
-          <details className="group rounded-2xl border border-border/65 bg-muted/15">
+          <details className="ui-panel group border border-border/65">
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
               <span className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
                 Related exercises · {groups.relatedExercises.length}

@@ -13,8 +13,10 @@ export function Alert({
   return (
     <div
       role="alert"
+      data-ui="alert"
+      data-tone={tone ?? undefined}
       className={cn(
-        "surface-panel rounded-[22px] px-4 py-3 text-sm text-foreground",
+        "surface-panel rounded-[var(--ui-radius-card)] px-4 py-3 text-sm text-foreground",
         tone && semanticToneClassNames[tone].surface,
         className,
       )}

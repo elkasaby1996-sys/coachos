@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  AlertTriangle,
+  ArrowRight,
   CalendarDays,
-  Clock3,
   Info,
   MessageCircle,
   Rocket,
-  Sparkles,
   Trash2,
   UsersRound,
 } from "lucide-react";
@@ -24,7 +22,6 @@ import {
 import {
   ActionButtonLabel,
   ActionStatusMessage,
-  AnimatedValue,
   LoadingPanel,
 } from "../../components/common/action-feedback";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
@@ -46,6 +43,7 @@ import {
   checkinOperationalStatusMap,
   getCheckinOperationalState,
 } from "../../lib/checkin-review";
+import "../../styles/workspace-dashboard.css";
 import type { ClientOnboardingStatus } from "../../features/client-onboarding/types";
 
 const UUID_PATTERN =
@@ -161,6 +159,7 @@ export function PtDashboardPage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [onboardingRows, setOnboardingRows] = useState<OnboardingRow[]>([]);
   const [coachTodos, setCoachTodos] = useState<CoachTodo[]>([]);
+  const [queueFilter, setQueueFilter] = useState<string | null>(null);
   const [todoDraft, setTodoDraft] = useState("");
   const [todoBusyId, setTodoBusyId] = useState<string | null>(null);
   const [todoActionState, setTodoActionState] = useState<
@@ -421,48 +420,49 @@ export function PtDashboardPage() {
       }).length,
     [checkinRows, upcomingWindowEnd],
   );
-  const queueSegments = useMemo(() => {
-    const total = Math.max(
-      checkinDueNowCount + checkinOverdueCount + checkinSoonCount,
-      1,
-    );
+  const submittedCheckinsCount = checkinRows.filter(
+    (row) => row.state === "submitted",
+  ).length;
+  const queueFilters = [
+    { key: "overdue", label: "Overdue", count: checkinOverdueCount },
+    { key: "due", label: "Due now", count: checkinDueNowCount },
+    { key: "upcoming", label: "Upcoming", count: checkinSoonCount },
+    ...(submittedCheckinsCount > 0
+      ? [
+          {
+            key: "submitted",
+            label: "To review",
+            count: submittedCheckinsCount,
+          },
+        ]
+      : []),
+  ];
+  const defaultQueueFilter =
+    checkinOverdueCount > 0
+      ? "overdue"
+      : submittedCheckinsCount > 0
+        ? "submitted"
+        : checkinDueNowCount > 0
+          ? "due"
+          : checkinSoonCount > 0
+            ? "upcoming"
+            : "due";
+  const activeQueueFilter = queueFilters.some(
+    (filter) => filter.key === queueFilter,
+  )
+    ? queueFilter
+    : defaultQueueFilter;
+  const filteredCheckins = checkinRows.filter(
+    (row) =>
+      row.state === activeQueueFilter &&
+      (row.state !== "upcoming" ||
+        Boolean(row.due && row.due <= upcomingWindowEnd)),
+  );
+  const visibleCheckins = filteredCheckins.slice(0, 6);
+  const activeQueueLabel = queueFilters.find(
+    (filter) => filter.key === activeQueueFilter,
+  )?.label;
 
-    return [
-      {
-        key: "overdue",
-        label: "Overdue",
-        helper: "Past the due date and needs follow-up first.",
-        value: checkinOverdueCount,
-        icon: AlertTriangle,
-        toneClassName:
-          "border-rose-500/30 bg-rose-500/10 text-rose-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
-        meterClassName: "bg-rose-400/90",
-      },
-      {
-        key: "due",
-        label: "Due now",
-        helper: "Ready for review in the current queue window.",
-        value: checkinDueNowCount,
-        icon: Clock3,
-        toneClassName:
-          "border-amber-500/30 bg-amber-500/10 text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
-        meterClassName: "bg-amber-300/90",
-      },
-      {
-        key: "soon",
-        label: "Due soon",
-        helper: "Upcoming check-ins inside the next 7 days.",
-        value: checkinSoonCount,
-        icon: CalendarDays,
-        toneClassName:
-          "border-sky-500/30 bg-sky-500/10 text-sky-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
-        meterClassName: "bg-sky-400/90",
-      },
-    ].map((item) => ({
-      ...item,
-      widthPercent: `${Math.max((item.value / total) * 100, item.value > 0 ? 10 : 0)}%`,
-    }));
-  }, [checkinDueNowCount, checkinOverdueCount, checkinSoonCount]);
   const checkinsTodayCount = useMemo(() => {
     if (checkinRows.length === 0) return 0;
     return checkinRows.filter(
@@ -472,22 +472,6 @@ export function PtDashboardPage() {
     ).length;
   }, [checkinRows, todayStr]);
 
-  const activeClientsDelta = useMemo(() => {
-    const currentWindow = clients.filter((client) => {
-      return (
-        client.lifecycle_state?.toLowerCase() === "active" &&
-        client.created_at >= addDaysToDateString(todayStr, -6)
-      );
-    }).length;
-    const previousWindow = clients.filter((client) => {
-      return (
-        client.lifecycle_state?.toLowerCase() === "active" &&
-        client.created_at >= previousWeekStart &&
-        client.created_at <= previousWeekEnd
-      );
-    }).length;
-    return currentWindow - previousWindow;
-  }, [clients, previousWeekEnd, previousWeekStart, todayStr]);
   const adherenceDelta = useMemo(() => {
     const getWindowAdherence = (start: string, end: string) => {
       const rows = assignedWorkouts.filter(
@@ -512,8 +496,6 @@ export function PtDashboardPage() {
     if (currentWindow === null || previousWindow === null) return null;
     return currentWindow - previousWindow;
   }, [assignedWorkouts, previousWeekEnd, previousWeekStart, todayStr]);
-
-  const recentCheckins = useMemo(() => checkinRows.slice(0, 4), [checkinRows]);
 
   const workoutStatsByClient = useMemo(() => {
     const stats = new Map<string, { total: number; completed: number }>();
@@ -664,14 +646,13 @@ export function PtDashboardPage() {
     0,
     clientRows.length === 1 ? 1 : 6,
   );
-  const showSingleClientCard = priorityClientRows.length === 1;
 
   return (
-    <div className="space-y-6">
+    <div className="workspace-dashboard space-y-5">
       <WorkspacePageHeader title="Coach Dashboard" className="py-2.5 sm:py-3" />
 
       {loadError ? (
-        <Card className="border-destructive/40">
+        <Card tone="danger" className="border-destructive/40">
           <CardHeader>
             <CardTitle>Dashboard error</CardTitle>
           </CardHeader>
@@ -682,7 +663,7 @@ export function PtDashboardPage() {
       ) : null}
 
       <StaggerGroup
-        className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+        className="page-kpi-block workspace-dashboard-metrics"
         stagger={0.05}
       >
         {isLoading ? (
@@ -699,23 +680,22 @@ export function PtDashboardPage() {
           <>
             <StaggerItem>
               <StatCard
-                label="Clients"
+                disableHoverMotion
+                label="Active clients"
                 value={activeClientsCount}
-                helper="Active"
+                helper="Currently in service"
                 icon={UsersRound}
                 module="clients"
                 onClick={() => navigate("/pt/clients?lifecycle=active")}
                 ariaLabel="Open active clients"
-                delta={buildMetricDelta({
-                  delta: activeClientsDelta,
-                })}
               />
             </StaggerItem>
             <StaggerItem>
               <StatCard
+                disableHoverMotion
                 label="Avg adherence"
                 value={`${adherencePercent}%`}
-                helper="7d"
+                helper="Last 7 days"
                 icon={Rocket}
                 module="analytics"
                 onClick={() => navigate("/pt/clients?segment=at_risk")}
@@ -728,9 +708,10 @@ export function PtDashboardPage() {
             </StaggerItem>
             <StaggerItem>
               <StatCard
+                disableHoverMotion
                 label="Unread messages"
                 value={unreadCount}
-                helper="Unread"
+                helper="Not yet read"
                 icon={MessageCircle}
                 module="coaching"
                 onClick={() => navigate("/pt/messages")}
@@ -739,9 +720,10 @@ export function PtDashboardPage() {
             </StaggerItem>
             <StaggerItem>
               <StatCard
-                label="Check-ins today"
+                disableHoverMotion
+                label="Check-ins due"
                 value={checkinsTodayCount}
-                helper="Due"
+                helper="Today"
                 icon={CalendarDays}
                 module="checkins"
                 onClick={() => navigate("/pt/checkins")}
@@ -753,13 +735,14 @@ export function PtDashboardPage() {
       </StaggerGroup>
 
       <StaggerGroup
-        className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.8fr)]"
+        className="workspace-dashboard-grid"
         stagger={0.07}
         delayChildren={0.05}
       >
         <StaggerItem className="space-y-4">
           <DashboardCard
-            className="self-start"
+            className="workspace-dashboard-card"
+            disableHoverMotion
             title={clientPanelTitle}
             action={
               <Button
@@ -778,17 +761,13 @@ export function PtDashboardPage() {
                 description="Ranking the clients who need attention first."
               />
             ) : priorityClientRows.length > 0 ? (
-              <div className={showSingleClientCard ? "space-y-3" : "space-y-2"}>
+              <div className="workspace-dashboard-list">
                 {priorityClientRows.map((client) => (
                   <button
                     key={client.id}
                     type="button"
                     onClick={() => navigate(`/pt/clients/${client.id}`)}
-                    className={`surface-subtle group flex w-full items-start justify-between gap-3 text-left transition hover:border-border hover:bg-background/70 ${
-                      showSingleClientCard
-                        ? "rounded-2xl px-4 py-4"
-                        : "px-3 py-2.5"
-                    }`}
+                    className="workspace-dashboard-row group flex w-full items-start justify-between gap-3 text-left"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
@@ -813,10 +792,10 @@ export function PtDashboardPage() {
                           />
                         </div>
                         <span className="shrink-0 text-xs font-medium text-primary">
-                          Open
+                          <ArrowRight className="h-4 w-4" aria-hidden />
                         </span>
                       </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {client.lastActivityLabel}
                       </p>
                     </div>
@@ -840,76 +819,12 @@ export function PtDashboardPage() {
               />
             )}
           </DashboardCard>
-
-          <div className="grid items-start gap-4">
-            <DashboardCard
-              title="Recent Check-ins"
-              action={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={dashboardCardHeaderActionClass}
-                  onClick={() => navigate("/pt/checkins")}
-                >
-                  Open queue
-                </Button>
-              }
-            >
-              {isLoading ? (
-                <LoadingPanel
-                  title="Loading check-ins"
-                  description="Collecting the latest review queue."
-                />
-              ) : recentCheckins.length > 0 ? (
-                <div className="space-y-2.5">
-                  {recentCheckins.map((row) => {
-                    const clientName =
-                      clients.find((item) => item.id === row.client_id)
-                        ?.display_name ?? "Client";
-                    const dueLabel = row.due
-                      ? new Date(row.due).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "Soon";
-                    return (
-                      <button
-                        key={row.id}
-                        type="button"
-                        onClick={() => navigate("/pt/checkins")}
-                        className="surface-subtle flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:border-border hover:bg-background/70"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">{clientName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Due {dueLabel}
-                          </p>
-                        </div>
-                        {row.state ? (
-                          <StatusPill
-                            status={row.state}
-                            statusMap={checkinOperationalStatusMap}
-                          />
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <EmptyState
-                  title="No check-ins right now"
-                  description="No queued check-ins."
-                  className="px-5 py-5"
-                />
-              )}
-            </DashboardCard>
-          </div>
         </StaggerItem>
-
         <StaggerItem className="space-y-4">
           <DashboardCard
-            title="Queue"
-            className="border-primary/10"
+            title="Check-in queue"
+            className="workspace-dashboard-card"
+            disableHoverMotion
             action={
               <Button
                 variant="ghost"
@@ -923,62 +838,91 @@ export function PtDashboardPage() {
           >
             {isLoading ? (
               <LoadingPanel
-                title="Loading queue"
-                description="Rebuilding your check-in pressure points."
+                title="Loading check-ins"
+                description="Collecting the current check-in queue."
               />
             ) : (
-              <div className="space-y-3">
-                <div className="h-2.5 overflow-hidden rounded-full bg-background/65">
-                  <div className="flex h-full w-full gap-px overflow-hidden rounded-full">
-                    {queueSegments.map((segment) => (
-                      <div
-                        key={segment.key}
-                        className={segment.meterClassName}
-                        style={{ width: segment.widthPercent }}
-                      />
-                    ))}
-                  </div>
+              <>
+                <div
+                  className="workspace-dashboard-filters"
+                  role="group"
+                  aria-label="Filter check-in queue"
+                >
+                  {queueFilters.map((filter) => (
+                    <button
+                      key={filter.key}
+                      type="button"
+                      aria-pressed={activeQueueFilter === filter.key}
+                      aria-controls="dashboard-checkin-results"
+                      onClick={() => setQueueFilter(filter.key)}
+                    >
+                      <span>{filter.label}</span>
+                      <span className="tabular-nums">{filter.count}</span>
+                    </button>
+                  ))}
                 </div>
-
-                <div className="space-y-2">
-                  {queueSegments.map((segment) => {
-                    const Icon = segment.icon;
-
-                    return (
-                      <button
-                        key={segment.key}
-                        type="button"
-                        onClick={() => navigate("/pt/checkins")}
-                        className="surface-subtle flex w-full items-center gap-3 rounded-[1.2rem] border border-border/65 px-3.5 py-3 text-left transition duration-200 hover:border-border hover:bg-background/70"
-                      >
-                        <span
-                          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${segment.toneClassName}`}
-                        >
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-foreground">
-                              {segment.label}
-                            </p>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {segment.helper}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-semibold tracking-tight text-foreground">
-                            <AnimatedValue value={segment.value} />
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
+                <div id="dashboard-checkin-results" aria-live="polite">
+                  {visibleCheckins.length > 0 ? (
+                    <div className="workspace-dashboard-list">
+                      {visibleCheckins.map((row) => {
+                        const clientName =
+                          clients.find((item) => item.id === row.client_id)
+                            ?.display_name ?? "Client";
+                        const dueLabel = row.due
+                          ? new Date(
+                              row.due.slice(0, 10) + "T12:00:00",
+                            ).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            })
+                          : "Soon";
+                        return (
+                          <button
+                            key={row.id}
+                            type="button"
+                            onClick={() => navigate("/pt/checkins")}
+                            className="workspace-dashboard-row flex w-full items-center justify-between gap-3 text-left"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium">
+                                {clientName}
+                              </p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Due {dueLabel}
+                              </p>
+                            </div>
+                            {row.state ? (
+                              <StatusPill
+                                status={row.state}
+                                statusMap={checkinOperationalStatusMap}
+                              />
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center">
+                      <p className="text-sm font-medium">
+                        No {activeQueueLabel?.toLowerCase()} check-ins
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {activeQueueFilter === "upcoming"
+                          ? "Nothing scheduled in the next 7 days."
+                          : "Choose another status to see its queue."}
+                      </p>
+                    </div>
+                  )}
+                  {filteredCheckins.length > visibleCheckins.length ? (
+                    <p className="pt-3 text-xs text-muted-foreground">
+                      Showing {visibleCheckins.length} of{" "}
+                      {filteredCheckins.length}. Open check-ins to see all.
+                    </p>
+                  ) : null}
                 </div>
-              </div>
+              </>
             )}
           </DashboardCard>
-
           <DashboardCard title="To-Do list" className="border-border/80">
             <div className="space-y-3">
               <div className="surface-subtle space-y-1.5 px-3 py-3">
@@ -1049,6 +993,7 @@ export function PtDashboardPage() {
                     >
                       <input
                         type="checkbox"
+                        aria-label={`Mark ${todo.title} ${todo.is_done ? "incomplete" : "complete"}`}
                         checked={todo.is_done}
                         onChange={() => void toggleTodo(todo)}
                         className="h-4 w-4 accent-primary"

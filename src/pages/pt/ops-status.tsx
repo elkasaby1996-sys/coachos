@@ -79,7 +79,7 @@ export function PtOpsStatusPage() {
         }
       />
 
-      <div className="rounded-[24px] border border-warning/30 bg-warning/10 px-5 py-4">
+      <div className="rounded-[var(--ui-radius-card)] border border-warning/30 bg-warning/10 px-5 py-4">
         <div className="flex items-start gap-3">
           <div className="flex h-8 w-8 items-center justify-center text-warning">
             <AlertTriangle className="h-4 w-4" />
@@ -97,38 +97,30 @@ export function PtOpsStatusPage() {
       </div>
 
       <div className="page-kpi-block grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Supabase config
-          </div>
+        <div className="kpi-card kpi-card-content border border-border/70 bg-background/35 px-4 py-4">
+          <div className="kpi-label text-muted-foreground">Supabase config</div>
           <div className="mt-2">
             <Badge variant={supabaseConfigured ? "default" : "danger"}>
               {supabaseConfigured ? "Configured" : "Missing env"}
             </Badge>
           </div>
         </div>
-        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Auth role
-          </div>
+        <div className="kpi-card kpi-card-content border border-border/70 bg-background/35 px-4 py-4">
+          <div className="kpi-label text-muted-foreground">Auth role</div>
           <div className="mt-2">
             <Badge variant="secondary">{role ?? "none"}</Badge>
           </div>
         </div>
-        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            User session
-          </div>
+        <div className="kpi-card kpi-card-content border border-border/70 bg-background/35 px-4 py-4">
+          <div className="kpi-label text-muted-foreground">User session</div>
           <div className="mt-2">
             <Badge variant={session ? "default" : "secondary"}>
               {session ? "Active" : "Signed out"}
             </Badge>
           </div>
         </div>
-        <div className="rounded-[24px] border border-border/70 bg-background/35 px-4 py-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Health endpoint
-          </div>
+        <div className="kpi-card kpi-card-content border border-border/70 bg-background/35 px-4 py-4">
+          <div className="kpi-label text-muted-foreground">Health endpoint</div>
           <div className="mt-2">
             <Badge
               variant={
@@ -151,7 +143,7 @@ export function PtOpsStatusPage() {
             <CardTitle>Runtime health</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            <div className="rounded-[18px] border border-border/70 bg-background/45 px-4 py-3">
+            <div className="ui-inset border border-border/70 px-4 py-3">
               <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 Health response
               </div>
@@ -159,7 +151,7 @@ export function PtOpsStatusPage() {
                 {healthMessage}
               </div>
             </div>
-            <div className="rounded-[18px] border border-border/70 bg-background/45 px-4 py-3">
+            <div className="ui-inset border border-border/70 px-4 py-3">
               <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 Last rendered
               </div>
@@ -173,15 +165,15 @@ export function PtOpsStatusPage() {
             <CardTitle>How to use this page</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <div className="rounded-[18px] border border-border/70 bg-background/45 px-4 py-3">
+            <div className="ui-inset border border-border/70 px-4 py-3">
               Check this page when auth, env wiring, or health probes look
               suspicious.
             </div>
-            <div className="rounded-[18px] border border-border/70 bg-background/45 px-4 py-3">
+            <div className="ui-inset border border-border/70 px-4 py-3">
               If the workspace feels broken but coaching data is fine, start
               with the health endpoint and session state here.
             </div>
-            <div className="rounded-[18px] border border-border/70 bg-background/45 px-4 py-3">
+            <div className="ui-inset border border-border/70 px-4 py-3">
               Keep client work on the main PT pages. This page is deliberately
               scoped to diagnostics.
             </div>

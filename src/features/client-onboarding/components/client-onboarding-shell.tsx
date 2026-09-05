@@ -962,7 +962,7 @@ export function ClientOnboardingShell() {
 
           <SurfaceCardContent className="space-y-6">
             {summary.awaitingReview ? (
-              <div className="rounded-2xl border border-border/70 bg-secondary/18 p-5">
+              <div className="ui-inset border border-border/70 p-5">
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-background/60 text-primary">
                     <ShieldCheck className="h-5 w-5" />
@@ -1334,7 +1334,8 @@ export function ClientOnboardingShell() {
                   hint="One per line if you have several."
                 >
                   <textarea
-                    className="min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={draft.goals.secondary_goals}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1358,7 +1359,8 @@ export function ClientOnboardingShell() {
                   required
                 >
                   <textarea
-                    className="min-h-[150px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[150px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={draft.goals.motivation}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1443,7 +1445,8 @@ export function ClientOnboardingShell() {
                     hint="Explain where you train and what equipment you reliably have."
                   >
                     <textarea
-                      className="min-h-[130px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      data-ui="field"
+                      className="app-field app-field-textarea min-h-[130px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={draft.trainingHistory.equipment}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1536,7 +1539,8 @@ export function ClientOnboardingShell() {
                 <div className="md:col-span-2">
                   <StepField label="Current training routine" optional>
                     <textarea
-                      className="min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      data-ui="field"
+                      className="app-field app-field-textarea min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={draft.trainingHistory.current_training_routine}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1567,7 +1571,8 @@ export function ClientOnboardingShell() {
                   hint="Write 'None' if not applicable."
                 >
                   <textarea
-                    className="min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={draft.injuriesLimitations.injuries}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1591,7 +1596,8 @@ export function ClientOnboardingShell() {
                   hint="Write 'None' if not applicable."
                 >
                   <textarea
-                    className="min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={draft.injuriesLimitations.limitations}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1615,7 +1621,8 @@ export function ClientOnboardingShell() {
                   hint="Write 'None' if not applicable."
                 >
                   <textarea
-                    className="min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={draft.injuriesLimitations.exercises_to_avoid}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1635,7 +1642,8 @@ export function ClientOnboardingShell() {
                 </StepField>
                 <StepField label="Surgeries / injury history" optional>
                   <textarea
-                    className="min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[120px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={draft.injuriesLimitations.surgeries_history}
                     onChange={(event) =>
                       setDraft((prev) =>
@@ -1709,7 +1717,8 @@ export function ClientOnboardingShell() {
                     hint="One per line if helpful."
                   >
                     <textarea
-                      className="min-h-[110px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      data-ui="field"
+                      className="app-field app-field-textarea min-h-[110px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={draft.nutritionLifestyle.foods_avoided}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1843,7 +1852,8 @@ export function ClientOnboardingShell() {
                     required
                   >
                     <textarea
-                      className="min-h-[130px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      data-ui="field"
+                      className="app-field app-field-textarea min-h-[130px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={draft.nutritionLifestyle.schedule_constraints}
                       onChange={(event) =>
                         setDraft((prev) =>
@@ -1895,7 +1905,7 @@ export function ClientOnboardingShell() {
 
             {currentStep === "initial-assessment" ? (
               <div className="space-y-5">
-                <div className="rounded-[26px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.95),oklch(var(--card)/0.9))] p-5">
+                <div className="rounded-[var(--ui-radius-card)] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.95),oklch(var(--card)/0.9))] p-5">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1961,12 +1971,12 @@ export function ClientOnboardingShell() {
                     </p>
                   </div>
                 ) : summary.latestDraftBaseline ? (
-                  <div className="rounded-2xl border border-border/70 bg-secondary/18 p-4 text-sm text-muted-foreground">
+                  <div className="ui-inset border border-border/70 p-4 text-sm text-muted-foreground">
                     A baseline draft already exists. Resume it and submit to
                     complete this onboarding step.
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/35 p-4 text-sm text-muted-foreground">
+                  <div className="ui-inset border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
                     Start the assessment when you&apos;re ready. It will open
                     the existing baseline flow and return you here after
                     submission.
@@ -2174,7 +2184,7 @@ export function ClientOnboardingShell() {
             </StickyActionBar>
 
             {currentStep === "initial-assessment" && summary.canEdit ? (
-              <div className="rounded-2xl border border-border/60 bg-background/35 p-4 text-sm text-muted-foreground">
+              <div className="ui-inset border border-border/60 p-4 text-sm text-muted-foreground">
                 Use the button above to open the baseline step. Once you submit
                 the baseline, return here and continue to review.
               </div>

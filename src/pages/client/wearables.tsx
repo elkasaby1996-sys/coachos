@@ -141,30 +141,25 @@ function MetricTile({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border/70 bg-card/45 shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]",
+        "kpi-card kpi-card-content border border-border/70 bg-card/45",
         compact ? "p-3" : "p-4",
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 text-xs font-medium leading-5 text-muted-foreground">
+        <p className="kpi-label min-w-0 text-xs font-medium leading-5 text-muted-foreground">
           {label}
         </p>
         <StateChip state={state} />
       </div>
       <p
         className={cn(
-          "mt-2 font-semibold tracking-tight text-foreground",
+          "kpi-value mt-2 font-semibold tracking-tight text-foreground",
           compact ? "text-lg" : "text-2xl",
         )}
       >
         {value}
       </p>
-      <div
-        className={cn(
-          "flex flex-wrap items-center gap-2",
-          compact ? "mt-2" : "mt-4",
-        )}
-      >
+      <div className={cn("flex flex-wrap items-center gap-2", "mt-2")}>
         <ProviderBadge provider={provider} />
       </div>
     </div>
@@ -584,7 +579,7 @@ export function ClientWearablesPage() {
                 description="Trend data will appear after the next Open Wearables import."
               />
             ) : (
-              <div className="h-52 rounded-2xl border border-border/60 bg-card/35 p-3">
+              <div className="ui-inset h-52 border border-border/60 p-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chart.data}>
                     <XAxis
@@ -648,7 +643,7 @@ export function ClientWearablesPage() {
       />
 
       {loadError ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Unable to load wearable data</AlertTitle>
           <AlertDescription>
             {loadError instanceof Error ? loadError.message : "Request failed."}
@@ -657,7 +652,7 @@ export function ClientWearablesPage() {
       ) : null}
 
       {actionError ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Wearable action failed</AlertTitle>
           <AlertDescription>{actionError}</AlertDescription>
         </Alert>

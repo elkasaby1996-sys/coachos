@@ -94,36 +94,6 @@
   z-index: -1;
 }
 
-.pt-workspace-theme.pt-workspace-theme-light .surface-panel::before,
-.pt-workspace-theme.pt-workspace-theme-light .surface-panel-strong::before,
-.pt-workspace-theme.pt-workspace-theme-light .surface-panel-portal::before {
-  background: linear-gradient(
-    90deg,
-    oklch(var(--chart-4) / 0.24),
-    oklch(var(--neutral) / 0.16),
-    transparent
-  );
-  opacity: 0.26;
-}
-
-.pt-workspace-theme.pt-workspace-theme-light .surface-panel::after,
-.pt-workspace-theme.pt-workspace-theme-light .surface-panel-strong::after,
-.pt-workspace-theme.pt-workspace-theme-light .surface-panel-portal::after {
-  background:
-    linear-gradient(
-      180deg,
-      oklch(1 0 0 / 0.08),
-      transparent 20%,
-      transparent 78%,
-      oklch(var(--bg-muted) / 0.12)
-    ),
-    radial-gradient(
-      circle at top left,
-      oklch(var(--bg-muted) / 0.16),
-      transparent 26%
-    );
-}
-
 .pt-workspace-theme .pt-content-zoom {
   width: 100%;
 }

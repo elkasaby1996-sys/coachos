@@ -144,7 +144,7 @@ export function PtClientOnboardingTab({
 
   if (onboardingQuery.error) {
     return (
-      <Alert className="border-destructive/30">
+      <Alert tone="danger" className="border-destructive/30">
         <AlertTitle>Unable to load onboarding review</AlertTitle>
         <AlertDescription>
           {getSupabaseErrorDetails(onboardingQuery.error).message}
@@ -189,7 +189,7 @@ export function PtClientOnboardingTab({
                     : "Review the intake, confirm the initial assessment, and clear the remaining onboarding actions."}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-background/25 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {isCompleted ? "Completion record" : "Required items"}
                 </p>
@@ -582,7 +582,8 @@ function CoachReviewCard({
               </div>
               {completedNotesEditing ? (
                 <textarea
-                  className="mt-3 min-h-[180px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  data-ui="field"
+                  className="app-field app-field-textarea mt-3 min-h-[180px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={onboardingReviewNotes}
                   onChange={(event) => onReviewNotesChange(event.target.value)}
                   placeholder="Key coaching context, red flags, and activation notes..."
@@ -604,13 +605,14 @@ function CoachReviewCard({
                 Coach review notes
               </label>
               <textarea
-                className="min-h-[180px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[180px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={onboardingReviewNotes}
                 onChange={(event) => onReviewNotesChange(event.target.value)}
                 placeholder="Key coaching context, red flags, and activation notes..."
               />
             </div>
-            <div className="rounded-xl border border-border/60 bg-background/25 p-3">
+            <div className="ui-inset border border-border/60 p-3">
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="secondary"

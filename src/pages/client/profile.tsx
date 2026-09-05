@@ -638,7 +638,7 @@ export function ClientProfilePage() {
             <SurfaceCardContent className="pt-6">
               <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)]">
                 <div className="flex flex-wrap items-start gap-4">
-                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-[28px] border border-border/70 bg-background/45 text-lg font-semibold text-muted-foreground">
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-[var(--ui-radius-card)] border border-border/70 bg-background/45 text-lg font-semibold text-muted-foreground">
                     {profile.photo_url ? (
                       <img
                         src={profile.photo_url}
@@ -1112,7 +1112,8 @@ export function ClientProfilePage() {
                     Injuries
                   </label>
                   <textarea
-                    className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={formState.injuries}
                     onChange={(event) =>
                       setFormState((prev) => ({
@@ -1127,7 +1128,8 @@ export function ClientProfilePage() {
                     Limitations
                   </label>
                   <textarea
-                    className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={formState.limitations}
                     onChange={(event) =>
                       setFormState((prev) => ({

@@ -30,7 +30,7 @@ function FilterContent({
   return (
     <div className="min-w-0 max-w-full space-y-3">
       {providerFiltersVisible ? (
-        <div className="grid min-w-0 gap-3 rounded-2xl border border-border/70 bg-card/55 p-3 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="ui-panel grid min-w-0 gap-3 border border-border/70 p-3 sm:grid-cols-2 lg:grid-cols-1">
           <ProviderAnatomyFilterFields
             idPrefix="exercise-picker"
             state={anatomyState}
@@ -67,7 +67,7 @@ export function ExercisePickerFilterPanel(
         <FilterContent {...props} />
       </aside>
 
-      <details className="exercise-picker-mobile-filters group rounded-2xl border border-border/70 bg-card/55 lg:hidden">
+      <details className="ui-panel exercise-picker-mobile-filters group border border-border/70 lg:hidden">
         <summary
           className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
           onKeyDown={handleSummaryKeyDown}

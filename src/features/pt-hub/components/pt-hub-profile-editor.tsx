@@ -335,7 +335,7 @@ function PtHubLiveProfilePreview({
   displayNameValue: string;
 }) {
   return (
-    <div className="pt-hub-live-preview overflow-hidden rounded-[24px] border border-border/70 bg-background/55">
+    <div className="ui-panel pt-hub-live-preview overflow-hidden border border-border/70">
       <div className="relative h-20 overflow-hidden bg-muted">
         {form.bannerImageUrl ? (
           <img
@@ -922,7 +922,7 @@ export function PtHubProfileEditor({
   return (
     <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.36fr)_360px]">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
-        <TabsList className="pt-hub-profile-step-rail h-auto min-h-[4rem] w-full justify-start gap-1.5 overflow-x-auto rounded-[24px] p-1.5 xl:justify-center xl:overflow-visible">
+        <TabsList className="pt-hub-profile-step-rail h-auto min-h-[4rem] w-full justify-start gap-1.5 overflow-x-auto rounded-[var(--ui-radius-card)] p-1.5 xl:justify-center xl:overflow-visible">
           {profileBuilderSteps.map((step) => {
             const isActive = activeTab === step.value;
             const completion = getStepCompletion(step.keys, readiness);
@@ -941,7 +941,7 @@ export function PtHubProfileEditor({
                 {isActive ? (
                   <motion.span
                     layoutId="pt-hub-profile-tab-active-pill"
-                    className="pt-hub-tab-active-pill absolute inset-0 rounded-[22px] border"
+                    className="pt-hub-tab-active-pill absolute inset-0 rounded-[var(--ui-radius-card)] border"
                     transition={
                       reduceMotion
                         ? { duration: 0 }
@@ -984,7 +984,7 @@ export function PtHubProfileEditor({
         </TabsList>
 
         {showLaunchPriorities ? (
-          <div className="pt-hub-support-rail mt-5 rounded-[24px] px-5 py-4">
+          <div className="pt-hub-support-rail mt-5 rounded-[var(--ui-radius-card)] px-5 py-4">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)] lg:items-center">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -1043,14 +1043,14 @@ export function PtHubProfileEditor({
         ) : null}
 
         {mediaError ? (
-          <div className="mt-5 rounded-[22px] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div className="mt-5 rounded-[var(--ui-radius-card)] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {mediaError}
           </div>
         ) : null}
 
         <TabsContent value="identity" className="space-y-5">
           <PtHubSectionCard title="Profile media" contentClassName="space-y-4">
-            <div className="pt-hub-media-builder overflow-hidden rounded-[28px] border border-border/65 bg-background/35">
+            <div className="ui-inset pt-hub-media-builder overflow-hidden border border-border/65">
               <div className="relative h-64 overflow-hidden bg-muted">
                 {form.bannerImageUrl ? (
                   <img
@@ -1067,7 +1067,7 @@ export function PtHubProfileEditor({
                   </div>
                 )}
                 <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background/95 to-transparent" />
-                <div className="absolute bottom-5 left-5 flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-border/70 bg-background shadow-[0_18px_42px_-30px_oklch(0_0_0/0.72)]">
+                <div className="absolute bottom-5 left-5 flex h-24 w-24 items-center justify-center overflow-hidden rounded-[var(--ui-radius-card)] border border-border/70 bg-background shadow-[0_18px_42px_-30px_oklch(0_0_0/0.72)]">
                   {form.profilePhotoUrl ? (
                     <img
                       src={form.profilePhotoUrl}
@@ -1397,7 +1397,7 @@ export function PtHubProfileEditor({
                   {form.transformations.map((item, index) => (
                     <div
                       key={item.id}
-                      className="rounded-[22px] border border-border/60 bg-background/35 p-4"
+                      className="ui-inset border border-border/60 p-4"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-sm font-medium text-foreground">
@@ -1479,11 +1479,11 @@ export function PtHubProfileEditor({
                       </div>
 
                       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                        <div className="space-y-3 rounded-[20px] border border-border/60 bg-background/55 p-4">
+                        <div className="ui-inset space-y-3 border border-border/60 p-4">
                           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                             Before photo
                           </p>
-                          <div className="flex h-40 items-center justify-center overflow-hidden rounded-[18px] border border-border/60 bg-background/70">
+                          <div className="ui-inset flex h-40 items-center justify-center overflow-hidden border border-border/60">
                             {item.beforeImageUrl ? (
                               <img
                                 src={item.beforeImageUrl}
@@ -1534,11 +1534,11 @@ export function PtHubProfileEditor({
                           </div>
                         </div>
 
-                        <div className="space-y-3 rounded-[20px] border border-border/60 bg-background/55 p-4">
+                        <div className="ui-inset space-y-3 border border-border/60 p-4">
                           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                             After photo
                           </p>
-                          <div className="flex h-40 items-center justify-center overflow-hidden rounded-[18px] border border-border/60 bg-background/70">
+                          <div className="ui-inset flex h-40 items-center justify-center overflow-hidden border border-border/60">
                             {item.afterImageUrl ? (
                               <img
                                 src={item.afterImageUrl}
@@ -1591,7 +1591,7 @@ export function PtHubProfileEditor({
                   ))}
                 </div>
               ) : (
-                <div className="rounded-[20px] border border-dashed border-border/60 bg-background/30 px-4 py-5 text-sm text-muted-foreground">
+                <div className="ui-inset border border-dashed border-border/60 px-4 py-5 text-sm text-muted-foreground">
                   Add transformation stories here to showcase before-and-after
                   proof on your public coach page.
                 </div>
@@ -1605,7 +1605,7 @@ export function PtHubProfileEditor({
             title="Package management"
             description="Package editing lives in the dedicated PT Hub Packages surface, so this profile stays focused on storefront positioning."
           >
-            <div className="rounded-[20px] border border-border/60 bg-background/35 p-4">
+            <div className="ui-inset border border-border/60 p-4">
               <p className="text-sm text-muted-foreground">
                 Use PT Hub Packages to create, publish or hide, archive, and
                 reorder packages. This keeps one canonical package-management
@@ -1825,7 +1825,7 @@ export function PtHubProfileEditor({
         </TabsContent>
 
         <TabsContent value="preview" className="space-y-5">
-          <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background/70">
+          <div className="ui-panel overflow-hidden border border-border/70">
             <PtHubProfilePreview
               profile={previewData}
               packageOptions={packageOptions}
@@ -1846,7 +1846,7 @@ export function PtHubProfileEditor({
         </TabsContent>
       </Tabs>
 
-      <div className="xl:sticky xl:top-28 xl:col-start-2 xl:row-start-1 xl:self-start">
+      <div className="xl:sticky xl:top-0 xl:col-start-2 xl:row-start-1 xl:self-start">
         <PtHubProfileLaunchPanel
           form={form}
           displayNameValue={displayNameValue}

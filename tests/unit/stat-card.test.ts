@@ -20,7 +20,7 @@ function TestIcon({ className }: { className?: string }) {
 }
 
 describe("StatCard", () => {
-  it("renders icons without the legacy bordered badge wrapper", () => {
+  it("keeps deprecated decorative icons out of metric content", () => {
     const markup = renderToStaticMarkup(
       React.createElement(StatCard, {
         label: "New Leads",
@@ -30,20 +30,33 @@ describe("StatCard", () => {
       }),
     );
 
-    expect(markup).not.toContain("border-border/60");
-    expect(markup).not.toContain("bg-background/42");
+    expect(markup).toContain("New Leads");
+    expect(markup).toContain("12");
+    expect(markup).not.toContain("<svg");
   });
 
-  it("lets callers apply card-specific icon tones directly to the icon", () => {
-    const markup = renderToStaticMarkup(
-      React.createElement(StatCard, {
-        label: "Draft",
-        value: 0,
-        icon: TestIcon,
-        iconClassName: "text-amber-500",
-      }),
-    );
+  it.each(["default", "pt-hub"] as const)(
+    "preserves zero values and accessible actions on the %s surface",
+    (surface) => {
+      const markup = renderToStaticMarkup(
+        React.createElement(StatCard, {
+          label: "Draft",
+          value: 0,
+          icon: TestIcon,
+          iconClassName: "text-amber-500",
+          surface,
+          helper: "No drafts yet",
+          delta: { value: "-2", tone: "warning" },
+          onClick: () => {},
+          ariaLabel: "Open drafts",
+        }),
+      );
 
-    expect(markup).toContain("text-amber-500");
-  });
+      expect(markup).toContain('aria-label="Open drafts"');
+      expect(markup).toContain("No drafts yet");
+      expect(markup).toContain("-2");
+      expect(markup).toMatch(/>0</);
+      expect(markup).not.toContain("<svg");
+    },
+  );
 });

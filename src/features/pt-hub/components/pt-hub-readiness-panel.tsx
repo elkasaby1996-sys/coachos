@@ -88,7 +88,7 @@ export function PtHubReadinessPanel({
               {readiness.checklist.map((item) => (
                 <div
                   key={item.key}
-                  className="flex items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/40 px-4 py-3"
+                  className="ui-inset flex items-start justify-between gap-3 border border-border/60 px-4 py-3"
                 >
                   <div className="flex items-start gap-3">
                     {item.complete ? (
@@ -115,7 +115,7 @@ export function PtHubReadinessPanel({
             </div>
 
             {!readiness.readyForPublish ? (
-              <div className="space-y-3 rounded-[24px] border border-warning/30 bg-warning/10 p-4">
+              <div className="space-y-3 rounded-[var(--ui-radius-card)] border border-warning/30 bg-warning/10 p-4">
                 <div className="flex items-start gap-3">
                   <CircleAlert className="mt-0.5 h-4 w-4 text-warning [stroke-width:1.7]" />
                   <div>
@@ -132,7 +132,7 @@ export function PtHubReadinessPanel({
                   {topGuidance.map((item) => (
                     <div
                       key={item.key}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/50 bg-background/50 px-4 py-3"
+                      className="ui-inset flex flex-wrap items-center justify-between gap-3 border border-border/50 px-4 py-3"
                     >
                       <div>
                         <p className="text-sm font-medium text-foreground">

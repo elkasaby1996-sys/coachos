@@ -428,7 +428,7 @@ export function PtClientProgressTab({
           <Skeleton className="h-24 w-full" />
         ) : habitsAnalysis ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+            <div className="ui-inset border border-border/60 p-3">
               <p className="text-xs text-muted-foreground">Steps average</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
                 {habitsAnalysis.avgStepsFirst !== null
@@ -440,7 +440,7 @@ export function PtClientProgressTab({
                   : "Not logged"}
               </p>
             </div>
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+            <div className="ui-inset border border-border/60 p-3">
               <p className="text-xs text-muted-foreground">Sleep average</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
                 {habitsAnalysis.avgSleepFirst !== null
@@ -453,7 +453,7 @@ export function PtClientProgressTab({
                 hrs
               </p>
             </div>
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+            <div className="ui-inset border border-border/60 p-3">
               <p className="text-xs text-muted-foreground">Protein average</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
                 {habitsAnalysis.avgProteinFirst !== null
@@ -466,7 +466,7 @@ export function PtClientProgressTab({
                 g
               </p>
             </div>
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+            <div className="ui-inset border border-border/60 p-3">
               <p className="text-xs text-muted-foreground">Calories average</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
                 {habitsAnalysis.avgCaloriesFirst !== null
@@ -500,7 +500,7 @@ export function PtClientProgressTab({
             {exerciseImprovements.map((item) => (
               <div
                 key={item.exerciseId}
-                className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm"
+                className="ui-inset flex items-center justify-between border border-border/60 px-3 py-3 text-sm"
               >
                 <span className="font-medium">{item.exerciseName}</span>
                 <span className="text-muted-foreground">
@@ -544,7 +544,7 @@ export function PtClientProgressTab({
                 checkinQuestionTrends.numeric.map((row) => (
                   <div
                     key={row.question}
-                    className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm"
+                    className="ui-inset flex items-center justify-between border border-border/60 px-3 py-3 text-sm"
                   >
                     <span className="truncate pr-3">{row.question}</span>
                     <span className="text-muted-foreground">
@@ -567,7 +567,7 @@ export function PtClientProgressTab({
                 checkinQuestionTrends.text.map((row) => (
                   <div
                     key={row.question}
-                    className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm"
+                    className="ui-inset border border-border/60 px-3 py-3 text-sm"
                   >
                     <p className="font-medium">{row.question}</p>
                     <p className="mt-2 text-xs text-muted-foreground">

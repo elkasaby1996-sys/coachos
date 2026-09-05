@@ -58,7 +58,7 @@ export function PtHubWorkspaceCard({
         </p>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-[22px] border border-border/70 bg-background/60 p-4">
+        <div className="ui-inset border border-border/70 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             Access
           </p>
@@ -67,7 +67,7 @@ export function PtHubWorkspaceCard({
             <span>{getAccessSummary(workspace)}</span>
           </div>
         </div>
-        <div className="rounded-[22px] border border-border/70 bg-background/60 p-4">
+        <div className="ui-inset border border-border/70 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             Last update
           </p>

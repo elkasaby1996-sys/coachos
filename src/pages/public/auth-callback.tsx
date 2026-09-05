@@ -178,7 +178,7 @@ export function AuthCallbackPage() {
 
   return (
     <AuthBackdrop contentClassName="max-w-md">
-      <Card className="w-full rounded-[28px] border-border/70 bg-card/90 shadow-[0_32px_90px_-52px_rgba(0,0,0,0.72)] backdrop-blur-xl">
+      <Card className="w-full rounded-[var(--ui-radius-card)] border-border/70 bg-card/90 shadow-[0_32px_90px_-52px_rgba(0,0,0,0.72)] backdrop-blur-xl">
         <CardHeader className="space-y-3 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
             {isLoading ? (

@@ -501,7 +501,7 @@ export function InvitePage() {
             ) : null}
 
             {error ? (
-              <Alert className="border-danger/40 bg-danger/10">
+              <Alert tone="danger" className="border-danger/40 bg-danger/10">
                 <AlertTitle className="flex items-center gap-2 text-danger">
                   <AlertCircle className="h-4 w-4" />
                   Notice
@@ -514,7 +514,7 @@ export function InvitePage() {
             ) : null}
 
             {notice ? (
-              <Alert className="border-primary/30 bg-primary/10">
+              <Alert tone="info" className="border-primary/30 bg-primary/10">
                 <AlertTitle className="text-primary">Status</AlertTitle>
                 <AlertDescription className="text-primary/90">
                   {notice}

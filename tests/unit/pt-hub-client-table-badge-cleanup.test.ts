@@ -70,7 +70,7 @@ function makeClient(overrides: Partial<PTClientSummary> = {}): PTClientSummary {
   };
 }
 
-function renderTable(clients: PTClientSummary[]) {
+function renderTable(clients: PTClientSummary[], compact = false) {
   return renderToStaticMarkup(
     React.createElement(
       I18nContext.Provider,
@@ -79,6 +79,7 @@ function renderTable(clients: PTClientSummary[]) {
         clients,
         onOpen: vi.fn(),
         showWorkspaceColumn: false,
+        compact,
       }),
     ),
   );
@@ -94,6 +95,26 @@ function countVisibleText(markup: string, text: string) {
 }
 
 describe("PT Hub client table badge cleanup", () => {
+  it("keeps lifecycle and attention separate in compact rows with an accessible open action", () => {
+    const markup = renderTable([makeClient({ manualRiskFlag: true })], true);
+    expect(markup).toContain('role="columnheader">Lifecycle');
+    expect(markup).toContain('role="columnheader">Attention');
+    expect(countVisibleText(markup, "Active")).toBe(1);
+    expect(countVisibleText(markup, "Needs attention")).toBe(1);
+    expect(markup).toContain('aria-label="Open Client One"');
+    expect(markup).toContain('aria-label="Needs attention: show explanation"');
+  });
+
+  it("suppresses old attention flags for archived relationships in compact rows", () => {
+    const markup = renderTable(
+      [makeClient({ relationshipStatus: "removed", manualRiskFlag: true })],
+      true,
+    );
+    expect(countVisibleText(markup, "Removed")).toBe(1);
+    expect(markup).not.toContain("Needs attention");
+    expect(markup).not.toContain(">Active<");
+  });
+
   it("renders only the lifecycle badge for an active normal client row", () => {
     const markup = renderTable([makeClient()]);
 

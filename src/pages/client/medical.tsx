@@ -457,7 +457,8 @@ export function ClientMedicalPage() {
                     Notes
                   </label>
                   <textarea
-                    className="min-h-[120px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[120px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={historyNotes}
                     onChange={(event) => setHistoryNotes(event.target.value)}
                     placeholder="Share any detail that matters for training, nutrition, or recovery."
@@ -549,7 +550,8 @@ export function ClientMedicalPage() {
                     Notes
                   </label>
                   <textarea
-                    className="min-h-[96px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[96px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={labNotes}
                     onChange={(event) => setLabNotes(event.target.value)}
                     placeholder="Optional context or anything your coach should keep in mind."
@@ -627,7 +629,7 @@ export function ClientMedicalPage() {
                     }
                   />
                 </div>
-                <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground">
+                <div className="ui-inset border border-border/60 p-3 text-xs text-muted-foreground">
                   PDF and image files stay private and are shared only through
                   your coaching workspace.
                 </div>

@@ -42,7 +42,7 @@ export function PtHubPageHeader({
   return (
     <div
       className={cn(
-        "section-accent-shell surface-panel relative rounded-[30px] border border-border/70 px-5 py-3 shadow-[var(--surface-shadow)]",
+        "section-accent-shell surface-panel relative rounded-[var(--ui-radius-card)] border border-border/70 px-5 py-3 shadow-[var(--surface-shadow)]",
         className,
       )}
       style={getModuleToneStyle(resolvedModule)}

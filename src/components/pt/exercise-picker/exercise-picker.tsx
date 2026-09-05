@@ -320,7 +320,7 @@ export function ExercisePicker({
           </div>
 
           <section
-            className="flex min-w-0 flex-col rounded-2xl border border-border/70 bg-card/45 p-2.5 lg:min-h-0"
+            className="ui-panel flex min-w-0 flex-col border border-border/70 p-2.5 lg:min-h-0"
             aria-label={
               view === "library"
                 ? "My Library picker results"

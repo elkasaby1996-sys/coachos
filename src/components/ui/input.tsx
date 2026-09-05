@@ -6,6 +6,7 @@ const Input = React.forwardRef<
   React.InputHTMLAttributes<HTMLInputElement> & { isInvalid?: boolean }
 >(({ className, type, isInvalid, ...props }, ref) => (
   <input
+    data-ui="field"
     type={type}
     className={cn(
       "app-field flex min-h-[2.75rem] w-full px-3.5 py-2 disabled:cursor-not-allowed disabled:opacity-60",

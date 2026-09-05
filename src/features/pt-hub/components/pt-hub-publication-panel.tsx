@@ -31,7 +31,7 @@ export function PtHubPublicationPanel({
       contentClassName="space-y-4"
     >
       <div className="space-y-4">
-        <div className="space-y-3 rounded-[24px] border border-border/60 bg-background/34 px-4 py-4">
+        <div className="ui-inset space-y-3 border border-border/60 px-4 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={getSemanticBadgeVariant(readiness.statusLabel)}>
@@ -56,7 +56,7 @@ export function PtHubPublicationPanel({
         </div>
 
         {!publicationState.canPublish && !publicationState.isPublished ? (
-          <div className="space-y-2 rounded-[22px] border border-warning/22 bg-warning/12 p-4">
+          <div className="space-y-2 rounded-[var(--ui-radius-card)] border border-warning/22 bg-warning/12 p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 text-warning" />
               <p className="text-sm font-medium text-foreground">

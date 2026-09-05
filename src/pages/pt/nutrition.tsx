@@ -306,6 +306,7 @@ export function PtNutritionPage() {
               Cancel
             </Button>
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
@@ -469,6 +470,7 @@ export function PtNutritionPage() {
                         Duplicate
                       </Button>
                       <Button
+                        tone="danger"
                         size="sm"
                         variant="ghost"
                         className="flex-1 text-destructive hover:text-destructive"

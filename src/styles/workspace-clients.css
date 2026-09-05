@@ -1,0 +1,168 @@
+.workspace-clients {
+  container: workspace-clients / inline-size;
+}
+
+.workspace-clients .workspace-clients-card {
+  border-radius: var(--ui-radius-card);
+  box-shadow: var(--ui-shadow-card);
+}
+
+.workspace-clients-toolbar {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.workspace-clients-toolbar > * {
+  min-width: 0;
+}
+
+.workspace-client-columns {
+  display: none;
+}
+
+.workspace-client-table {
+  container: workspace-client-table / inline-size;
+}
+
+.workspace-client-space {
+  min-width: 0;
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+}
+
+.workspace-client-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  min-height: 4.25rem;
+  padding: 0.75rem 2.75rem 0.75rem 0.5rem;
+  border-bottom: 1px solid oklch(var(--border-default) / 0.6);
+  transition: background-color 160ms ease;
+}
+
+.workspace-client-row:hover,
+.workspace-client-row:focus-within {
+  background: oklch(var(--primary) / 0.045);
+}
+
+.workspace-client-identity {
+  min-width: 0;
+  flex-basis: 100%;
+}
+
+.workspace-client-identity p {
+  margin-top: 0.125rem;
+  overflow-wrap: anywhere;
+}
+
+.workspace-client-open {
+  cursor: pointer;
+  text-align: start;
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* The name's native button stretches its hit area over the row. Badge
+   buttons sit above it and keep their independent explanation actions. */
+.workspace-client-open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.workspace-client-open:focus-visible {
+  outline: none;
+}
+
+.workspace-client-open:focus-visible::after {
+  outline: 2px solid oklch(var(--primary));
+  outline-offset: -2px;
+  border-radius: 0.375rem;
+}
+
+.workspace-client-arrow {
+  position: absolute;
+  inset-inline-end: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--module-clients-text);
+}
+
+.workspace-client-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.workspace-client-badges button {
+  position: relative;
+  z-index: 1;
+  min-height: 2.75rem;
+}
+
+.workspace-client-no-attention {
+  display: none;
+}
+
+@container workspace-clients (min-width: 550px) {
+  .workspace-clients-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container workspace-client-table (min-width: 550px) {
+  .workspace-client-columns,
+  .workspace-client-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 8rem 10rem;
+    gap: 1rem;
+  }
+
+  .workspace-client-columns {
+    padding: 0.5rem 2.75rem 0.5rem 0.5rem;
+    border-bottom: 1px solid oklch(var(--border-default) / 0.6);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: oklch(var(--text-secondary));
+  }
+
+  .workspace-client-row {
+    padding-block: 0.375rem;
+  }
+
+  .workspace-client-no-attention {
+    display: inline;
+  }
+}
+
+@container workspace-client-table (min-width: 550px) and (max-width: 749px) {
+  .workspace-client-table-with-space .workspace-client-columns {
+    display: none;
+  }
+  .workspace-client-table-with-space .workspace-client-row {
+    display: flex;
+    padding-block: 0.75rem;
+  }
+  .workspace-client-table-with-space .workspace-client-space {
+    flex-basis: 100%;
+  }
+}
+
+@container workspace-client-table (min-width: 750px) {
+  .workspace-client-table-with-space
+    :is(.workspace-client-columns, .workspace-client-row) {
+    grid-template-columns: minmax(0, 1fr) minmax(8rem, 0.6fr) 8rem 10rem;
+  }
+}
+
+@container workspace-clients (min-width: 800px) {
+  .workspace-clients-toolbar {
+    grid-template-columns: minmax(0, 1fr) 10rem 13rem auto;
+    align-items: center;
+  }
+}

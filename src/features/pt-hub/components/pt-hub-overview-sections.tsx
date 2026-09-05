@@ -85,21 +85,28 @@ function ActivationChecklistIcon({
   );
 }
 
-function PtHubActivationChecklist({
+export function PtHubActivationChecklist({
   checklist,
+  profileItems = [],
   isLoading = false,
   hasError = false,
 }: {
   checklist: PtHubActivationChecklistModel | null;
+  profileItems?: PtHubOverviewChecklistItem[];
   isLoading?: boolean;
   hasError?: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showAllProfileItems, setShowAllProfileItems] = useState(false);
   const checklistRowsId = "pt-hub-activation-checklist-rows";
+  const missingProfileItems = profileItems.filter((item) => !item.complete);
+  const activeChecklist = shouldShowPtHubActivationChecklist(checklist)
+    ? checklist
+    : null;
 
-  if (isLoading && !checklist) {
+  if (isLoading && !checklist && missingProfileItems.length === 0) {
     return (
-      <div className="rounded-[28px] border border-border/55 bg-background/28 px-4 py-4 sm:px-5">
+      <div className="ui-panel pt-hub-setup-panel border border-border/55 px-4 py-4 sm:px-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <Skeleton className="h-3 w-28" />
@@ -116,11 +123,11 @@ function PtHubActivationChecklist({
     );
   }
 
-  if (hasError && !checklist) {
+  if (hasError && !checklist && missingProfileItems.length === 0) {
     return (
-      <div className="rounded-[24px] border border-warning/24 bg-warning/10 px-4 py-3">
+      <div className="pt-hub-setup-panel rounded-[20px] border border-warning/24 bg-warning/10 px-4 py-3">
         <p className="text-sm font-semibold text-foreground">
-          Activation checklist unavailable
+          Coach setup unavailable
         </p>
         <p className="pt-hub-meta-text mt-1 text-[0.88rem] leading-5">
           The Action Center is still available. Refresh if you want to reload
@@ -130,153 +137,246 @@ function PtHubActivationChecklist({
     );
   }
 
-  if (!shouldShowPtHubActivationChecklist(checklist)) return null;
+  if (!activeChecklist && missingProfileItems.length === 0) return null;
 
-  const visibleItems = checklist.items;
-  const summary = `${checklist.coreCompletedCount} of ${checklist.coreTotalCount} setup steps complete`;
+  const visibleItems = activeChecklist?.items ?? [];
+  const summary = activeChecklist
+    ? `${activeChecklist.coreCompletedCount} of ${activeChecklist.coreTotalCount} setup steps complete`
+    : isLoading
+      ? "Checking setup progress…"
+      : hasError
+        ? "Setup progress unavailable. You can still update your profile."
+        : `${missingProfileItems.length} profile items remaining`;
   const progressPercent =
-    checklist.coreTotalCount > 0
+    activeChecklist && activeChecklist.coreTotalCount > 0
       ? Math.round(
-          (checklist.coreCompletedCount / checklist.coreTotalCount) * 100,
+          (activeChecklist.coreCompletedCount /
+            activeChecklist.coreTotalCount) *
+            100,
         )
       : 0;
   const firstClientGuidance =
-    checklist.nextItem?.id === "first-client"
-      ? checklist.firstClientGuidance
+    activeChecklist?.nextItem?.id === "first-client"
+      ? activeChecklist.firstClientGuidance
       : null;
-  const nextItem = checklist.nextItem;
+  const nextItem = activeChecklist?.nextItem ?? {
+    id: "profile",
+    title: "Complete marketplace profile",
+    description:
+      "Add the profile essentials clients need to understand your coaching.",
+    href: "/pt-hub/profile",
+    ctaLabel: "Complete profile",
+  };
 
   return (
-    <div className="rounded-[26px] border border-border/60 bg-background/28 px-4 py-4 shadow-[inset_0_1px_0_oklch(1_0_0/0.025)] sm:px-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section
+      className="pt-hub-setup-panel pt-hub-activation-panel surface-panel rounded-[20px] border border-border/60 p-5"
+      aria-label="Coach setup"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="pt-hub-minor-label pt-hub-minor-label-strong">
-            Coach activation
-          </p>
-          <p className="mt-1 text-[1rem] font-semibold text-foreground">
-            {summary}
-          </p>
+          <h3 className="text-lg font-semibold text-foreground">Coach setup</h3>
+          <p className="pt-hub-meta-text mt-1 text-sm">{summary}</p>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-expanded={isExpanded}
-          aria-controls={checklistRowsId}
-          onClick={() => setIsExpanded((current) => !current)}
-          className="w-fit"
-        >
-          {isExpanded ? "Collapse checklist" : "View full checklist"}
-          {isExpanded ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
-        </Button>
+        {activeChecklist ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-expanded={isExpanded}
+            aria-controls={checklistRowsId}
+            onClick={() => setIsExpanded((current) => !current)}
+            className="w-fit"
+          >
+            {isExpanded ? "Collapse checklist" : "View full checklist"}
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
+        ) : null}
       </div>
 
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted/55">
+      {activeChecklist ? (
         <div
-          className="h-full rounded-full bg-primary/70 transition-[width]"
-          style={{ width: `${progressPercent}%` }}
-        />
+          className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted/55"
+          role="progressbar"
+          aria-label="Coach setup completion"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progressPercent}
+        >
+          <div
+            className="h-full rounded-full bg-primary/70 transition-[width]"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      ) : null}
+
+      <div className="pt-hub-setup-content">
+        <div>
+          {nextItem && !firstClientGuidance ? (
+            <div className="mt-4 border-t border-border/55 pt-4">
+              <div className="grid gap-3">
+                <div className="min-w-0">
+                  <p className="pt-hub-minor-label text-warning">
+                    Next recommended
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {nextItem.title}
+                  </p>
+                  <p className="pt-hub-meta-text mt-1 text-[0.84rem] leading-5">
+                    {nextItem.description}
+                  </p>
+                </div>
+                <Button asChild size="sm" className="w-fit">
+                  <Link to={nextItem.href}>
+                    {nextItem.ctaLabel}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {firstClientGuidance ? (
+            <div className="mt-4 rounded-[var(--ui-radius-card)] border border-primary/20 bg-primary/8 px-4 py-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="pt-hub-minor-label text-primary">
+                    Next recommended
+                  </p>
+                  <p className="text-sm font-semibold text-foreground">
+                    Choose how to add your first client
+                  </p>
+                  <p className="pt-hub-meta-text mt-1 max-w-2xl text-[0.88rem] leading-5">
+                    Direct invite is the fastest path if you already coach
+                    someone. Public applications stay available when you want
+                    inbound leads.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                <div className="ui-panel border border-border/55 px-3.5 py-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-success/22 bg-success/10 text-success">
+                      <UserPlus className="h-4 w-4 [stroke-width:1.8]" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {firstClientGuidance.invite.title}
+                      </p>
+                      <p className="pt-hub-meta-text mt-1 text-[0.82rem] leading-5">
+                        {firstClientGuidance.invite.description}
+                      </p>
+                      <InviteClientDialog
+                        trigger={
+                          <Button type="button" size="sm" className="mt-3">
+                            {firstClientGuidance.invite.ctaLabel}
+                          </Button>
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ui-panel border border-border/55 px-3.5 py-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/22 bg-primary/10 text-primary">
+                      <Globe2 className="h-4 w-4 [stroke-width:1.8]" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {firstClientGuidance.applications.title}
+                      </p>
+                      <p className="pt-hub-meta-text mt-1 text-[0.82rem] leading-5">
+                        {firstClientGuidance.applications.description}
+                      </p>
+                      <Button
+                        asChild
+                        variant="secondary"
+                        size="sm"
+                        className="mt-3"
+                      >
+                        <Link to={firstClientGuidance.applications.href}>
+                          {firstClientGuidance.applications.ctaLabel}
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+        {missingProfileItems.length > 0 ? (
+          <section
+            className="mt-4 border-t border-border/55 pt-4"
+            aria-label="Profile essentials"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="text-sm font-semibold text-foreground">
+                Profile essentials
+              </h4>
+              <span className="pt-hub-meta-text text-xs">
+                {missingProfileItems.length} remaining
+              </span>
+            </div>
+            <ul
+              id="pt-hub-profile-essentials"
+              className="mt-2 divide-y divide-border/55"
+            >
+              {(showAllProfileItems
+                ? missingProfileItems
+                : missingProfileItems.slice(0, 3)
+              ).map((item) => (
+                <li key={item.id}>
+                  <Link
+                    to={item.href}
+                    className="group flex min-h-11 items-center gap-3 rounded-sm py-2 text-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <CircleDashed
+                      className="h-4 w-4 shrink-0 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1 font-medium">
+                      {item.label}
+                    </span>
+                    <ArrowRight
+                      className="h-3.5 w-3.5 shrink-0 text-primary"
+                      aria-hidden
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {missingProfileItems.length > 3 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-2"
+                aria-expanded={showAllProfileItems}
+                aria-controls="pt-hub-profile-essentials"
+                onClick={() => setShowAllProfileItems((current) => !current)}
+              >
+                {showAllProfileItems
+                  ? "Show fewer profile items"
+                  : `Show all ${missingProfileItems.length} profile items`}
+                {showAllProfileItems ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            ) : null}
+          </section>
+        ) : null}
       </div>
 
-      {nextItem && !firstClientGuidance ? (
-        <div className="mt-4 rounded-[20px] border border-warning/30 bg-warning/10 px-4 py-3">
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-            <div className="min-w-0">
-              <p className="pt-hub-minor-label text-warning">
-                Next recommended
-              </p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {nextItem.title}
-              </p>
-              <p className="pt-hub-meta-text mt-1 text-[0.84rem] leading-5">
-                {nextItem.description}
-              </p>
-            </div>
-            <Button asChild size="sm" className="w-full sm:w-auto">
-              <Link to={nextItem.href}>
-                {nextItem.ctaLabel}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {firstClientGuidance ? (
-        <div className="mt-4 rounded-[22px] border border-primary/20 bg-primary/8 px-4 py-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <p className="pt-hub-minor-label text-primary">
-                Next recommended
-              </p>
-              <p className="text-sm font-semibold text-foreground">
-                Choose how to add your first client
-              </p>
-              <p className="pt-hub-meta-text mt-1 max-w-2xl text-[0.88rem] leading-5">
-                Direct invite is the fastest path if you already coach someone.
-                Public applications stay available when you want inbound leads.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-3 grid gap-2 lg:grid-cols-2">
-            <div className="rounded-[18px] border border-border/55 bg-background/34 px-3.5 py-3">
-              <div className="flex min-w-0 items-start gap-3">
-                <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-success/22 bg-success/10 text-success">
-                  <UserPlus className="h-4 w-4 [stroke-width:1.8]" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    {firstClientGuidance.invite.title}
-                  </p>
-                  <p className="pt-hub-meta-text mt-1 text-[0.82rem] leading-5">
-                    {firstClientGuidance.invite.description}
-                  </p>
-                  <InviteClientDialog
-                    trigger={
-                      <Button type="button" size="sm" className="mt-3">
-                        {firstClientGuidance.invite.ctaLabel}
-                      </Button>
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[18px] border border-border/55 bg-background/34 px-3.5 py-3">
-              <div className="flex min-w-0 items-start gap-3">
-                <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/22 bg-primary/10 text-primary">
-                  <Globe2 className="h-4 w-4 [stroke-width:1.8]" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    {firstClientGuidance.applications.title}
-                  </p>
-                  <p className="pt-hub-meta-text mt-1 text-[0.82rem] leading-5">
-                    {firstClientGuidance.applications.description}
-                  </p>
-                  <Button
-                    asChild
-                    variant="secondary"
-                    size="sm"
-                    className="mt-3"
-                  >
-                    <Link to={firstClientGuidance.applications.href}>
-                      {firstClientGuidance.applications.ctaLabel}
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {isExpanded ? (
+      {isExpanded && activeChecklist ? (
         <div
           id={checklistRowsId}
           className="mt-4 grid gap-2 lg:grid-cols-2"
@@ -316,7 +416,7 @@ function PtHubActivationChecklist({
           ))}
         </div>
       ) : null}
-    </div>
+    </section>
   );
 }
 
@@ -388,7 +488,7 @@ export function PtHubOverviewLoadingState() {
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={`metric-skeleton-${index}`}
-            className="surface-panel relative overflow-hidden rounded-[30px] border border-border/70 px-5 py-5 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:px-6"
+            className="surface-panel relative overflow-hidden rounded-[var(--ui-radius-card)] border border-border/70 px-5 py-5 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:px-6"
           >
             <Skeleton className="h-3 w-28" />
             <Skeleton className="mt-6 h-10 w-24 rounded-xl" />
@@ -397,7 +497,7 @@ export function PtHubOverviewLoadingState() {
         ))}
       </div>
 
-      <div className="surface-panel-strong rounded-[34px] border border-border/70 px-5 py-5 shadow-[var(--surface-strong-shadow)] backdrop-blur-xl sm:px-6 sm:py-6">
+      <div className="surface-panel-strong rounded-[var(--ui-radius-card)] border border-border/70 px-5 py-5 shadow-[var(--surface-strong-shadow)] backdrop-blur-xl sm:px-6 sm:py-6">
         <div className="space-y-4">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-10 w-72 rounded-2xl" />
@@ -405,7 +505,7 @@ export function PtHubOverviewLoadingState() {
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton
                 key={`action-skeleton-${index}`}
-                className="h-24 w-full rounded-[28px]"
+                className="h-24 w-full rounded-[var(--ui-radius-card)]"
               />
             ))}
           </div>
@@ -416,14 +516,14 @@ export function PtHubOverviewLoadingState() {
         {Array.from({ length: 3 }).map((_, index) => (
           <div
             key={`panel-skeleton-${index}`}
-            className="surface-panel rounded-[30px] border border-border/70 px-5 py-5 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:px-6"
+            className="surface-panel rounded-[var(--ui-radius-card)] border border-border/70 px-5 py-5 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:px-6"
           >
             <Skeleton className="h-4 w-32" />
             <div className="mt-5 space-y-3">
               {Array.from({ length: 4 }).map((_, rowIndex) => (
                 <Skeleton
                   key={`panel-skeleton-${index}-${rowIndex}`}
-                  className="h-16 w-full rounded-[22px]"
+                  className="h-16 w-full rounded-[var(--ui-radius-card)]"
                 />
               ))}
             </div>
@@ -432,14 +532,14 @@ export function PtHubOverviewLoadingState() {
       </div>
 
       <div className="pt-hub-work-grid">
-        <div className="surface-panel rounded-[30px] border border-border/70 px-5 py-5 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:px-6">
+        <div className="surface-panel rounded-[var(--ui-radius-card)] border border-border/70 px-5 py-5 shadow-[var(--surface-shadow)] backdrop-blur-xl sm:px-6">
           <div className="space-y-4">
             <Skeleton className="h-4 w-28" />
             <Skeleton className="h-8 w-44 rounded-xl" />
             {Array.from({ length: 3 }).map((_, index) => (
               <Skeleton
                 key={`bottom-skeleton-${index}`}
-                className="h-20 w-full rounded-[24px]"
+                className="h-20 w-full rounded-[var(--ui-radius-card)]"
               />
             ))}
           </div>
@@ -467,7 +567,7 @@ export function PtHubOverviewErrorState({ onRetry }: { onRetry: () => void }) {
           icon={<AlertTriangle className="h-5 w-5 [stroke-width:1.7]" />}
           actionLabel="Retry dashboard"
           onAction={onRetry}
-          className="rounded-[26px] border-border/70 bg-background/34"
+          className="rounded-[var(--ui-radius-card)] border-border/70 bg-background/34"
         />
       </PtHubSectionCard>
     </section>
@@ -476,16 +576,8 @@ export function PtHubOverviewErrorState({ onRetry }: { onRetry: () => void }) {
 
 export function PtHubActionCenter({
   items,
-  mode,
-  activationChecklist,
-  activationChecklistLoading,
-  activationChecklistError,
 }: {
   items: PtHubOverviewActionItem[];
-  mode: "activation" | "operating";
-  activationChecklist?: PtHubActivationChecklistModel | null;
-  activationChecklistLoading?: boolean;
-  activationChecklistError?: boolean;
 }) {
   const navigate = useNavigate();
   const { switchWorkspace } = useWorkspace();
@@ -499,20 +591,13 @@ export function PtHubActionCenter({
   };
 
   return (
-    <div className="surface-panel-strong pt-hub-priority-panel pt-hub-surface-hero relative overflow-hidden rounded-[34px] border border-border/70 px-5 py-5 shadow-[var(--surface-strong-shadow)] backdrop-blur-xl sm:px-6 sm:py-6">
-      <div className="pt-hub-action-center-overlay pointer-events-none absolute inset-0" />
+    <div className="surface-panel-strong pt-hub-priority-panel pt-hub-surface-hero relative overflow-hidden rounded-[20px] border border-border/70 p-5 backdrop-blur-xl sm:p-6">
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.34),transparent)]" />
 
-      <div className="relative space-y-5">
-        <h2 className="max-w-3xl text-balance text-[1.55rem] font-semibold tracking-[0.005em] text-foreground sm:text-[1.85rem]">
+      <div className="relative space-y-4">
+        <h2 className="max-w-3xl text-balance text-[1.55rem] font-semibold tracking-[0.005em] text-foreground">
           Command center
         </h2>
-
-        <PtHubActivationChecklist
-          checklist={activationChecklist ?? null}
-          isLoading={activationChecklistLoading}
-          hasError={activationChecklistError}
-        />
 
         {primaryItem ? (
           <div
@@ -539,7 +624,7 @@ export function PtHubActionCenter({
             ))}
           </div>
         ) : (
-          <div className="pt-hub-command-clear-state rounded-[28px] border border-primary/18 bg-primary/8 px-5 py-6">
+          <div className="pt-hub-command-clear-state rounded-[var(--ui-radius-card)] border border-primary/18 bg-primary/8 px-5 py-6">
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
               <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/24 bg-primary/10 text-primary">
@@ -612,7 +697,7 @@ export function PtHubRecentActivityCard({
       notification={notification}
       audience="pt"
       compact
-      className="rounded-[22px] border-transparent bg-transparent px-4 py-4 shadow-none hover:border-transparent hover:bg-background/18"
+      className="pt-hub-overview-notification rounded-xl border-transparent bg-transparent px-0 py-3 shadow-none hover:border-transparent hover:bg-background/18"
       onClick={() => onOpenNotification(notification)}
     />
   );
@@ -623,6 +708,7 @@ export function PtHubRecentActivityCard({
       description={headerSummary}
       module={module}
       className="pt-hub-activity-rail pt-hub-surface-quiet h-full"
+      headerClassName="pt-hub-overview-activity-header"
       actions={
         <Button asChild variant="ghost" size="sm">
           <Link to="/pt/notifications">View all</Link>
@@ -634,7 +720,7 @@ export function PtHubRecentActivityCard({
           {Array.from({ length: 4 }).map((_, index) => (
             <Skeleton
               key={`overview-notification-skeleton-${index}`}
-              className="h-24 rounded-[22px] border border-border/60"
+              className="h-24 rounded-[var(--ui-radius-card)] border border-border/60"
             />
           ))}
         </div>
@@ -678,10 +764,10 @@ export function PtHubRecentActivityCard({
           title="Notifications are unavailable"
           description={errorMessage}
           icon={<Sparkles className="h-5 w-5 [stroke-width:1.7]" />}
-          className="rounded-[26px] border-border/70 bg-background/34"
+          className="rounded-[var(--ui-radius-card)] border-border/70 bg-background/34"
         />
       ) : (
-        <div className="pt-hub-activity-clear rounded-[24px] border border-border/55 bg-background/20 px-4 py-5">
+        <div className="ui-inset pt-hub-activity-clear border border-border/55 px-4 py-5">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/8 text-primary">
               <CheckCircle2 className="h-[1.125rem] w-[1.125rem] [stroke-width:1.7]" />
@@ -879,7 +965,7 @@ export function PtHubSummaryCard({
                 <Link to={emptyState.href}>{emptyState.ctaLabel}</Link>
               </Button>
             }
-            className="rounded-[26px] border-border/70 bg-background/34"
+            className="rounded-[var(--ui-radius-card)] border-border/70 bg-background/34"
           />
         ) : (
           <div className="-mx-1 divide-y divide-border/60">
@@ -925,7 +1011,7 @@ export function PtHubSummaryCard({
                   return (
                     <div
                       key={item.id}
-                      className="w-full rounded-[22px] border border-transparent bg-transparent px-4 py-4 text-left"
+                      className="w-full rounded-[var(--ui-radius-card)] border border-transparent bg-transparent px-4 py-4 text-left"
                     >
                       {content}
                     </div>
@@ -937,7 +1023,7 @@ export function PtHubSummaryCard({
                     key={item.id}
                     type="button"
                     onClick={() => handleItemClick(item)}
-                    className="pt-hub-interactive group w-full rounded-[22px] border border-transparent bg-transparent px-4 py-4 text-left hover:bg-background/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="pt-hub-interactive group w-full rounded-[var(--ui-radius-card)] border border-transparent bg-transparent px-4 py-4 text-left hover:bg-background/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     {content}
                   </button>

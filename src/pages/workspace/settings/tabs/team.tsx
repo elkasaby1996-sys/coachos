@@ -294,7 +294,7 @@ function ClientAssignmentPicker({
           </button>
         ) : null}
       </div>
-      <div className="max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-border/70 bg-muted/20 p-2">
+      <div className="ui-panel max-h-64 space-y-2 overflow-y-auto border border-border/70 p-2">
         {clientsQuery.isLoading ? (
           Array.from({ length: 4 }).map((_, index) => (
             <Skeleton key={index} className="h-12 rounded-xl" />
@@ -659,7 +659,7 @@ function TeamMemberTable({
   return (
     <>
       <div className="overflow-x-auto rounded-2xl border border-border/70">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="ui-table w-full min-w-[760px] text-left text-sm">
           <thead className="border-b border-border/70 bg-muted/30 text-xs uppercase tracking-[0.18em] text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Member</th>
@@ -896,7 +896,7 @@ function PendingInviteTable({
   return (
     <>
       <div className="overflow-x-auto rounded-2xl border border-border/70">
-        <table className="w-full min-w-[720px] text-left text-sm">
+        <table className="ui-table w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-border/70 bg-muted/30 text-xs uppercase tracking-[0.18em] text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Email</th>
@@ -1053,8 +1053,8 @@ export function WorkspaceTeamSettingsPage() {
         </Alert>
       ) : teamQuery.isLoading ? (
         <div className="space-y-4">
-          <Skeleton className="h-64 rounded-[24px]" />
-          <Skeleton className="h-48 rounded-[24px]" />
+          <Skeleton className="h-64 rounded-[var(--ui-radius-card)]" />
+          <Skeleton className="h-48 rounded-[var(--ui-radius-card)]" />
         </div>
       ) : teamQuery.error ? (
         <Alert tone="danger">

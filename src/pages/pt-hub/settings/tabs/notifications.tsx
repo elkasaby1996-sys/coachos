@@ -45,7 +45,7 @@ function PreferenceToggle({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex min-h-14 items-center justify-between gap-4 rounded-xl border border-border/70 bg-card/40 px-4 py-3">
+    <div className="ui-panel flex min-h-14 items-center justify-between gap-4 border border-border/70 px-4 py-3">
       <div className="min-w-0">
         <p className="text-sm font-medium text-foreground">{title}</p>
         <p className="text-xs text-muted-foreground">{description}</p>

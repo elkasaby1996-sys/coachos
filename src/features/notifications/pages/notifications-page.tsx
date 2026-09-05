@@ -345,7 +345,7 @@ export function NotificationsPage() {
 
       <SurfaceCard
         module="settings"
-        className={isClientPortal ? "" : "rounded-[24px]"}
+        className={isClientPortal ? "" : "rounded-[var(--ui-radius-card)]"}
       >
         {isClientPortal ? (
           <SurfaceCardHeader className="items-end pb-2">

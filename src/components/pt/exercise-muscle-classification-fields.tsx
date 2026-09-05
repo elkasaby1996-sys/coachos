@@ -147,7 +147,7 @@ export function ExerciseMuscleClassificationFields({
       </div>
 
       {value.mode === "specific" ? (
-        <div className="rounded-xl border border-border/70 bg-background/35 p-3">
+        <div className="ui-panel border border-border/70 p-3">
           <div className="grid grid-cols-[minmax(0,1fr)_4.25rem_4.25rem] items-end gap-2 border-b border-border/60 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             <span>Muscle</span>
             <span className="text-center">Primary</span>
@@ -239,7 +239,7 @@ export function ExerciseMuscleClassificationFields({
       ) : null}
 
       {value.mode === "region" ? (
-        <div className="space-y-2 rounded-xl border border-border/70 bg-background/35 p-3">
+        <div className="ui-panel space-y-2 border border-border/70 p-3">
           <label
             htmlFor={`${id}-region`}
             className="text-xs font-semibold text-muted-foreground"
@@ -283,7 +283,7 @@ export function ExerciseMuscleClassificationFields({
       ) : null}
 
       {legacyLabels.length > 0 ? (
-        <div className="rounded-xl border border-border/70 bg-secondary/20 p-3">
+        <div className="ui-panel border border-border/70 p-3">
           <p className="text-xs font-semibold text-foreground">
             Existing legacy anatomy (reference only)
           </p>

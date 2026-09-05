@@ -334,6 +334,7 @@ export function PtProgramsPage() {
               Cancel
             </Button>
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
@@ -354,7 +355,10 @@ export function PtProgramsPage() {
       />
 
       {actionError ? (
-        <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm">
+        <Card
+          tone="danger"
+          className="border-destructive/40 bg-destructive/5 p-3 text-sm"
+        >
           {actionError}
         </Card>
       ) : null}
@@ -408,12 +412,18 @@ export function PtProgramsPage() {
           ))}
         </div>
       ) : workspaceError ? (
-        <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm">
+        <Card
+          tone="danger"
+          className="border-destructive/40 bg-destructive/5 p-3 text-sm"
+        >
           {getErrorDetails(workspaceError).code}:{" "}
           {getErrorDetails(workspaceError).message}
         </Card>
       ) : programsQuery.error ? (
-        <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm">
+        <Card
+          tone="danger"
+          className="border-destructive/40 bg-destructive/5 p-3 text-sm"
+        >
           {getErrorDetails(programsQuery.error).code}:{" "}
           {getErrorDetails(programsQuery.error).message}
         </Card>
@@ -484,6 +494,7 @@ export function PtProgramsPage() {
                             : "Archive"}
                         </Button>
                         <Button
+                          tone="danger"
                           size="sm"
                           variant="ghost"
                           className="flex-1 text-destructive hover:text-destructive"
@@ -522,7 +533,7 @@ export function PtProgramsPage() {
         >
           <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+              <div className="ui-inset border border-border/70 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Reusable block
                 </div>
@@ -534,7 +545,7 @@ export function PtProgramsPage() {
                   is reusable.
                 </div>
               </div>
-              <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+              <div className="ui-inset border border-border/70 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Assignment behavior
                 </div>
@@ -546,7 +557,7 @@ export function PtProgramsPage() {
                   block to each client.
                 </div>
               </div>
-              <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+              <div className="ui-inset border border-border/70 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Lifecycle
                 </div>
@@ -558,7 +569,7 @@ export function PtProgramsPage() {
                   the active planning lane.
                 </div>
               </div>
-              <div className="rounded-[20px] border border-border/70 bg-background/35 p-4">
+              <div className="ui-inset border border-border/70 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Recommended first step
                 </div>

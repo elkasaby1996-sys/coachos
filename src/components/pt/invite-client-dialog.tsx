@@ -222,7 +222,7 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
             </div>
 
             {!invite ? (
-              <div className="flex items-center gap-3 rounded-xl border border-dashed border-border/70 bg-secondary/16 px-4 py-4 text-sm text-muted-foreground/90">
+              <div className="ui-panel flex items-center gap-3 border border-dashed border-border/70 px-4 py-4 text-sm text-muted-foreground/90">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-secondary/55 text-muted-foreground">
                   <Link2 className="h-4 w-4" />
                 </div>

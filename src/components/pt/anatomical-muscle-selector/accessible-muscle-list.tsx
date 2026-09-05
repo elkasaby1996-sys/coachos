@@ -36,7 +36,7 @@ export function AccessibleMuscleList({
         return (
           <details
             key={group.key}
-            className="group min-w-0 rounded-2xl border border-border/60 bg-muted/18 open:bg-muted/24"
+            className="ui-panel group min-w-0 border border-border/60 open:bg-muted/24"
           >
             <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-3 py-2.5 transition-colors duration-200 hover:bg-card/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 [&::-webkit-details-marker]:hidden">
               <span className="min-w-0">

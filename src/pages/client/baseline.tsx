@@ -831,7 +831,7 @@ export function ClientBaselinePage() {
   if (clientQuery.error || !clientId) {
     return (
       <div className="portal-shell">
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
             {clientQuery.error
@@ -923,7 +923,7 @@ export function ClientBaselinePage() {
         ) : null}
 
         {lastSupabaseError ? (
-          <Alert className="border-danger/30">
+          <Alert tone="danger" className="border-danger/30">
             <AlertTitle>Supabase error</AlertTitle>
             <AlertDescription>
               <div className="space-y-1 text-xs text-muted-foreground">
@@ -958,7 +958,7 @@ export function ClientBaselinePage() {
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               {metricsStatus === "error" && metricsError ? (
-                <Alert className="border-danger/30 sm:col-span-2">
+                <Alert tone="danger" className="border-danger/30 sm:col-span-2">
                   <AlertTitle>Baseline metrics save failed</AlertTitle>
                   <AlertDescription>
                     <div className="space-y-1 text-xs text-muted-foreground">

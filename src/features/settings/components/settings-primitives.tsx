@@ -201,7 +201,10 @@ export function SettingsSectionCard({
   action?: React.ReactNode;
 }) {
   return (
-    <Card module="settings" className="surface-panel rounded-[24px]">
+    <Card
+      module="settings"
+      className="surface-panel rounded-[var(--ui-radius-card)]"
+    >
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <CardTitle className="text-base font-semibold">{title}</CardTitle>

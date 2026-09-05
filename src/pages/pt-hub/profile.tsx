@@ -57,8 +57,8 @@ export function PtHubProfilePage() {
         <div
           className={
             messageTone === "success"
-              ? "rounded-[24px] border border-success/20 bg-success/10 px-4 py-3 text-sm text-success"
-              : "rounded-[24px] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+              ? "rounded-[var(--ui-radius-card)] border border-success/20 bg-success/10 px-4 py-3 text-sm text-success"
+              : "rounded-[var(--ui-radius-card)] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
           }
         >
           {message}

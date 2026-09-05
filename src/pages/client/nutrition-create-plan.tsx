@@ -845,6 +845,7 @@ export function ClientNutritionCreatePlanPage() {
 
                             <div className="flex shrink-0 items-center gap-1.5">
                               <Button
+                                tone="danger"
                                 type="button"
                                 variant="ghost"
                                 size="sm"
@@ -937,7 +938,7 @@ export function ClientNutritionCreatePlanPage() {
                             </div>
 
                             <div className="overflow-x-auto rounded-md border border-border/60 bg-muted/10">
-                              <table className="w-full min-w-[980px] table-fixed">
+                              <table className="ui-table w-full min-w-[980px] table-fixed">
                                 <colgroup>
                                   <col className="w-[48%]" />
                                   <col className="w-[16%]" />
@@ -1108,6 +1109,7 @@ export function ClientNutritionCreatePlanPage() {
                                         </td>
                                         <td className="px-2 py-1.5 align-middle">
                                           <Button
+                                            tone="danger"
                                             type="button"
                                             variant="ghost"
                                             size="sm"

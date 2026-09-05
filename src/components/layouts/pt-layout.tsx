@@ -377,7 +377,7 @@ function sidebarLinkClasses(
   collapsed: boolean,
 ) {
   return cn(
-    "group relative flex items-center gap-3 rounded-[22px] border text-sm font-medium transition-all duration-200",
+    "group relative flex items-center gap-3 rounded-[var(--ui-radius-card)] border text-sm font-medium transition-all duration-200",
     collapsed ? "justify-center px-2.5 py-2.5" : "px-3.5 py-3",
     isActive
       ? isLightMode
@@ -446,7 +446,7 @@ function SidebarNav({
                                 : "pt-nav-active-expanded"
                           }
                           className={cn(
-                            "absolute inset-0 rounded-[22px]",
+                            "absolute inset-0 rounded-[var(--ui-radius-card)]",
                             getModuleToneClasses(item.module).navActive,
                           )}
                           style={getModuleToneStyle(item.module)}
@@ -1053,7 +1053,7 @@ export function PtLayout() {
                 </div>
               ) : null}
               {normalizedSearch.length > 0 ? (
-                <div className="overflow-hidden rounded-[24px] border border-border/65 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
+                <div className="overflow-hidden rounded-[var(--ui-radius-card)] border border-border/65 bg-[var(--popover-bg)] p-2 shadow-[var(--popover-shadow)] backdrop-blur-2xl">
                   {searchQuery.isLoading ? (
                     <div className="px-3 py-3 text-sm text-muted-foreground">
                       Searching workspace...
@@ -1173,7 +1173,7 @@ export function PtLayout() {
           mobileNavOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="pt-workspace-rail surface-panel-strong flex h-full flex-col overflow-hidden rounded-[32px] border-border/70">
+        <div className="pt-workspace-rail surface-panel-strong flex h-full flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/70">
           <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
             <p
               aria-label="RepSync"

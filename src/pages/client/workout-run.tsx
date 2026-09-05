@@ -1100,7 +1100,7 @@ export function ClientWorkoutRunPage() {
         </div>
       ) : null}
       {saveError ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{saveError}</AlertDescription>
         </Alert>
@@ -1504,7 +1504,7 @@ export function ClientWorkoutRunPage() {
               />
             </div>
             {finishError ? (
-              <Alert className="border-danger/30">
+              <Alert tone="danger" className="border-danger/30">
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>{finishError}</AlertDescription>
               </Alert>
@@ -1553,7 +1553,7 @@ export function ClientWorkoutRunPage() {
           >
             <div
               ref={celebrationCardRef}
-              className="w-full max-w-xl rounded-[30px] border border-success/20 bg-[linear-gradient(180deg,rgba(10,18,16,0.96),rgba(7,11,10,0.94))] p-6 text-foreground shadow-[0_38px_110px_-48px_rgba(0,0,0,0.9)] backdrop-blur-2xl"
+              className="w-full max-w-xl rounded-[var(--ui-radius-card)] border border-success/20 bg-[linear-gradient(180deg,rgba(10,18,16,0.96),rgba(7,11,10,0.94))] p-6 text-foreground shadow-[0_38px_110px_-48px_rgba(0,0,0,0.9)] backdrop-blur-2xl"
             >
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-1 text-sm text-success">
                 Session complete
@@ -1587,7 +1587,7 @@ export function ClientWorkoutRunPage() {
                     ref={(node) => {
                       if (node) celebrationStatRefs.current[index] = node;
                     }}
-                    className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4"
+                    className="rounded-[var(--ui-radius-card)] border border-white/8 bg-white/[0.03] p-4"
                   >
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                       {item.label}

@@ -624,7 +624,7 @@ export function PtClientMedicalTab({
                 }
               />
             </div>
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground">
+            <div className="ui-inset border border-border/60 p-3 text-xs text-muted-foreground">
               Accepts PDF and image uploads. Files stay private and open through
               signed URLs.
             </div>
@@ -674,7 +674,7 @@ export function PtClientMedicalTab({
               historyEntries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="rounded-2xl border border-border/60 bg-background/35 p-4"
+                  className="ui-inset border border-border/60 p-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-foreground">
@@ -722,7 +722,7 @@ export function PtClientMedicalTab({
               labEntries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="rounded-2xl border border-border/60 bg-background/35 p-4"
+                  className="ui-inset border border-border/60 p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
@@ -776,7 +776,7 @@ export function PtClientMedicalTab({
               (documentsQuery.data ?? []).map((documentRow) => (
                 <div
                   key={documentRow.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/35 p-4"
+                  className="ui-inset flex flex-wrap items-center justify-between gap-3 border border-border/60 p-4"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-foreground">

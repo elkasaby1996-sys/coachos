@@ -19,7 +19,7 @@ function PreferenceRow({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[22px] border border-border/60 bg-background/35 px-4 py-4">
+    <div className="ui-panel flex items-center justify-between gap-4 border border-border/60 px-4 py-4">
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">{label}</p>
         <p className="text-xs leading-5 text-muted-foreground">{hint}</p>
@@ -195,7 +195,7 @@ export function PtHubSettingsPanel({
           title="Security"
           description="Authentication controls still live in the existing account flow."
         >
-          <div className="rounded-[22px] border border-warning/30 bg-warning/10 p-4">
+          <div className="rounded-[var(--ui-radius-card)] border border-warning/30 bg-warning/10 p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 text-warning" />
               <div className="space-y-1">
@@ -215,7 +215,7 @@ export function PtHubSettingsPanel({
           title="Platform subscription"
           description="Billing stays explicit here without inventing live infrastructure where it does not exist."
         >
-          <div className="rounded-[22px] border border-border/60 bg-background/35 p-4">
+          <div className="ui-inset border border-border/60 p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-foreground">
@@ -235,7 +235,7 @@ export function PtHubSettingsPanel({
           description="Lock in PT Hub operating preferences before returning to delivery work."
         >
           <div className="space-y-4">
-            <div className="rounded-[22px] border border-border/60 bg-background/35 p-4">
+            <div className="ui-inset border border-border/60 p-4">
               <div className="flex items-start gap-3">
                 {form.weeklyDigest ? (
                   <BellRing className="mt-0.5 h-5 w-5 shrink-0 text-primary" />

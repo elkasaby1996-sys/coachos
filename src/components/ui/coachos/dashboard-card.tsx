@@ -15,7 +15,7 @@ export function DashboardCard({
   action,
   className,
   contentClassName,
-  disableHoverMotion = false,
+  disableHoverMotion = true,
   children,
 }: {
   title: ReactNode;

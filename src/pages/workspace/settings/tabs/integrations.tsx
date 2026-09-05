@@ -157,7 +157,7 @@ export function WorkspaceSettingsIntegrationsTab() {
         }
       >
         {settingsQuery.error ? (
-          <Alert className="border-danger/30">
+          <Alert tone="danger" className="border-danger/30">
             <AlertTitle>Unable to load wearable settings</AlertTitle>
             <AlertDescription>
               {settingsQuery.error instanceof Error
@@ -168,7 +168,7 @@ export function WorkspaceSettingsIntegrationsTab() {
         ) : null}
 
         {saveMutation.error ? (
-          <Alert className="border-danger/30">
+          <Alert tone="danger" className="border-danger/30">
             <AlertTitle>Unable to save wearable settings</AlertTitle>
             <AlertDescription>
               {saveMutation.error instanceof Error
@@ -330,7 +330,8 @@ export function WorkspaceSettingsIntegrationsTab() {
           hint="Shown before the connect action."
         >
           <textarea
-            className="min-h-[104px] w-full rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            data-ui="field"
+            className="app-field app-field-textarea min-h-[104px] w-full rounded-lg border border-border/70 bg-background/70 px-3 py-2 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={form.clientConsentCopy}
             disabled={disabled}
             onChange={(event) =>
@@ -343,7 +344,7 @@ export function WorkspaceSettingsIntegrationsTab() {
         </SettingsFieldRow>
 
         {!canManage ? (
-          <Alert className="border-warning/30">
+          <Alert tone="warning" className="border-warning/30">
             <AlertTitle>Read-only</AlertTitle>
             <AlertDescription>
               Your workspace role can view this configuration but cannot change

@@ -190,7 +190,7 @@ export function PtHubPaymentsPage() {
           contentClassName="space-y-5"
         >
           <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(18rem,0.5fr)]">
-            <div className="rounded-[24px] border border-border/60 bg-background/34 p-5">
+            <div className="ui-inset border border-border/60 p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">
@@ -240,7 +240,7 @@ export function PtHubPaymentsPage() {
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-border/60 bg-background/24 p-5">
+            <div className="ui-inset border border-border/60 p-5">
               <p className="text-sm font-semibold text-foreground">
                 Revenue potential
               </p>
@@ -251,7 +251,7 @@ export function PtHubPaymentsPage() {
                 Active client{potentialActiveClients === 1 ? "" : "s"} that can
                 become paying clients once payment collection is live.
               </p>
-              <div className="mt-5 rounded-2xl border border-border/50 bg-background/38 px-4 py-3">
+              <div className="ui-inset mt-5 border border-border/50 px-4 py-3">
                 <p className="text-xs font-medium text-muted-foreground">
                   Next meaningful upgrade
                 </p>
@@ -288,7 +288,7 @@ export function PtHubPaymentsPage() {
         module="billing"
       >
         {hasLiveInvoices ? (
-          <div className="overflow-hidden rounded-[22px] border border-border/60">
+          <div className="overflow-hidden rounded-[var(--ui-radius-card)] border border-border/60">
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(9rem,0.34fr)_minmax(8rem,0.28fr)] gap-3 border-b border-border/55 bg-background/28 px-4 py-3 text-xs font-semibold text-muted-foreground">
               <span>Invoice</span>
               <span>Issued</span>
@@ -351,10 +351,13 @@ function PtHubPaymentsLoadingState() {
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton key={index} className="h-[152px] rounded-[26px]" />
+          <Skeleton
+            key={index}
+            className="h-[152px] rounded-[var(--ui-radius-card)]"
+          />
         ))}
       </div>
-      <Skeleton className="h-[340px] rounded-[28px]" />
+      <Skeleton className="h-[340px] rounded-[var(--ui-radius-card)]" />
     </section>
   );
 }
@@ -369,7 +372,7 @@ function PaymentSignal({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border/55 bg-background/36 px-4 py-3">
+    <div className="ui-panel border border-border/55 px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
         <Icon className="h-4 w-4 text-billing" aria-hidden="true" />
@@ -391,7 +394,7 @@ function PaymentSetupStep({
   complete: boolean;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-border/55 bg-background/32 px-4 py-3">
+    <div className="ui-panel flex items-start gap-3 border border-border/55 px-4 py-3">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/55 bg-background/45 text-billing">
         <Icon className="h-4 w-4" aria-hidden="true" />
       </span>

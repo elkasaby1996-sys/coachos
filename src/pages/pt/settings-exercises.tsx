@@ -738,7 +738,7 @@ export function PtExerciseLibraryPage() {
         </aside>
 
         <section
-          className="order-2 min-w-0 rounded-[26px] border border-border/70 bg-card/55 p-3 shadow-card sm:p-4 xl:order-1"
+          className="ui-panel order-2 min-w-0 border border-border/70 p-3 sm:p-4 xl:order-1"
           aria-label={
             view === "library"
               ? "My Library results"

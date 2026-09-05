@@ -378,7 +378,7 @@ export function PtWorkoutTemplatesPage() {
       ) : filteredTemplates.length === 0 ? (
         templates.length === 0 ? (
           <DashboardCard title="No workout templates" className="bg-card/90">
-            <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
+            <div className="ui-inset border border-dashed border-border p-8 text-center">
               <p className="text-sm font-semibold">Create the first template</p>
               {canManageDelivery ? (
                 <Button
@@ -393,7 +393,7 @@ export function PtWorkoutTemplatesPage() {
           </DashboardCard>
         ) : (
           <DashboardCard title="No templates match" className="bg-card/90">
-            <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
+            <div className="ui-inset border border-dashed border-border p-8 text-center">
               <p className="text-sm font-semibold">No templates match</p>
               <p className="mt-2 text-xs text-muted-foreground">
                 Clear the search or try another filter.
@@ -435,6 +435,7 @@ export function PtWorkoutTemplatesPage() {
                   </Button>
                   {canManageDelivery ? (
                     <Button
+                      tone="danger"
                       size="sm"
                       variant="ghost"
                       className="flex-1 text-destructive hover:text-destructive"
@@ -502,7 +503,8 @@ export function PtWorkoutTemplatesPage() {
                 Description
               </label>
               <textarea
-                className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.description}
                 onChange={(event) =>
                   setForm((prev) => ({

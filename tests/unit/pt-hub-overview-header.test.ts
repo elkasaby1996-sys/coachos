@@ -19,7 +19,7 @@ describe("PT Hub shell chrome", () => {
     expect(hubLayout).toContain("pt-hub-shell-utilities");
     expect(hubLayout).toContain("pt-hub-header-action-cluster");
     expect(hubLayout).not.toMatch(
-      /pt-hub-header-action-cluster[^\"]*\bborder\b/,
+      /pt-hub-header-action-cluster[^"]*\bborder\b/,
     );
     expect(hubLayout).toContain("R E P S Y N C");
     expect(hubLayout).toContain('aria-label="RepSync"');
@@ -68,7 +68,12 @@ describe("PT Hub shell chrome", () => {
       "src/features/pt-hub/components/pt-hub-overview-sections.tsx",
     );
 
-    expect(overviewPage).toContain('title="Profile Checklist"');
+    expect(overviewPage).not.toContain("PtHubLaunchChecklistCard");
+    expect(overviewPage).toContain(
+      "profileItems={(readiness?.checklist ?? [])",
+    );
+    expect(overviewSections).toContain('aria-label="Coach setup"');
+    expect(overviewSections).toContain('aria-label="Profile essentials"');
     expect(overviewPage).not.toContain("Top setup blockers only.");
     expect(overviewSections).not.toContain("blockers shown");
     expect(overviewSections).not.toContain("more blocker");

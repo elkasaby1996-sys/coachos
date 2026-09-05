@@ -562,7 +562,7 @@ export function PtHubLayout() {
             mobileOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
-          <div className="pt-hub-workspace-rail surface-panel-strong flex h-full flex-col overflow-hidden rounded-[24px] border-border/70">
+          <div className="pt-hub-workspace-rail surface-panel-strong flex h-full flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/70">
             <SidebarContent
               className="min-h-0"
               onLogout={signOut}

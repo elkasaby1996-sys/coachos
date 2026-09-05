@@ -31,18 +31,22 @@ const DialogContent = React.forwardRef<
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      data-ui="dialog"
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-[28px] border border-border/70 p-6 focus:outline-none data-[state=closed]:animate-[dialog-content-out_180ms_ease-in_forwards] data-[state=open]:animate-[dialog-content-in_240ms_cubic-bezier(0.22,1,0.36,1)_forwards] sm:w-full",
+        "fixed left-[50%] top-[50%] z-50 max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-[var(--ui-radius-card)] border border-border/70 p-6 focus:outline-none data-[state=closed]:animate-[dialog-content-out_180ms_ease-in_forwards] data-[state=open]:animate-[dialog-content-in_240ms_cubic-bezier(0.22,1,0.36,1)_forwards] sm:w-full",
         className,
       )}
       style={{
-        background: "var(--dialog-bg)",
-        boxShadow: "var(--dialog-shadow)",
+        background: "var(--ui-surface)",
+        boxShadow: "var(--ui-shadow-overlay)",
       }}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full border border-border/70 bg-card/72 p-2 text-muted-foreground transition hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+      <DialogPrimitive.Close
+        data-ui="dialog-close"
+        className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      >
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -79,6 +83,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
+    data-ui="dialog-title"
     className={cn("text-xl font-semibold tracking-tight", className)}
     {...props}
   />

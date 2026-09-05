@@ -38,7 +38,7 @@ export function AnatomicalMuscleSelector({
   return (
     <section
       className={cn(
-        "anatomy-selector w-full min-w-0 rounded-[26px] bg-card/72 p-3 shadow-card sm:p-4",
+        "anatomy-selector w-full min-w-0 rounded-[var(--ui-radius-card)] bg-card/72 p-3 shadow-card sm:p-4",
         disabled && "is-disabled",
         className,
       )}

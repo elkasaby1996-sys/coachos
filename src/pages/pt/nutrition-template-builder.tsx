@@ -561,7 +561,8 @@ export function PtNutritionTemplateBuilderPage() {
               Description
             </label>
             <textarea
-              className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              data-ui="field"
+              className="app-field app-field-textarea min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={metaForm.description}
               onChange={(event) =>
                 setMetaForm((prev) => ({

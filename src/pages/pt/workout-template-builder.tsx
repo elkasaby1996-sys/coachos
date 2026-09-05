@@ -1138,7 +1138,7 @@ export function PtWorkoutTemplateBuilderPage() {
           </CardContent>
         </Card>
       ) : templateQuery.error ? (
-        <Card className="border-destructive/40">
+        <Card tone="danger" className="border-destructive/40">
           <CardHeader>
             <CardTitle>Template error</CardTitle>
           </CardHeader>
@@ -1484,7 +1484,7 @@ export function PtWorkoutTemplateBuilderPage() {
           }
         }}
       >
-        <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none flex-col overflow-hidden rounded-[24px] p-0 sm:w-[calc(100vw-2rem)] lg:h-[min(92dvh,58rem)] lg:max-w-[1120px]">
+        <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none flex-col overflow-hidden rounded-[var(--ui-radius-card)] p-0 sm:w-[calc(100vw-2rem)] lg:h-[min(92dvh,58rem)] lg:max-w-[1120px]">
           <DialogHeader className="shrink-0 px-4 pb-3 pt-4 pr-14 sm:px-6 sm:pt-5">
             <DialogTitle>Add exercises</DialogTitle>
             <DialogDescription>
@@ -1747,7 +1747,8 @@ export function PtWorkoutTemplateBuilderPage() {
                 Notes
               </label>
               <textarea
-                className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.notes}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, notes: event.target.value }))

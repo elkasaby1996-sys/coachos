@@ -630,6 +630,7 @@ export function ClientNutritionPage() {
                       </Button>
                     ) : (
                       <Button
+                        tone="danger"
                         size="sm"
                         variant="secondary"
                         className="text-destructive hover:text-destructive"

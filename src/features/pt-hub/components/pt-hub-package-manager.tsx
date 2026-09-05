@@ -668,7 +668,7 @@ export function PtHubPackageManager() {
       <div
         key={pkg.id}
         className={cn(
-          "rounded-[22px] border border-border/65 bg-background/40 px-4 py-4 transition hover:border-border hover:bg-background/55",
+          "rounded-[var(--ui-radius-card)] border border-border/65 bg-background/40 px-4 py-4 transition hover:border-border hover:bg-background/55",
           isArchived && "bg-background/25 opacity-90",
         )}
       >
@@ -848,7 +848,7 @@ export function PtHubPackageManager() {
         ) : null}
 
         {packages.length === 0 && packagesQuery.isSuccess ? (
-          <div className="rounded-[20px] border border-dashed border-border/60 bg-background/30 px-4 py-5 text-sm text-muted-foreground">
+          <div className="ui-inset border border-dashed border-border/60 px-4 py-5 text-sm text-muted-foreground">
             <span>No packages yet.</span>
           </div>
         ) : null}
@@ -873,7 +873,7 @@ export function PtHubPackageManager() {
         {filteredPackages.length === 0 &&
         packagesQuery.isSuccess &&
         packages.length > 0 ? (
-          <div className="rounded-[20px] border border-dashed border-border/60 bg-background/30 px-4 py-5 text-sm text-muted-foreground">
+          <div className="ui-inset border border-dashed border-border/60 px-4 py-5 text-sm text-muted-foreground">
             No packages match the current search or filter.
           </div>
         ) : null}
@@ -1081,7 +1081,7 @@ export function PtHubPackageManager() {
               )}
             </PackageFormField>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-border/60 bg-background/35 px-4 py-3">
+          <div className="ui-inset flex flex-wrap items-center justify-between gap-3 border border-border/60 px-4 py-3">
             <div className="space-y-1">
               <label className="inline-flex items-center gap-2 text-sm text-foreground">
                 <Switch
@@ -1412,7 +1412,7 @@ export function PtHubPackageManager() {
                       </PackageFormField>
                     </div>
 
-                    <div className="rounded-[24px] border border-border/60 bg-background/35 px-4 py-4">
+                    <div className="ui-panel border border-border/60 px-4 py-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="space-y-1">
                           <label className="inline-flex items-center gap-2 text-sm text-foreground">

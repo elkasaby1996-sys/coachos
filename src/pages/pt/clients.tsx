@@ -27,6 +27,7 @@ import type { PTClientSummary } from "../../features/pt-hub/types";
 import { type ClientSegmentKey } from "../../lib/client-lifecycle";
 import { routes } from "../../lib/routes";
 import { useWorkspace } from "../../lib/use-workspace";
+import "../../styles/workspace-clients.css";
 
 export function PtClientsPage() {
   const navigate = useNavigate();
@@ -172,16 +173,16 @@ export function PtClientsPage() {
   };
 
   return (
-    <section className="space-y-6">
+    <section className="workspace-clients space-y-6">
       {toastMessage ? (
-        <Alert className="border-success/30">
+        <Alert tone="success" className="border-success/30">
           <AlertTitle>Success</AlertTitle>
           <AlertDescription>{toastMessage}</AlertDescription>
         </Alert>
       ) : null}
 
       {errorMessage ? (
-        <Alert className="border-destructive/30">
+        <Alert tone="danger" className="border-destructive/30">
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
@@ -232,8 +233,12 @@ export function PtClientsPage() {
         />
       </div>
 
-      <PtHubSectionCard title="Client List" contentClassName="space-y-6">
-        <div className="grid gap-3 lg:grid-cols-[minmax(320px,1fr)_minmax(240px,0.65fr)_150px_auto] lg:items-center lg:gap-4 lg:px-2">
+      <PtHubSectionCard
+        title="Client list"
+        className="workspace-clients-card"
+        contentClassName="space-y-4"
+      >
+        <div className="workspace-clients-toolbar">
           <div>
             <div className="relative">
               <Search className="app-search-icon h-4 w-4" />
@@ -322,9 +327,13 @@ export function PtClientsPage() {
         </div>
 
         {isTableLoading ? (
-          <div className="space-y-3 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-4">
+          <div
+            className="space-y-2"
+            aria-label="Loading clients"
+            aria-busy="true"
+          >
             {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 w-full rounded-[24px]" />
+              <Skeleton key={index} className="h-16 w-full rounded-lg" />
             ))}
           </div>
         ) : isEmpty ? (
@@ -338,6 +347,7 @@ export function PtClientsPage() {
             clients={clients}
             onOpen={openClient}
             showWorkspaceColumn={false}
+            compact
           />
         )}
 

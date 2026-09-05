@@ -101,7 +101,7 @@ function PtHubLeadListSkeleton() {
         <Skeleton className="h-3 w-16" />
         <Skeleton className="h-3 w-16" />
       </div>
-      <div className="mt-2 divide-y divide-border/45 overflow-hidden rounded-[14px] border border-border/50 bg-background/35">
+      <div className="ui-panel mt-2 divide-y divide-border/45 overflow-hidden border border-border/50">
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
@@ -137,7 +137,7 @@ function PtHubLeadListErrorState({
   return (
     <div
       role="alert"
-      className="rounded-[22px] border border-destructive/20 bg-destructive/5 p-5"
+      className="rounded-[var(--ui-radius-card)] border border-destructive/20 bg-destructive/5 p-5"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
@@ -595,7 +595,7 @@ export function PtHubLeadsPage() {
               <span>Submitted</span>
               <span>Status / Action</span>
             </div>
-            <div className="mt-2 divide-y divide-border/45 overflow-hidden rounded-[14px] border border-border/45 bg-background/35">
+            <div className="ui-inset mt-2 divide-y divide-border/45 overflow-hidden border border-border/45">
               {filteredLeads.map((lead) => {
                 const packageLabel = getLeadPrimaryPackageLabel(lead);
                 const statusMarkerTone = getSemanticToneClasses(
@@ -655,7 +655,7 @@ export function PtHubLeadsPage() {
                       {lead.status === "new" ? (
                         <button
                           type="button"
-                          className="rounded-[10px] border border-border/70 bg-background/75 px-3 py-1.5 text-xs font-semibold text-foreground shadow-[inset_0_1px_0_oklch(var(--background)/0.7)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-primary/20 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                          className="ui-inset border border-border/70 px-3 py-1.5 text-xs font-semibold text-foreground transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-primary/20 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                           disabled={statusActionState === "saving"}
                           onClick={(event) => {
                             event.stopPropagation();

@@ -794,7 +794,7 @@ export function PtCheckinTemplatesPage() {
         >
           <div className="space-y-6">
             {selectedTemplate && structuralEditsLocked ? (
-              <Alert className="border-warning/30 bg-warning/10">
+              <Alert tone="warning" className="border-warning/30 bg-warning/10">
                 <Lock className="h-4 w-4" />
                 <AlertTitle>Protected template definition</AlertTitle>
                 <AlertDescription>
@@ -806,7 +806,7 @@ export function PtCheckinTemplatesPage() {
             ) : null}
 
             <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-              <div className="space-y-4 rounded-[24px] bg-background/40 p-5">
+              <div className="space-y-4 rounded-[var(--ui-radius-card)] bg-background/40 p-5">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Template name
@@ -828,7 +828,8 @@ export function PtCheckinTemplatesPage() {
                     Description
                   </label>
                   <textarea
-                    className="min-h-[110px] w-full rounded-xl border border-border bg-background px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[110px] w-full rounded-xl border border-border bg-background px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={editor.description}
                     onChange={(event) =>
                       updateEditor((current) => ({
@@ -841,7 +842,7 @@ export function PtCheckinTemplatesPage() {
                 </div>
               </div>
 
-              <div className="space-y-4 rounded-[24px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--accent)/0.12),transparent)] p-5">
+              <div className="space-y-4 rounded-[var(--ui-radius-card)] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--accent)/0.12),transparent)] p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold text-foreground">
@@ -864,7 +865,7 @@ export function PtCheckinTemplatesPage() {
                 </div>
 
                 <div className="grid gap-2">
-                  <div className="rounded-xl border border-border/60 bg-background/50 px-3 py-3">
+                  <div className="ui-inset border border-border/60 px-3 py-3">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                       Resolution notes
                     </p>
@@ -875,7 +876,7 @@ export function PtCheckinTemplatesPage() {
                     </p>
                   </div>
                   {selectedTemplateUsage ? (
-                    <div className="rounded-xl border border-border/60 bg-background/50 px-3 py-3 text-sm text-muted-foreground">
+                    <div className="ui-inset border border-border/60 px-3 py-3 text-sm text-muted-foreground">
                       <p>
                         <span className="font-semibold text-foreground">
                           Current usage:
@@ -958,7 +959,7 @@ export function PtCheckinTemplatesPage() {
                     return (
                       <div
                         key={question.id}
-                        className="rounded-[24px] border border-border/70 bg-background/45 p-5 shadow-[0_20px_55px_-40px_rgba(15,23,42,0.75)]"
+                        className="ui-inset border border-border/70 p-5"
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <p className="text-sm font-semibold text-foreground">
@@ -1066,7 +1067,8 @@ export function PtCheckinTemplatesPage() {
                                 Help text
                               </label>
                               <textarea
-                                className="min-h-[92px] w-full rounded-xl border border-border bg-background px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                data-ui="field"
+                                className="app-field app-field-textarea min-h-[92px] w-full rounded-xl border border-border bg-background px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 value={question.helpText}
                                 onChange={(event) =>
                                   setQuestionDraft(question.id, (current) => ({
@@ -1079,7 +1081,7 @@ export function PtCheckinTemplatesPage() {
                             </div>
                           </div>
 
-                          <div className="space-y-4 rounded-[20px] border border-border/60 bg-muted/25 p-4">
+                          <div className="ui-inset space-y-4 border border-border/60 p-4">
                             <div className="space-y-2">
                               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                                 Question type
@@ -1121,7 +1123,7 @@ export function PtCheckinTemplatesPage() {
                               </div>
                             </div>
 
-                            <div className="flex items-start justify-between gap-4 rounded-xl border border-border/60 bg-background/70 px-3 py-3">
+                            <div className="ui-inset flex items-start justify-between gap-4 border border-border/60 px-3 py-3">
                               <div>
                                 <p className="text-sm font-medium text-foreground">
                                   Required response
@@ -1143,7 +1145,7 @@ export function PtCheckinTemplatesPage() {
                             </div>
 
                             {isChoice ? (
-                              <div className="space-y-3 rounded-xl border border-border/60 bg-background/70 p-3">
+                              <div className="ui-inset space-y-3 border border-border/60 p-3">
                                 <div className="flex items-center justify-between gap-2">
                                   <div>
                                     <p className="text-sm font-medium text-foreground">
@@ -1230,13 +1232,13 @@ export function PtCheckinTemplatesPage() {
                             ) : null}
 
                             {isYesNo ? (
-                              <div className="rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-muted-foreground">
+                              <div className="ui-inset border border-border/60 px-3 py-3 text-sm text-muted-foreground">
                                 Yes / no questions use fixed options in the
                                 client view so coaches get a cleaner binary UX.
                               </div>
                             ) : null}
 
-                            <div className="rounded-xl border border-border/60 bg-background/70 px-3 py-3">
+                            <div className="ui-inset border border-border/60 px-3 py-3">
                               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                                 Client preview
                               </p>
@@ -1290,7 +1292,7 @@ export function PtCheckinTemplatesPage() {
               )}
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.96),oklch(var(--card)/0.9))] px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--ui-radius-card)] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.96),oklch(var(--card)/0.9))] px-5 py-4">
               <div>
                 <p className="text-sm font-semibold text-foreground">
                   {selectedTemplate && structuralEditsLocked

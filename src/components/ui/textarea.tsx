@@ -8,6 +8,7 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, isInvalid, ...props }, ref) => (
     <textarea
+      data-ui="field"
       className={cn(
         "app-field app-field-textarea w-full px-3.5 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60",
         className,

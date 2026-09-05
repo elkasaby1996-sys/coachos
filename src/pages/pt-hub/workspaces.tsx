@@ -126,7 +126,7 @@ export function PtHubWorkspacesPage() {
           description="Create your first coaching space, then open the coaching dashboard."
           actionLabel="Create space"
           onAction={() => setDialogOpen(true)}
-          className="rounded-[28px] border-border/70 bg-card/70 p-8"
+          className="rounded-[var(--ui-radius-card)] border-border/70 bg-card/70 p-8"
         />
       ) : (
         <div className="pt-hub-work-grid xl:grid-cols-2">

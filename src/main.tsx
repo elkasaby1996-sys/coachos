@@ -17,6 +17,8 @@ import {
 import "./styles/globals.css";
 import "./styles/style.css";
 import "./styles/color-language.css";
+import "./styles/kpi-cards.css";
+import "./styles/component-system.css";
 
 initializeThemePreference("light");
 initSentry();

@@ -179,7 +179,7 @@ export function PtWorkoutTemplatePreviewPage() {
           </CardContent>
         </Card>
       ) : templateQuery.error ? (
-        <Card className="border-destructive/40">
+        <Card tone="danger" className="border-destructive/40">
           <CardHeader>
             <CardTitle>Template error</CardTitle>
           </CardHeader>

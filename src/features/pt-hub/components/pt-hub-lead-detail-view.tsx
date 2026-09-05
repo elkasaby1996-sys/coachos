@@ -308,7 +308,7 @@ export function PtHubLeadDetailView({
             ) : (
               <div className="space-y-3">
                 {leadChatStatus === "archived" ? (
-                  <div className="rounded-[22px] border border-border/60 bg-background/35 p-3 text-sm text-muted-foreground">
+                  <div className="ui-inset border border-border/60 p-3 text-sm text-muted-foreground">
                     This conversation is archived
                     {leadChatArchivedReason === "converted"
                       ? " after conversion."
@@ -319,7 +319,7 @@ export function PtHubLeadDetailView({
                 ) : null}
 
                 {leadChatMessages.length > 0 ? (
-                  <div className="max-h-[22rem] space-y-2 overflow-y-auto rounded-[22px] border border-border/60 bg-background/30 p-3">
+                  <div className="ui-inset max-h-[22rem] space-y-2 overflow-y-auto border border-border/60 p-3">
                     {leadChatMessages.map((message) => {
                       const isCurrentUser =
                         currentUserId && message.senderUserId === currentUserId;
@@ -352,7 +352,7 @@ export function PtHubLeadDetailView({
                 )}
 
                 {leadChatStatus === "open" ? (
-                  <div className="space-y-3 rounded-[22px] border border-border/60 bg-background/35 p-4">
+                  <div className="ui-inset space-y-3 border border-border/60 p-4">
                     <label className="text-sm font-medium text-foreground">
                       Message lead
                     </label>
@@ -402,7 +402,7 @@ export function PtHubLeadDetailView({
                 lead.notes.map((note) => (
                   <div
                     key={note.id}
-                    className="rounded-[22px] border border-border/60 bg-background/45 p-4"
+                    className="ui-inset border border-border/60 p-4"
                   >
                     <p className="text-sm text-foreground">{note.body}</p>
                     <p className="mt-2 text-xs text-muted-foreground">
@@ -417,7 +417,7 @@ export function PtHubLeadDetailView({
               )}
             </div>
 
-            <div className="space-y-3 rounded-[22px] border border-border/60 bg-background/35 p-4">
+            <div className="ui-inset space-y-3 border border-border/60 p-4">
               <label className="text-sm font-medium text-foreground">
                 Add note
               </label>
@@ -485,7 +485,7 @@ export function PtHubLeadDetailView({
               </Button>
             </div>
 
-            <div className="space-y-3 rounded-[20px] border border-border/60 bg-background/35 p-4">
+            <div className="ui-inset space-y-3 border border-border/60 p-4">
               <label className="text-sm font-medium text-foreground">
                 Workspace assignment for approval
               </label>
@@ -614,6 +614,7 @@ export function PtHubLeadDetailView({
               <AlertDialogFooter>
                 <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
                 <Button
+                  tone="danger"
                   variant="secondary"
                   className="border-destructive/40 text-destructive hover:bg-destructive/10"
                   disabled={saving}
@@ -665,7 +666,7 @@ export function PtHubLeadDetailView({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-background/40 p-4">
+    <div className="ui-panel border border-border/60 p-4">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>

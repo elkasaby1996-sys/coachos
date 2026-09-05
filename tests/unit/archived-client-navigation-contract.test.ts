@@ -78,9 +78,6 @@ describe("archived client history navigation contract", () => {
     expect(ptHubSource).toContain('"active" | "archived" | "all"');
     expect(clientsPageSource).toContain('viewParam === "archived"');
     expect(clientsPageSource).toContain("relationshipScope: clientListView");
-    expect(clientsPageSource).toContain(
-      "lg:grid-cols-[minmax(320px,1fr)_minmax(240px,0.65fr)_150px_auto]",
-    );
     expect(clientsPageSource).toContain('id="pt-clients-relationship-view"');
     expect(clientsPageSource).toContain(
       'aria-label="Client relationship view"',

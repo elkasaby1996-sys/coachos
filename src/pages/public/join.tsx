@@ -319,7 +319,10 @@ export function JoinPage() {
           ) : null}
 
           {isMissingCode ? (
-            <Alert className="border-danger/30 bg-danger/10 text-danger">
+            <Alert
+              tone="danger"
+              className="border-danger/30 bg-danger/10 text-danger"
+            >
               <AlertTitle>Missing invite code</AlertTitle>
               <AlertDescription className="text-current">
                 This invite link is missing a code. Please request a new link

@@ -613,7 +613,7 @@ export function PtCalendarPage() {
                               setEventDetailsOpen(true);
                             }}
                             aria-label={`Open event ${row.title}`}
-                            className="group w-full rounded-xl border border-border/60 bg-background/55 px-3 py-2 text-left text-xs transition hover:border-border hover:bg-background/75"
+                            className="ui-inset group w-full border border-border/60 px-3 py-2 text-left text-xs transition hover:border-border hover:bg-background/75"
                           >
                             <div className="truncate font-medium text-foreground transition-colors group-hover:text-primary">
                               {row.title}
@@ -697,7 +697,7 @@ export function PtCalendarPage() {
                             : `/pt/clients/${row.client_id}?tab=checkins`,
                         );
                       }}
-                      className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-left transition hover:border-border"
+                      className="ui-inset w-full border border-border/60 px-3 py-2 text-left transition hover:border-border"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -724,7 +724,7 @@ export function PtCalendarPage() {
                       setSelectedEvent(row);
                       setEventDetailsOpen(true);
                     }}
-                    className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-left transition hover:border-border"
+                    className="ui-inset w-full border border-border/60 px-3 py-2 text-left transition hover:border-border"
                   >
                     <div className="text-sm font-semibold text-foreground">
                       {row.title}
@@ -825,8 +825,9 @@ export function PtCalendarPage() {
               </div>
               <div className="relative">
                 <textarea
+                  data-ui="field"
                   id="calendar-event-notes"
-                  className="min-h-[112px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="app-field app-field-textarea min-h-[112px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={eventDescription}
                   onChange={(event) => {
                     setEventDescription(event.target.value);
@@ -1062,6 +1063,7 @@ export function PtCalendarPage() {
               Cancel
             </Button>
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"

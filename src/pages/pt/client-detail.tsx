@@ -369,10 +369,7 @@ function AssignmentMetaRow({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {items.map((item) => (
-        <div
-          key={item.label}
-          className="rounded-xl border border-border/60 bg-muted/20 p-3"
-        >
+        <div key={item.label} className="ui-panel border border-border/60 p-3">
           <p className="text-xs text-muted-foreground">{item.label}</p>
           <div className="mt-1 text-sm font-semibold text-foreground">
             {item.value}
@@ -4621,6 +4618,7 @@ export function PtClientDetailPage({
               Cancel
             </Button>
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
@@ -4815,7 +4813,10 @@ export function PtClientDetailPage({
               </div>
 
               {isHistoricalClientRelationship ? (
-                <Alert className="border-warning/30 bg-warning/8">
+                <Alert
+                  tone="warning"
+                  className="border-warning/30 bg-warning/8"
+                >
                   <Archive className="h-4 w-4" />
                   <AlertTitle>Historical client relationship</AlertTitle>
                   <AlertDescription>
@@ -5165,7 +5166,7 @@ export function PtClientDetailPage({
             onboardingQuery.error ||
             checkinsQuery.error ||
             clientQuery.error) && (
-            <Alert className="border-destructive/30">
+            <Alert tone="danger" className="border-destructive/30">
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>
                 {getFriendlyErrorMessage()}
@@ -5241,7 +5242,7 @@ export function PtClientDetailPage({
                 onValueChange={setActiveTab}
                 className="space-y-4"
               >
-                <div className="rounded-2xl border border-border/70 bg-card/70 p-2">
+                <div className="ui-inset border border-border/70 p-2">
                   <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl border-none bg-transparent p-0 shadow-none sm:grid-cols-3 xl:grid-cols-5">
                     {workbenchTabs.map((tab) => (
                       <TabsTrigger
@@ -5924,7 +5925,7 @@ export function PtClientDetailPage({
               ) : null}
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-panel border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Due date</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {formatShortDate(
@@ -5933,7 +5934,7 @@ export function PtClientDetailPage({
                   )}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-panel border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Submitted</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {formatShortDateTime(
@@ -5942,7 +5943,7 @@ export function PtClientDetailPage({
                   )}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-panel border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Reviewed</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {formatShortDateTime(
@@ -5951,13 +5952,13 @@ export function PtClientDetailPage({
                   )}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-panel border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Reviewer</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {selectedCheckinReviewerLabel ?? "Not assigned"}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-panel border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">
                   Completion summary
                 </p>
@@ -6003,7 +6004,7 @@ export function PtClientDetailPage({
               </TabsList>
 
               <TabsContent value="answers" className="mt-0">
-                <div className="rounded-[24px] border border-border/70 bg-card/70 p-4">
+                <div className="ui-panel border border-border/70 p-4">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -6026,7 +6027,7 @@ export function PtClientDetailPage({
                       <Skeleton className="h-16 w-full" />
                     </div>
                   ) : selectedCheckinAnswersQuery.error ? (
-                    <Alert className="border-destructive/30">
+                    <Alert tone="danger" className="border-destructive/30">
                       <AlertTitle>Error</AlertTitle>
                       <AlertDescription>
                         {getFriendlyErrorMessage()}
@@ -6039,7 +6040,7 @@ export function PtClientDetailPage({
                         (answer, index) => (
                           <div
                             key={answer.id}
-                            className="grid gap-2 rounded-2xl border border-border/60 bg-muted/15 px-4 py-3 sm:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] sm:gap-4"
+                            className="ui-panel grid gap-2 border border-border/60 px-4 py-3 sm:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] sm:gap-4"
                           >
                             <div className="space-y-1">
                               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -6080,7 +6081,7 @@ export function PtClientDetailPage({
                       ) : null}
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-dashed border-border bg-muted/15 px-4 py-6 text-sm text-muted-foreground">
+                    <div className="ui-panel border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
                       No responses recorded.
                     </div>
                   )}
@@ -6088,7 +6089,7 @@ export function PtClientDetailPage({
               </TabsContent>
 
               <TabsContent value="photos" className="mt-0">
-                <div className="rounded-[24px] border border-border/70 bg-card/70 p-4">
+                <div className="ui-panel border border-border/70 p-4">
                   <div className="mb-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       Photos
@@ -6114,7 +6115,7 @@ export function PtClientDetailPage({
                       <Skeleton className="aspect-[4/5] w-full rounded-2xl" />
                     </div>
                   ) : selectedCheckinPhotosQuery.error ? (
-                    <Alert className="border-destructive/30">
+                    <Alert tone="danger" className="border-destructive/30">
                       <AlertTitle>Error</AlertTitle>
                       <AlertDescription>
                         Unable to load review photos right now.
@@ -6133,7 +6134,7 @@ export function PtClientDetailPage({
                           return (
                             <div
                               key={card.id}
-                              className="space-y-2 rounded-2xl border border-border/60 bg-muted/15 p-2"
+                              className="ui-panel space-y-2 border border-border/60 p-2"
                             >
                               {isUnavailable ? (
                                 <div className="flex aspect-[4/5] items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/30 px-3 text-center text-xs text-muted-foreground">
@@ -6151,7 +6152,7 @@ export function PtClientDetailPage({
                               ) : (
                                 <button
                                   type="button"
-                                  className="block w-full overflow-hidden rounded-xl border border-border/60 bg-background transition hover:border-border hover:shadow-sm"
+                                  className="ui-panel block w-full overflow-hidden border border-border/60 transition hover:border-border hover:shadow-sm"
                                   onClick={() => setReviewPhotoPreview(photo)}
                                 >
                                   <img
@@ -6209,7 +6210,7 @@ export function PtClientDetailPage({
               <TabsContent value="notes" className="mt-0">
                 <div
                   className={cn(
-                    "rounded-[24px] border bg-card/70 p-4",
+                    "rounded-[var(--ui-radius-card)] border bg-card/70 p-4",
                     selectedCheckinNotesRequired
                       ? "border-warning/50 bg-warning/5"
                       : "border-border/70",
@@ -6251,12 +6252,12 @@ export function PtClientDetailPage({
                       </div>
                     ) : null}
                     {selectedCheckinNotesRequired ? (
-                      <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-muted-foreground">
+                      <div className="ui-panel border border-border/60 px-3 py-2 text-muted-foreground">
                         Add review notes to enable final review completion.
                       </div>
                     ) : null}
                     {feedbackMessage ? (
-                      <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-muted-foreground">
+                      <div className="ui-panel border border-border/60 px-3 py-2 text-muted-foreground">
                         {feedbackMessage}
                       </div>
                     ) : null}
@@ -6346,7 +6347,7 @@ export function PtClientDetailPage({
                 className="mx-auto max-h-[68vh] w-auto max-w-full rounded-2xl object-contain"
               />
             ) : (
-              <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+              <div className="ui-panel flex min-h-[320px] items-center justify-center border border-dashed border-border text-sm text-muted-foreground">
                 Image unavailable
               </div>
             )}
@@ -6483,7 +6484,7 @@ export function PtClientDetailPage({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3">
+            <div className="ui-panel border border-border/70 px-4 py-3">
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                 New lifecycle
               </div>
@@ -6573,7 +6574,7 @@ export function PtClientDetailPage({
               photos, and history stay preserved.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+          <div className="ui-panel border border-border/70 px-4 py-3 text-sm text-muted-foreground">
             You can re-add this client later and reuse the preserved
             relationship row.
           </div>
@@ -6586,6 +6587,7 @@ export function PtClientDetailPage({
               Cancel
             </Button>
             <Button
+              tone="danger"
               variant="secondary"
               className="border-destructive/40 text-destructive hover:border-destructive/50 hover:text-destructive"
               onClick={handleArchiveRelationship}
@@ -6649,7 +6651,7 @@ export function PtClientDetailPage({
               </Select>
             </div>
             {transferValidationMessage ? (
-              <Alert className="border-destructive/30">
+              <Alert tone="danger" className="border-destructive/30">
                 <AlertTitle>Transfer unavailable</AlertTitle>
                 <AlertDescription>{transferValidationMessage}</AlertDescription>
               </Alert>
@@ -7658,7 +7660,8 @@ function PtClientScheduleCard({
                 PT notes
               </label>
               <textarea
-                className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={dayNote}
                 disabled={!canEditClients}
                 onChange={(event) => setDayNote(event.target.value)}
@@ -7993,7 +7996,8 @@ function PtClientScheduleCard({
                 Notes
               </label>
               <textarea
-                className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={overrideNotes}
                 onChange={(event) => setOverrideNotes(event.target.value)}
                 placeholder="Optional notes for the client."
@@ -8110,7 +8114,7 @@ function PtClientBaselineTab({
   const markerTemplateOptions = baselineMarkerTemplatesQuery.data ?? [];
   const submittedMarkers = baselineMarkersQuery.data ?? [];
   const markerReadoutPanel = (
-    <div className="rounded-2xl border border-border/60 bg-background/35 p-3">
+    <div className="ui-panel border border-border/60 p-3">
       <p className="text-sm font-semibold text-foreground">
         Performance markers
       </p>
@@ -8122,7 +8126,7 @@ function PtClientBaselineTab({
           {submittedMarkers.map((marker, index) => (
             <div
               key={`${marker.template?.name ?? "marker"}-${index}`}
-              className="rounded-xl border border-border/50 bg-muted/15 px-3 py-2.5 text-sm"
+              className="ui-panel border border-border/50 px-3 py-2.5 text-sm"
             >
               <p className="text-xs text-muted-foreground">
                 {marker.template?.name ?? "Marker"}
@@ -8145,7 +8149,7 @@ function PtClientBaselineTab({
             {markerTemplateOptions.map((template) => (
               <div
                 key={template.id}
-                className="rounded-xl border border-border/50 bg-muted/15 px-3 py-2.5"
+                className="ui-panel border border-border/50 px-3 py-2.5"
               >
                 <p className="text-sm font-medium text-foreground">
                   {template.name ?? "Marker"}
@@ -8169,7 +8173,7 @@ function PtClientBaselineTab({
           </div>
         </>
       ) : (
-        <div className="mt-3 rounded-xl border border-dashed border-border/60 bg-muted/15 p-3 text-sm text-muted-foreground">
+        <div className="ui-panel mt-3 border border-dashed border-border/60 p-3 text-sm text-muted-foreground">
           No active performance markers. Enable them in PT Settings when you
           want benchmark questions to appear during baseline assessment.
         </div>
@@ -8201,7 +8205,7 @@ function PtClientBaselineTab({
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="ui-inset border border-border/60 p-3">
                     <p className="text-xs text-muted-foreground">Submitted</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {formatShortDateTime(
@@ -8210,7 +8214,7 @@ function PtClientBaselineTab({
                       )}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="ui-inset border border-border/60 p-3">
                     <p className="text-xs text-muted-foreground">
                       Measurements
                     </p>
@@ -8218,13 +8222,13 @@ function PtClientBaselineTab({
                       {providedMetricCount} of {metricCards.length}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="ui-inset border border-border/60 p-3">
                     <p className="text-xs text-muted-foreground">Markers</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {markerCount > 0 ? `${markerCount} recorded` : "None yet"}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="ui-inset border border-border/60 p-3">
                     <p className="text-xs text-muted-foreground">Photos</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {photoCount} of {baselinePhotoTypes.length} uploaded
@@ -8232,7 +8236,7 @@ function PtClientBaselineTab({
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
+                <div className="ui-inset border border-border/60 p-3.5">
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-foreground">
                       Measurements
@@ -8246,7 +8250,7 @@ function PtClientBaselineTab({
                     {metricCards.map((metric) => (
                       <div
                         key={metric.label}
-                        className="rounded-xl border border-border/50 bg-muted/15 p-2.5"
+                        className="ui-inset border border-border/50 p-2.5"
                       >
                         <p className="text-xs text-muted-foreground">
                           {metric.label}
@@ -8261,7 +8265,7 @@ function PtClientBaselineTab({
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
+                <div className="ui-inset border border-border/60 p-3.5">
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-foreground">
                       Baseline photos
@@ -8286,7 +8290,7 @@ function PtClientBaselineTab({
                             {baselinePhotoMap[type] ? "Uploaded" : "Missing"}
                           </Badge>
                         </div>
-                        <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/20">
+                        <div className="ui-inset overflow-hidden border border-border/60">
                           {baselinePhotoMap[type] ? (
                             <img
                               src={baselinePhotoMap[type] ?? ""}
@@ -8307,7 +8311,7 @@ function PtClientBaselineTab({
 
               <div className="space-y-3">
                 {markerReadoutPanel}
-                <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
+                <div className="ui-inset border border-border/60 p-3.5">
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-foreground">
                       Coach readout
@@ -8318,7 +8322,8 @@ function PtClientBaselineTab({
                     </p>
                   </div>
                   <textarea
-                    className="min-h-[120px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[120px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={baselineNotes}
                     onChange={(event) => onNotesChange(event.target.value)}
                     placeholder="Summarize posture, readiness, physique observations, or any coaching notes you want visible during future reviews."
@@ -8432,25 +8437,25 @@ function PtClientCheckinsTab({
         ) : orderedRows.length > 0 ? (
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Needs review</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {counts.submitted}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Overdue</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {counts.overdue}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Awaiting client</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {counts.awaitingClient}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Reviewed</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {counts.reviewed}
@@ -8495,7 +8500,7 @@ function PtClientCheckinsTab({
                         onReview(checkin);
                       }
                     }}
-                    className="flex w-full flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/60 bg-background/35 p-4 text-left transition hover:border-border hover:bg-background/55"
+                    className="ui-inset flex w-full flex-wrap items-center justify-between gap-4 border border-border/60 p-4 text-left transition hover:border-border hover:bg-background/55"
                   >
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
@@ -9315,6 +9320,7 @@ function PtClientPlanTab({
                             Completed workout history is preserved.
                           </p>
                           <Button
+                            tone="danger"
                             className="w-full text-destructive hover:text-destructive sm:w-auto"
                             variant="ghost"
                             disabled={
@@ -9369,6 +9375,7 @@ function PtClientPlanTab({
                             history is preserved.
                           </p>
                           <Button
+                            tone="danger"
                             className="w-full text-destructive hover:text-destructive sm:w-auto"
                             variant="ghost"
                             disabled={
@@ -9896,6 +9903,7 @@ function PtClientNutritionTab({
               Cancel
             </Button>
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
@@ -10259,7 +10267,7 @@ function PtClientLogsTab({
         ) : ptSessionsQuery.data && ptSessionsQuery.data.length > 0 ? (
           <div className="space-y-4 text-sm">
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">
                   Recorded sessions
                 </p>
@@ -10267,13 +10275,13 @@ function PtClientLogsTab({
                   {ptSessionsQuery.data.length}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Completed</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {completedCount}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">In progress</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {activeCount}
@@ -10299,7 +10307,7 @@ function PtClientLogsTab({
                     key={session.id}
                     type="button"
                     onClick={() => onOpenSession(session.id)}
-                    className="flex w-full flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/60 bg-background/35 px-4 py-3 text-left transition hover:border-border hover:bg-background/55"
+                    className="ui-inset flex w-full flex-wrap items-center justify-between gap-4 border border-border/60 px-4 py-3 text-left transition hover:border-border hover:bg-background/55"
                   >
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">

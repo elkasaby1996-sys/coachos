@@ -602,7 +602,7 @@ export function PtProgramBuilderPage() {
           </CardContent>
         </Card>
       ) : templateQuery.error ? (
-        <Card className="border-destructive/40">
+        <Card tone="danger" className="border-destructive/40">
           <CardHeader>
             <CardTitle>Program error</CardTitle>
           </CardHeader>
@@ -674,7 +674,8 @@ export function PtProgramBuilderPage() {
                 Description
               </label>
               <textarea
-                className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.description}
                 disabled={!canManageDelivery}
                 onChange={(event) => {
@@ -872,7 +873,8 @@ export function PtProgramBuilderPage() {
                               Rest day
                             </label>
                             <textarea
-                              className="min-h-[60px] w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                              data-ui="field"
+                              className="app-field app-field-textarea min-h-[60px] w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
                               placeholder="Notes"
                               value={state?.notes ?? ""}
                               disabled={!canManageDelivery}
@@ -898,7 +900,7 @@ export function PtProgramBuilderPage() {
           </Tabs>
         </CardContent>
       </Card>
-      <div className="flex flex-col gap-3 rounded-[20px] border border-border/70 bg-card/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="ui-panel flex flex-col gap-3 border border-border/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-foreground">
             {hasUnsavedChanges

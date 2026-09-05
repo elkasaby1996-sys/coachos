@@ -12,6 +12,7 @@ import {
 import { getSemanticToneClasses } from "../../../lib/semantic-status";
 import { useI18n } from "../../../lib/i18n-context";
 import type { PTClientSummary } from "../types";
+import "../../../styles/workspace-clients.css";
 
 const toneBadgeVariant: Record<StatusTone, BadgeVariant> = {
   neutral: "neutral",
@@ -65,10 +66,12 @@ export function PtHubClientTable({
   clients,
   onOpen,
   showWorkspaceColumn = true,
+  compact = true,
 }: {
   clients: PTClientSummary[];
   onOpen: (client: PTClientSummary) => void;
   showWorkspaceColumn?: boolean;
+  compact?: boolean;
 }) {
   const { t } = useI18n();
   const { visibleRows, hasHiddenRows, hiddenCount, showMore } = useWindowedRows(
@@ -80,10 +83,122 @@ export function PtHubClientTable({
     },
   );
 
-  return (
-    <div className="space-y-2 rounded-[30px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-2">
+  if (compact) {
+    return (
       <div
-        className={`hidden gap-4 rounded-[22px] border border-border/60 bg-background/60 px-5 py-3 text-xs font-semibold normal-case tracking-normal text-muted-foreground lg:grid ${
+        className={`workspace-client-table ${showWorkspaceColumn ? "workspace-client-table-with-space" : ""}`}
+        role="table"
+        aria-label={t("ptHub.clients.listTitle", "Client list")}
+      >
+        <div className="workspace-client-columns" role="row">
+          <span role="columnheader">
+            {t("ptHub.clients.table.client", "Client")}
+          </span>
+          {showWorkspaceColumn ? (
+            <span role="columnheader">
+              {t("ptHub.clients.table.coachingSpace", "Coaching space")}
+            </span>
+          ) : null}
+          <span role="columnheader">
+            {t("workspace.clients.lifecycle", "Lifecycle")}
+          </span>
+          <span role="columnheader">
+            {t("workspace.clients.attention", "Attention")}
+          </span>
+        </div>
+        <div role="rowgroup">
+          {visibleRows.map((client) => {
+            const statusDisplay = getClientGlobalStatusDisplay(client);
+            const attentionBadge = statusDisplay.globalBadges.find(
+              (badge) => badge.kind === "attention",
+            );
+            const reason = client.pausedReason ?? client.churnReason;
+            const renderBadge = (badge: ClientStatusBadgeDisplay) => (
+              <TagInfoBadge
+                key={badge.key}
+                label={badge.label}
+                variant={toneBadgeVariant[badge.tone]}
+                title={getBadgeTitle(badge)}
+                description={getAttentionDescription(
+                  badge,
+                  statusDisplay.attentionReasons,
+                )}
+                disabled={isNonInteractiveLifecycleBadge(badge)}
+              />
+            );
+            return (
+              <div key={client.id} className="workspace-client-row" role="row">
+                <div className="workspace-client-identity" role="cell">
+                  <button
+                    type="button"
+                    className="workspace-client-open"
+                    onClick={() => onOpen(client)}
+                    aria-label={t(
+                      "ptHub.clients.table.openClientAria",
+                      `Open ${client.displayName}`,
+                    )}
+                  >
+                    <span>{client.displayName}</span>
+                    <ArrowUpRight
+                      aria-hidden="true"
+                      className="workspace-client-arrow h-4 w-4"
+                    />
+                  </button>
+                  <p className="text-xs text-muted-foreground">
+                    {t("ptHub.clients.table.recentActivity", "Recent activity")}{" "}
+                    {client.recentActivityLabel}
+                    {reason ? ` · ${reason}` : ""}
+                  </p>
+                </div>
+                {showWorkspaceColumn ? (
+                  <div
+                    className="workspace-client-space text-sm text-muted-foreground"
+                    role="cell"
+                  >
+                    {client.workspaceName}
+                  </div>
+                ) : null}
+                <div className="workspace-client-badges" role="cell">
+                  {statusDisplay.globalBadges
+                    .filter((badge) => badge.kind !== "attention")
+                    .map(renderBadge)}
+                </div>
+                <div className="workspace-client-badges" role="cell">
+                  {attentionBadge ? (
+                    renderBadge(attentionBadge)
+                  ) : (
+                    <span className="workspace-client-no-attention text-xs text-muted-foreground">
+                      <span aria-hidden="true">—</span>
+                      <span className="sr-only">
+                        {t(
+                          "workspace.clients.noAttention",
+                          "No attention flags",
+                        )}
+                      </span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {hasHiddenRows ? (
+          <div className="flex justify-center py-3">
+            <Button variant="secondary" size="sm" onClick={showMore}>
+              {t("ptHub.clients.table.showMore", "Show")}{" "}
+              {Math.min(hiddenCount, 16)}{" "}
+              {t("ptHub.clients.table.moreClients", "more clients")}
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 rounded-[var(--ui-radius-card)] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.82),oklch(var(--bg-surface)/0.74))] p-2">
+      <div
+        className={`hidden gap-4 rounded-[var(--ui-radius-card)] border border-border/60 bg-background/60 px-5 py-3 text-xs font-semibold normal-case tracking-normal text-muted-foreground lg:grid ${
           showWorkspaceColumn
             ? "lg:grid-cols-[minmax(220px,1.35fr)_180px_minmax(270px,0.85fr)_150px]"
             : "lg:grid-cols-[minmax(320px,1fr)_minmax(270px,0.75fr)_150px]"

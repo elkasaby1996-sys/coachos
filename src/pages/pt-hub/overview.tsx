@@ -12,7 +12,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import {
   PtHubActionCenter,
-  PtHubLaunchChecklistCard,
+  PtHubActivationChecklist,
   PtHubOverviewErrorState,
   PtHubOverviewLoadingState,
   PtHubRecentActivityCard,
@@ -73,7 +73,6 @@ export function PtHubOverviewPage() {
   const navigate = useNavigate();
   const { user } = useSessionAuth();
   const { switchWorkspace } = useWorkspace();
-  const [businessSetupCollapsed, setBusinessSetupCollapsed] = useState(false);
   const [billingCollapsed, setBillingCollapsed] = useState(false);
   const [supportExpanded, setSupportExpanded] = useState(false);
   const overviewQuery = usePtHubOverview();
@@ -167,11 +166,9 @@ export function PtHubOverviewPage() {
     activationSummaryError: Boolean(activationSummaryQuery.error),
   });
 
-  const showBusinessSetup = dashboardModel.setupCompletionPercent < 100;
   const metricGridClassName = getMetricGridClassName(
     dashboardModel.metrics.length,
   );
-  const businessSetupToggleId = "pt-hub-business-setup-panel";
   const billingToggleId = "pt-hub-revenue-billing-panel";
 
   const handleOpenNotification = async (notification: NotificationRecord) => {
@@ -215,6 +212,7 @@ export function PtHubOverviewPage() {
                 metric.href ? getModuleToneForPath(metric.href) : "overview"
               }
               className="pt-hub-kpi-ledger-card h-full"
+              headerClassName="pt-hub-overview-metric"
               disableHoverMotion
             />
           );
@@ -234,14 +232,8 @@ export function PtHubOverviewPage() {
         })}
       </div>
 
-      <div className="pt-hub-work-grid-main">
-        <PtHubActionCenter
-          items={dashboardModel.actionItems}
-          mode={dashboardModel.mode}
-          activationChecklist={dashboardModel.activationChecklist}
-          activationChecklistLoading={dashboardModel.activationChecklistLoading}
-          activationChecklistError={dashboardModel.activationChecklistError}
-        />
+      <div className="pt-hub-overview-grid">
+        <PtHubActionCenter items={dashboardModel.actionItems} />
         <PtHubRecentActivityCard
           notifications={notifications}
           unreadCount={unreadNotificationCount}
@@ -258,48 +250,22 @@ export function PtHubOverviewPage() {
           }}
           module="overview"
         />
+        <PtHubActivationChecklist
+          checklist={dashboardModel.activationChecklist}
+          profileItems={(readiness?.checklist ?? []).map((item) => ({
+            id: item.key,
+            label: item.label,
+            description: item.guidance,
+            href: item.href,
+            ctaLabel: item.complete ? "Review" : "Fix now",
+            complete: item.complete,
+          }))}
+          isLoading={dashboardModel.activationChecklistLoading}
+          hasError={dashboardModel.activationChecklistError}
+        />
       </div>
 
-      {showBusinessSetup ? (
-        <div className="pt-hub-work-grid">
-          <div id={businessSetupToggleId}>
-            <PtHubLaunchChecklistCard
-              module="profile"
-              title="Profile Checklist"
-              items={dashboardModel.launchChecklist}
-              completionPercent={dashboardModel.setupCompletionPercent}
-              collapsed={businessSetupCollapsed}
-              actions={
-                <button
-                  type="button"
-                  aria-expanded={!businessSetupCollapsed}
-                  aria-controls={businessSetupToggleId}
-                  className="pt-hub-collapse-action inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-border/65 bg-background/35 px-3.5 text-sm font-semibold text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-border/85 hover:bg-background/58 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  onClick={() =>
-                    setBusinessSetupCollapsed((current) => !current)
-                  }
-                >
-                  <span className="sr-only">
-                    {businessSetupCollapsed
-                      ? "Expand profile checklist"
-                      : "Collapse profile checklist"}
-                  </span>
-                  <span aria-hidden>
-                    {businessSetupCollapsed ? "Show" : "Hide"}
-                  </span>
-                  {businessSetupCollapsed ? (
-                    <ChevronDown className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                  ) : (
-                    <ChevronUp className="h-3.5 w-3.5 [stroke-width:1.8]" />
-                  )}
-                </button>
-              }
-            />
-          </div>
-        </div>
-      ) : null}
-
-      <div className="pt-hub-support-disclosure surface-panel relative overflow-hidden rounded-[28px] border border-border/70 px-4 py-4 shadow-[var(--surface-shadow)] sm:px-5">
+      <div className="pt-hub-support-disclosure surface-panel relative overflow-hidden rounded-[var(--ui-radius-card)] border border-border/70 px-4 py-4 shadow-[var(--surface-shadow)] sm:px-5">
         <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="pt-hub-kicker">Supporting details</p>
@@ -311,7 +277,7 @@ export function PtHubOverviewPage() {
           <button
             type="button"
             aria-expanded={supportExpanded}
-            className="pt-hub-collapse-action inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-border/65 bg-background/35 px-3.5 text-sm font-semibold text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-border/85 hover:bg-background/58 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="ui-panel pt-hub-collapse-action inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-border/65 px-3.5 text-sm font-semibold text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-border/85 hover:bg-background/58 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             onClick={() => setSupportExpanded((current) => !current)}
           >
             <span>{supportExpanded ? "Hide details" : "Show details"}</span>
@@ -374,7 +340,7 @@ export function PtHubOverviewPage() {
                       type="button"
                       aria-expanded={!billingCollapsed}
                       aria-controls={billingToggleId}
-                      className="pt-hub-collapse-action inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-border/65 bg-background/35 px-3.5 text-sm font-semibold text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-border/85 hover:bg-background/58 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="ui-panel pt-hub-collapse-action inline-flex min-h-10 items-center justify-center gap-2 border border-border/65 px-3.5 text-sm font-semibold text-muted-foreground transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-border/85 hover:bg-background/58 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       onClick={() => setBillingCollapsed((current) => !current)}
                     >
                       <span className="sr-only">
