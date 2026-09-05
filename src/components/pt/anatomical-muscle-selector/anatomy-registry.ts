@@ -2,7 +2,7 @@ import type {
   AnatomicalSurface,
   MuscleKey,
 } from "../../../lib/exercise-muscle-taxonomy";
-import { ADAPTED_ANATOMICAL_REGIONS } from "./artwork/artwork-adapter";
+import { IMAGE_ANATOMICAL_REGIONS } from "./artwork/supplied-anatomy";
 
 export type AnatomySurface = AnatomicalSurface;
 export type AnatomySide = "left" | "right" | "center";
@@ -40,7 +40,7 @@ export type AnatomicalRegionDefinition = {
 
 // Illustration coordinates and private hit identifiers never leave this
 // module. The explicit adapter is the only bridge to the exercise domain.
-export const ANATOMICAL_REGION_DEFINITIONS = ADAPTED_ANATOMICAL_REGIONS;
+export const ANATOMICAL_REGION_DEFINITIONS = IMAGE_ANATOMICAL_REGIONS;
 
 export const ANATOMY_SURFACES = ["front", "back"] as const;
 

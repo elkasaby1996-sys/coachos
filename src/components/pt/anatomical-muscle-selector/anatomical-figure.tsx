@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react";
+import { useId, useState, type CSSProperties, type KeyboardEvent } from "react";
 import type { MuscleKey } from "../../../lib/exercise-muscle-taxonomy";
 import {
   getAnatomicalRegionsForSurface,
@@ -6,7 +6,7 @@ import {
   type AnatomyShape,
   type AnatomySurface,
 } from "./anatomy-registry";
-import { getAnatomicalSurfaceArtwork } from "./artwork/artwork-adapter";
+import { getImageSurfaceArtwork } from "./artwork/supplied-anatomy";
 
 type AnatomicalFigureProps = {
   surface: AnatomySurface;
@@ -52,20 +52,15 @@ function AnatomyShapeElement({
 }
 
 function BaseSilhouette({ surface }: { surface: AnatomySurface }) {
-  const artwork = getAnatomicalSurfaceArtwork(surface);
-
+  const artwork = getImageSurfaceArtwork(surface);
   return (
     <g aria-hidden="true" className="anatomy-base-layer">
-      <path className="anatomy-body" d={artwork.outlinePath} />
-      <g className="anatomy-passive-muscles">
-        {artwork.passiveShapes.map((shape) => (
-          <AnatomyShapeElement
-            key={shape.id}
-            shape={shape}
-            className="anatomy-passive-shape"
-          />
-        ))}
-      </g>
+      <image
+        href={artwork.href}
+        width={artwork.width}
+        height={artwork.height}
+        preserveAspectRatio="xMidYMid meet"
+      />
     </g>
   );
 }
@@ -74,10 +69,12 @@ function VisibleMuscleArtwork({
   definitions,
   value,
   interaction,
+  materialId,
 }: {
   definitions: readonly AnatomicalRegionDefinition[];
   value: MuscleKey | null;
   interaction: InteractionState;
+  materialId: string;
 }) {
   return (
     <g aria-hidden="true" className="anatomy-art-layer">
@@ -85,6 +82,12 @@ function VisibleMuscleArtwork({
         <g
           key={`art-${definition.id}`}
           className="anatomy-art-muscle"
+          style={
+            {
+              "--anatomy-selected-fill": `url(#${materialId}-selected)`,
+              "--anatomy-hover-fill": `url(#${materialId}-hover)`,
+            } as CSSProperties
+          }
           data-selected={value === definition.muscleKey}
           data-interaction={
             interaction?.regionId === definition.id ? interaction.mode : "none"
@@ -127,7 +130,7 @@ function AnatomicalHitRegion({
   };
 
   const setActive = (mode: "hover" | "focus") => {
-    onInteractionChange({ regionId: definition.id, mode });
+    if (!disabled) onInteractionChange({ regionId: definition.id, mode });
   };
 
   const clearActive = () => {
@@ -170,41 +173,78 @@ export function AnatomicalFigure({
   labelledBy,
 }: AnatomicalFigureProps) {
   const [interaction, setInteraction] = useState<InteractionState>(null);
+  const materialId = `anatomy-${useId().replace(/:/g, "")}`;
   const definitions = getAnatomicalRegionsForSurface(surface);
-  const artwork = getAnatomicalSurfaceArtwork(surface);
+  const artwork = getImageSurfaceArtwork(surface);
 
   const activateRegion = (definition: AnatomicalRegionDefinition) => {
     if (!disabled) onValueChange(definition.muscleKey);
   };
 
+  const preview =
+    !disabled && interaction
+      ? definitions.find((definition) => definition.id === interaction.regionId)
+      : null;
+
   return (
-    <svg
-      className="anatomy-figure"
-      viewBox={artwork.viewBox}
-      preserveAspectRatio="xMidYMid meet"
-      aria-labelledby={labelledBy}
-      data-surface={surface}
-    >
-      <g className="anatomy-content-layer" transform={artwork.contentTransform}>
-        <BaseSilhouette surface={surface} />
-        <VisibleMuscleArtwork
-          definitions={definitions}
-          value={value}
-          interaction={interaction}
-        />
-        <g className="anatomy-hit-layer">
-          {definitions.map((definition) => (
-            <AnatomicalHitRegion
-              key={definition.id}
-              definition={definition}
-              selected={value === definition.muscleKey}
-              disabled={disabled}
-              onActivate={activateRegion}
-              onInteractionChange={setInteraction}
-            />
-          ))}
+    <>
+      <svg
+        className="anatomy-figure"
+        viewBox={artwork.viewBox}
+        preserveAspectRatio="xMidYMid meet"
+        aria-labelledby={labelledBy}
+        data-surface={surface}
+      >
+        <defs>
+          <linearGradient
+            id={`${materialId}-selected`}
+            x1="0"
+            y1="0"
+            x2="1"
+            y2="1"
+          >
+            <stop offset="0" stopColor="#9bffeb" />
+            <stop offset="0.5" stopColor="#3dd6ba" />
+            <stop offset="1" stopColor="#139c8b" />
+          </linearGradient>
+          <linearGradient
+            id={`${materialId}-hover`}
+            x1="0"
+            y1="0"
+            x2="1"
+            y2="1"
+          >
+            <stop offset="0" stopColor="#c1fff4" />
+            <stop offset="1" stopColor="#72bcb5" />
+          </linearGradient>
+        </defs>
+        <g className="anatomy-content-layer">
+          <BaseSilhouette surface={surface} />
+          <VisibleMuscleArtwork
+            definitions={definitions}
+            value={value}
+            interaction={disabled ? null : interaction}
+            materialId={materialId}
+          />
+          <g className="anatomy-hit-layer">
+            {definitions.map((definition) => (
+              <AnatomicalHitRegion
+                key={definition.id}
+                definition={definition}
+                selected={value === definition.muscleKey}
+                disabled={disabled}
+                onActivate={activateRegion}
+                onInteractionChange={setInteraction}
+              />
+            ))}
+          </g>
         </g>
-      </g>
-    </svg>
+      </svg>
+      <p className="anatomy-preview" aria-hidden="true">
+        {preview
+          ? `Preview · ${preview.label}`
+          : "Click or focus a muscle to explore"}
+      </p>
+    </>
   );
 }

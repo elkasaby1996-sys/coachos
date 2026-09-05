@@ -185,11 +185,7 @@ describe("rebuilt Exercise Library page contract", () => {
       containingTag?.match(/\bclassName\s*=\s*"([^"]*)"/)?.[1].split(/\s+/) ??
       [];
     expect(containerClasses).toEqual(
-      expect.arrayContaining([
-        "min-w-0",
-        "max-w-full",
-        "[&_.anatomy-view-tabs]:hidden",
-      ]),
+      expect.arrayContaining(["min-w-0", "max-w-full"]),
     );
 
     expect(normalizeLineEndings(page)).toMatch(
@@ -204,8 +200,10 @@ describe("rebuilt Exercise Library page contract", () => {
     );
   });
 
-  it("keeps the library muscle filter focused on the body map", () => {
-    expect(browserComponents).toContain("[&_.anatomy-view-tabs]:hidden");
+  it("exposes the selector's map and equivalent list without adding library scope filters", () => {
+    // PR-EXLIB-UI-01 makes the equivalent list reachable in the library too.
+    // Runtime coverage exercises both tabs at all three integration widths.
+    expect(browserComponents).not.toMatch(/\[&_\.anatomy-view-tabs\]:hidden/);
     expect(browserComponents).not.toContain("<Filter");
     expect(browserComponents).not.toContain("Library scope");
     expect(page).toContain('origin: "all"');

@@ -1,15 +1,26 @@
 import { useId, useState } from "react";
-import { List, RotateCcw, ScanSearch } from "lucide-react";
+import { Check, Expand, List, RotateCcw, ScanSearch } from "lucide-react";
 import {
+  BODY_REGIONS,
   getMuscleMetadata,
   type MuscleKey,
 } from "../../../lib/exercise-muscle-taxonomy";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "../../ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { AccessibleMuscleList } from "./accessible-muscle-list";
 import { AnatomicalFigure } from "./anatomical-figure";
-import type { AnatomySurface } from "./anatomy-registry";
+import {
+  getAnatomicalRegionsForSurface,
+  type AnatomySurface,
+} from "./anatomy-registry";
 import "./anatomical-muscle-selector.css";
 
 export type AnatomicalMuscleSelectorProps = {
@@ -19,118 +30,255 @@ export type AnatomicalMuscleSelectorProps = {
   className?: string;
 };
 
+function SelectionContext({
+  value,
+  activeSurface,
+}: {
+  value: MuscleKey | null;
+  activeSurface: AnatomySurface;
+}) {
+  const selectedMuscle = value ? getMuscleMetadata(value) : null;
+  const region = BODY_REGIONS.find(
+    (item) => item.key === selectedMuscle?.regionKey,
+  );
+  const onSurface = getAnatomicalRegionsForSurface(activeSurface).some(
+    (item) => item.muscleKey === value,
+  );
+  return (
+    <div
+      className="anatomy-selection-context"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <span className="anatomy-selection-icon" aria-hidden="true">
+        {selectedMuscle ? <Check size={16} /> : <ScanSearch size={16} />}
+      </span>
+      <div>
+        <strong>{selectedMuscle ? selectedMuscle.label : "All muscles"}</strong>
+        <p>
+          {selectedMuscle
+            ? `${region?.label}${onSurface ? " · Selected" : ` · Selected on ${activeSurface === "front" ? "back" : "front"}`}`
+            : "Choose one muscle to filter exercises."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+type AnatomyWorkspaceProps = {
+  value: MuscleKey | null;
+  onValueChange: (value: MuscleKey) => void;
+  disabled: boolean;
+  activeSurface: AnatomySurface;
+  setActiveSurface: (surface: AnatomySurface) => void;
+  expanded?: boolean;
+  onClear: () => void;
+};
+
+function AnatomyWorkspace({
+  value,
+  onValueChange,
+  disabled,
+  activeSurface,
+  setActiveSurface,
+  expanded = false,
+  onClear,
+}: AnatomyWorkspaceProps) {
+  const id = useId();
+  const headingId = `${id}-${activeSurface}-heading`;
+  const [view, setView] = useState("map");
+  return (
+    <Tabs value={view} onValueChange={setView} className="anatomy-workspace">
+      <TabsList className="anatomy-view-tabs" aria-label="Anatomy display">
+        <TabsTrigger value="map" disabled={disabled}>
+          <ScanSearch size={15} aria-hidden="true" />
+          Body map
+        </TabsTrigger>
+        <TabsTrigger value="list" disabled={disabled}>
+          <List size={15} aria-hidden="true" />
+          Muscle list
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="map" className="anatomy-map-content">
+        <div className="anatomy-map-layout">
+          {expanded ? (
+            <aside
+              className="anatomy-atlas-navigation"
+              aria-label="Browse muscles"
+            >
+              <h3>Browse anatomy</h3>
+              <AccessibleMuscleList
+                value={value}
+                onValueChange={onValueChange}
+                disabled={disabled}
+              />
+            </aside>
+          ) : null}
+          <div className="anatomy-map-visual">
+            <div
+              className="anatomy-surface-switch"
+              role="group"
+              aria-label="Anatomical surface"
+            >
+              {(["front", "back"] as const).map((surface) => (
+                <button
+                  key={surface}
+                  type="button"
+                  disabled={disabled}
+                  aria-pressed={activeSurface === surface}
+                  onClick={() => setActiveSurface(surface)}
+                >
+                  {surface === "front" ? "Front" : "Back"}
+                </button>
+              ))}
+            </div>
+            <h3 id={headingId} className="sr-only">
+              {activeSurface} anatomical muscle map
+            </h3>
+            <div className="anatomy-canvas">
+              <div className="anatomy-figure-stage">
+                <AnatomicalFigure
+                  surface={activeSurface}
+                  value={value}
+                  onValueChange={onValueChange}
+                  disabled={disabled}
+                  labelledBy={headingId}
+                />
+              </div>
+            </div>
+          </div>
+          {expanded ? (
+            <aside
+              className="anatomy-atlas-selection"
+              aria-label="Selected muscle"
+            >
+              <h3>Selected muscle</h3>
+              <SelectionContext value={value} activeSurface={activeSurface} />
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onClear}
+                disabled={disabled || !value}
+                aria-label="Clear selected muscle"
+              >
+                <RotateCcw size={14} aria-hidden="true" />
+                Clear selection
+              </Button>
+              <div className="anatomy-guidance">
+                <h4>Explore, then select</h4>
+                <p>
+                  Use the body map or browse by body region. Choosing a muscle
+                  updates your exercise results immediately.
+                </p>
+                <p>Front and back share the same selection.</p>
+              </div>
+            </aside>
+          ) : null}
+        </div>
+      </TabsContent>
+      <TabsContent value="list" className="anatomy-list-content">
+        <AccessibleMuscleList
+          value={value}
+          onValueChange={onValueChange}
+          disabled={disabled}
+        />
+      </TabsContent>
+      {!expanded || view === "list" ? (
+        <div className="anatomy-selection-row">
+          <SelectionContext value={value} activeSurface={activeSurface} />
+          {expanded ? (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onClear}
+              disabled={disabled || !value}
+              aria-label="Clear selected muscle"
+            >
+              Clear
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </Tabs>
+  );
+}
+
 export function AnatomicalMuscleSelector({
   value,
   onValueChange,
   disabled = false,
   className,
 }: AnatomicalMuscleSelectorProps) {
-  const id = useId();
   const [activeSurface, setActiveSurface] = useState<AnatomySurface>("front");
-  const selectedMuscle = value ? getMuscleMetadata(value) : null;
-
   const selectMuscle = (muscleKey: MuscleKey) => {
     if (!disabled) onValueChange(muscleKey);
   };
-
-  const headingId = `${id}-${activeSurface}-heading`;
+  const clear = () => {
+    if (!disabled) onValueChange(null);
+  };
+  const workspaceProps = {
+    value,
+    onValueChange: selectMuscle,
+    disabled,
+    activeSurface,
+    setActiveSurface,
+    onClear: clear,
+  };
 
   return (
     <section
       className={cn(
-        "anatomy-selector w-full min-w-0 rounded-[var(--ui-radius-card)] bg-card/72 p-3 shadow-card sm:p-4",
+        "anatomy-selector anatomy-theme",
         disabled && "is-disabled",
         className,
       )}
       aria-label="Anatomical muscle selector"
-      aria-disabled={disabled}
+      aria-disabled={disabled || undefined}
     >
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {selectedMuscle
-          ? `${selectedMuscle.label} selected.`
-          : "Muscle selection cleared."}
-      </div>
-
-      <Tabs defaultValue="map" className="min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <TabsList className="anatomy-view-tabs grid min-w-0 flex-1 grid-cols-2">
-            <TabsTrigger value="map" className="gap-2">
-              <ScanSearch className="h-4 w-4" aria-hidden="true" />
-              Body map
-            </TabsTrigger>
-            <TabsTrigger value="list" className="gap-2">
-              <List className="h-4 w-4" aria-hidden="true" />
-              Muscle list
-            </TabsTrigger>
-          </TabsList>
-          {selectedMuscle ? (
+      <Dialog>
+        <div className="anatomy-selector-heading">
+          <h3>Target muscle</h3>
+          <div className="anatomy-heading-actions">
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              className="shrink-0"
-              disabled={disabled}
+              onClick={clear}
+              disabled={disabled || !value}
               aria-label="Clear selected muscle"
-              onClick={() => onValueChange(null)}
             >
-              <RotateCcw className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Clear</span>
+              Clear
             </Button>
-          ) : null}
-        </div>
-
-        <TabsContent value="map" className="mt-2 min-w-0">
-          <div
-            className="anatomy-surface-switch mx-auto grid w-full max-w-64 grid-cols-2 gap-1 rounded-xl border border-border/65 bg-muted/45 p-1"
-            role="group"
-            aria-label="Anatomical surface"
-          >
-            {(["front", "back"] as const).map((surface) => (
-              <button
-                key={surface}
+            <DialogTrigger asChild>
+              <Button
                 type="button"
-                aria-pressed={activeSurface === surface}
+                variant="ghost"
+                size="icon"
                 disabled={disabled}
-                onClick={() => setActiveSurface(surface)}
-                className={cn(
-                  "min-h-10 cursor-pointer rounded-lg px-4 py-2 text-sm font-medium capitalize transition-[background-color,color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed",
-                  activeSurface === surface
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                aria-label="Expand anatomy"
+                title="Expand anatomy"
               >
-                {surface}
-              </button>
-            ))}
+                <Expand size={16} aria-hidden="true" />
+              </Button>
+            </DialogTrigger>
           </div>
-
-          <h3 id={headingId} className="sr-only">
-            {activeSurface} anatomical muscle map
-          </h3>
-          <div className="anatomy-canvas mt-2 min-w-0 overflow-hidden rounded-[18px] px-1.5 py-1.5 sm:mt-[25px] sm:px-2 sm:py-[23px]">
-            <div className="anatomy-figure-stage flex min-w-0 justify-center">
-              <AnatomicalFigure
-                surface={activeSurface}
-                value={value}
-                onValueChange={selectMuscle}
-                disabled={disabled}
-                labelledBy={headingId}
-              />
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="list" className="min-w-0">
-          <p className="mb-3 text-sm leading-5 text-muted-foreground">
-            Browse the same canonical muscles grouped by body region.
-          </p>
-          <AccessibleMuscleList
-            value={value}
-            onValueChange={selectMuscle}
-            disabled={disabled}
-          />
-        </TabsContent>
-      </Tabs>
+        </div>
+        <AnatomyWorkspace {...workspaceProps} />
+        <DialogContent
+          className={cn(
+            "anatomy-theme anatomy-atlas",
+            disabled && "is-disabled",
+          )}
+        >
+          <header className="anatomy-atlas-heading">
+            <span className="anatomy-eyebrow">EXERCISE ANATOMY</span>
+            <DialogTitle>Find your target muscle</DialogTitle>
+            <DialogDescription>
+              Explore the body. Choose one muscle to refine your exercises.
+            </DialogDescription>
+          </header>
+          <AnatomyWorkspace {...workspaceProps} expanded />
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

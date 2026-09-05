@@ -192,7 +192,7 @@ function MuscleSelectorContent({
   onMuscleChange: (value: MuscleKey | null) => void;
 }) {
   return (
-    <div className="min-w-0 max-w-full [&_.anatomy-view-tabs]:hidden">
+    <div className="min-w-0 max-w-full">
       <AnatomicalMuscleSelector
         value={muscleKey}
         onValueChange={onMuscleChange}
@@ -222,16 +222,6 @@ export function ExerciseLibraryFilterPanel(props: {
   return (
     <>
       <section className="ui-panel hidden min-w-0 border border-border/70 p-4 xl:block">
-        <div className="mb-4">
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              Filter by muscle
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Selected: {selectedLabel}
-            </p>
-          </div>
-        </div>
         <MuscleSelectorContent {...props} />
       </section>
 
