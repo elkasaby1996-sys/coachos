@@ -283,6 +283,10 @@
   gap: 2px;
 }
 
+.anatomy-theme .anatomy-heading-actions [data-ui="button"][data-variant] {
+  border: 0;
+}
+
 .anatomy-search {
   position: relative;
   display: block;
