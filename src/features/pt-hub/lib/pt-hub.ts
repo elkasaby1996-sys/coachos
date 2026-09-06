@@ -2288,7 +2288,7 @@ export function useCoachMarketplaceProfiles() {
           "user_id, full_name, display_name, slug, headline, searchable_headline, short_bio, specialties, certifications, coaching_style, coaching_modes, availability_modes, location_label, marketplace_visible, is_published, published_at, profile_photo_url, banner_image_url, social_links, testimonials, transformations, updated_at, created_at",
         )
         .eq("is_published", true)
-        .eq("marketplace_visible", true)
+        .order("published_at", { ascending: false, nullsFirst: false })
         .order("updated_at", { ascending: false, nullsFirst: false })
         .returns<PtHubProfileRow[]>();
 
@@ -2334,6 +2334,38 @@ export function useCoachMarketplaceProfiles() {
           } satisfies PTPublicProfile;
         })
         .filter((profile): profile is PTPublicProfile => Boolean(profile));
+    },
+  });
+}
+
+export function useCoachMarketplacePackageCounts(coachUserIds: string[]) {
+  const normalizedCoachUserIds = Array.from(
+    new Set(coachUserIds.map((id) => id.trim()).filter(Boolean)),
+  ).sort();
+
+  return useQuery({
+    queryKey: ["coach-marketplace-package-counts", normalizedCoachUserIds],
+    enabled: normalizedCoachUserIds.length > 0,
+    staleTime: 1000 * 60 * 5,
+    queryFn: async () => {
+      if (normalizedCoachUserIds.length === 0) {
+        return {} as Record<string, number>;
+      }
+
+      const { data, error } = await supabase
+        .from("pt_packages")
+        .select("pt_user_id")
+        .in("pt_user_id", normalizedCoachUserIds)
+        .eq("status", "active")
+        .eq("is_public", true)
+        .returns<Array<{ pt_user_id: string }>>();
+
+      if (error) throw error;
+
+      return (data ?? []).reduce<Record<string, number>>((counts, row) => {
+        counts[row.pt_user_id] = (counts[row.pt_user_id] ?? 0) + 1;
+        return counts;
+      }, {});
     },
   });
 }

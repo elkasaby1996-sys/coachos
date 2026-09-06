@@ -11,6 +11,11 @@ import {
   syncPtAccountIdentity,
   type AccountType,
 } from "./account-profiles";
+import {
+  clearPendingTrialPlan,
+  getPendingTrialPlan,
+  getTrialPlanLabel,
+} from "./trial-plan";
 
 export type AuthCallbackKind =
   | "signup"
@@ -134,6 +139,7 @@ export async function provisionCallbackProfile(params: {
 
   if (storedIntent === "pt") {
     persistSignupIntent("pt");
+    const selectedPlan = getPendingTrialPlan();
     const fullName =
       window.localStorage.getItem("coachos_pt_signup_full_name") ??
       getUserDisplayName(params.user);
@@ -149,7 +155,10 @@ export async function provisionCallbackProfile(params: {
       phone: window.localStorage.getItem("coachos_pt_signup_phone"),
       country: window.localStorage.getItem("coachos_pt_signup_country"),
       city: window.localStorage.getItem("coachos_pt_signup_city"),
+      subscriptionPlan: getTrialPlanLabel(selectedPlan),
+      subscriptionStatus: "7-day trial",
     });
+    clearPendingTrialPlan();
     return;
   }
 

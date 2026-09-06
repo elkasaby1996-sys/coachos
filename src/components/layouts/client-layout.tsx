@@ -291,7 +291,7 @@ export function ClientLayout() {
             >
               <div
                 className={cn(
-                  "surface-panel-strong relative w-full overflow-hidden rounded-[34px] border-border/70 px-4 py-4 sm:px-5 lg:px-6",
+                  "surface-panel-strong relative w-full overflow-hidden rounded-[34px] border-border/70 px-4 py-3 sm:px-5 lg:px-6",
                   isLightMode
                     ? "shadow-[0_28px_76px_-56px_oklch(0.28_0.02_190/0.14)]"
                     : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
@@ -306,12 +306,12 @@ export function ClientLayout() {
                       : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.24),transparent)]",
                   )}
                 />
-                <div className="relative space-y-4">
+                <div className="relative space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0 space-y-2">
+                    <div className="min-w-0 space-y-1">
                       <p
                         className={cn(
-                          "truncate text-[2rem] font-semibold uppercase tracking-[0.06em] text-foreground sm:text-[2.25rem]",
+                          "truncate text-[1.58rem] font-semibold uppercase leading-none tracking-[0.06em] text-foreground sm:text-[1.86rem]",
                           currentModuleClasses.title,
                         )}
                       >

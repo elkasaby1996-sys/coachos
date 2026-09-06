@@ -419,6 +419,8 @@ export async function syncPtAccountIdentity(params: {
   phone?: string | null;
   country?: string | null;
   city?: string | null;
+  subscriptionPlan?: string | null;
+  subscriptionStatus?: string | null;
   updateAuthMetadata?: boolean;
 }) {
   const fullName = normalizeText(params.fullName);
@@ -486,6 +488,14 @@ export async function syncPtAccountIdentity(params: {
   }
   if (params.city !== undefined)
     settingsPayload.city = normalizeText(params.city);
+  if (params.subscriptionPlan !== undefined) {
+    settingsPayload.subscription_plan = normalizeText(params.subscriptionPlan);
+  }
+  if (params.subscriptionStatus !== undefined) {
+    settingsPayload.subscription_status = normalizeText(
+      params.subscriptionStatus,
+    );
+  }
 
   const { error: settingsUpsertError } = await supabase
     .from("pt_hub_settings")

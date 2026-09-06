@@ -105,6 +105,8 @@ Set these repository or environment secrets before using the deploy workflows:
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_PROJECT_ID`
 - `SUPABASE_DB_PASSWORD`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
 Use environment-scoped secrets so `supabase-staging` points to staging and `supabase-production` points to production.
 

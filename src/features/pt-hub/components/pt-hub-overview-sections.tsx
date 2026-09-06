@@ -539,12 +539,6 @@ export function PtHubActionCenter({
           hasError={activationChecklistError}
         />
 
-        <PtHubActivationChecklist
-          checklist={activationChecklist ?? null}
-          isLoading={activationChecklistLoading}
-          hasError={activationChecklistError}
-        />
-
         {primaryItem ? (
           <div
             className="divide-y divide-border/60 border-y border-border/60"

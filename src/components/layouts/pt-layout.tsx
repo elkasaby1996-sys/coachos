@@ -583,10 +583,6 @@ export function PtLayout() {
   const workspaceSettingsRouteMatch = location.pathname.match(
     /^\/workspace\/([^/]+)\/settings(?:\/|$)/,
   );
-  const isWorkspaceSettingsRoute =
-    /^\/(?:workspace|w)\/[^/]+\/settings(?:\/|$)/.test(location.pathname) ||
-    location.pathname.startsWith("/settings/");
-  const allowHeaderCondense = !isWorkspaceSettingsRoute;
   const routeWorkspaceId = workspaceSettingsRouteMatch?.[1] ?? null;
 
   useEffect(() => {
@@ -606,7 +602,6 @@ export function PtLayout() {
     (workspaceId ? null : "Workspace not found.");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
-  const [headerCondensed, setHeaderCondensed] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
@@ -706,6 +701,7 @@ export function PtLayout() {
     ],
   );
   const pageHeader = getPtRouteHeader(location.pathname, navGroups);
+  const isExerciseLibraryPage = location.pathname === "/pt/settings/exercises";
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
   const workspaceSwitcherItems = workspaces.map((workspace) => ({
     id: workspace.id,
@@ -1140,24 +1136,6 @@ export function PtLayout() {
     );
   }, [desktopNavCollapsed]);
 
-  useEffect(() => {
-    if (!allowHeaderCondense) {
-      setHeaderCondensed(false);
-      return;
-    }
-
-    const mainElement = mainScrollRef.current;
-    if (!mainElement) return;
-
-    const handleScroll = () => {
-      setHeaderCondensed(mainElement.scrollTop > 24);
-    };
-
-    handleScroll();
-    mainElement.addEventListener("scroll", handleScroll, { passive: true });
-    return () => mainElement.removeEventListener("scroll", handleScroll);
-  }, [allowHeaderCondense, routeTransitionKey]);
-
   if (loading) {
     return <LoadingScreen message="Loading..." />;
   }
@@ -1337,7 +1315,7 @@ export function PtLayout() {
                 <header
                   className={cn(
                     "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 transition-[padding,transform,box-shadow] duration-200 sm:px-5 lg:sticky lg:top-0 lg:z-20 lg:px-6",
-                    headerCondensed ? "py-3" : "py-4",
+                    "py-3",
                     isLightMode
                       ? "shadow-[0_28px_76px_-56px_oklch(0.28_0.02_190/0.14)]"
                       : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
@@ -1367,15 +1345,17 @@ export function PtLayout() {
                         <div
                           className={cn(
                             "min-w-0 transition-[gap] duration-200",
-                            headerCondensed ? "space-y-1" : "space-y-2",
+                            "space-y-1",
                           )}
                         >
                           <p
                             className={cn(
-                              "truncate font-semibold uppercase tracking-[0.06em] text-foreground transition-[font-size,line-height] duration-200",
-                              headerCondensed
-                                ? "text-[1.58rem] leading-none sm:text-[1.86rem]"
-                                : "text-[2rem] sm:text-[2.25rem]",
+                              "font-semibold uppercase tracking-[0.06em] text-foreground transition-[font-size,line-height] duration-200",
+                              isExerciseLibraryPage
+                                ? "whitespace-normal break-words text-[1.55rem] leading-tight sm:truncate sm:text-[1.86rem]"
+                                : "truncate",
+                              !isExerciseLibraryPage &&
+                                "text-[1.58rem] leading-none sm:text-[1.86rem]",
                               currentModuleClasses.title,
                             )}
                           >
@@ -1385,9 +1365,7 @@ export function PtLayout() {
                             <p
                               className={cn(
                                 "max-w-3xl text-muted-foreground transition-[font-size,line-height,opacity] duration-200",
-                                headerCondensed
-                                  ? "text-[12px] leading-4 opacity-80"
-                                  : "text-sm leading-5",
+                                "text-[12px] leading-4 opacity-80",
                               )}
                             >
                               {pageHeader.description}

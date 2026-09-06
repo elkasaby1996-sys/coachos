@@ -744,7 +744,7 @@ export function AuthComponent({
   );
 
   return (
-    <div className="pt-hub-theme pt-hub-theme-light auth-flow-canvas relative isolate flex h-dvh w-full flex-col overflow-hidden text-foreground">
+    <main className="pt-hub-theme pt-hub-theme-light auth-flow-canvas relative isolate flex min-h-dvh w-full flex-col overflow-x-hidden text-foreground">
       <style>{`
         input[type="password"]::-ms-reveal,
         input[type="password"]::-ms-clear { display: none !important; }
@@ -930,34 +930,34 @@ export function AuthComponent({
             0 14px 36px -26px oklch(var(--primary) / 0.7);
         }
         .auth-flow-card .glass-input-single {
-          border-color: oklch(1 0 0 / 0.5);
-          background: transparent;
+          border-color: oklch(var(--border) / 0.78);
+          background: oklch(0.99 0.004 95 / 0.88);
           box-shadow:
-            inset 0 1px 0 oklch(1 0 0 / 0.18),
-            0 10px 28px -24px oklch(0 0 0 / 0.46);
+            inset 0 1px 0 oklch(1 0 0 / 0.72),
+            0 10px 28px -24px oklch(var(--primary) / 0.46);
         }
         .auth-flow-card .glass-input-wrap:focus-within .glass-input-single {
-          border-color: oklch(1 0 0 / 0.72);
-          background: transparent;
+          border-color: oklch(var(--primary) / 0.48);
+          background: oklch(0.995 0.003 95 / 0.96);
           box-shadow:
-            inset 0 1px 0 oklch(1 0 0 / 0.24),
-            0 0 0 3px oklch(1 0 0 / 0.08),
-            0 14px 32px -26px oklch(0 0 0 / 0.48);
+            inset 0 1px 0 oklch(1 0 0 / 0.82),
+            0 0 0 3px oklch(var(--primary) / 0.1),
+            0 14px 32px -26px oklch(var(--primary) / 0.58);
         }
         .auth-flow-card-tall .glass-input-single {
-          border-color: oklch(1 0 0 / 0.48);
-          background: transparent;
+          border-color: oklch(var(--border) / 0.78);
+          background: oklch(0.99 0.004 95 / 0.88);
           box-shadow:
-            inset 0 1px 0 oklch(1 0 0 / 0.22),
-            0 12px 28px -26px oklch(0 0 0 / 0.42);
+            inset 0 1px 0 oklch(1 0 0 / 0.72),
+            0 12px 28px -26px oklch(var(--primary) / 0.44);
         }
         .auth-flow-card-tall .glass-input-wrap:focus-within .glass-input-single {
-          border-color: oklch(1 0 0 / 0.7);
-          background: transparent;
+          border-color: oklch(var(--primary) / 0.48);
+          background: oklch(0.995 0.003 95 / 0.96);
           box-shadow:
-            inset 0 1px 0 oklch(1 0 0 / 0.32),
-            0 0 0 3px oklch(1 0 0 / 0.1),
-            0 14px 32px -26px oklch(0 0 0 / 0.46);
+            inset 0 1px 0 oklch(1 0 0 / 0.82),
+            0 0 0 3px oklch(var(--primary) / 0.1),
+            0 14px 32px -26px oklch(var(--primary) / 0.58);
         }
         .glass-input-single::after,
         .glass-input-single .glass-input-text-area,
@@ -1039,27 +1039,27 @@ export function AuthComponent({
             className="rounded-md text-foreground transition-colors hover:text-foreground/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label={`${brandName} home`}
           >
-            <h1 className="text-xl font-bold tracking-normal sm:text-2xl">
+            <span className="block text-sm font-bold tracking-[0.34em] sm:text-base">
               {brandName}
-            </h1>
+            </span>
           </a>
         ) : (
-          <h1 className="text-xl font-bold tracking-normal text-foreground sm:text-2xl">
+          <span className="block text-sm font-bold tracking-[0.34em] text-foreground sm:text-base">
             {brandName}
-          </h1>
+          </span>
         )}
       </div>
 
-      <div className="auth-flow-scroll relative z-10 flex min-h-0 w-full flex-1 items-start justify-center overflow-y-auto px-4 py-16 sm:py-20">
+      <div className="auth-flow-scroll relative z-10 flex w-full flex-1 items-start justify-center px-4 py-16 sm:py-20">
         <fieldset
           disabled={formIsLocked}
           className={cn(
             "auth-flow-card relative z-10 mx-auto my-auto flex w-full flex-col items-center",
             isSignUp && preFields
-              ? "max-w-[420px] rounded-[32px] border border-border/55 bg-card/62 px-6 py-5 shadow-[0_28px_90px_-54px_oklch(var(--primary)/0.58)] backdrop-blur-2xl sm:px-8 sm:py-6"
+              ? "max-w-[420px] rounded-lg border border-border/65 bg-card/92 px-6 py-5 shadow-[0_28px_90px_-54px_oklch(var(--primary)/0.58)] backdrop-blur-xl sm:px-8 sm:py-6"
               : isSignUp
                 ? "max-w-[340px] p-4 sm:max-w-[390px]"
-                : "max-w-[420px] rounded-[32px] border border-border/55 bg-card/62 px-6 py-8 shadow-[0_28px_90px_-54px_oklch(var(--primary)/0.58)] backdrop-blur-2xl sm:px-8",
+                : "max-w-[420px] rounded-lg border border-border/65 bg-card/92 px-6 py-8 shadow-[0_28px_90px_-54px_oklch(var(--primary)/0.58)] backdrop-blur-xl sm:px-8",
             preFields ? "gap-3" : isSignUp ? "gap-7" : "gap-5",
             isSignUp && preFields ? "auth-flow-card-tall" : null,
           )}
@@ -1077,7 +1077,7 @@ export function AuthComponent({
               )}
             >
               <BlurFade className="w-full">
-                <p
+                <h1
                   className={cn(
                     "whitespace-normal text-balance font-serif font-light tracking-tight text-foreground",
                     preFields
@@ -1089,7 +1089,7 @@ export function AuthComponent({
                   )}
                 >
                   {heading}
-                </p>
+                </h1>
               </BlurFade>
               {supportingCopy ? (
                 <BlurFade delay={0.1}>
@@ -1680,6 +1680,6 @@ export function AuthComponent({
         className={authFooterClassName}
         contentClassName={authFooterContentClassName}
       />
-    </div>
+    </main>
   );
 }

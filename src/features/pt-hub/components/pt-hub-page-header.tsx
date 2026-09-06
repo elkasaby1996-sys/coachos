@@ -42,13 +42,13 @@ export function PtHubPageHeader({
   return (
     <div
       className={cn(
-        "section-accent-shell surface-panel relative rounded-[30px] border border-border/70 px-5 py-5 shadow-[var(--surface-shadow)]",
+        "section-accent-shell surface-panel relative rounded-[30px] border border-border/70 px-5 py-3 shadow-[var(--surface-shadow)]",
         className,
       )}
       style={getModuleToneStyle(resolvedModule)}
     >
-      <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
+      <div className="relative z-10 flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
           <p
             className={cn(
               "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
@@ -64,13 +64,13 @@ export function PtHubPageHeader({
           <div className="space-y-1">
             <h2
               className={cn(
-                "text-[1.65rem] font-semibold uppercase tracking-[0.05em] text-foreground",
+                "text-[1.55rem] font-semibold uppercase leading-none tracking-[0.05em] text-foreground sm:text-[1.85rem]",
                 toneClasses.title,
               )}
             >
               {title}
             </h2>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+            <p className="max-w-3xl text-[12px] leading-4 text-muted-foreground opacity-80">
               {description}
             </p>
           </div>

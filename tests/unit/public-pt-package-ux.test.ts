@@ -107,6 +107,36 @@ describe("public PT package UX helpers", () => {
 });
 
 describe("public profile package section rendering", () => {
+  it("returns to a canonical, encoded profile URL after success", () => {
+    const canonicalHtml = renderToStaticMarkup(
+      createElement(PublicPtProfileView, {
+        profile: baseProfile,
+        applicantIdentity,
+        packageOptions: [],
+        success: true,
+      }),
+    );
+    const encodedHtml = renderToStaticMarkup(
+      createElement(PublicPtProfileView, {
+        profile: {
+          ...baseProfile,
+          slug: '"><img src=x onerror=alert(1)>',
+        },
+        applicantIdentity,
+        packageOptions: [],
+        success: true,
+      }),
+    );
+
+    expect(canonicalHtml).toMatch(
+      /<a href="\/p\/coach-prime"[^>]*>Return to profile<\/a>/,
+    );
+    expect(encodedHtml).toMatch(
+      /<a href="\/p\/%22%3E%3Cimg%20src%3Dx%20onerror%3Dalert\(1\)%3E"[^>]*>Return to profile<\/a>/,
+    );
+    expect(encodedHtml).not.toContain('href="/p/&quot;&gt;&lt;img');
+  });
+
   it("renders package sections when packages exist and places mobile packages before apply form", () => {
     const html = renderToStaticMarkup(
       createElement(PublicPtProfileView, {

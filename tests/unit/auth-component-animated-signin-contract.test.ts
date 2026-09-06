@@ -59,15 +59,18 @@ describe("animated auth component contract", () => {
     expect(source).not.toContain("rgba(255,255,255,0.26)");
   });
 
-  it("keeps auth inputs transparent so they do not appear nested", () => {
-    expect(source).toContain(
-      ".auth-flow-card .glass-input-single {\n          border-color: oklch(1 0 0 / 0.5);\n          background: transparent;",
+  it("keeps native auth inputs transparent inside their surfaced wrappers", () => {
+    const nativeInputRule = source.match(
+      /\.glass-input-single input,[\s\S]*?\.glass-input-single input:active \{([\s\S]*?)\n\s*\}/,
+    )?.[1];
+
+    expect(nativeInputRule).toBeDefined();
+    expect(nativeInputRule).toContain("background: transparent !important;");
+    expect(nativeInputRule).toContain(
+      "background-color: transparent !important;",
     );
-    expect(source).toContain(
-      ".auth-flow-card .glass-input-wrap:focus-within .glass-input-single {\n          border-color: oklch(1 0 0 / 0.72);\n          background: transparent;",
-    );
-    expect(source).toContain("background: transparent !important;");
-    expect(source).toContain("box-shadow: none !important;");
+    expect(nativeInputRule).toContain("border: 0 !important;");
+    expect(nativeInputRule).toContain("box-shadow: none !important;");
   });
 
   it("keeps the auth footer pinned in a viewport shell without an after-footer band", () => {
@@ -82,7 +85,9 @@ describe("animated auth component contract", () => {
 
   it("uses the animated backdrop on auth screens", () => {
     expect(backdropSource).toContain("AuthFlowBackground");
-    expect(backdropSource).toContain("backdrop-blur-[36px]");
+    expect(backdropSource).toContain("<BloomField");
+    expect(backdropSource).toContain("motionAmount={0.24}");
+    expect(backdropSource).toContain("auth-flow-grain");
     expect(source).toContain("<AuthFlowBackground />");
   });
 });

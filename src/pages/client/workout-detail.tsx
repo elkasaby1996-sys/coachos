@@ -13,6 +13,7 @@ import {
 } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { supabase } from "../../lib/supabase";
+import { workoutTemplateExerciseQueryKeys } from "../../lib/exercise-query-contracts";
 import { getSupabaseErrorDetails } from "../../lib/supabase-errors";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { selectActiveClientProfile } from "../../lib/client-profile-selection";
@@ -159,7 +160,7 @@ export function ClientWorkoutDetailPage() {
   const workoutTemplateId = workoutTemplate?.id ?? null;
 
   const templateExercisesQuery = useQuery({
-    queryKey: ["workout-template-exercises", workoutTemplateId],
+    queryKey: workoutTemplateExerciseQueryKeys.detail(workoutTemplateId),
     enabled: !!workoutTemplateId,
     queryFn: async () => {
       const templateId = workoutTemplateId;

@@ -17,6 +17,7 @@ import {
   SurfaceCardTitle,
 } from "../../components/client/portal";
 import { supabase } from "../../lib/supabase";
+import { workoutTemplateExerciseQueryKeys } from "../../lib/exercise-query-contracts";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { selectActiveClientProfile } from "../../lib/client-profile-selection";
 
@@ -128,7 +129,7 @@ export function ClientWorkoutTodayPage() {
   });
 
   const templateExercisesQuery = useQuery({
-    queryKey: ["workout-template-exercises", workoutTemplate?.id],
+    queryKey: workoutTemplateExerciseQueryKeys.today(workoutTemplate?.id),
     enabled: !!workoutTemplate?.id,
     queryFn: async () => {
       const { data, error } = await supabase

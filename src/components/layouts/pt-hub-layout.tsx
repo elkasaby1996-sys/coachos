@@ -625,7 +625,7 @@ export function PtHubLayout() {
               <header
                 className={cn(
                   "pt-hub-shell-header surface-panel-strong relative overflow-hidden rounded-[30px] border-border/70 px-4 transition-[padding,transform,box-shadow] duration-200 sm:px-5 lg:sticky lg:top-0 lg:z-20 lg:px-5",
-                  headerCondensed ? "py-3" : "py-4",
+                  "py-3",
                   isLightMode
                     ? "shadow-[var(--surface-strong-shadow)]"
                     : "shadow-[var(--surface-strong-shadow)]",
@@ -643,7 +643,7 @@ export function PtHubLayout() {
                 <div
                   className={cn(
                     "relative flex flex-wrap items-start justify-between transition-[gap] duration-200 lg:items-center xl:flex-nowrap",
-                    headerCondensed ? "gap-3" : "gap-4",
+                    "gap-3",
                   )}
                 >
                   <div className="flex min-w-[min(100%,20rem)] flex-1 items-start gap-3">
@@ -661,21 +661,19 @@ export function PtHubLayout() {
                     <div
                       className={cn(
                         "min-w-0 transition-[gap] duration-200",
-                        headerCondensed ? "space-y-2" : "space-y-3",
+                        "space-y-2",
                       )}
                     >
                       <div
                         className={cn(
                           "transition-[gap] duration-200",
-                          headerCondensed ? "space-y-1" : "space-y-2",
+                          "space-y-1",
                         )}
                       >
                         <p
                           className={cn(
                             "font-semibold uppercase tracking-[0.055em] text-foreground transition-[font-size,line-height] duration-200",
-                            headerCondensed
-                              ? "text-[1.55rem] leading-none sm:text-[1.85rem]"
-                              : "text-[1.95rem] sm:text-[2.25rem]",
+                            "text-[1.55rem] leading-none sm:text-[1.85rem]",
                             currentModuleClasses.title,
                           )}
                         >
@@ -684,9 +682,7 @@ export function PtHubLayout() {
                         <p
                           className={cn(
                             "max-w-3xl text-muted-foreground transition-[font-size,line-height,opacity] duration-200",
-                            headerCondensed
-                              ? "text-[12px] leading-4 opacity-80"
-                              : "text-[0.95rem] leading-6",
+                            "text-[12px] leading-4 opacity-80",
                           )}
                         >
                           {metaDescription}

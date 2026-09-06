@@ -18,6 +18,7 @@ export function PtHubSectionCard({
   actions,
   children,
   className,
+  headerClassName,
   contentClassName,
   module,
 }: {
@@ -26,6 +27,7 @@ export function PtHubSectionCard({
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  headerClassName?: string;
   contentClassName?: string;
   module?: ModuleTone;
 }) {
@@ -44,7 +46,10 @@ export function PtHubSectionCard({
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.32),transparent)]" />
       <CardHeader
         module={resolvedModule}
-        className="relative space-y-0 border-b border-border/55 px-4 py-3.5 sm:px-5"
+        className={cn(
+          "relative space-y-0 border-b border-border/55 px-4 py-3.5 sm:px-5",
+          headerClassName,
+        )}
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">

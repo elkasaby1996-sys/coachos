@@ -1069,7 +1069,10 @@ export function PtMessageComposeProvider({
               </div>
             ) : null}
 
-            <div className="pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 sm:bottom-6 sm:right-6">
+            <div
+              data-pt-message-compose-launcher-container="true"
+              className="pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 transition-[opacity,transform] duration-200 sm:bottom-6 sm:right-6"
+            >
               <div className="pointer-events-auto">
                 <div ref={launcherRef}>
                   <MessageWidgetLauncher

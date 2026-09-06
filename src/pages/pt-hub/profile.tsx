@@ -92,6 +92,9 @@ export function PtHubProfilePage() {
             await queryClient.invalidateQueries({
               queryKey: ["public-pt-profile"],
             });
+            await queryClient.invalidateQueries({
+              queryKey: ["coach-marketplace-profiles"],
+            });
             setMessageTone("success");
             setMessage("Coach profile saved.");
             window.setTimeout(() => setMessage(null), 2200);
@@ -122,6 +125,9 @@ export function PtHubProfilePage() {
             });
             await queryClient.invalidateQueries({
               queryKey: ["public-pt-profile"],
+            });
+            await queryClient.invalidateQueries({
+              queryKey: ["coach-marketplace-profiles"],
             });
             setMessageTone("success");
             setMessage(

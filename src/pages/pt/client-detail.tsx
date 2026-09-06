@@ -830,6 +830,21 @@ type QueryResult<T> = {
 
 const baselinePhotoTypes = ["front", "side", "back"] as const;
 
+type ClientCoachTask = {
+  id: string;
+  title: string;
+  is_done: boolean;
+  source_key: string | null;
+  deleted_at: string | null;
+  created_at: string;
+};
+
+const defaultClientCoachTasks = [
+  { source_key: "review-checkins", title: "Review check-ins" },
+  { source_key: "reply-messages", title: "Reply to messages" },
+  { source_key: "adjust-program", title: "Adjust program" },
+] as const;
+
 export function PtClientDetailPage({
   clientIdOverride,
 }: {
@@ -1111,12 +1126,8 @@ export function PtClientDetailPage({
       }
     >
   >([]);
-  const [clientTodos, setClientTodos] = useState([
-    { id: "client-task-checkins", label: "Review check-ins", done: false },
-    { id: "client-task-messages", label: "Reply to messages", done: false },
-    { id: "client-task-program", label: "Adjust program", done: false },
-  ]);
   const [todoInput, setTodoInput] = useState("");
+  const [todoBusyId, setTodoBusyId] = useState<string | null>(null);
   const [isOverviewCollapsed, setIsOverviewCollapsed] = useState(true);
   const [sessionDetailOpen, setSessionDetailOpen] = useState(false);
   const [isWorkbenchCollapsed, setIsWorkbenchCollapsed] = useState(false);
@@ -1154,6 +1165,46 @@ export function PtClientDetailPage({
     }),
     [activeWorkspaceId, workspaceError, workspaceLoading],
   );
+
+  const clientTodosQuery = useQuery({
+    queryKey: ["client-coach-tasks", workspaceQuery.data, clientId, user?.id],
+    enabled: !!workspaceQuery.data && !!clientId && !!user?.id,
+    queryFn: async () => {
+      const loadTasks = async () => {
+        const { data, error } = await supabase
+          .from("client_coach_tasks")
+          .select("id, title, is_done, source_key, deleted_at, created_at")
+          .eq("workspace_id", workspaceQuery.data ?? "")
+          .eq("client_id", clientId ?? "")
+          .eq("coach_id", user?.id ?? "")
+          .order("created_at", { ascending: true });
+        if (error) throw error;
+        return (data ?? []) as ClientCoachTask[];
+      };
+
+      let tasks = await loadTasks();
+      if (tasks.length === 0) {
+        const { error } = await supabase.from("client_coach_tasks").upsert(
+          defaultClientCoachTasks.map((task) => ({
+            workspace_id: workspaceQuery.data,
+            client_id: clientId,
+            coach_id: user?.id,
+            title: task.title,
+            source_key: task.source_key,
+          })),
+          {
+            onConflict: "coach_id,client_id,source_key",
+            ignoreDuplicates: true,
+          },
+        );
+        if (error) throw error;
+        tasks = await loadTasks();
+      }
+
+      return tasks.filter((task) => !task.deleted_at);
+    },
+  });
+  const clientTodos = clientTodosQuery.data ?? [];
 
   const workspaceDetailsQuery = useQuery({
     queryKey: ["pt-workspace-details", workspaceQuery.data],
@@ -4400,24 +4451,75 @@ export function PtClientDetailPage({
     });
   }, [active, clientId, workspaceQuery.data, baselineEntryQuery.data]);
 
-  const toggleTask = (taskId: string) => {
-    setClientTodos((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, done: !task.done } : task,
-      ),
-    );
+  const toggleTask = async (task: ClientCoachTask) => {
+    setTodoBusyId(task.id);
+    const { data, error } = await supabase
+      .from("client_coach_tasks")
+      .update({ is_done: !task.is_done })
+      .eq("id", task.id)
+      .select("id, title, is_done, source_key, deleted_at, created_at")
+      .single();
+    if (error) {
+      setToastVariant("error");
+      setToastMessage(getSupabaseErrorMessage(error, "Unable to update task."));
+    } else if (data) {
+      queryClient.setQueryData<ClientCoachTask[]>(
+        ["client-coach-tasks", workspaceQuery.data, clientId, user?.id],
+        (current = []) =>
+          current.map((currentTask) =>
+            currentTask.id === task.id
+              ? (data as ClientCoachTask)
+              : currentTask,
+          ),
+      );
+    }
+    setTodoBusyId(null);
   };
 
-  const addTask = () => {
+  const addTask = async () => {
     const next = todoInput.trim();
-    if (!next) return;
-    const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    setClientTodos((prev) => [{ id, label: next, done: false }, ...prev]);
+    if (!next || !workspaceQuery.data || !clientId || !user?.id) return;
+    setTodoBusyId("new");
+    const { data, error } = await supabase
+      .from("client_coach_tasks")
+      .insert({
+        workspace_id: workspaceQuery.data,
+        client_id: clientId,
+        coach_id: user.id,
+        title: next,
+      })
+      .select("id, title, is_done, source_key, deleted_at, created_at")
+      .single();
+    if (error) {
+      setToastVariant("error");
+      setToastMessage(getSupabaseErrorMessage(error, "Unable to add task."));
+      setTodoBusyId(null);
+      return;
+    }
+    queryClient.setQueryData<ClientCoachTask[]>(
+      ["client-coach-tasks", workspaceQuery.data, clientId, user.id],
+      (current = []) => [data as ClientCoachTask, ...current],
+    );
     setTodoInput("");
+    setTodoBusyId(null);
   };
 
-  const removeTask = (taskId: string) => {
-    setClientTodos((prev) => prev.filter((task) => task.id !== taskId));
+  const removeTask = async (taskId: string) => {
+    setTodoBusyId(taskId);
+    const { error } = await supabase
+      .from("client_coach_tasks")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", taskId);
+    if (error) {
+      setToastVariant("error");
+      setToastMessage(getSupabaseErrorMessage(error, "Unable to remove task."));
+    } else {
+      queryClient.setQueryData<ClientCoachTask[]>(
+        ["client-coach-tasks", workspaceQuery.data, clientId, user?.id],
+        (current = []) => current.filter((task) => task.id !== taskId),
+      );
+    }
+    setTodoBusyId(null);
   };
 
   const identityLoading = clientQuery.isLoading;
@@ -4578,33 +4680,13 @@ export function PtClientDetailPage({
                         .join(" • ") || "Client coaching view"}
                       {joinedLabel ? ` • Joined ${joinedLabel}` : ""}
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className="ops-chip text-muted-foreground">
-                        Next due: {nextDueSummary.value}
-                      </span>
-                      <span className="ops-chip text-muted-foreground">
-                        Last touch: {lastSeen ?? "No recent activity"}
-                      </span>
-                      <span className="ops-chip text-muted-foreground">
-                        Program:{" "}
-                        {activeProgram?.program_template?.name ?? "None"}
-                      </span>
-                    </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {!isHistoricalClientRelationship ? (
-                    <>
-                      <Button onClick={() => handleQuickAction("")}>
-                        Message client
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => setActiveTab("workout")}
-                      >
-                        Plan workout
-                      </Button>
-                    </>
+                    <Button onClick={() => handleQuickAction("")}>
+                      Message client
+                    </Button>
                   ) : null}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -4807,6 +4889,14 @@ export function PtClientDetailPage({
                       <span className="mt-0.5 block font-medium">
                         {checkinStatus ?? "--"}
                       </span>
+                      {nextScheduledCheckin?.week_ending_saturday ? (
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          Due date:{" "}
+                          {formatShortDate(
+                            nextScheduledCheckin.week_ending_saturday,
+                          )}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
@@ -4880,12 +4970,24 @@ export function PtClientDetailPage({
                   onChange={(event) => setTodoInput(event.target.value)}
                   placeholder="Add a new task"
                 />
-                <Button onClick={addTask} disabled={!todoInput.trim()}>
+                <Button
+                  onClick={() => void addTask()}
+                  disabled={!todoInput.trim() || todoBusyId === "new"}
+                >
                   Add
                 </Button>
               </div>
               <div className="space-y-2.5">
-                {clientTodos.length === 0 ? (
+                {clientTodosQuery.isLoading ? (
+                  <div className="space-y-2.5">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <Skeleton
+                        key={index}
+                        className="h-12 w-full rounded-lg"
+                      />
+                    ))}
+                  </div>
+                ) : clientTodos.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
                     No tasks yet.
                   </div>
@@ -4898,25 +5000,27 @@ export function PtClientDetailPage({
                       <label className="flex flex-1 items-center gap-3">
                         <input
                           type="checkbox"
-                          checked={task.done}
-                          onChange={() => toggleTask(task.id)}
+                          checked={task.is_done}
+                          onChange={() => void toggleTask(task)}
+                          disabled={todoBusyId === task.id}
                           className="h-4 w-4 accent-primary"
                         />
                         <span
                           className={cn(
                             "font-medium",
-                            task.done
+                            task.is_done
                               ? "text-muted-foreground line-through"
                               : "text-foreground",
                           )}
                         >
-                          {task.label}
+                          {task.title}
                         </span>
                       </label>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => removeTask(task.id)}
+                        onClick={() => void removeTask(task.id)}
+                        disabled={todoBusyId === task.id}
                       >
                         Remove
                       </Button>
@@ -4945,7 +5049,6 @@ export function PtClientDetailPage({
                   label="Adherence"
                   value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
                   helper="Last 7 days"
-                  icon={Sparkles}
                   module="analytics"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
@@ -4958,7 +5061,6 @@ export function PtClientDetailPage({
                   label="Consistency streak"
                   value={`${habitStreak}d`}
                   helper="Habit streak"
-                  icon={Rocket}
                   module="analytics"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
@@ -4977,7 +5079,6 @@ export function PtClientDetailPage({
                         ? `Last activity ${formatRelativeTime(lastCheckin)}`
                         : "No check-ins"
                   }
-                  icon={CalendarDays}
                   module="checkins"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
@@ -4986,7 +5087,6 @@ export function PtClientDetailPage({
                   label="Last workout"
                   value={lastWorkout ? formatRelativeTime(lastWorkout) : "--"}
                   helper={lastWorkoutStatus ?? "No workouts"}
-                  icon={Sparkles}
                   module="analytics"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
@@ -5113,7 +5213,6 @@ export function PtClientDetailPage({
         <div>
           <DashboardCard
             title="Coaching Workspace"
-            subtitle="Primary operational surface for planning, review, and intervention."
             className="ops-surface-strong"
             action={
               <Button

@@ -33,6 +33,9 @@ export function SignupRolePage() {
   const redirectSearch = inviteRedirect
     ? `?redirect=${encodeURIComponent(inviteRedirect)}`
     : "";
+  const coachSignupPath = inviteRedirect
+    ? `/signup/pt${redirectSearch}`
+    : "/pricing";
 
   useEffect(() => {
     document.title = "Sign Up — RepSync";
@@ -89,19 +92,19 @@ export function SignupRolePage() {
             Sign up
           </h2>
           <p className="mx-auto mt-4 max-w-md text-sm font-medium leading-6 text-muted-foreground">
-            Pick the path that matches how you'll use Repsync.
+            Pick the path that matches how you'll use RepSync.
           </p>
         </div>
 
         <div className="grid w-full gap-4 md:grid-cols-2">
           <Link
-            to={`/signup/pt${redirectSearch}`}
+            to={coachSignupPath}
             className="group relative min-h-[12rem] overflow-hidden rounded-[32px] border border-border/55 bg-card/62 p-6 shadow-[0_28px_90px_-54px_oklch(var(--primary)/0.58),inset_0_1px_0_oklch(1_0_0/0.22)] backdrop-blur-2xl transition-[border-color,background-color,transform,box-shadow] duration-200 hover:-translate-y-1 hover:border-white/60 hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span className="block text-2xl font-semibold tracking-tight text-foreground">
               I'm a Coach
             </span>
-            <span className="mt-3 block text-sm leading-6 text-[oklch(0.99_0.004_95/0.94)]">
+            <span className="mt-3 block text-sm leading-6 text-foreground/72">
               Create a PT account, set up your workspace, and finish your coach
               profile.
             </span>
@@ -118,7 +121,7 @@ export function SignupRolePage() {
             <span className="block text-2xl font-semibold tracking-tight text-foreground">
               I'm a Client
             </span>
-            <span className="mt-3 block text-sm leading-6 text-[oklch(0.99_0.004_95/0.94)]">
+            <span className="mt-3 block text-sm leading-6 text-foreground/72">
               Create your account now and connect to a coach later when you have
               an invite.
             </span>

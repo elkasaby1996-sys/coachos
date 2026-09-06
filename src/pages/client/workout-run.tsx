@@ -26,6 +26,7 @@ import {
   ActionStatusMessage,
 } from "../../components/common/action-feedback";
 import { supabase } from "../../lib/supabase";
+import { workoutTemplateExerciseQueryKeys } from "../../lib/exercise-query-contracts";
 import { getSupabaseErrorMessage } from "../../lib/supabase-errors";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { selectActiveClientProfile } from "../../lib/client-profile-selection";
@@ -331,7 +332,7 @@ export function ClientWorkoutRunPage() {
   });
 
   const templateExercisesQuery = useQuery({
-    queryKey: ["workout-template-exercises", workoutTemplateId],
+    queryKey: workoutTemplateExerciseQueryKeys.runner(workoutTemplateId),
     enabled: !!workoutTemplateId,
     queryFn: async () => {
       const templateId = workoutTemplateId;
