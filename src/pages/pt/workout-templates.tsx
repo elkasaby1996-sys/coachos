@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Copy, Eye, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { duplicateWorkoutTemplate } from "../../lib/duplicate-workout-template";
 import { WorkoutTemplatePreviewDialog } from "../../components/pt/workout-template-preview-dialog";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -87,6 +88,10 @@ export function PtWorkoutTemplatesPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TemplateRow | null>(null);
   const [previewTarget, setPreviewTarget] = useState<TemplateRow | null>(null);
+  const duplicateLock = useRef(false);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     workout_type_tag: "",
@@ -161,6 +166,26 @@ export function PtWorkoutTemplatesPage() {
     });
     if (data?.id) {
       navigate(`/pt/templates/workouts/${data.id}`);
+    }
+  };
+
+  const handleDuplicate = async (template: TemplateRow) => {
+    if (!workspaceId || !canManageDelivery || duplicateLock.current) return;
+    duplicateLock.current = true;
+    setDuplicatingId(template.id);
+    setDuplicateError(null);
+    setDuplicateNotice(null);
+    try {
+      const copy = await duplicateWorkoutTemplate(template.id, workspaceId);
+      setDuplicateNotice(`Created ${copy.name}.`);
+    } catch (error) {
+      setDuplicateError(getErrorDetails(error).message);
+    } finally {
+      await queryClient.invalidateQueries({
+        queryKey: ["workout-templates", workspaceId],
+      });
+      duplicateLock.current = false;
+      setDuplicatingId(null);
     }
   };
 
@@ -357,6 +382,17 @@ export function PtWorkoutTemplatesPage() {
         ) : null}
       </div>
 
+      {duplicateError ? (
+        <Alert tone="danger">
+          <AlertTitle>Unable to duplicate workout</AlertTitle>
+          <AlertDescription>{duplicateError}</AlertDescription>
+        </Alert>
+      ) : duplicateNotice ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          {duplicateNotice}
+        </p>
+      ) : null}
+
       {workspaceError ? (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {getErrorDetails(workspaceError).code}:{" "}
@@ -444,9 +480,31 @@ export function PtWorkoutTemplatesPage() {
                     <Button
                       size="icon"
                       variant="ghost"
+                      className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                      aria-label="Duplicate"
+                      title="Duplicate workout"
+                      disabled={duplicatingId !== null}
+                      aria-busy={duplicatingId === template.id}
+                      onClick={() => void handleDuplicate(template)}
+                    >
+                      {duplicatingId === template.id ? (
+                        <Loader2
+                          className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Copy className="h-4 w-4" aria-hidden="true" />
+                      )}
+                    </Button>
+                  ) : null}
+                  {canManageDelivery ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
                       className="h-8 w-8 !min-h-8 !min-w-8 hover:text-destructive [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
                       aria-label="Delete"
                       title="Delete workout"
+                      disabled={duplicatingId === template.id}
                       onClick={() => {
                         setDeleteTarget(template);
                         setDeleteError(null);
