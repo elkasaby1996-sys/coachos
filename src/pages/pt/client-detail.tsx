@@ -3506,11 +3506,6 @@ export function PtClientDetailPage({
     : null;
   const selectedCheckinNotesRequired =
     Boolean(selectedCheckin?.submitted_at) && feedbackText.trim().length === 0;
-  const selectedCheckinReviewerLabel = selectedCheckin?.reviewed_by_user_id
-    ? selectedCheckin.reviewed_by_user_id === user?.id
-      ? "You"
-      : "Another coach"
-    : null;
   const reviewClientLabel = clientQuery.data?.display_name?.trim()
     ? clientQuery.data.display_name
     : clientQuery.data?.email?.trim()
@@ -4902,45 +4897,24 @@ export function PtClientDetailPage({
                     </div>
                     <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
-                        Last workout
-                      </span>
-                      <span className="mt-0.5 block font-medium">
-                        {lastWorkoutStatus ?? "--"}
-                      </span>
-                    </div>
-                    <div className="ops-stat">
-                      <span className="block text-xs text-muted-foreground">
                         Risk signals
                       </span>
-                      <div className="mt-1 flex flex-wrap gap-2">
+                      <div className="mt-0.5 space-y-1 font-medium">
                         {clientSnapshot?.manual_risk_flag ? (
-                          <TagInfoBadge
-                            label="Manual at-risk flag"
-                            variant="danger"
-                            title="Manual at-risk flag"
-                            description="A PT manually marked this client as at risk, independent of the automatic risk signals."
-                            className="text-[10px]"
-                          />
+                          <p>Manual at-risk flag</p>
                         ) : null}
                         {clientRiskFlags.length > 0 ? (
                           clientRiskFlags.map((flag) => {
                             const meta = getClientRiskFlagMeta(flag);
                             if (!meta) return null;
                             return (
-                              <TagInfoBadge
-                                key={flag}
-                                label={meta.shortLabel}
-                                variant={meta.variant}
-                                title={meta.label}
-                                description={meta.description}
-                                className="text-[10px]"
-                              />
+                              <p key={flag}>{meta.shortLabel}</p>
                             );
                           })
                         ) : !clientSnapshot?.manual_risk_flag ? (
-                          <span className="text-sm font-medium text-muted-foreground">
+                          <p className="text-muted-foreground">
                             No active risk flags
-                          </span>
+                          </p>
                         ) : null}
                       </div>
                     </div>
@@ -4959,13 +4933,13 @@ export function PtClientDetailPage({
           </Card>
         )}
 
-        <div className="grid gap-7 lg:grid-cols-3">
+        <div className="grid items-stretch gap-7 lg:grid-cols-3">
           <DashboardCard
-            title="Coach Queue"
-            subtitle="Utility actions and follow-ups tied to this client."
-            className="lg:col-span-1"
+            title="To-Do"
+            className="h-full lg:col-span-1"
+            contentClassName="flex h-full flex-col"
           >
-            <div className="space-y-4">
+            <div className="flex h-full flex-col gap-4">
               <div className="flex items-center gap-2">
                 <Input
                   value={todoInput}
@@ -4975,11 +4949,12 @@ export function PtClientDetailPage({
                 <Button
                   onClick={() => void addTask()}
                   disabled={!todoInput.trim() || todoBusyId === "new"}
+                  aria-label="Add task"
                 >
-                  Add
+                  +
                 </Button>
               </div>
-              <div className="space-y-2.5">
+              <div className="flex flex-1 flex-col space-y-2.5">
                 {clientTodosQuery.isLoading ? (
                   <div className="space-y-2.5">
                     {Array.from({ length: 3 }).map((_, index) => (
@@ -4990,8 +4965,10 @@ export function PtClientDetailPage({
                     ))}
                   </div>
                 ) : clientTodos.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-                    No tasks yet.
+                  <div className="flex flex-1 items-center py-2">
+                    <div className="flex min-h-16 w-full items-center justify-center rounded-lg border border-dotted border-border/60 bg-transparent px-3 py-4 text-center text-sm text-muted-foreground">
+                      No tasks yet.
+                    </div>
                   </div>
                 ) : (
                   clientTodos.map((task) => (
@@ -5061,15 +5038,11 @@ export function PtClientDetailPage({
                 />
                 <StatCard
                   label="Consistency streak"
-                  value={`${habitStreak}d`}
+                  value={`${habitStreak} Days`}
                   helper="Habit streak"
                   module="analytics"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
-                  delta={buildMetricDelta({
-                    delta: habitStreak - previousHabitStreak,
-                    suffix: "d",
-                  })}
                 />
                 <StatCard
                   label="Check-in status"
@@ -5216,6 +5189,7 @@ export function PtClientDetailPage({
           <DashboardCard
             title="Coaching Workspace"
             className="ops-surface-strong"
+            contentClassName={isWorkbenchCollapsed ? "hidden" : undefined}
             action={
               <Button
                 variant="ghost"
@@ -5400,249 +5374,185 @@ export function PtClientDetailPage({
                 </TabsContent>
                 <TabsContent value="checkins">
                   <div className="space-y-6">
-                    <DashboardCard
-                      title="Current check-in assignment"
-                      subtitle="Cadence-based delivery settings for this client."
-                      action={
-                        <StatusPill
-                          status={checkinAssignmentState.kind}
-                          statusMap={{
-                            "no-assignment": {
-                              label: "Not assigned",
-                              variant: "muted",
-                            },
-                            "assigned-not-open": {
-                              label: "Assigned",
-                              variant: "secondary",
-                            },
-                            upcoming: {
-                              label: "Upcoming",
-                              variant: "muted",
-                            },
-                            open: {
-                              label: "Open",
-                              variant: "warning",
-                            },
-                            overdue: {
-                              label: "Overdue",
-                              variant: "danger",
-                            },
-                            submitted: {
-                              label: "Submitted",
-                              variant: "success",
-                            },
-                            reviewed: {
-                              label: "Reviewed",
-                              variant: "success",
-                            },
-                          }}
-                        />
-                      }
-                    >
-                      <div className="space-y-4">
-                        <AssignmentMetaRow
-                          items={[
-                            {
-                              label: "Template",
-                              value: checkinAssignmentTemplateName,
-                            },
-                            {
-                              label: "Cadence",
-                              value: checkinAssignmentTemplate
-                                ? checkinAssignmentFrequencyLabel
-                                : "Not set",
-                            },
-                            {
-                              label: "Start date",
-                              value: checkinAssignmentStartLabel,
-                            },
-                            {
-                              label: "Next scheduled",
-                              value: checkinAssignmentNextDueLabel,
-                            },
-                          ]}
-                        />
-                        <AssignmentActionRow>
-                          <p>
-                            Check-ins use cadence settings. Future check-ins
-                            follow the selected template, frequency, and start
-                            date.
-                          </p>
-                          {canManageDelivery &&
-                          !isHistoricalClientRelationship ? (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => {
-                                document
-                                  .getElementById("client-checkin-template")
-                                  ?.focus();
-                              }}
-                            >
-                              Edit check-in settings
-                            </Button>
+                    <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
+                      <DashboardCard
+                        className="h-full"
+                        title="Current check-in assignment"
+                        subtitle="Cadence-based delivery settings for this client."
+                      >
+                        <div className="space-y-4">
+                          <AssignmentMetaRow
+                            items={[
+                              {
+                                label: "Template",
+                                value: checkinAssignmentTemplateName,
+                              },
+                              {
+                                label: "Cadence",
+                                value: checkinAssignmentTemplate
+                                  ? checkinAssignmentFrequencyLabel
+                                  : "Not set",
+                              },
+                              {
+                                label: "Start date",
+                                value: checkinAssignmentStartLabel,
+                              },
+                              {
+                                label: "Next scheduled",
+                                value: checkinAssignmentNextDueLabel,
+                              },
+                            ]}
+                          />
+                          {isHistoricalClientRelationship ? (
+                            <AssignmentReadOnlyNotice historical />
                           ) : null}
-                        </AssignmentActionRow>
-                        {isHistoricalClientRelationship ? (
-                          <AssignmentReadOnlyNotice historical />
-                        ) : null}
-                      </div>
-                    </DashboardCard>
-
-                    <DashboardCard
-                      title="Check-in template"
-                      subtitle="Assign a template for this client."
-                    >
-                      {checkinTemplatesQuery.isLoading ? (
-                        <div className="space-y-2">
-                          <Skeleton className="h-10 w-full" />
-                          <Skeleton className="h-10 w-40" />
                         </div>
-                      ) : checkinTemplatesQuery.error ||
-                        availableCheckinTemplates.length === 0 ? (
-                        <EmptyState
-                          title="No check-in templates created yet"
-                          description="Create a template to assign it to clients."
-                          actionLabel="Create template"
-                          onAction={() => navigate("/pt/checkins/templates")}
-                        />
-                      ) : (
-                        <div className="space-y-3">
+                      </DashboardCard>
+
+                      <DashboardCard
+                        className="h-full"
+                        title="Check-in template"
+                        subtitle="Assign a template for this client."
+                      >
+                        {checkinTemplatesQuery.isLoading ? (
                           <div className="space-y-2">
-                            <label className="text-xs font-semibold text-muted-foreground">
-                              Template
-                            </label>
-                            <Select
-                              id="client-checkin-template"
-                              variant="field"
-                              className="h-10"
-                              value={checkinTemplateId}
-                              onChange={(event) =>
-                                setCheckinTemplateId(event.target.value)
-                              }
-                              disabled={
-                                checkinTemplatesQuery.isLoading ||
-                                checkinTemplateStatus === "saving" ||
-                                !(
-                                  canManageDelivery &&
-                                  !isHistoricalClientRelationship
-                                )
-                              }
-                            >
-                              <option value="">Use workspace default</option>
-                              {availableCheckinTemplates.map((template) => (
-                                <option key={template.id} value={template.id}>
-                                  {template.name ?? "Untitled template"}
-                                </option>
-                              ))}
-                            </Select>
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-40" />
                           </div>
-                          <div className="grid gap-3 sm:grid-cols-2">
+                        ) : checkinTemplatesQuery.error ||
+                          availableCheckinTemplates.length === 0 ? (
+                          <EmptyState
+                            title="No check-in templates created yet"
+                            description="Create a template to assign it to clients."
+                            actionLabel="Create template"
+                            onAction={() => navigate("/pt/checkins/templates")}
+                          />
+                        ) : (
+                          <div className="space-y-3">
                             <div className="space-y-2">
                               <label className="text-xs font-semibold text-muted-foreground">
-                                Frequency
+                                Template
                               </label>
                               <Select
+                                id="client-checkin-template"
                                 variant="field"
                                 className="h-10"
-                                value={checkinFrequency}
+                                value={checkinTemplateId}
                                 onChange={(event) =>
-                                  setCheckinFrequency(event.target.value)
+                                  setCheckinTemplateId(event.target.value)
                                 }
                                 disabled={
+                                  checkinTemplatesQuery.isLoading ||
+                                  checkinTemplateStatus === "saving" ||
                                   !(
                                     canManageDelivery &&
                                     !isHistoricalClientRelationship
                                   )
                                 }
                               >
-                                {checkinFrequencyOptions.map((option) => (
-                                  <option
-                                    key={option.value}
-                                    value={option.value}
-                                  >
-                                    {option.label}
+                                <option value="">Use workspace default</option>
+                                {availableCheckinTemplates.map((template) => (
+                                  <option key={template.id} value={template.id}>
+                                    {template.name ?? "Untitled template"}
                                   </option>
                                 ))}
                               </Select>
                             </div>
-                            <div className="space-y-2">
-                              <label
-                                htmlFor="client-checkin-start-date"
-                                className="text-xs font-semibold text-muted-foreground"
-                              >
-                                First check-in
-                              </label>
-                              <Input
-                                id="client-checkin-start-date"
-                                type="date"
-                                value={checkinStartDate}
-                                onChange={(event) =>
-                                  setCheckinStartDate(event.target.value)
-                                }
-                                disabled={
-                                  !(
-                                    canManageDelivery &&
-                                    !isHistoricalClientRelationship
-                                  )
-                                }
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-muted-foreground">
+                                  Frequency
+                                </label>
+                                <Select
+                                  variant="field"
+                                  className="h-10"
+                                  value={checkinFrequency}
+                                  onChange={(event) =>
+                                    setCheckinFrequency(event.target.value)
+                                  }
+                                  disabled={
+                                    !(
+                                      canManageDelivery &&
+                                      !isHistoricalClientRelationship
+                                    )
+                                  }
+                                >
+                                  {checkinFrequencyOptions.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <label
+                                  htmlFor="client-checkin-start-date"
+                                  className="text-xs font-semibold text-muted-foreground"
+                                >
+                                  First check-in
+                                </label>
+                                <Input
+                                  id="client-checkin-start-date"
+                                  type="date"
+                                  value={checkinStartDate}
+                                  onChange={(event) =>
+                                    setCheckinStartDate(event.target.value)
+                                  }
+                                  disabled={
+                                    !(
+                                      canManageDelivery &&
+                                      !isHistoricalClientRelationship
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+                            {!effectiveCheckinTemplate ? (
+                              <EmptyState
+                                title="No template assigned"
+                                description="Assign a template to start scheduled check-ins."
                               />
-                            </div>
+                            ) : null}
+                            {checkinSettingsFeedback ? (
+                              <div
+                                className={cn(
+                                  "rounded-lg border p-3 text-xs",
+                                  checkinSettingsFeedback.tone === "warning"
+                                    ? "border-warning/35 bg-warning/10 text-warning"
+                                    : "border-success/30 bg-success/10 text-success",
+                                )}
+                              >
+                                <p className="font-semibold text-foreground">
+                                  {checkinSettingsFeedback.title}
+                                </p>
+                                <p className="mt-1 text-muted-foreground">
+                                  {checkinSettingsFeedback.body}
+                                </p>
+                              </div>
+                            ) : null}
+                            {canManageDelivery &&
+                            !isHistoricalClientRelationship ? (
+                              <Button
+                                size="sm"
+                                onClick={handleSaveCheckinTemplate}
+                                disabled={checkinTemplateStatus === "saving"}
+                              >
+                                {checkinTemplateStatus === "saving"
+                                  ? "Saving..."
+                                  : "Assign template"}
+                              </Button>
+                            ) : (
+                              <AssignmentReadOnlyNotice
+                                historical={isHistoricalClientRelationship}
+                              />
+                            )}
                           </div>
-                          {checkinStartDate ? (
-                            <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-                              <span className="font-semibold text-foreground">
-                                Next:
-                              </span>{" "}
-                              {getNextCheckinDueDate(
-                                checkinStartDate,
-                                checkinFrequency,
-                                todayKey,
-                              ) ?? "--"}
-                            </div>
-                          ) : null}
-                          {!effectiveCheckinTemplate ? (
-                            <EmptyState
-                              title="No template assigned"
-                              description="Assign a template to start scheduled check-ins."
-                            />
-                          ) : null}
-                          {checkinSettingsFeedback ? (
-                            <div
-                              className={cn(
-                                "rounded-lg border p-3 text-xs",
-                                checkinSettingsFeedback.tone === "warning"
-                                  ? "border-warning/35 bg-warning/10 text-warning"
-                                  : "border-success/30 bg-success/10 text-success",
-                              )}
-                            >
-                              <p className="font-semibold text-foreground">
-                                {checkinSettingsFeedback.title}
-                              </p>
-                              <p className="mt-1 text-muted-foreground">
-                                {checkinSettingsFeedback.body}
-                              </p>
-                            </div>
-                          ) : null}
-                          {canManageDelivery &&
-                          !isHistoricalClientRelationship ? (
-                            <Button
-                              size="sm"
-                              onClick={handleSaveCheckinTemplate}
-                              disabled={checkinTemplateStatus === "saving"}
-                            >
-                              {checkinTemplateStatus === "saving"
-                                ? "Saving..."
-                                : "Assign template"}
-                            </Button>
-                          ) : (
-                            <AssignmentReadOnlyNotice
-                              historical={isHistoricalClientRelationship}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </DashboardCard>
+                        )}
+                      </DashboardCard>
+                    </div>
 
                     <PtClientCheckinsTab
                       rows={checkinsRows}
@@ -5905,14 +5815,14 @@ export function PtClientDetailPage({
           }
         }}
       >
-        <DialogContent className="flex max-h-[88vh] w-[min(96vw,1080px)] max-w-[1080px] flex-col overflow-hidden p-0">
-          <DialogHeader className="shrink-0 border-b border-border/70 bg-card/95 px-6 py-5 pr-14 backdrop-blur">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <DialogTitle className="text-lg sm:text-xl">
+        <DialogContent className="flex h-[min(92vh,760px)] max-h-[92vh] w-[min(96vw,1080px)] max-w-[1080px] flex-col overflow-hidden p-0">
+          <DialogHeader className="shrink-0 border-b border-border/70 bg-card/95 px-5 py-3 pr-14 backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                <DialogTitle className="text-base">
                   {reviewClientLabel}
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-sm">
                   {selectedCheckin?.week_ending_saturday
                     ? `Check-in due ${selectedCheckin.week_ending_saturday}`
                     : "Check-in review"}
@@ -5924,55 +5834,6 @@ export function PtClientDetailPage({
                   statusMap={checkinReviewStatusMap}
                 />
               ) : null}
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <div className="ui-panel border border-border/60 p-3">
-                <p className="text-xs text-muted-foreground">Due date</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {formatShortDate(
-                    selectedCheckin?.week_ending_saturday,
-                    "Not scheduled",
-                  )}
-                </p>
-              </div>
-              <div className="ui-panel border border-border/60 p-3">
-                <p className="text-xs text-muted-foreground">Submitted</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {formatShortDateTime(
-                    selectedCheckin?.submitted_at,
-                    "Not submitted",
-                  )}
-                </p>
-              </div>
-              <div className="ui-panel border border-border/60 p-3">
-                <p className="text-xs text-muted-foreground">Reviewed</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {formatShortDateTime(
-                    selectedCheckin?.reviewed_at,
-                    "Not reviewed",
-                  )}
-                </p>
-              </div>
-              <div className="ui-panel border border-border/60 p-3">
-                <p className="text-xs text-muted-foreground">Reviewer</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {selectedCheckinReviewerLabel ?? "Not assigned"}
-                </p>
-              </div>
-              <div className="ui-panel border border-border/60 p-3">
-                <p className="text-xs text-muted-foreground">
-                  Completion summary
-                </p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {selectedCheckinAnswerCount} answers,{" "}
-                  {selectedCheckinSubmittedPhotoCount} photos
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {selectedCheckinMissingPhotoCount > 0
-                    ? `${selectedCheckinMissingPhotoCount} required photo views missing`
-                    : "Required photo views are present"}
-                </p>
-              </div>
             </div>
           </DialogHeader>
 
@@ -6006,20 +5867,9 @@ export function PtClientDetailPage({
 
               <TabsContent value="answers" className="mt-0">
                 <div className="ui-panel border border-border/70 p-4">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Answers
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Scan prompts and responses quickly before writing the PT
-                        review.
-                      </p>
-                    </div>
-                    <Badge variant="secondary">
-                      {selectedCheckinAnswerCount} responses
-                    </Badge>
-                  </div>
+                  <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Answers
+                  </p>
 
                   {selectedCheckinAnswersQuery.isLoading ? (
                     <div className="space-y-2">
@@ -6091,23 +5941,9 @@ export function PtClientDetailPage({
 
               <TabsContent value="photos" className="mt-0">
                 <div className="ui-panel border border-border/70 p-4">
-                  <div className="mb-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Photos
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Review required views first, then open any image for a
-                      closer look.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      <span className="rounded-full border border-border/60 bg-muted/20 px-3 py-1">
-                        Uploaded: {selectedCheckinSubmittedPhotoCount}
-                      </span>
-                      <span className="rounded-full border border-border/60 bg-muted/20 px-3 py-1">
-                        Missing required: {selectedCheckinMissingPhotoCount}
-                      </span>
-                    </div>
-                  </div>
+                  <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Photos
+                  </p>
 
                   {selectedCheckinPhotosQuery.isLoading ? (
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -7262,6 +7098,7 @@ function PtClientScheduleCard({
   return (
     <DashboardCard
       title="Client calendar"
+      contentClassName={isCalendarCollapsed ? "hidden" : undefined}
       action={
         <Button
           variant="ghost"

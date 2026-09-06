@@ -748,9 +748,9 @@ async function main() {
 
     update public.checkins
     set submitted_at = now() - interval '1 day',
-        pt_feedback = 'Excellent consistency. Keep protein where it is and add one easy 25-minute run before Saturday.',
-        reviewed_at = now() - interval '16 hours',
-        reviewed_by_user_id = '${ptUserId}'::uuid
+        pt_feedback = null,
+        reviewed_at = null,
+        reviewed_by_user_id = null
     where id = '00000000-0000-4000-8000-000000000421'::uuid;
 
     insert into public.baseline_marker_templates (
@@ -1121,7 +1121,7 @@ async function main() {
       action_label
     )
     values
-      ('${ptUserId}'::uuid, 'client', 'checkin_submitted', 'Zoe submitted a check-in', 'Recovery is 8/10 and one blocker needs review.', '/pt/clients/${zoe.id}?tab=checkins', 'checkin', '00000000-0000-4000-8000-000000000421', ${sqlJson({ clientId: zoe.id })}, false, 'demo-pt-checkin-zoe', 'product', 'checkins', 'high', 'Review'),
+      ('${ptUserId}'::uuid, 'client', 'checkin_submitted', 'Zoe submitted a check-in', 'Recovery is 8/10 and one blocker needs review.', '/pt/clients/${zoe.id}?tab=checkins&checkin=00000000-0000-4000-8000-000000000421', 'checkin', '00000000-0000-4000-8000-000000000421', ${sqlJson({ clientId: zoe.id })}, false, 'demo-pt-checkin-zoe', 'product', 'checkins', 'high', 'Review'),
       ('${zoeUserId}'::uuid, 'pt', 'workout_assigned', 'Workout assigned for today', 'Lower Strength + Push is ready with coach notes.', '/app/workouts/today', 'assigned_workout', '00000000-0000-4000-8000-000000000901', ${sqlJson({ workout: "Lower Strength + Push" })}, false, 'demo-pt-workout-zoe', 'product', 'training', 'normal', 'Open workout');
   `);
 
