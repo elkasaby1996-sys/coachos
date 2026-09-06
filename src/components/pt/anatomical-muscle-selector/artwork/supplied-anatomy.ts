@@ -8,7 +8,7 @@ import type {
   AnatomySurface,
 } from "../anatomy-registry";
 
-// Original front/back PNGs supplied by the user on 2026-09-05, copied unchanged.
+// Recolored front/back PNGs supplied by the user on 2026-09-06, copied unchanged.
 // All coordinates below are in their native 1024 × 1536 image space. The
 // former vendored illustration has different proportions and is not reused.
 export const getImageSurfaceArtwork = (surface: AnatomySurface) => ({

@@ -74,6 +74,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../../components/ui/dropdown-menu";
+import { HabitMetricTrend } from "../../components/pt/habit-metric-trend";
 import { DashboardShell } from "../../components/pt/dashboard/DashboardShell";
 import {
   DashboardCard,
@@ -5242,8 +5243,8 @@ export function PtClientDetailPage({
                 onValueChange={setActiveTab}
                 className="space-y-4"
               >
-                <div className="ui-inset border border-border/70 p-2">
-                  <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl border-none bg-transparent p-0 shadow-none sm:grid-cols-3 xl:grid-cols-5">
+                <div className="ui-inset p-2">
+                  <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl !border-0 bg-transparent p-0 shadow-none sm:grid-cols-3 xl:grid-cols-5">
                     {workbenchTabs.map((tab) => (
                       <TabsTrigger
                         key={tab.value}
@@ -7425,13 +7426,8 @@ function PtClientScheduleCard({
                       ) : null}
                     </div>
 
-                    <div className="space-y-1">
-                      <p
-                        className={cn(
-                          "font-semibold text-foreground",
-                          isLowInfoRestDay ? "text-sm" : "text-base",
-                        )}
-                      >
+                    <div className="min-h-12 space-y-1">
+                      <p className="truncate text-base font-semibold leading-6 text-foreground">
                         {dayTypeLabel}
                       </p>
                       {workoutTemplateLabel ? (
@@ -8483,7 +8479,7 @@ function PtClientCheckinsTab({
                   ? `Reviewed at ${formatShortDateTime(checkin.reviewed_at)}`
                   : checkin.submitted_at
                     ? `Submitted at ${formatShortDateTime(checkin.submitted_at)}`
-                    : `Due ${dueLabel}`;
+                    : null;
 
                 return (
                   <div
@@ -8519,9 +8515,11 @@ function PtClientCheckinsTab({
                         <span className="rounded-full border border-border/60 bg-muted/20 px-3 py-1">
                           Due window: {dueLabel}
                         </span>
-                        <span className="rounded-full border border-border/60 bg-muted/20 px-3 py-1">
-                          {secondarySummary}
-                        </span>
+                        {secondarySummary ? (
+                          <span className="rounded-full border border-border/60 bg-muted/20 px-3 py-1">
+                            {secondarySummary}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                     <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -8583,6 +8581,7 @@ function PtClientHabitsTab({
   hasAnyHabits: boolean;
   habitsToday: string;
 }) {
+  const [habitView, setHabitView] = useState("habit-logs");
   const [selectedHabitMetric, setSelectedHabitMetric] = useState<{
     metric: HabitMetricKey;
     dateKey: string;
@@ -8682,64 +8681,41 @@ function PtClientHabitsTab({
           null)
         : null;
 
-    const points = weeklyRows
-      .map((row) => ({
-        date: row.dateKey,
-        value: row.log ? config.extract(row.log) : null,
-      }))
-      .filter(
-        (point): point is { date: string; value: number } =>
-          typeof point.value === "number",
-      );
-
-    const selectedPoint =
-      points.find((point) => point.date === selectedHabitMetric.dateKey) ??
-      null;
-    const latest = points.length > 0 ? points[points.length - 1].value : null;
-    const earliest = points.length > 0 ? points[0].value : null;
-    const averageValue =
-      points.length > 0
-        ? points.reduce((sum, point) => sum + point.value, 0) / points.length
-        : null;
-    const delta =
-      latest !== null && earliest !== null ? latest - earliest : null;
-    const coveragePct = Math.round((points.length / 7) * 100);
+    const points = weeklyRows.map((row) => ({
+      date: row.dateKey,
+      value: row.log ? config.extract(row.log) : null,
+    }));
 
     return {
       label: config.label,
       weightUnit,
       points,
-      selectedPoint,
-      latest,
-      averageValue,
-      delta,
-      coveragePct,
       format: config.format,
     };
   }, [selectedHabitMetric, weeklyRows]);
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="habit-logs" className="space-y-4">
-        <TabsList className="grid h-auto w-full max-w-md grid-cols-2 gap-2 rounded-xl border-none bg-transparent p-0 shadow-none">
-          <TabsTrigger
-            value="habit-logs"
-            className="h-auto rounded-xl border border-border/45 bg-background/30 px-3 py-2.5 text-xs font-semibold"
-          >
-            Habit logs
-          </TabsTrigger>
-          <TabsTrigger
-            value="wearables"
-            className="h-auto rounded-xl border border-border/45 bg-background/30 px-3 py-2.5 text-xs font-semibold"
-          >
-            Wearables
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="habit-logs" className="mt-0">
-          <DashboardCard
-            title="Day-by-day"
-            subtitle="Last 7 days of habit logs."
-          >
+      <Tabs value={habitView} onValueChange={setHabitView}>
+        <DashboardCard
+          title={habitView === "habit-logs" ? "Day-by-day" : "Wearables"}
+          subtitle={
+            habitView === "habit-logs"
+              ? "Last 7 days of habit logs."
+              : undefined
+          }
+          className="[&>.ui-card-header]:flex-wrap"
+          action={
+            <TabsList
+              aria-label="Habit data source"
+              className="habit-source-tabs ml-auto"
+            >
+              <TabsTrigger value="habit-logs">Habit logs</TabsTrigger>
+              <TabsTrigger value="wearables">Wearables</TabsTrigger>
+            </TabsList>
+          }
+        >
+          <TabsContent value="habit-logs" className="mt-0">
             {habitsQuery.isLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-6 w-1/2" />
@@ -8969,119 +8945,41 @@ function PtClientHabitsTab({
                 </div>
               </>
             )}
-          </DashboardCard>
-        </TabsContent>
-        <TabsContent value="wearables" className="mt-0">
-          <PtClientWearablesPanel
-            clientId={clientId}
-            workspaceId={workspaceId}
-          />
-        </TabsContent>
+          </TabsContent>
+          <TabsContent value="wearables" className="mt-0">
+            <PtClientWearablesPanel
+              clientId={clientId}
+              workspaceId={workspaceId}
+            />
+          </TabsContent>
+        </DashboardCard>
       </Tabs>
 
       <Dialog
         open={selectedHabitMetric !== null}
         onOpenChange={(open) => (!open ? setSelectedHabitMetric(null) : null)}
       >
-        <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[720px]">
+          <DialogHeader className="mb-6 pr-10">
             <DialogTitle>
               {habitMetricTrend
                 ? `${habitMetricTrend.label} trend`
                 : "Habit trend"}
             </DialogTitle>
             <DialogDescription>
-              {selectedHabitMetric
-                ? `Clicked ${selectedHabitMetric.dateKey}. Showing last 7 days for this metric.`
-                : "Showing last 7 days for this metric."}
+              Your client's logged entries over the last 7 days.
             </DialogDescription>
           </DialogHeader>
-          {habitMetricTrend ? (
-            <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-xs text-muted-foreground">Selected day</p>
-                  <p className="text-base font-semibold">
-                    {habitMetricTrend.selectedPoint
-                      ? habitMetricTrend.format(
-                          habitMetricTrend.selectedPoint.value,
-                          habitMetricTrend.weightUnit,
-                        )
-                      : "No data"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-xs text-muted-foreground">Latest</p>
-                  <p className="text-base font-semibold">
-                    {habitMetricTrend.latest !== null
-                      ? habitMetricTrend.format(
-                          habitMetricTrend.latest,
-                          habitMetricTrend.weightUnit,
-                        )
-                      : "No data"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-xs text-muted-foreground">7-day average</p>
-                  <p className="text-base font-semibold">
-                    {habitMetricTrend.averageValue !== null
-                      ? habitMetricTrend.format(
-                          habitMetricTrend.averageValue,
-                          habitMetricTrend.weightUnit,
-                        )
-                      : "No data"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-xs text-muted-foreground">
-                    Change (first to latest)
-                  </p>
-                  <p className="text-base font-semibold">
-                    {habitMetricTrend.delta !== null
-                      ? `${habitMetricTrend.delta > 0 ? "+" : ""}${habitMetricTrend.format(
-                          habitMetricTrend.delta,
-                          habitMetricTrend.weightUnit,
-                        )}`
-                      : "No data"}
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-xs text-muted-foreground">Coverage</p>
-                <p className="text-base font-semibold">
-                  {habitMetricTrend.coveragePct}% of days
-                </p>
-              </div>
-              <div className="space-y-2 rounded-lg border border-border p-3">
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Day-by-day
-                </p>
-                {habitMetricTrend.points.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No entries in the last 7 days.
-                  </p>
-                ) : (
-                  <div className="space-y-1">
-                    {habitMetricTrend.points.map((point) => (
-                      <div
-                        key={point.date}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <span className="text-muted-foreground">
-                          {point.date}
-                        </span>
-                        <span className="font-medium">
-                          {habitMetricTrend.format(
-                            point.value,
-                            habitMetricTrend.weightUnit,
-                          )}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+          {habitMetricTrend && selectedHabitMetric ? (
+            <HabitMetricTrend
+              key={`${selectedHabitMetric.metric}-${selectedHabitMetric.dateKey}`}
+              label={habitMetricTrend.label}
+              points={habitMetricTrend.points}
+              initialDate={selectedHabitMetric.dateKey}
+              formatValue={(value) =>
+                habitMetricTrend.format(value, habitMetricTrend.weightUnit)
+              }
+            />
           ) : null}
         </DialogContent>
       </Dialog>
@@ -9474,7 +9372,7 @@ function PtClientPlanTab({
                 <AssignmentMetaRow
                   items={[
                     {
-                      label: "Template source",
+                      label: "Workout",
                       value:
                         templatesQuery.data?.find(
                           (template) => template.id === selectedTemplateId,
@@ -9779,52 +9677,6 @@ function PtClientNutritionTab({
     },
   });
 
-  const nutritionNext7Query = useQuery({
-    queryKey: ["pt-client-nutrition-next-7", clientId, todayKey],
-    enabled: enabled && !!clientId,
-    queryFn: async () => {
-      const { data: plans, error: plansError } = await supabase
-        .from("assigned_nutrition_plans")
-        .select(
-          "id, nutrition_template:nutrition_templates!inner(id, workspace_id)",
-        )
-        .eq("client_id", clientId ?? "")
-        .eq("status", "active");
-      if (plansError) throw plansError;
-
-      const planIds = (plans ?? [])
-        .filter((row: { nutrition_template?: unknown }) => {
-          const template = getSingleRelation(row.nutrition_template);
-          return Boolean(
-            template &&
-            typeof template === "object" &&
-            "workspace_id" in template &&
-            template.workspace_id,
-          );
-        })
-        .map((row: { id: string }) => row.id);
-      if (!planIds.length) return [];
-
-      const end = addDaysToDateString(todayKey, 6);
-      const { data, error } = await supabase
-        .from("assigned_nutrition_days")
-        .select("id, date")
-        .in("assigned_nutrition_plan_id", planIds)
-        .gte("date", todayKey)
-        .lte("date", end);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const nutritionPreviewKeys = useMemo(
-    () =>
-      Array.from({ length: 7 }).map((_, idx) =>
-        addDaysToDateString(todayKey, idx),
-      ),
-    [todayKey],
-  );
-
   const handleNutritionUnassign = async () => {
     if (!canEditClients || !clientId || !activeNutritionPlanQuery.data?.id) {
       return false;
@@ -9847,9 +9699,6 @@ function PtClientNutritionTab({
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: ["pt-client-active-nutrition-plan", clientId],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["pt-client-nutrition-next-7", clientId, todayKey],
       }),
       queryClient.invalidateQueries({
         queryKey: ["pt-client-nutrition-week", clientId],
@@ -10034,11 +9883,6 @@ function PtClientNutritionTab({
         <AssignmentCardHeader
           title="Assign nutrition program"
           description="Assign or replace the client's active nutrition snapshot."
-          status={
-            <StatusPill
-              status={selectedNutritionProgramId ? "ready" : "idle"}
-            />
-          }
         />
         <CardContent className="space-y-4">
           <AssignmentSnapshotCallout />
@@ -10150,13 +9994,6 @@ function PtClientNutritionTab({
                     }
                     await Promise.all([
                       queryClient.invalidateQueries({
-                        queryKey: [
-                          "pt-client-nutrition-next-7",
-                          clientId,
-                          todayKey,
-                        ],
-                      }),
-                      queryClient.invalidateQueries({
                         queryKey: ["pt-client-nutrition-week", clientId],
                       }),
                       queryClient.invalidateQueries({
@@ -10173,31 +10010,6 @@ function PtClientNutritionTab({
                       : "Assign nutrition program"}
                 </Button>
               ) : null}
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-2 text-xs">
-                <p className="mb-2 font-semibold text-foreground">
-                  Next 7 days preview
-                </p>
-                <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-                  {nutritionPreviewKeys.map((key) => {
-                    const hasProgram = (nutritionNext7Query.data ?? []).some(
-                      (row) => row.date === key,
-                    );
-                    return (
-                      <div
-                        key={key}
-                        className={cn(
-                          "rounded-md border px-2 py-1 text-center",
-                          hasProgram
-                            ? "border-primary/60 bg-primary/10"
-                            : "border-border/60",
-                        )}
-                      >
-                        {key.slice(5)}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
               {nutritionAssignError ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
                   {nutritionAssignError}

@@ -244,6 +244,40 @@
   box-shadow: none;
 }
 
+.habit-source-tabs[data-ui="tab-list"] {
+  min-height: 2.75rem;
+  gap: 1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.habit-source-tabs [data-ui="tab"][class] {
+  min-height: 2.75rem;
+  padding: 0.625rem 0.25rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: oklch(var(--muted-foreground));
+}
+
+.habit-source-tabs [data-ui="tab"][data-state="active"] {
+  border-bottom-color: var(--ui-action);
+  color: oklch(var(--foreground));
+}
+
+.habit-source-tabs [data-ui="tab"]:hover {
+  color: oklch(var(--foreground));
+}
+
+.habit-source-tabs [data-ui="tab"]:focus-visible {
+  outline: 2px solid var(--ui-action);
+  outline-offset: 3px;
+}
+
 .app-dropdown-content.app-dropdown-content {
   border-radius: var(--ui-radius-menu);
   border-color: var(--ui-border);

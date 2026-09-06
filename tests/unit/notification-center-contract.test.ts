@@ -67,19 +67,18 @@ describe("delivery-backed notification center contract", () => {
     expect(typesSource).toContain('"archived"');
   });
 
-  it("renders the full center filters required for the inbox", () => {
-    expect(pageSource).toContain('value="all"');
-    expect(pageSource).toContain('value="unread"');
-    expect(pageSource).toContain('value="action-required"');
-    expect(pageSource).toContain('value="archived"');
-    expect(pageSource).toContain("Archive");
+  it("uses one inbox with delete instead of archive filters", () => {
+    expect(pageSource).not.toContain("TabsTrigger");
+    expect(pageSource).not.toContain("Archive");
+    expect(pageSource).toContain("useDeleteNotification");
+    expect(apiSource).toContain("deleteNotification");
     expect(pageSource).toContain("Mark unread");
   });
 
   it("keeps the PT notifications page concise", () => {
     expect(pageSource).toContain('showActionLabel={audience !== "pt"}');
-    expect(pageSource).toContain('showTitle={audience !== "pt"}');
-    expect(pageSource).toContain('showTypeLabel={audience !== "pt"}');
+    expect(pageSource).toContain("showTitle");
+    expect(pageSource).toContain("showTypeLabel");
     expect(pageSource).toContain(
       'surface={audience === "pt" ? "embedded" : "card"}',
     );

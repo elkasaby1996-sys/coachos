@@ -1286,7 +1286,7 @@ export function PtLayout() {
           <PtMessageComposeProvider>
             <WorkspaceHeaderModeProvider value="shell">
               <div className="min-w-0 space-y-5 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
-                <div className="pt-workspace-shell-utilities grid min-h-[48px] grid-cols-[auto_minmax(0,1fr)] items-center gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(320px,480px)_minmax(0,1fr)]">
+                <div className="pt-workspace-shell-utilities grid min-h-[48px] grid-cols-[auto_minmax(0,1fr)] items-center gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1297,7 +1297,7 @@ export function PtLayout() {
                     <span className="sr-only">Open PT navigation</span>
                   </Button>
 
-                  <div className="hidden w-full xl:col-start-2 xl:block">
+                  <div className="hidden min-w-0 w-full max-w-[480px] justify-self-end xl:col-start-1 xl:block">
                     <div className="app-search-shell w-full">
                       <Search className="app-search-icon h-4 w-4 text-primary [stroke-width:1.8]" />
                       <Input
@@ -1322,7 +1322,7 @@ export function PtLayout() {
                     </div>
                   </div>
 
-                  <div className="pt-workspace-header-action-cluster col-start-2 row-start-1 ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1 rounded-[16px] bg-background/60 p-1 shadow-[var(--surface-shadow)] xl:col-start-3 xl:flex-nowrap">
+                  <div className="pt-workspace-header-action-cluster col-start-2 row-start-1 ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1 rounded-[16px] bg-background/60 p-1 shadow-[var(--surface-shadow)] xl:flex-nowrap">
                     <div className="relative xl:hidden">
                       <Button
                         ref={searchCompactTriggerRef}

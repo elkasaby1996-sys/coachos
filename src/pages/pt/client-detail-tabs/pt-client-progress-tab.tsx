@@ -420,10 +420,7 @@ export function PtClientProgressTab({
         )}
       </DashboardCard>
 
-      <DashboardCard
-        title="Habit shifts"
-        subtitle="Compare earlier and later habit patterns in the current window."
-      >
+      <DashboardCard title="Habit shifts">
         {loading ? (
           <Skeleton className="h-24 w-full" />
         ) : habitsAnalysis ? (
@@ -489,10 +486,7 @@ export function PtClientProgressTab({
         )}
       </DashboardCard>
 
-      <DashboardCard
-        title="Training progression"
-        subtitle="Recent lift changes and workload context from logged sessions."
-      >
+      <DashboardCard title="Training progression">
         {loading ? (
           <Skeleton className="h-24 w-full" />
         ) : exerciseImprovements.length > 0 ? (
@@ -528,10 +522,7 @@ export function PtClientProgressTab({
         )}
       </DashboardCard>
 
-      <DashboardCard
-        title="Check-in themes"
-        subtitle="Numeric deltas and message changes worth reviewing."
-      >
+      <DashboardCard title="Check-in themes">
         {loading ? (
           <Skeleton className="h-24 w-full" />
         ) : hasCheckinTrendData ? (

@@ -5,7 +5,6 @@ import { MUSCLES } from "../../src/lib/exercise-muscle-taxonomy";
 import { getAnatomicalRegionsForSurface } from "../../src/components/pt/anatomical-muscle-selector/anatomy-registry";
 import { openAnatomyFixture } from "./utils/anatomy-fixture";
 
-const atlasName = "Find your target muscle";
 const visibleSelector = (page: Page) =>
   page.locator(".anatomy-selector:visible");
 const artifactRoot =
@@ -52,14 +51,6 @@ async function expectNoOverflow(page: Page) {
     .all()) {
     expect(
       await selector.evaluate(
-        (element) => element.scrollWidth <= element.clientWidth,
-      ),
-    ).toBe(true);
-  }
-  const atlas = page.getByRole("dialog", { name: atlasName });
-  if (await atlas.count()) {
-    expect(
-      await atlas.evaluate(
         (element) => element.scrollWidth <= element.clientWidth,
       ),
     ).toBe(true);
@@ -128,8 +119,8 @@ test("controlled selection, every bilateral region, keyboard and disabled activa
           (shape) => shape.side === side,
         );
         if (index < 0) continue;
-        await selector
-          .getByRole("button", { name: "Clear selected muscle" })
+        await page
+          .getByRole("button", { name: "Parent clears muscle" })
           .click();
         await clickHitShape(
           page,
@@ -161,16 +152,16 @@ test("controlled selection, every bilateral region, keyboard and disabled activa
   await expect(page.getByTestId("selection-events")).toHaveText(before!);
   await expect(
     selector.getByRole("button", { name: "Clear selected muscle" }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await expect(
     selector.getByRole("button", { name: "Expand anatomy" }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await expect(
     selector.locator('[data-hit-region="front-chest"]'),
   ).toHaveAttribute("aria-pressed", "true");
 });
 
-test("list reaches every muscle; atlas is immediate, scoped, and restores focus", async ({
+test("inline list reaches every muscle and the expanded dialog is removed", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -195,37 +186,13 @@ test("list reaches every muscle; atlas is immediate, scoped, and restores focus"
     await expect(page.getByTestId("muscle-value")).toHaveText(muscle.key);
   }
   await selector.getByRole("tab", { name: "Body map" }).click();
-  const trigger = selector.getByRole("button", { name: "Expand anatomy" });
-  await trigger.click();
-  const atlas = page.getByRole("dialog", { name: atlasName });
-  await expect(atlas).toBeVisible();
-  const resources = await page
-    .locator("svg defs [id]")
-    .evaluateAll((elements) => elements.map((e) => e.id));
-  expect(resources.length).toBeGreaterThan(0);
-  expect(new Set(resources).size).toBe(resources.length);
-  expect(await page.locator("html").getAttribute("class")).toBe("light");
-  expect(
-    await atlas.evaluate((e) =>
-      getComputedStyle(e).getPropertyValue("--ui-surface").trim(),
-    ),
-  ).toBe("#0b1720");
-  await atlas.getByRole("searchbox", { name: "Search muscles" }).fill("chest");
-  await atlas
-    .locator(".anatomy-atlas-navigation")
-    .getByRole("button", { name: "Pectorals", exact: true })
-    .click();
-  await expect(page.getByTestId("muscle-value")).toHaveText("pectorals");
   await expect(
-    atlas.locator('[data-hit-region="front-chest"]'),
-  ).toHaveAttribute("aria-pressed", "true");
-  await page.keyboard.press("Escape");
-  await expect(atlas).not.toBeVisible();
-  await expect(trigger).toBeFocused();
+    selector.getByRole("button", { name: "Expand anatomy" }),
+  ).toHaveCount(0);
   await expect(
-    selector.locator('[data-hit-region="front-chest"]'),
-  ).toHaveAttribute("aria-pressed", "true");
-  await selector.getByRole("button", { name: "Clear selected muscle" }).click();
+    page.getByRole("dialog", { name: "Find your target muscle" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Parent clears muscle" }).click();
   await expect(page.getByTestId("muscle-value")).toHaveText("null");
   await expectNoOverflow(page);
   expect(errors).toEqual([]);
@@ -262,20 +229,17 @@ test("provider coordinator stays synchronized and navigation does not query exer
     if (/\/functions\/v1\/|\/rest\/v1\//.test(request.url()))
       requests.push(request.url());
   });
-  await selector.getByRole("button", { name: "Expand anatomy" }).click();
-  const atlas = page.getByRole("dialog", { name: atlasName });
-  await atlas
+  await selector.getByRole("tab", { name: "Muscle list" }).click();
+  await selector
     .getByRole("searchbox", { name: "Search muscles" })
     .fill("shoulder");
-  await atlas
+  await selector.getByRole("tab", { name: "Body map" }).click();
+  await selector
     .locator('[data-hit-region="front-chest"] .anatomy-hit-area')
     .first()
     .hover();
-  await expect(atlas.locator(".anatomy-preview")).toContainText(
-    "Preview · Pectorals",
-  );
-  await atlas.getByRole("button", { name: "Back", exact: true }).click();
-  await page.keyboard.press("Escape");
+  await expect(selector.locator(".anatomy-preview")).toContainText("Pectorals");
+  await selector.getByRole("button", { name: "Back", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "Search exercises", exact: true }),
   ).toHaveValue("exercise");
@@ -283,7 +247,7 @@ test("provider coordinator stays synchronized and navigation does not query exer
   expect(requests).toEqual([]);
 });
 
-test("active provider catalog makes no new request for atlas navigation", async ({
+test("active provider catalog makes no new request for inline anatomy navigation", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -311,18 +275,21 @@ test("active provider catalog makes no new request for atlas navigation", async 
     picker.getByRole("heading", { name: "No provider results" }),
   ).toBeVisible();
   expect(requests).toHaveLength(1);
-  await picker.getByRole("button", { name: "Expand anatomy" }).click();
-  const atlas = page.getByRole("dialog", { name: atlasName });
-  await atlas.getByRole("searchbox", { name: "Search muscles" }).fill("back");
-  await atlas.getByRole("button", { name: "Back", exact: true }).click();
-  await atlas
+  const anatomy = picker.locator(".anatomy-selector:visible");
+  await expect(
+    anatomy.getByRole("button", { name: "Expand anatomy" }),
+  ).toHaveCount(0);
+  await anatomy.getByRole("tab", { name: "Muscle list" }).click();
+  await anatomy.getByRole("searchbox", { name: "Search muscles" }).fill("back");
+  await anatomy.getByRole("tab", { name: "Body map" }).click();
+  await anatomy.getByRole("button", { name: "Back", exact: true }).click();
+  await anatomy
     .locator('[data-hit-region="back-latissimus-dorsi"] .anatomy-hit-area')
     .first()
     .hover();
-  await expect(atlas.locator(".anatomy-preview")).toContainText(
+  await expect(anatomy.locator(".anatomy-preview")).toContainText(
     "Latissimus dorsi",
   );
-  await page.keyboard.press("Escape");
   expect(requests).toHaveLength(1);
   await picker.getByRole("button", { name: "Front", exact: true }).click();
   await picker
@@ -361,10 +328,7 @@ for (const width of [1440, 768, 375]) {
       ["Back", "Posterior deltoids", "posterior-deltoids"],
       ["Back", "Latissimus dorsi", "lats"],
     ]) {
-      const clear = selector.getByRole("button", {
-        name: "Clear selected muscle",
-      });
-      if (await clear.isEnabled()) await clear.click();
+      await page.getByRole("button", { name: "Parent clears muscle" }).click();
       await selector
         .getByRole("button", { name: surface, exact: true })
         .click();
@@ -385,12 +349,7 @@ for (const width of [1440, 768, 375]) {
       .getByRole("searchbox", { name: "Search muscles" })
       .fill("back");
     await capture("muscle-list");
-    await selector.getByRole("button", { name: "Expand anatomy" }).click();
-    const atlas = page.getByRole("dialog", { name: atlasName });
-    await atlas.screenshot({ path: join(directory, "expanded.png") });
-    await expectAnatomyFramed(atlas);
     await expectNoOverflow(page);
-    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Open workout picker" }).click();
     const picker = page.getByRole("dialog", {
       name: "Add exercises",
@@ -409,19 +368,18 @@ for (const width of [1440, 768, 375]) {
     if (width < 1024)
       await picker.locator(".exercise-picker-mobile-filters summary").click();
     await picker.screenshot({ path: join(directory, "picker.png") });
-    const expand = picker.getByRole("button", { name: "Expand anatomy" });
-    await expand.click();
-    await atlas
+    const anatomy = picker.locator(".anatomy-selector:visible");
+    await expect(
+      anatomy.getByRole("button", { name: "Expand anatomy" }),
+    ).toHaveCount(0);
+    await anatomy
       .getByRole("button", { name: "Quadriceps", exact: true })
       .press("Enter");
-    await atlas.screenshot({ path: join(directory, "picker-expanded.png") });
     await expectNoOverflow(page);
-    await page.keyboard.press("Escape");
     await expect(picker).toBeVisible();
     await expect(page.getByTestId("exercise-identities")).toHaveText(
       selectedIdentities!,
     );
-    await expect(expand).toBeFocused();
     await expect(picker.getByText("2 selected", { exact: true })).toBeVisible();
     await expect(
       picker.locator(".anatomy-selection-context").filter({ visible: true }),

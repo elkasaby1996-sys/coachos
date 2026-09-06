@@ -120,6 +120,9 @@ export function Fixture() {
         >
           Parent selects pectorals
         </button>
+        <button onClick={() => setState(clearProviderAnatomyFilters())}>
+          Parent clears muscle
+        </button>
       </div>
       <output className="sr-only" data-testid="selection-events">
         {JSON.stringify(events)}

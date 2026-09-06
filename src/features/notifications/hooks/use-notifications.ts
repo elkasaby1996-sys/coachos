@@ -12,6 +12,7 @@ import type {
 } from "../lib/types";
 import {
   defaultNotificationPreferences,
+  deleteNotification,
   archiveNotification,
   fetchNotificationPreferences,
   fetchNotifications,
@@ -149,6 +150,36 @@ function useNotificationStateMutation(
       queryClient.invalidateQueries({
         queryKey: notificationsKeys.listRoot(userId),
       });
+    },
+  });
+}
+
+export function useDeleteNotification(userId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (notificationId: string) => {
+      if (!userId) throw new Error("Sign in to delete notifications.");
+      return deleteNotification(notificationId, userId);
+    },
+    onSuccess: (notificationId) => {
+      if (!userId) return;
+      queryClient.setQueriesData<NotificationRecord[]>(
+        { queryKey: notificationsKeys.listRoot(userId) },
+        (current) => current?.filter((row) => row.id !== notificationId),
+      );
+      queryClient.setQueriesData<InfiniteData<NotificationRecord[]>>(
+        { queryKey: notificationsKeys.infiniteRoot(userId) },
+        (current) =>
+          current
+            ? {
+                ...current,
+                pages: current.pages.map((page) =>
+                  page.filter((row) => row.id !== notificationId),
+                ),
+              }
+            : current,
+      );
+      void queryClient.invalidateQueries({ queryKey: notificationsKeys.all });
     },
   });
 }

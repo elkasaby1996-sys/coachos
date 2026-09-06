@@ -145,15 +145,66 @@ export async function fetchNotifications({
 
   const { data, error } = await query;
   if (error) throw error;
-  return ((data ?? []) as NotificationDeliveryRow[]).map(
+  const notifications = ((data ?? []) as NotificationDeliveryRow[]).map(
     mapDeliveryToNotification,
   );
+  const clientIds = [
+    ...new Set(
+      notifications
+        .filter((row) => row.type === "checkin_submitted")
+        .map(
+          (row) =>
+            metadataValue(row.metadata, "client_id") ??
+            metadataValue(row.metadata, "clientId"),
+        )
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  if (clientIds.length) {
+    const { data: clients } = await supabase
+      .from("clients")
+      .select("id, display_name")
+      .in("id", clientIds);
+    const names = new Map(
+      (clients ?? []).map((client) => [client.id, client.display_name]),
+    );
+    for (const notification of notifications) {
+      if (notification.type !== "checkin_submitted") continue;
+      const clientId =
+        metadataValue(notification.metadata, "client_id") ??
+        metadataValue(notification.metadata, "clientId");
+      const name = clientId ? names.get(clientId) : null;
+      if (name)
+        notification.metadata = { ...notification.metadata, client_name: name };
+    }
+  }
+  return notifications;
 }
 
 export async function fetchUnreadNotificationCount() {
   const { data, error } = await supabase.rpc("get_unread_notification_count");
   if (error) throw error;
   return Number(data ?? 0);
+}
+
+export async function deleteNotification(
+  notificationId: string,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("notification_deliveries")
+    .delete()
+    .eq("id", notificationId)
+    .eq("recipient_user_id", userId)
+    .eq("channel", "in_app")
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data)
+    throw new Error(
+      "Notification could not be deleted. Refresh and try again.",
+    );
+  return data.id as string;
 }
 
 export async function markNotificationRead(notificationId: string) {

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { WorkoutTemplatePreviewDialog } from "../../components/pt/workout-template-preview-dialog";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -85,6 +86,7 @@ export function PtWorkoutTemplatesPage() {
   const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting">("idle");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TemplateRow | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<TemplateRow | null>(null);
   const [form, setForm] = useState({
     name: "",
     workout_type_tag: "",
@@ -291,7 +293,7 @@ export function PtWorkoutTemplatesPage() {
   }, [formattedTemplates, searchQuery, typeFilter, sortBy]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-1.5">
       <WorkspacePageHeader
         title="Workout Templates"
         description="Manage the workout template library in the same operational layout as nutrition programs."
@@ -405,13 +407,57 @@ export function PtWorkoutTemplatesPage() {
           </DashboardCard>
         )
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredTemplates.map((template) => (
             <DashboardCard
               key={template.id}
               title={template.name ?? "Workout template"}
               subtitle={template.description ?? "No description"}
-              className="bg-card/90"
+              className="flex h-full flex-col bg-card/90 [&>.ui-card-header]:flex-1 [&>.ui-card-header]:items-start [&>.ui-card-header>div:first-child]:min-w-0"
+              action={
+                <div className="flex shrink-0 items-center gap-1 self-start">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                    aria-label="View"
+                    title="View workout"
+                    onClick={() => setPreviewTarget(template)}
+                  >
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                  {canManageDelivery ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                      aria-label="Edit"
+                      title="Edit workout"
+                      onClick={() =>
+                        navigate(`/pt/templates/workouts/${template.id}`)
+                      }
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  ) : null}
+                  {canManageDelivery ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 !min-h-8 !min-w-8 hover:text-destructive [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                      aria-label="Delete"
+                      title="Delete workout"
+                      onClick={() => {
+                        setDeleteTarget(template);
+                        setDeleteError(null);
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  ) : null}
+                </div>
+              }
             >
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -422,39 +468,16 @@ export function PtWorkoutTemplatesPage() {
                     Updated {template.updated}
                   </Badge>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() =>
-                      navigate(`/pt/templates/workouts/${template.id}`)
-                    }
-                  >
-                    {canManageDelivery ? "Edit" : "View"}
-                  </Button>
-                  {canManageDelivery ? (
-                    <Button
-                      tone="danger"
-                      size="sm"
-                      variant="ghost"
-                      className="flex-1 text-destructive hover:text-destructive"
-                      onClick={() => {
-                        setDeleteTarget(template);
-                        setDeleteError(null);
-                        setDeleteOpen(true);
-                      }}
-                    >
-                      <Trash2 className="mr-1 h-3.5 w-3.5" />
-                      Delete
-                    </Button>
-                  ) : null}
-                </div>
               </div>
             </DashboardCard>
           ))}
         </div>
       )}
+
+      <WorkoutTemplatePreviewDialog
+        template={previewTarget}
+        onClose={() => setPreviewTarget(null)}
+      />
 
       <Dialog
         open={createOpen}

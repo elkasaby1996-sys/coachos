@@ -35,9 +35,7 @@ describe("workspace header pill wiring", () => {
     expect(ptLayout).toContain("onKeyDown={handleSearchKeyDown}");
     expect(ptLayout).toContain("searchPanelLayout.compact ? (");
     expect(ptLayout).toContain("Search clients, programs, tags...");
-    expect(ptLayout).toContain(
-      "xl:grid-cols-[minmax(0,1fr)_minmax(320px,480px)_minmax(0,1fr)]",
-    );
+    expect(ptLayout).toContain("xl:grid-cols-[minmax(0,1fr)_auto]");
     expect(ptLayout).not.toContain("<header");
     expect(shellCss).toContain(".pt-workspace-rail-desktop");
     expect(shellCss).toContain("border-width: 0 1px 0 0;");

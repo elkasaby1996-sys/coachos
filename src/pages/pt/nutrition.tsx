@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Copy, Plus, Search, Trash2 } from "lucide-react";
+import { Copy, Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Input } from "../../components/ui/input";
@@ -30,6 +30,7 @@ import {
   useNutritionTemplates,
 } from "../../lib/nutrition";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { NutritionProgramPreviewDialog } from "../../components/pt/nutrition-program-preview-dialog";
 import { formatRelativeTime } from "../../lib/relative-time";
 
 const formatNutritionTypeTag = (value: string | null | undefined) =>
@@ -42,6 +43,9 @@ export function PtNutritionPage() {
   const { canManageDelivery } = useWorkspaceWriteAccess();
   const templatesQuery = useNutritionTemplates(workspaceId);
 
+  const [previewTarget, setPreviewTarget] = useState<NutritionTemplate | null>(
+    null,
+  );
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -261,7 +265,14 @@ export function PtNutritionPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-1.5">
+      {previewTarget ? (
+        <NutritionProgramPreviewDialog
+          key={previewTarget.id}
+          template={previewTarget}
+          onClose={() => setPreviewTarget(null)}
+        />
+      ) : null}
       <Dialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => {
@@ -328,7 +339,7 @@ export function PtNutritionPage() {
         description="Build reusable multi-week nutrition systems and keep edits close to the list."
       />
 
-      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem_auto] xl:items-center">
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_13rem_12rem_auto] xl:items-center">
         <div className="relative min-w-0 flex-1">
           <Search className="app-search-icon h-4 w-4" />
           <Input
@@ -422,70 +433,84 @@ export function PtNutritionPage() {
           />
         )
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredTemplates.map((template) => (
             <DashboardCard
               key={template.id}
               title={template.name}
               subtitle={template.description ?? "No description"}
+              className="flex h-full flex-col bg-card/90 [&>.ui-card-header]:flex-1 [&>.ui-card-header]:items-start [&>.ui-card-header>div:first-child]:min-w-0"
               action={
-                <StatusPill
-                  status={template.is_active ? "active" : "archived"}
-                />
-              }
-              className="bg-card/90"
-            >
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  {buildTemplateTags(template).map((tag) => (
-                    <Badge
-                      key={`${template.id}-${tag}`}
-                      variant="muted"
-                      className="text-[10px] uppercase"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex shrink-0 items-center gap-1 self-start">
                   <Button
-                    size="sm"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() =>
-                      navigate(`/pt/nutrition/programs/${template.id}`)
-                    }
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                    aria-label="View"
+                    title="View nutrition program"
+                    onClick={() => setPreviewTarget(template)}
                   >
-                    {canManageDelivery ? "Edit" : "View"}
+                    <Eye className="h-4 w-4" aria-hidden="true" />
                   </Button>
                   {canManageDelivery ? (
                     <>
                       <Button
-                        size="sm"
+                        size="icon"
                         variant="ghost"
-                        className="flex-1"
-                        onClick={() => duplicateTemplate(template)}
+                        className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                        aria-label="Edit"
+                        title="Edit nutrition program"
+                        onClick={() =>
+                          navigate(`/pt/nutrition/programs/${template.id}`)
+                        }
                       >
-                        <Copy className="mr-1 h-3.5 w-3.5" />
-                        Duplicate
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
                       </Button>
                       <Button
-                        tone="danger"
-                        size="sm"
+                        size="icon"
                         variant="ghost"
-                        className="flex-1 text-destructive hover:text-destructive"
+                        className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                        aria-label="Duplicate"
+                        title="Duplicate nutrition program"
+                        onClick={() => duplicateTemplate(template)}
+                      >
+                        <Copy className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11 hover:text-destructive"
+                        aria-label="Delete"
+                        title="Delete nutrition program"
                         onClick={() => {
                           setTemplateActionError(null);
                           setTemplateActionErrorSource(null);
                           setDeleteTarget(template);
                         }}
                       >
-                        <Trash2 className="mr-1 h-3.5 w-3.5" />
-                        Delete
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </>
                   ) : null}
                 </div>
+              }
+            >
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="secondary" className="text-[10px] uppercase">
+                  {formatNutritionTypeTag(template.nutrition_type_tag)}
+                </Badge>
+                {buildTemplateTags(template).map((tag) => (
+                  <Badge
+                    key={`${template.id}-${tag}`}
+                    variant="muted"
+                    className="text-[10px] uppercase"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+                <StatusPill
+                  status={template.is_active ? "active" : "archived"}
+                />
               </div>
             </DashboardCard>
           ))}

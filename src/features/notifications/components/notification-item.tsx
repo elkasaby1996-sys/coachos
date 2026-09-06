@@ -5,6 +5,7 @@ import { cn } from "../../../lib/utils";
 import {
   getNotificationIcon,
   getNotificationModuleTone,
+  getNotificationSource,
   getNotificationTitle,
   getNotificationTypeLabel,
 } from "../lib/notification-utils";
@@ -37,31 +38,24 @@ export function NotificationItem({
 }: NotificationItemProps) {
   const Icon = getNotificationIcon(notification);
   const typeLabel = getNotificationTypeLabel(notification.type, audience);
+  const source = getNotificationSource(notification);
+  const title = getNotificationTitle(notification, audience);
+  const body = notification.body.trim();
   const hasAction = Boolean(notification.action_url);
   const module = getNotificationModuleTone(notification);
   const moduleClasses = getModuleToneClasses(module);
-  const title = getNotificationTitle(notification, audience);
-  const body = notification.body.trim();
-  const compactHeadline =
-    compact &&
-    audience === "pt" &&
-    body &&
-    title.localeCompare(typeLabel, undefined, { sensitivity: "accent" }) === 0
-      ? body
-      : title;
-
   return (
     <button
       type="button"
       className={cn(
-        "group flex w-full items-start gap-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "group grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:grid-cols-[2.5rem_minmax(0,1fr)_7.5rem]",
         surface === "card"
           ? cn(
               "rounded-2xl border px-3 py-3",
               notification.is_read
                 ? "border-border/60 bg-secondary/16 hover:border-border hover:bg-secondary/24"
-                : "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] shadow-[0_18px_40px_-34px_color-mix(in_oklab,var(--state-info-bg-soft)_88%,transparent)] hover:border-[var(--state-info-border)] hover:bg-[var(--state-info-bg-soft)]",
-              compact ? "rounded-xl px-3 py-2.5" : "px-4 py-4",
+                : "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)]",
+              compact ? "px-3 py-2.5" : "px-4 py-4",
             )
           : "rounded-xl border border-transparent bg-transparent px-2 py-2 hover:bg-secondary/20",
         className,
@@ -69,80 +63,73 @@ export function NotificationItem({
       style={getModuleToneStyle(module)}
       {...props}
     >
-      <div
-        className={cn(
-          "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center",
-          compact ? "h-9 w-9" : "",
-        )}
-      >
-        <Icon className={cn("h-4 w-4", moduleClasses.title)} />
-      </div>
-      <div
-        className={cn("min-w-0 flex-1", compact ? "space-y-1.5" : "space-y-2")}
-      >
-        {showTypeLabel ||
-        notification.priority === "high" ||
-        !notification.is_read ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {showTypeLabel ? (
-              <span className={cn("text-xs font-medium", moduleClasses.text)}>
-                {typeLabel}
-              </span>
-            ) : null}
-            {notification.priority === "high" ? (
-              <span className="rounded-full border border-[var(--state-warning-border)] bg-[var(--state-warning-bg-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-warning-text)]">
-                High priority
-              </span>
-            ) : null}
-            {!notification.is_read ? (
-              <span className="rounded-full border border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-info-text)]">
-                New
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-          <div className="min-w-0 space-y-1">
-            {showTitle ? (
-              <p className="line-clamp-1 text-sm font-semibold text-foreground">
-                {compact ? compactHeadline : title}
-              </p>
-            ) : null}
-            {!compact ? (
-              <p
-                className={cn(
-                  "line-clamp-2 text-sm leading-6",
-                  showTitle
-                    ? "text-muted-foreground"
-                    : "font-medium text-foreground",
-                )}
-              >
-                {body}
-              </p>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-2 sm:pl-2">
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {formatRelativeTime(notification.created_at)}
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+        <Icon
+          aria-hidden="true"
+          className={cn("h-4 w-4", moduleClasses.title)}
+        />
+      </span>
+      <span className="min-w-0 space-y-1">
+        <span className="flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="break-words text-sm font-semibold text-foreground">
+            {source}
+          </span>
+          {showTypeLabel ? (
+            <span className={cn("text-xs font-medium", moduleClasses.text)}>
+              {typeLabel}
             </span>
-            <ChevronRight
-              className={cn(
-                "h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground",
-                !hasAction && "opacity-50",
-              )}
-            />
-          </div>
-        </div>
+          ) : null}
+          {notification.priority === "high" ? (
+            <span className="rounded-full border border-[var(--state-warning-border)] bg-[var(--state-warning-bg-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-warning-text)]">
+              High priority
+            </span>
+          ) : null}
+          {!notification.is_read ? (
+            <span className="rounded-full border border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-info-text)]">
+              New
+            </span>
+          ) : null}
+        </span>
+        {audience === "client" &&
+        showTitle &&
+        title !== typeLabel &&
+        !title.toLowerCase().includes(source.toLowerCase()) ? (
+          <span className="block text-sm font-semibold text-foreground">
+            {title}
+          </span>
+        ) : null}
+        <span
+          className={cn(
+            "block break-words text-sm leading-6",
+            compact ? "line-clamp-1" : "line-clamp-2",
+            showTitle ? "text-muted-foreground" : "font-medium text-foreground",
+          )}
+        >
+          {body || title}
+        </span>
         {!compact && showActionLabel ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span>
-              {hasAction
-                ? (notification.action_label ?? "Open update")
-                : "For reference"}
-            </span>
-          </div>
+          <span className="block text-xs text-muted-foreground">
+            {hasAction
+              ? (notification.action_label ?? "Open update")
+              : "For reference"}
+          </span>
         ) : null}
-      </div>
+      </span>
+      <span className="col-start-2 flex items-center gap-2 sm:col-start-3 sm:row-start-1 sm:justify-end">
+        <time
+          dateTime={notification.created_at}
+          className="whitespace-nowrap text-xs text-muted-foreground"
+        >
+          {formatRelativeTime(notification.created_at)}
+        </time>
+        <ChevronRight
+          aria-hidden="true"
+          className={cn(
+            "h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground",
+            !hasAction && "opacity-50",
+          )}
+        />
+      </span>
     </button>
   );
 }

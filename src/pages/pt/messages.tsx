@@ -694,11 +694,12 @@ export function PtMessagesPage() {
                       <button
                         key={row.client.id}
                         type="button"
+                        aria-current={isActive ? "true" : undefined}
                         onClick={() => setSelectedClientId(row.client.id)}
                         className={cn(
-                          "w-full rounded-[var(--ui-radius-card)] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                          "w-full rounded-[var(--ui-radius-card)] border-2 px-4 py-3 text-left shadow-none transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ui-action)]",
                           isActive
-                            ? "border-primary/28 bg-primary/[0.08] shadow-[0_22px_52px_-38px_rgba(56,189,248,0.75)]"
+                            ? "border-[var(--ui-action)] bg-background/75"
                             : "border-border/65 bg-background/35 hover:border-border hover:bg-background/55",
                         )}
                       >

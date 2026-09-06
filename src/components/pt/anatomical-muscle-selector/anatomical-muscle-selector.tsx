@@ -1,19 +1,11 @@
 import { useId, useState } from "react";
-import { Check, Expand, List, RotateCcw, ScanSearch } from "lucide-react";
+import { Check, List, ScanSearch } from "lucide-react";
 import {
   BODY_REGIONS,
   getMuscleMetadata,
   type MuscleKey,
 } from "../../../lib/exercise-muscle-taxonomy";
 import { cn } from "../../../lib/utils";
-import { Button } from "../../ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
-} from "../../ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { AccessibleMuscleList } from "./accessible-muscle-list";
 import { AnatomicalFigure } from "./anatomical-figure";
@@ -71,8 +63,6 @@ type AnatomyWorkspaceProps = {
   disabled: boolean;
   activeSurface: AnatomySurface;
   setActiveSurface: (surface: AnatomySurface) => void;
-  expanded?: boolean;
-  onClear: () => void;
 };
 
 function AnatomyWorkspace({
@@ -81,8 +71,6 @@ function AnatomyWorkspace({
   disabled,
   activeSurface,
   setActiveSurface,
-  expanded = false,
-  onClear,
 }: AnatomyWorkspaceProps) {
   const id = useId();
   const headingId = `${id}-${activeSurface}-heading`;
@@ -101,19 +89,6 @@ function AnatomyWorkspace({
       </TabsList>
       <TabsContent value="map" className="anatomy-map-content">
         <div className="anatomy-map-layout">
-          {expanded ? (
-            <aside
-              className="anatomy-atlas-navigation"
-              aria-label="Browse muscles"
-            >
-              <h3>Browse anatomy</h3>
-              <AccessibleMuscleList
-                value={value}
-                onValueChange={onValueChange}
-                disabled={disabled}
-              />
-            </aside>
-          ) : null}
           <div className="anatomy-map-visual">
             <div
               className="anatomy-surface-switch"
@@ -145,35 +120,11 @@ function AnatomyWorkspace({
                   labelledBy={headingId}
                 />
               </div>
+              <div className="anatomy-selection-row">
+                <SelectionContext value={value} activeSurface={activeSurface} />
+              </div>
             </div>
           </div>
-          {expanded ? (
-            <aside
-              className="anatomy-atlas-selection"
-              aria-label="Selected muscle"
-            >
-              <h3>Selected muscle</h3>
-              <SelectionContext value={value} activeSurface={activeSurface} />
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={onClear}
-                disabled={disabled || !value}
-                aria-label="Clear selected muscle"
-              >
-                <RotateCcw size={14} aria-hidden="true" />
-                Clear selection
-              </Button>
-              <div className="anatomy-guidance">
-                <h4>Explore, then select</h4>
-                <p>
-                  Use the body map or browse by body region. Choosing a muscle
-                  updates your exercise results immediately.
-                </p>
-                <p>Front and back share the same selection.</p>
-              </div>
-            </aside>
-          ) : null}
         </div>
       </TabsContent>
       <TabsContent value="list" className="anatomy-list-content">
@@ -182,23 +133,10 @@ function AnatomyWorkspace({
           onValueChange={onValueChange}
           disabled={disabled}
         />
-      </TabsContent>
-      {!expanded || view === "list" ? (
         <div className="anatomy-selection-row">
           <SelectionContext value={value} activeSurface={activeSurface} />
-          {expanded ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onClear}
-              disabled={disabled || !value}
-              aria-label="Clear selected muscle"
-            >
-              Clear
-            </Button>
-          ) : null}
         </div>
-      ) : null}
+      </TabsContent>
     </Tabs>
   );
 }
@@ -213,16 +151,12 @@ export function AnatomicalMuscleSelector({
   const selectMuscle = (muscleKey: MuscleKey) => {
     if (!disabled) onValueChange(muscleKey);
   };
-  const clear = () => {
-    if (!disabled) onValueChange(null);
-  };
   const workspaceProps = {
     value,
     onValueChange: selectMuscle,
     disabled,
     activeSurface,
     setActiveSurface,
-    onClear: clear,
   };
 
   return (
@@ -235,50 +169,10 @@ export function AnatomicalMuscleSelector({
       aria-label="Anatomical muscle selector"
       aria-disabled={disabled || undefined}
     >
-      <Dialog>
-        <div className="anatomy-selector-heading">
-          <h3>Target muscle</h3>
-          <div className="anatomy-heading-actions">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={clear}
-              disabled={disabled || !value}
-              aria-label="Clear selected muscle"
-            >
-              Clear
-            </Button>
-            <DialogTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                disabled={disabled}
-                aria-label="Expand anatomy"
-                title="Expand anatomy"
-              >
-                <Expand size={16} aria-hidden="true" />
-              </Button>
-            </DialogTrigger>
-          </div>
-        </div>
-        <AnatomyWorkspace {...workspaceProps} />
-        <DialogContent
-          className={cn(
-            "anatomy-theme anatomy-atlas",
-            disabled && "is-disabled",
-          )}
-        >
-          <header className="anatomy-atlas-heading">
-            <span className="anatomy-eyebrow">EXERCISE ANATOMY</span>
-            <DialogTitle>Find your target muscle</DialogTitle>
-            <DialogDescription>
-              Explore the body. Choose one muscle to refine your exercises.
-            </DialogDescription>
-          </header>
-          <AnatomyWorkspace {...workspaceProps} expanded />
-        </DialogContent>
-      </Dialog>
+      <div className="anatomy-selector-heading">
+        <h3>Target muscle</h3>
+      </div>
+      <AnatomyWorkspace {...workspaceProps} />
     </section>
   );
 }

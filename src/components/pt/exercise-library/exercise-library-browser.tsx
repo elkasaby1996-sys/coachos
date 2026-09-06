@@ -221,7 +221,7 @@ export function ExerciseLibraryFilterPanel(props: {
 
   return (
     <>
-      <section className="ui-panel hidden min-w-0 border border-border/70 p-4 xl:block">
+      <section className="hidden min-w-0 xl:block">
         <MuscleSelectorContent {...props} />
       </section>
 
