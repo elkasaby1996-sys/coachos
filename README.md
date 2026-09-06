@@ -29,6 +29,13 @@ VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
+For local development with Docker-based Supabase, use:
+
+- `VITE_SUPABASE_URL=http://127.0.0.1:54321`
+- `VITE_SUPABASE_ANON_KEY` from `npx supabase@latest status --output json`
+
+`npm run dev` expects these values to be present in your local `.env` file.
+
 ### 3) Run the dev server
 
 ```bash
