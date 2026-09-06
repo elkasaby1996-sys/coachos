@@ -57,6 +57,23 @@ test("workspace header stays within its available width in both sidebar states",
       await header.screenshot({
         path: `test-results/header-${width}-${collapsed ? "collapsed" : "expanded"}.png`,
       });
+      const footer = page.locator(".pt-workspace-footer");
+      const footerBounds = (await footer.boundingBox())!;
+      expect(footerBounds.height).toBeLessThanOrEqual(48);
+      const rail = page.locator(".pt-workspace-rail-desktop");
+      const lastNavItem = rail.locator("nav a").last();
+      await lastNavItem.scrollIntoViewIfNeeded();
+      const lastNavBounds = (await lastNavItem.boundingBox())!;
+      expect(lastNavBounds.y + lastNavBounds.height).toBeLessThanOrEqual(
+        footerBounds.y,
+      );
+      await expect(lastNavItem).toBeInViewport({ ratio: 1 });
+      if (width === 1602) {
+        await page.screenshot({
+          path: `test-results/footer-${collapsed ? "collapsed" : "expanded"}.png`,
+          animations: "disabled",
+        });
+      }
     }
   }
   await page.getByRole("button", { name: "Profile menu", exact: true }).click();

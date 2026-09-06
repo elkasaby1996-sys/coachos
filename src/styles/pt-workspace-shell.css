@@ -1,5 +1,20 @@
 .pt-workspace-theme {
+  --pt-workspace-footer-height: 48px;
   font-family: "Barlow", "DM Sans", "Geist Sans", sans-serif;
+}
+
+.pt-workspace-theme > .pt-workspace-footer {
+  flex-shrink: 0;
+  padding-block: 6px;
+}
+
+@media (min-width: 1024px) {
+  .pt-workspace-theme > .pt-workspace-footer {
+    display: flex;
+    align-items: center;
+    height: var(--pt-workspace-footer-height);
+    padding-block: 0;
+  }
 }
 
 .pt-workspace-theme h1,

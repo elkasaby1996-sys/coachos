@@ -1214,7 +1214,7 @@ export function PtLayout() {
         >
           <aside
             className={cn(
-              "hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block",
+              "hidden lg:fixed lg:top-0 lg:bottom-[var(--pt-workspace-footer-height)] lg:left-0 lg:z-30 lg:block",
               desktopNavCollapsed ? "lg:w-[96px]" : "lg:w-[268px]",
             )}
           >
@@ -1239,7 +1239,7 @@ export function PtLayout() {
                         <div className="min-w-0">
                           <p
                             aria-label="RepSync"
-                            className="text-xs font-semibold uppercase tracking-[0.46em] text-foreground"
+                            className="pl-[30px] text-xs font-semibold uppercase tracking-[0.46em] text-foreground"
                           >
                             R E P S Y N C
                           </p>
@@ -1506,7 +1506,7 @@ export function PtLayout() {
           </PtMessageComposeProvider>
         </div>
       </PageContainer>
-      <AppFooter className="mt-4 sm:mt-5 lg:mt-0" />
+      <AppFooter className="pt-workspace-footer mt-4 sm:mt-5 lg:mt-0" />
 
       <Dialog open={createWorkspaceOpen} onOpenChange={setCreateWorkspaceOpen}>
         <DialogContent className="w-[92vw] max-w-[460px]">
