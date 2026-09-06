@@ -114,24 +114,7 @@ export function WorkspaceSettingsLayoutPage() {
   }));
 
   return (
-    <SettingsPageShell
-      tabs={<SettingsTabs tabs={tabs} />}
-      rightRail={
-        <SettingsSectionCard
-          title="Workspace Scope"
-          description="These settings affect only this workspace."
-        >
-          <div className="space-y-2 text-xs text-muted-foreground">
-            <p>
-              Workspace ID:{" "}
-              <span className="font-mono text-foreground">
-                {resolvedWorkspaceId}
-              </span>
-            </p>
-          </div>
-        </SettingsSectionCard>
-      }
-    >
+    <SettingsPageShell tabs={<SettingsTabs tabs={tabs} />}>
       <Outlet
         context={
           {

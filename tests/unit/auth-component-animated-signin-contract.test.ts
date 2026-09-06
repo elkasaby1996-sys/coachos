@@ -5,15 +5,15 @@ import { join } from "node:path";
 const source = readFileSync(
   join(process.cwd(), "src/components/ui/sign-up.tsx"),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const backdropSource = readFileSync(
   join(process.cwd(), "src/components/common/auth-backdrop.tsx"),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const globalsSource = readFileSync(
   join(process.cwd(), "src/styles/globals.css"),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 
 describe("animated auth component contract", () => {
   it("keeps 21st.dev-inspired polish inside the existing Repsync auth surface", () => {
@@ -59,6 +59,20 @@ describe("animated auth component contract", () => {
     expect(source).not.toContain("rgba(255,255,255,0.26)");
   });
 
+  it("keeps native auth inputs transparent inside their surfaced wrappers", () => {
+    const nativeInputRule = source.match(
+      /\.glass-input-single input,[\s\S]*?\.glass-input-single input:active \{([\s\S]*?)\n\s*\}/,
+    )?.[1];
+
+    expect(nativeInputRule).toBeDefined();
+    expect(nativeInputRule).toContain("background: transparent !important;");
+    expect(nativeInputRule).toContain(
+      "background-color: transparent !important;",
+    );
+    expect(nativeInputRule).toContain("border: 0 !important;");
+    expect(nativeInputRule).toContain("box-shadow: none !important;");
+  });
+
   it("keeps the auth footer pinned in a viewport shell without an after-footer band", () => {
     expect(backdropSource).toContain("flex h-dvh flex-col overflow-hidden");
     expect(backdropSource).toContain("min-h-0");
@@ -71,7 +85,9 @@ describe("animated auth component contract", () => {
 
   it("uses the animated backdrop on auth screens", () => {
     expect(backdropSource).toContain("AuthFlowBackground");
-    expect(backdropSource).toContain("backdrop-blur-[36px]");
+    expect(backdropSource).toContain("<BloomField");
+    expect(backdropSource).toContain("motionAmount={0.24}");
+    expect(backdropSource).toContain("auth-flow-grain");
     expect(source).toContain("<AuthFlowBackground />");
   });
 });

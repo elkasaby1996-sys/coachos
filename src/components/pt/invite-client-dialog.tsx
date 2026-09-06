@@ -1,7 +1,6 @@
 import { ReactElement, useEffect, useMemo, useState } from "react";
-import { Check, Copy, Link2, Sparkles } from "lucide-react";
+import { Check, Copy, Link2 } from "lucide-react";
 import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -158,8 +157,8 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
 
-      <DialogContent className="overflow-hidden border-border/80 bg-card p-0 shadow-[var(--dialog-shadow)] sm:max-w-[540px]">
-        <div className="border-b border-border/70 bg-secondary/35 px-6 pb-4 pt-5 sm:px-6">
+      <DialogContent className="overflow-hidden border-border/80 bg-[var(--bg-surface-elevated)] p-0 shadow-[var(--dialog-shadow)] sm:max-w-[540px]">
+        <div className="border-b border-border/70 bg-background/70 px-6 pb-4 pt-5 sm:px-6">
           <DialogHeader className="max-w-[410px] gap-1.5 pr-10">
             <DialogTitle className="text-[1.15rem] tracking-tight">
               Invite client
@@ -187,15 +186,6 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
                 <p className="text-xs text-muted-foreground/90">
                   Single-use link
                 </p>
-              </div>
-              <div className="flex flex-wrap gap-2 pt-0.5">
-                <Badge
-                  variant="muted"
-                  className="border-border/70 bg-secondary/30 text-foreground/90"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Secure
-                </Badge>
               </div>
             </div>
 
@@ -286,7 +276,7 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
           </section>
         </div>
 
-        <DialogFooter className="border-t border-border/70 bg-secondary/35 px-6 py-2.5 sm:px-6">
+        <DialogFooter className="border-t border-border/70 bg-background/70 px-6 py-2.5 sm:px-6">
           {invite ? (
             <Button
               type="button"

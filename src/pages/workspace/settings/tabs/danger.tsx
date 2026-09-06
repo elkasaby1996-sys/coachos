@@ -9,7 +9,6 @@ import {
   AlertDialogTitle,
 } from "../../../../components/ui/alert-dialog";
 import { Button } from "../../../../components/ui/button";
-import { Input } from "../../../../components/ui/input";
 import {
   SettingsFieldRow,
   SettingsHelperCallout,
@@ -23,17 +22,10 @@ export function WorkspaceSettingsDangerTab() {
   const navigate = useNavigate();
   const { user } = useSessionAuth();
   const { refreshRole } = useBootstrapAuth();
-  const { workspace, workspaceId, isOwner } =
-    useWorkspaceSettingsOutletContext();
+  const { workspaceId, isOwner } = useWorkspaceSettingsOutletContext();
   const [leaveOpen, setLeaveOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [leaveSaving, setLeaveSaving] = useState(false);
-  const [deleteSaving, setDeleteSaving] = useState(false);
-  const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
   const [errorText, setErrorText] = useState<string | null>(null);
-
-  const workspaceName = workspace?.name?.trim() || "this workspace";
-  const canConfirmDelete = deleteConfirmValue.trim() === workspaceName;
 
   const transferOwnershipCopy = useMemo(
     () =>
@@ -65,30 +57,6 @@ export function WorkspaceSettingsDangerTab() {
       );
     } finally {
       setLeaveSaving(false);
-    }
-  };
-
-  const handleDeleteWorkspace = async () => {
-    if (!workspaceId || !isOwner || !canConfirmDelete) return;
-
-    setDeleteSaving(true);
-    setErrorText(null);
-    try {
-      const { error } = await supabase
-        .from("workspaces")
-        .delete()
-        .eq("id", workspaceId);
-      if (error) throw error;
-
-      setDeleteOpen(false);
-      await supabase.auth.signOut();
-      navigate("/login", { replace: true });
-    } catch (error) {
-      setErrorText(
-        error instanceof Error ? error.message : "Unable to delete workspace.",
-      );
-    } finally {
-      setDeleteSaving(false);
     }
   };
 
@@ -138,22 +106,21 @@ export function WorkspaceSettingsDangerTab() {
 
         <SettingsFieldRow
           label="Delete workspace"
-          hint="Permanent destructive action (owner only)."
+          hint="To prevent accidental data loss, workspace deletion is disabled during beta."
         >
           <Button
             type="button"
             variant="secondary"
-            className="border-danger/40 text-danger hover:bg-danger/10"
-            onClick={() => setDeleteOpen(true)}
-            disabled={!isOwner}
+            className="border-danger/40 text-muted-foreground"
+            disabled
+            aria-disabled="true"
           >
-            Delete workspace
+            Deletion disabled during beta
           </Button>
-          {!isOwner ? (
-            <p className="text-xs text-muted-foreground">
-              Only workspace owners can delete a workspace.
-            </p>
-          ) : null}
+          <p className="text-xs text-muted-foreground">
+            To prevent accidental data loss, workspace deletion is disabled
+            during beta.
+          </p>
         </SettingsFieldRow>
       </SettingsSectionCard>
 
@@ -187,48 +154,6 @@ export function WorkspaceSettingsDangerTab() {
               disabled={leaveSaving}
             >
               {leaveSaving ? "Leaving..." : "Confirm leave"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete workspace</AlertDialogTitle>
-            <AlertDialogDescription>
-              This cannot be undone. Type <strong>{workspaceName}</strong> to
-              confirm deletion.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <div className="space-y-2">
-            <Input
-              value={deleteConfirmValue}
-              onChange={(event) => setDeleteConfirmValue(event.target.value)}
-              placeholder="Type workspace name to confirm"
-            />
-            <p className="text-xs text-muted-foreground">
-              All associated workspace data will be permanently deleted.
-            </p>
-          </div>
-
-          <AlertDialogFooter>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setDeleteOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="border-danger/40 text-danger hover:bg-danger/10"
-              onClick={handleDeleteWorkspace}
-              disabled={!isOwner || !canConfirmDelete || deleteSaving}
-            >
-              {deleteSaving ? "Deleting..." : "Delete workspace"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -7,7 +7,7 @@ const migration = readFileSync(
     process.cwd(),
     "supabase",
     "migrations",
-    "20260411213000_enforce_single_workspace_client_on_reassign.sql",
+    "20260704103000_client_continuity_disable_destructive_lead_transfer.sql",
   ),
   "utf8",
 );
@@ -22,8 +22,11 @@ describe("pt_hub_approve_lead reassignment single-workspace guard", () => {
     expect(migration).toContain("where c.id = v_lead.converted_client_id");
   });
 
-  it("has a unique-violation fallback so reassignment still completes", () => {
+  it("blocks continuity conflicts instead of deleting prior client history", () => {
     expect(migration).toContain("when unique_violation then");
-    expect(migration).toContain("delete from public.clients c");
+    expect(migration).toContain(
+      "detail = 'CLIENT_CONTINUITY_REASSIGNMENT_CONFLICT'",
+    );
+    expect(migration).not.toContain("delete from public.clients");
   });
 });

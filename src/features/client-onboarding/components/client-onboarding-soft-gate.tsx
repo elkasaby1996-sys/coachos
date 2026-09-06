@@ -54,11 +54,10 @@ export function ClientOnboardingSoftGate({
           </div>
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
               {!summary.awaitingReview ? (
-                <Badge variant={compact ? "muted" : "secondary"}>
-                  {summary.completionPercent}% complete
-                </Badge>
+                <>
+                  <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                </>
               ) : null}
             </div>
             <div className="space-y-1">

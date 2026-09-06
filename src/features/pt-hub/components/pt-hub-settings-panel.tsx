@@ -180,13 +180,13 @@ export function PtHubSettingsPanel({
                     ? "Draft"
                     : value === "private"
                       ? "Private"
-                      : "Ready to list"}
+                      : "Listed"}
                 </Button>
               ))}
             </div>
             <p className="text-sm leading-6 text-muted-foreground">
-              Set the profile to Ready to list when the brand, offer, and proof
-              are aligned enough for public traffic.
+              Use Listed when the brand, offer, and proof are aligned enough for
+              public traffic.
             </p>
           </div>
         </PtHubSectionCard>

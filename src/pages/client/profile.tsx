@@ -319,21 +319,11 @@ export function ClientProfilePage() {
 
   const uploadPhotoIfNeeded = async (clientId: string) => {
     if (!photoFile) return { url: null, error: null };
-    const fileExt = photoFile.name.split(".").pop() || "jpg";
-    const filePath = `clients/${clientId}/${Date.now()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("client-photos")
-      .upload(filePath, photoFile, { upsert: true });
-
-    if (uploadError) {
-      return { url: null, error: uploadError };
-    }
-
-    const { data } = supabase.storage
-      .from("client-photos")
-      .getPublicUrl(filePath);
-    return { url: data.publicUrl, error: null };
+    void clientId;
+    return {
+      url: null,
+      error: new Error("Client photo uploads are not enabled yet."),
+    };
   };
 
   const handleSave = async () => {

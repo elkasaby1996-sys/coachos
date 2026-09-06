@@ -21,6 +21,7 @@ import {
   isClientAccountComplete,
   isPtProfileComplete,
 } from "./account-profiles";
+import { traceAsync, traceEnd, traceStart } from "./perf-trace";
 import { supabase, supabaseConfigured } from "./supabase";
 
 export type AppRole = "pt" | "client" | "none";
@@ -84,6 +85,7 @@ interface BootstrapAuthContextValue extends AuthBootstrapState {
   bootstrapLoading: boolean;
   bootstrapResolved: boolean;
   bootstrapStale: boolean;
+  bootstrapUserId: string | null;
   hasStableBootstrap: boolean;
   bootstrapError: Error | null;
   refreshBootstrap: () => Promise<void>;
@@ -109,6 +111,9 @@ const BootstrapAuthContext = createContext<
 
 const SESSION_LOAD_TIMEOUT_MS = 30_000;
 const LOOKUP_TIMEOUT_MS = 3_000;
+const BOOTSTRAP_RECENT_SUCCESS_TTL_MS = 3_000;
+const AUTH_CLOCK_SKEW_RETRY_DELAY_MS = 500;
+const AUTH_CLOCK_SKEW_RETRY_ATTEMPTS = 1;
 const BOOTSTRAP_CACHE_PREFIX = "coachos_auth_bootstrap_v1";
 const PT_PROFILE_SELECT = [
   "id",
@@ -133,6 +138,7 @@ const PT_PROFILE_SELECT = [
 const CLIENT_PROFILE_SELECT = [
   "id",
   "workspace_id",
+  "relationship_status",
   "user_id",
   "status",
   "display_name",
@@ -208,19 +214,35 @@ function withTimeout<T>(
 async function ensureFreshSession(
   session: Session | null,
 ): Promise<Session | null> {
-  if (!session) return null;
-  const expiresAtMs = (session.expires_at ?? 0) * 1000;
-  if (expiresAtMs === 0 || expiresAtMs - Date.now() > 30_000) {
-    return session;
-  }
-
+  const startedAt = traceStart("AuthProvider.ensureFreshSession", {
+    hasSession: Boolean(session),
+    userId: session?.user.id ?? null,
+  });
   try {
-    const { data, error } = await withTimeout(
-      supabase.auth.refreshSession(),
-      10_000,
-      "Session refresh timed out (10s).",
-    );
-    if (error) {
+    if (!session) return null;
+    const expiresAtMs = (session.expires_at ?? 0) * 1000;
+    if (expiresAtMs === 0 || expiresAtMs - Date.now() > 30_000) {
+      return session;
+    }
+
+    try {
+      const { data, error } = await withTimeout(
+        supabase.auth.refreshSession(),
+        10_000,
+        "Session refresh timed out (10s).",
+      );
+      if (error) {
+        if (isInvalidRefreshTokenError(error)) {
+          throw error;
+        }
+        if (isTransientAuthError(error)) {
+          return session;
+        }
+        throw error;
+      }
+      if (!data.session) return session;
+      return data.session;
+    } catch (error) {
       if (isInvalidRefreshTokenError(error)) {
         throw error;
       }
@@ -229,16 +251,11 @@ async function ensureFreshSession(
       }
       throw error;
     }
-    if (!data.session) return session;
-    return data.session;
-  } catch (error) {
-    if (isInvalidRefreshTokenError(error)) {
-      throw error;
-    }
-    if (isTransientAuthError(error)) {
-      return session;
-    }
-    throw error;
+  } finally {
+    traceEnd("AuthProvider.ensureFreshSession", startedAt, {
+      hasSession: Boolean(session),
+      userId: session?.user.id ?? null,
+    });
   }
 }
 
@@ -287,6 +304,31 @@ function isTransientAuthError(error: unknown) {
     normalized.includes("failed to fetch") ||
     normalized.includes("load failed")
   );
+}
+
+function getErrorSearchText(error: unknown) {
+  if (error instanceof Error) return error.message.toLowerCase();
+  if (typeof error === "string") return error.toLowerCase();
+  if (typeof error !== "object" || error === null) return "";
+
+  const record = error as Record<string, unknown>;
+  return ["message", "details", "hint", "code", "status"]
+    .map((key) => record[key])
+    .filter((value) => value !== null && value !== undefined)
+    .map((value) => String(value).toLowerCase())
+    .join(" ");
+}
+
+export function isBootstrapAuthClockSkewError(error: unknown) {
+  const searchable = getErrorSearchText(error);
+  return (
+    searchable.includes("jwt issued at future") ||
+    searchable.includes("issued at future")
+  );
+}
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
 function isAuthPermissionError(error: unknown) {
@@ -359,6 +401,18 @@ function getCurrentPathname() {
 
 function getBootstrapCacheKey(userId: string) {
   return `${BOOTSTRAP_CACHE_PREFIX}:${userId}`;
+}
+
+function getBootstrapSessionKey(session: Session | null) {
+  if (!session) return "no-session";
+  return `${session.user.id}:${session.expires_at ?? "no-expiry"}`;
+}
+
+export function getBootstrapRunKey(params: {
+  userId: string;
+  sessionKey: string;
+}) {
+  return `${params.userId}:${params.sessionKey}`;
 }
 
 function getActiveWorkspaceIdFromStorage() {
@@ -438,34 +492,76 @@ function sortClientRows(rows: ClientProfileRow[]) {
   });
 }
 
+function isActiveClientWorkspaceRelationship(
+  row: Pick<ClientProfileRow, "workspace_id" | "relationship_status">,
+) {
+  return (
+    Boolean(row.workspace_id) &&
+    (row.relationship_status ?? "active") === "active"
+  );
+}
+
 async function lookupRows<T>(
   label: string,
-  query: PromiseLike<{ data: T[] | null; error: unknown }>,
+  queryFactory: () => PromiseLike<{ data: T[] | null; error: unknown }>,
 ): Promise<LookupResult<T[]>> {
-  try {
-    const { data, error } = await withTimeout(
-      query,
-      LOOKUP_TIMEOUT_MS,
-      `${label} lookup timed out (${Math.round(LOOKUP_TIMEOUT_MS / 1000)}s).`,
-    );
+  for (
+    let attempt = 0;
+    attempt <= AUTH_CLOCK_SKEW_RETRY_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      const { data, error } = await traceAsync(
+        `AuthProvider.lookupRows.${label}`,
+        () =>
+          withTimeout(
+            queryFactory(),
+            LOOKUP_TIMEOUT_MS,
+            `${label} lookup timed out (${Math.round(
+              LOOKUP_TIMEOUT_MS / 1000,
+            )}s).`,
+          ),
+      );
 
-    if (error) {
+      if (error) {
+        logLookupWarning(label, error);
+        if (
+          attempt < AUTH_CLOCK_SKEW_RETRY_ATTEMPTS &&
+          isBootstrapAuthClockSkewError(error)
+        ) {
+          await delay(AUTH_CLOCK_SKEW_RETRY_DELAY_MS);
+          continue;
+        }
+        return { status: "error", error };
+      }
+
+      const rows = (data ?? []) as T[];
+      return rows.length > 0
+        ? { status: "ok", data: rows }
+        : { status: "empty" };
+    } catch (error) {
       logLookupWarning(label, error);
+      if (
+        error instanceof Error &&
+        error.message.toLowerCase().includes("timed out")
+      ) {
+        return { status: "timeout", error };
+      }
+      if (
+        attempt < AUTH_CLOCK_SKEW_RETRY_ATTEMPTS &&
+        isBootstrapAuthClockSkewError(error)
+      ) {
+        await delay(AUTH_CLOCK_SKEW_RETRY_DELAY_MS);
+        continue;
+      }
       return { status: "error", error };
     }
-
-    const rows = (data ?? []) as T[];
-    return rows.length > 0 ? { status: "ok", data: rows } : { status: "empty" };
-  } catch (error) {
-    logLookupWarning(label, error);
-    if (
-      error instanceof Error &&
-      error.message.toLowerCase().includes("timed out")
-    ) {
-      return { status: "timeout", error };
-    }
-    return { status: "error", error };
   }
+
+  return {
+    status: "error",
+    error: new Error(`${label} lookup failed after retry.`),
+  };
 }
 
 function resolveAccountType(params: {
@@ -476,7 +572,9 @@ function resolveAccountType(params: {
 }): AccountType {
   const hasPtProfile = Boolean(params.ptProfile);
   const hasClientRows = params.clientRows.length > 0;
-  const hasClientWorkspace = params.clientRows.some((row) => row.workspace_id);
+  const hasClientWorkspace = params.clientRows.some(
+    isActiveClientWorkspaceRelationship,
+  );
 
   if (hasPtProfile && !hasClientRows) return "pt";
   if (!hasPtProfile && hasClientRows) return "client";
@@ -505,14 +603,31 @@ function getActiveClientRow(params: {
   workspaceId: string | null;
 }) {
   if (params.accountType !== "client") return null;
-  const workspaceRows = params.clientRows.filter((row) => row.workspace_id);
+  const workspaceRows = params.clientRows.filter(
+    isActiveClientWorkspaceRelationship,
+  );
   if (params.workspaceId) {
     const selected = workspaceRows.find(
       (row) => row.workspace_id === params.workspaceId,
     );
     if (selected) return selected;
   }
-  return workspaceRows[0] ?? params.clientRows[0] ?? null;
+  return (
+    workspaceRows[0] ??
+    params.clientRows.find((row) => !row.workspace_id) ??
+    params.clientRows[0] ??
+    null
+  );
+}
+
+function hasCompletedClientAccount(
+  activeClient: ClientProfileRow | null,
+  clientRows: ClientProfileRow[],
+) {
+  return (
+    isClientAccountComplete(activeClient) ||
+    clientRows.some((row) => isClientAccountComplete(row))
+  );
 }
 
 function buildPendingInviteToken(pathname: string) {
@@ -629,7 +744,16 @@ function buildProfileDerivedState(params: {
     clientRows: params.clientRows,
     workspaceId: params.storedWorkspaceId,
   });
-  const clientAccountComplete = isClientAccountComplete(activeClient);
+  const activeWorkspaceClient =
+    accountType === "client" && activeClient
+      ? isActiveClientWorkspaceRelationship(activeClient)
+        ? activeClient
+        : null
+      : null;
+  const clientAccountComplete = hasCompletedClientAccount(
+    activeClient,
+    params.clientRows,
+  );
 
   return {
     accountType,
@@ -640,16 +764,18 @@ function buildProfileDerivedState(params: {
           ? "client"
           : "none",
     hasWorkspaceMembership:
-      accountType === "client" ? Boolean(activeClient?.workspace_id) : false,
+      accountType === "client" ? Boolean(activeWorkspaceClient) : false,
     ptWorkspaceComplete: false,
     ptProfileComplete: isPtProfileComplete(params.ptProfile),
     clientAccountComplete,
     clientWorkspaceOnboardingHardGateRequired: Boolean(
-      activeClient?.workspace_id && !clientAccountComplete,
+      activeWorkspaceClient?.workspace_id && !clientAccountComplete,
     ),
     pendingInviteToken: params.pendingInviteToken,
     activeWorkspaceId:
-      accountType === "client" ? (activeClient?.workspace_id ?? null) : null,
+      accountType === "client"
+        ? (activeWorkspaceClient?.workspace_id ?? null)
+        : null,
     activeClientId: activeClient?.id ?? null,
     ptProfile: accountType === "pt" ? params.ptProfile : null,
     clientProfile: activeClient,
@@ -775,56 +901,69 @@ async function resolveBootstrapState(params: {
   user: User;
   pathname: string;
   previousStable: AuthBootstrapState | null;
+  bootstrapRunKey?: string;
 }): Promise<BootstrapResolution> {
-  const { pathname, previousStable, user } = params;
-  const storedWorkspaceId = getActiveWorkspaceIdFromStorage();
-  const signupIntent = getSignupIntentFallback();
-  const pendingInviteToken = buildPendingInviteToken(pathname);
-
-  const membershipResult = await lookupRows(
-    "Workspace membership",
-    supabase
-      .from("workspace_members")
-      .select("workspace_id, role, status")
-      .eq("user_id", user.id)
-      .returns<WorkspaceMembershipRow[]>()
-      .limit(25),
-  );
-
-  const [ptProfileResult, clientResult] =
-    membershipResult.status === "empty"
-      ? await Promise.all([
-          lookupRows(
-            "PT profile",
-            supabase
-              .from("pt_profiles")
-              .select(PT_PROFILE_SELECT)
-              .eq("user_id", user.id)
-              .returns<PtProfileRow[]>()
-              .limit(25),
-          ),
-          lookupRows(
-            "Client profile",
-            supabase
-              .from("clients")
-              .select(CLIENT_PROFILE_SELECT)
-              .eq("user_id", user.id)
-              .returns<ClientProfileRow[]>()
-              .limit(25),
-          ),
-        ])
-      : [null, null];
-
-  return resolveBootstrapFromLookupResults({
-    pathname,
-    previousStable,
-    storedWorkspaceId,
-    signupIntent,
-    pendingInviteToken,
-    membershipResult,
-    ptProfileResult,
-    clientResult,
+  const startedAt = traceStart("AuthProvider.resolveBootstrapState", {
+    userId: params.user.id,
+    key: params.bootstrapRunKey,
+    pathname: params.pathname,
+    hasPreviousStable: Boolean(params.previousStable),
   });
+  try {
+    const { pathname, previousStable, user } = params;
+    const storedWorkspaceId = getActiveWorkspaceIdFromStorage();
+    const signupIntent = getSignupIntentFallback();
+    const pendingInviteToken = buildPendingInviteToken(pathname);
+
+    const membershipResult = await lookupRows("Workspace membership", () =>
+      supabase
+        .from("workspace_members")
+        .select("workspace_id, role, status")
+        .eq("user_id", user.id)
+        .returns<WorkspaceMembershipRow[]>()
+        .limit(25),
+    );
+
+    const [ptProfileResult, clientResult] =
+      membershipResult.status === "empty"
+        ? await Promise.all([
+            lookupRows("PT profile", () =>
+              supabase
+                .from("pt_profiles")
+                .select(PT_PROFILE_SELECT)
+                .eq("user_id", user.id)
+                .returns<PtProfileRow[]>()
+                .limit(25),
+            ),
+            lookupRows("Client profile", () =>
+              supabase
+                .from("clients")
+                .select(CLIENT_PROFILE_SELECT)
+                .eq("user_id", user.id)
+                .returns<ClientProfileRow[]>()
+                .limit(25),
+            ),
+          ])
+        : [null, null];
+
+    return resolveBootstrapFromLookupResults({
+      pathname,
+      previousStable,
+      storedWorkspaceId,
+      signupIntent,
+      pendingInviteToken,
+      membershipResult,
+      ptProfileResult,
+      clientResult,
+    });
+  } finally {
+    traceEnd("AuthProvider.resolveBootstrapState", startedAt, {
+      userId: params.user.id,
+      key: params.bootstrapRunKey,
+      pathname: params.pathname,
+      hasPreviousStable: Boolean(params.previousStable),
+    });
+  }
 }
 
 export function getAuthenticatedRedirectPath(state: RedirectState) {
@@ -876,6 +1015,23 @@ export function getBootstrapPath(
   return getAuthenticatedRedirectPath(state);
 }
 
+export type PublicRootRouteDecision =
+  | { type: "loading" }
+  | { type: "public" }
+  | { type: "redirect"; to: string };
+
+export function getPublicRootRouteDecision(params: {
+  authLoading: boolean;
+  isAuthenticated: boolean;
+  bootstrapResolved: boolean;
+  bootstrapPath: string | null;
+}): PublicRootRouteDecision {
+  if (params.authLoading) return { type: "loading" };
+  if (!params.isAuthenticated) return { type: "public" };
+  if (!params.bootstrapResolved) return { type: "loading" };
+  return { type: "redirect", to: params.bootstrapPath ?? "/no-workspace" };
+}
+
 export function buildSessionAuthValue(params: {
   session: Session | null;
   authLoading: boolean;
@@ -899,11 +1055,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [bootstrapLoading, setBootstrapLoading] = useState(false);
   const [bootstrapResolved, setBootstrapResolved] = useState(false);
   const [bootstrapStale, setBootstrapStale] = useState(false);
+  const [bootstrapUserId, setBootstrapUserId] = useState<string | null>(null);
   const [bootstrapError, setBootstrapError] = useState<Error | null>(null);
   const bootstrapRequestIdRef = useRef(0);
   const sessionRef = useRef<Session | null>(null);
   const bootstrapStateRef = useRef<AuthBootstrapState>(emptyBootstrapState);
   const lastStableBootstrapRef = useRef<AuthBootstrapState | null>(null);
+  const lastStableBootstrapUserIdRef = useRef<string | null>(null);
+  const inFlightBootstrapRef = useRef<{
+    key: string;
+    promise: Promise<void>;
+  } | null>(null);
+  const recentSuccessfulBootstrapRef = useRef<{
+    key: string;
+    completedAt: number;
+  } | null>(null);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -928,6 +1094,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (nextState: AuthBootstrapCoreState, pathname: string, userId: string) => {
       const finalized = finalizeBootstrapState(nextState, pathname);
       lastStableBootstrapRef.current = finalized;
+      lastStableBootstrapUserIdRef.current = userId;
+      recentSuccessfulBootstrapRef.current = {
+        key: getBootstrapRunKey({
+          userId,
+          sessionKey: getBootstrapSessionKey(sessionRef.current),
+        }),
+        completedAt: Date.now(),
+      };
       writeCachedBootstrapState(userId, nextState);
       if (shouldClearSignupIntent(nextState)) {
         clearSignupIntent();
@@ -935,6 +1109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setBootstrapState(finalized);
       setBootstrapResolved(true);
       setBootstrapStale(false);
+      setBootstrapUserId(userId);
       setBootstrapLoading(false);
       setBootstrapError(null);
     },
@@ -945,14 +1120,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (params: {
       fallback: AuthBootstrapState;
       pathname: string;
+      userId: string;
       error: Error;
     }) => {
-      const { error, fallback, pathname } = params;
+      const { error, fallback, pathname, userId } = params;
       setBootstrapState(
         buildStaleBootstrapFallbackState({ fallback, pathname }),
       );
       setBootstrapResolved(false);
       setBootstrapStale(true);
+      setBootstrapUserId(userId);
       setBootstrapLoading(false);
       setBootstrapError(error);
     },
@@ -961,12 +1138,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetBootstrapState = useCallback(() => {
     bootstrapRequestIdRef.current += 1;
+    inFlightBootstrapRef.current = null;
+    recentSuccessfulBootstrapRef.current = null;
     setBootstrapState(emptyBootstrapState);
     setBootstrapLoading(false);
     setBootstrapResolved(false);
     setBootstrapStale(false);
+    setBootstrapUserId(null);
     setBootstrapError(null);
     lastStableBootstrapRef.current = null;
+    lastStableBootstrapUserIdRef.current = null;
   }, []);
 
   const runBootstrap = useCallback(
@@ -975,69 +1156,114 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options?: {
         pathname?: string;
         seedFromCache?: boolean;
+        sessionKey?: string;
+        force?: boolean;
       },
     ) => {
       const pathname = options?.pathname ?? getCurrentPathname();
+      const sessionKey =
+        options?.sessionKey ?? getBootstrapSessionKey(sessionRef.current);
+      const bootstrapRunKey = getBootstrapRunKey({
+        userId: user.id,
+        sessionKey,
+      });
+      const inFlightBootstrap = inFlightBootstrapRef.current;
+      if (!options?.force && inFlightBootstrap?.key === bootstrapRunKey) {
+        return inFlightBootstrap.promise;
+      }
+      const recentSuccessfulBootstrap = recentSuccessfulBootstrapRef.current;
+      if (
+        !options?.force &&
+        recentSuccessfulBootstrap?.key === bootstrapRunKey &&
+        Date.now() - recentSuccessfulBootstrap.completedAt <
+          BOOTSTRAP_RECENT_SUCCESS_TTL_MS
+      ) {
+        return;
+      }
+
       const currentRequestId = ++bootstrapRequestIdRef.current;
       const cachedState = readCachedBootstrapState(user.id, pathname);
+      if (lastStableBootstrapUserIdRef.current !== user.id) {
+        lastStableBootstrapRef.current = null;
+        lastStableBootstrapUserIdRef.current = null;
+      }
       if (
         options?.seedFromCache &&
         cachedState &&
         !hasMeaningfulBootstrapState(lastStableBootstrapRef.current)
       ) {
         lastStableBootstrapRef.current = cachedState;
+        lastStableBootstrapUserIdRef.current = user.id;
       }
       if (options?.seedFromCache && cachedState) {
         setBootstrapState(cachedState);
         setBootstrapStale(true);
         setBootstrapResolved(false);
+        setBootstrapUserId(user.id);
       }
       setBootstrapLoading(true);
       setBootstrapError(null);
 
-      const resolution = await resolveBootstrapState({
-        user,
-        pathname,
-        previousStable: lastStableBootstrapRef.current,
-      });
+      const bootstrapPromise = (async () => {
+        try {
+          const resolution = await resolveBootstrapState({
+            user,
+            pathname,
+            previousStable: lastStableBootstrapRef.current,
+            bootstrapRunKey,
+          });
 
-      if (currentRequestId !== bootstrapRequestIdRef.current) return;
+          if (currentRequestId !== bootstrapRequestIdRef.current) return;
 
-      if (resolution.status === "resolved") {
-        applyResolvedBootstrapState(resolution.state, pathname, user.id);
-        return;
-      }
+          if (resolution.status === "resolved") {
+            applyResolvedBootstrapState(resolution.state, pathname, user.id);
+            return;
+          }
 
-      const fallbackState =
-        lastStableBootstrapRef.current ??
-        (hasMeaningfulBootstrapState(cachedState) ? cachedState : null);
+          const fallbackState =
+            lastStableBootstrapRef.current ??
+            (hasMeaningfulBootstrapState(cachedState) ? cachedState : null);
 
-      if (isAuthPermissionError(resolution.error)) {
-        await clearBrokenLocalSession();
-        sessionRef.current = null;
-        setSession(null);
-        resetBootstrapState();
-        setAuthError(
-          resolution.error instanceof Error
-            ? resolution.error
-            : new Error("Session expired. Please sign in again."),
-        );
-        return;
-      }
+          if (isAuthPermissionError(resolution.error)) {
+            await clearBrokenLocalSession();
+            sessionRef.current = null;
+            setSession(null);
+            resetBootstrapState();
+            setAuthError(
+              resolution.error instanceof Error
+                ? resolution.error
+                : new Error("Session expired. Please sign in again."),
+            );
+            return;
+          }
 
-      if (fallbackState) {
-        applyStaleBootstrapState({
-          fallback: fallbackState,
-          pathname,
-          error: resolution.error,
-        });
-        return;
-      }
+          if (fallbackState) {
+            applyStaleBootstrapState({
+              fallback: fallbackState,
+              pathname,
+              userId: user.id,
+              error: resolution.error,
+            });
+            return;
+          }
 
-      setBootstrapLoading(false);
-      setBootstrapResolved(false);
-      setBootstrapStale(false);
-      setBootstrapError(resolution.error);
+          setBootstrapLoading(false);
+          setBootstrapResolved(false);
+          setBootstrapStale(false);
+          setBootstrapUserId(null);
+          setBootstrapError(resolution.error);
+        } finally {
+          if (inFlightBootstrapRef.current?.key === bootstrapRunKey) {
+            inFlightBootstrapRef.current = null;
+          }
+        }
+      })();
+
+      inFlightBootstrapRef.current = {
+        key: bootstrapRunKey,
+        promise: bootstrapPromise,
+      };
+      return bootstrapPromise;
     },
     [
       applyResolvedBootstrapState,
@@ -1062,7 +1288,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    await runBootstrap(nextSession.user, { pathname: getCurrentPathname() });
+    await runBootstrap(nextSession.user, {
+      pathname: getCurrentPathname(),
+      sessionKey: getBootstrapSessionKey(nextSession),
+      force: true,
+    });
   }, [resetBootstrapState, runBootstrap]);
 
   const patchBootstrap = useCallback(
@@ -1097,6 +1327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const finalized = finalizeBootstrapState(nextCore, pathname);
       lastStableBootstrapRef.current = finalized;
       if (sessionRef.current?.user?.id) {
+        lastStableBootstrapUserIdRef.current = sessionRef.current.user.id;
         writeCachedBootstrapState(sessionRef.current.user.id, nextCore);
       }
       if (shouldClearSignupIntent(nextCore)) {
@@ -1105,6 +1336,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setBootstrapState(finalized);
       setBootstrapResolved(true);
       setBootstrapStale(false);
+      setBootstrapUserId(sessionRef.current?.user?.id ?? null);
       setBootstrapLoading(false);
       setBootstrapError(null);
     },
@@ -1125,10 +1357,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           );
         }
 
-        const { data, error } = await withTimeout(
-          supabase.auth.getSession(),
-          SESSION_LOAD_TIMEOUT_MS,
-          `Session load timed out (${Math.round(SESSION_LOAD_TIMEOUT_MS / 1000)}s).`,
+        const { data, error } = await traceAsync(
+          "AuthProvider.getSession",
+          () =>
+            withTimeout(
+              supabase.auth.getSession(),
+              SESSION_LOAD_TIMEOUT_MS,
+              `Session load timed out (${Math.round(
+                SESSION_LOAD_TIMEOUT_MS / 1000,
+              )}s).`,
+            ),
         );
         if (!alive) return;
         if (error) throw error;
@@ -1147,6 +1385,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         void runBootstrap(nextSession.user, {
           pathname: getCurrentPathname(),
           seedFromCache: true,
+          sessionKey: getBootstrapSessionKey(nextSession),
         });
       } catch (error) {
         if (!alive) return;
@@ -1199,6 +1438,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           void runBootstrap(freshSession.user, {
             pathname: getCurrentPathname(),
             seedFromCache: true,
+            sessionKey: getBootstrapSessionKey(freshSession),
           });
         } catch (error) {
           if (!alive) return;
@@ -1238,8 +1478,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       bootstrapLoading,
       bootstrapResolved,
       bootstrapStale,
+      bootstrapUserId,
       hasStableBootstrap: hasMeaningfulBootstrapState(
-        lastStableBootstrapRef.current,
+        lastStableBootstrapUserIdRef.current === session?.user.id
+          ? lastStableBootstrapRef.current
+          : null,
       ),
       bootstrapError,
       refreshBootstrap,
@@ -1251,9 +1494,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       bootstrapLoading,
       bootstrapResolved,
       bootstrapStale,
+      bootstrapUserId,
       bootstrapState,
       patchBootstrap,
       refreshBootstrap,
+      session?.user.id,
     ],
   );
 

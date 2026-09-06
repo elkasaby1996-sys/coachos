@@ -19,10 +19,13 @@ describe("pt hub lead transfer UI wiring", () => {
     expect(source).toContain("disabled={saving || isConvertedLead}");
     expect(source).toContain("Lead already converted");
     expect(source).toContain("Transfer lead to another workspace?");
-    expect(source).toMatch(
-      /lose workspace-related client data in the current workspace and start\s+over in the new workspace\./,
+    expect(source).toContain(
+      "Transfer keeps previous workspace history preserved, ends access to the old workspace, and starts a new active relationship in the selected workspace. Workout, nutrition, and check-in assignments are not copied automatically.",
     );
-    expect(source).toContain("Transfer lead and reset workspace data");
+    expect(source).toMatch(
+      /previous workspace history preserved, ends access to the old workspace,\s+and starts a new active relationship/,
+    );
+    expect(source).toContain("Transfer lead safely");
     expect(source).toContain("requiresTransferConfirmation");
     expect(source).toContain("void submitApproval(true);");
   });

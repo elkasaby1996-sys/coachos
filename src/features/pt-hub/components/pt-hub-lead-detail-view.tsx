@@ -37,6 +37,8 @@ import { getCharacterLimitState } from "../../../lib/character-limits";
 
 const ASSIGN_WORKSPACE_LATER_VALUE = "__assign_later__";
 const CREATE_NEW_WORKSPACE_VALUE = "__create_new__";
+const SAFE_TRANSFER_COPY =
+  "Transfer keeps previous workspace history preserved, ends access to the old workspace, and starts a new active relationship in the selected workspace. Workout, nutrition, and check-in assignments are not copied automatically.";
 
 function formatTrainingExperience(value: string | null) {
   const normalized = value?.trim() ?? "";
@@ -179,7 +181,6 @@ export function PtHubLeadDetailView({
     !currentPackageLookupLoading;
 
   // Contract copy: This lead has been converted and assigned to "{currentWorkspaceName}" workspace.
-  // Transfer warning: lose workspace-related client data in the current workspace and start over in the new workspace.
   const submitApproval = async (allowTransfer: boolean) => {
     try {
       setApprovalFeedback(null);
@@ -534,8 +535,8 @@ export function PtHubLeadDetailView({
                   {transferTargetWorkspaceName
                     ? `"${transferTargetWorkspaceName}"`
                     : "another workspace"}{" "}
-                  will reset workspace-related client data, and the client will
-                  start over.
+                  preserves previous workspace history, ends old workspace
+                  access, and starts a new active relationship.
                 </p>
               ) : null}
               {approvalFeedback ? (
@@ -606,10 +607,8 @@ export function PtHubLeadDetailView({
                   Transfer lead to another workspace?
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This lead is already assigned to {currentWorkspaceName}. If
-                  you transfer them, they will lose workspace-related client
-                  data in the current workspace and start over in the new
-                  workspace.
+                  This lead is already assigned to {currentWorkspaceName}.{" "}
+                  {SAFE_TRANSFER_COPY}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -622,7 +621,7 @@ export function PtHubLeadDetailView({
                     void submitApproval(true);
                   }}
                 >
-                  Transfer lead and reset workspace data
+                  Transfer lead safely
                 </Button>
               </AlertDialogFooter>
             </AlertDialogContent>

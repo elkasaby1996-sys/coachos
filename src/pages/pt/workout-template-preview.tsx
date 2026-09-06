@@ -11,6 +11,7 @@ import {
 } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { workoutTemplateExerciseQueryKeys } from "../../lib/exercise-query-contracts";
 import { supabase } from "../../lib/supabase";
 
 const getErrorDetails = (error: unknown) => {
@@ -89,7 +90,7 @@ export function PtWorkoutTemplatePreviewPage() {
   });
 
   const templateExercisesQuery = useQuery({
-    queryKey: ["workout-template-exercises", templateId],
+    queryKey: workoutTemplateExerciseQueryKeys.preview(templateId),
     enabled: !!templateId,
     queryFn: async () => {
       const { data, error } = await supabase

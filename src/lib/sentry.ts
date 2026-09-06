@@ -13,6 +13,7 @@ const DEFAULT_PRODUCTION_ERROR_REPLAY_SAMPLE_RATE = 0.25;
 const DEFAULT_DEVELOPMENT_ERROR_REPLAY_SAMPLE_RATE = 1.0;
 const DEFAULT_LOG_LEVELS = ["warn", "error"] as const;
 const DEFAULT_TRACE_PROPAGATION_TARGETS = ["localhost", /^\/api/] as const;
+const PERF_TRACE_BREADCRUMB_PREFIX = "[repsync:perf]";
 
 function readNumberEnv(value: string | undefined, fallback: number) {
   if (!value) return fallback;
@@ -116,8 +117,15 @@ export function initSentry() {
         ? DEFAULT_PRODUCTION_ERROR_REPLAY_SAMPLE_RATE
         : DEFAULT_DEVELOPMENT_ERROR_REPLAY_SAMPLE_RATE,
     ),
-    beforeSend(event) {
-      return event;
+    beforeBreadcrumb(breadcrumb) {
+      if (
+        breadcrumb.category === "console" &&
+        typeof breadcrumb.message === "string" &&
+        breadcrumb.message.startsWith(PERF_TRACE_BREADCRUMB_PREFIX)
+      ) {
+        return null;
+      }
+      return breadcrumb;
     },
   });
 }

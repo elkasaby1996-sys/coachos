@@ -108,6 +108,8 @@ export function PtPerformanceMarkersPage() {
   const [statusVariant, setStatusVariant] = useState<"success" | "error">(
     "success",
   );
+  const [deleteTarget, setDeleteTarget] = useState<MarkerTemplate | null>(null);
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting">("idle");
 
   useEffect(() => {
     if (!statusMessage) return;
@@ -331,19 +333,20 @@ export function PtPerformanceMarkersPage() {
 
   const handleDelete = async (template: MarkerTemplate) => {
     if (!markerLibraryOwnerId) return;
-    const confirmed = window.confirm(
-      `Delete "${template.name ?? "performance marker"}"? This cannot be undone.`,
-    );
-    if (!confirmed) return;
+    setDeleteStatus("deleting");
+    setInlineError(null);
     const { error } = await supabase
       .from("baseline_marker_templates")
       .delete()
       .eq("id", template.id)
       .eq("owner_user_id", markerLibraryOwnerId);
     if (error) {
+      setDeleteStatus("idle");
       setInlineError(getSupabaseErrorDetails(error));
       return;
     }
+    setDeleteStatus("idle");
+    setDeleteTarget(null);
     setStatusVariant("success");
     setStatusMessage("Performance marker deleted.");
     await invalidateTemplates();
@@ -585,7 +588,10 @@ export function PtPerformanceMarkersPage() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => handleDelete(template)}
+                      onClick={() => {
+                        setInlineError(null);
+                        setDeleteTarget(template);
+                      }}
                     >
                       Delete
                     </Button>
@@ -596,6 +602,58 @@ export function PtPerformanceMarkersPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && deleteStatus !== "deleting") {
+            setDeleteTarget(null);
+            setInlineError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Delete performance marker?</DialogTitle>
+            <DialogDescription>
+              This permanently removes{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name ?? "this performance marker"}
+              </span>{" "}
+              from the marker library.
+            </DialogDescription>
+          </DialogHeader>
+          {inlineError ? (
+            <Alert className="border-danger/30">
+              <AlertTitle>Delete failed</AlertTitle>
+              <AlertDescription>
+                {inlineError.message ?? "Unable to delete this marker."}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={deleteStatus === "deleting"}
+              onClick={() => setDeleteTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
+              disabled={deleteStatus === "deleting" || !deleteTarget}
+              onClick={() => {
+                if (deleteTarget) void handleDelete(deleteTarget);
+              }}
+            >
+              {deleteStatus === "deleting" ? "Deleting..." : "Delete marker"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[560px]">

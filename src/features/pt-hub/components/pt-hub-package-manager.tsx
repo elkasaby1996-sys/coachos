@@ -780,7 +780,7 @@ export function PtHubPackageManager() {
 
       <PtHubSectionCard
         title="Packages"
-        description="Manage offer status, visibility, order, and package copy from one working list."
+        description="Control package visibility and order."
         actions={
           <Button
             type="button"
@@ -848,20 +848,8 @@ export function PtHubPackageManager() {
         ) : null}
 
         {packages.length === 0 && packagesQuery.isSuccess ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-dashed border-border/60 bg-background/30 px-4 py-5 text-sm text-muted-foreground">
-            <span>
-              No packages yet. Create your first offer to show on your public
-              profile and capture package interest in the Apply flow.
-            </span>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => setIsCreating(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Create package
-            </Button>
+          <div className="rounded-[20px] border border-dashed border-border/60 bg-background/30 px-4 py-5 text-sm text-muted-foreground">
+            <span>No packages yet.</span>
           </div>
         ) : null}
 

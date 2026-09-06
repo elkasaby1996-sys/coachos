@@ -112,6 +112,7 @@ export type WorkspaceClientOnboardingRow = {
 export type ClientOnboardingClientProfile = {
   id: string;
   workspace_id: string | null;
+  relationship_status?: string | null;
   display_name: string | null;
   full_name: string | null;
   phone: string | null;

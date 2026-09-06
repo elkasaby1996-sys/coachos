@@ -320,6 +320,60 @@ describe("light mode theme CSS contract", () => {
     expect(portalUtilityRow).toContain("color: oklch(var(--text-primary));");
   });
 
+  test("keeps PT workspace local light mode tokens available to portaled dropdowns", () => {
+    expect(ptLayoutTsx).toContain("pt-workspace-portal-light");
+
+    const portalLightTokens = customProperties(
+      selectorBlock(globalsCss, "body.pt-workspace-portal-light"),
+    );
+
+    expect(portalLightTokens["bg-surface"]).toBe("0.988 0.004 255");
+    expect(portalLightTokens["bg-surface-elevated"]).toBe("0.995 0.003 255");
+    expect(portalLightTokens["menu-surface-bg"]).toContain(
+      "oklch(var(--bg-surface-elevated) / 0.99)",
+    );
+    expect(portalLightTokens["menu-surface-bg"]).toContain(
+      "oklch(var(--bg-surface) / 0.96)",
+    );
+    expect(portalLightTokens["menu-panel-bg"]).toContain(
+      "oklch(var(--bg-surface) / 0.97)",
+    );
+    expect(portalLightTokens["menu-item-hover"]).toBe(
+      "oklch(var(--bg-muted) / 0.78)",
+    );
+    expect(portalLightTokens["menu-border-color"]).toBe(
+      "oklch(var(--border-default) / 0.9)",
+    );
+    expect(portalLightTokens.foreground).toBe("var(--text-primary)");
+    expect(portalLightTokens["popover-foreground"]).toBe("var(--text-primary)");
+    expect(portalLightTokens["muted-foreground"]).toBe("var(--text-muted)");
+  });
+
+  test("forces PT workspace portaled dropdown copy to stay readable in local light mode", () => {
+    const portalContent = selectorBlock(
+      globalsCss,
+      "body.pt-workspace-portal-light .app-dropdown-content",
+    );
+    const portalItem = selectorBlock(
+      globalsCss,
+      "body.pt-workspace-portal-light .app-dropdown-item",
+    );
+    const portalDisabledItem = selectorBlock(
+      globalsCss,
+      "body.pt-workspace-portal-light .app-dropdown-item[data-disabled]",
+    );
+    const portalUtilityRow = selectorBlock(
+      globalsCss,
+      "body.pt-workspace-portal-light .app-dropdown-utility-row",
+    );
+
+    expect(portalContent).toContain("color: oklch(var(--text-primary));");
+    expect(portalItem).toContain("color: oklch(var(--text-primary));");
+    expect(portalDisabledItem).toContain("color: oklch(var(--text-muted));");
+    expect(portalDisabledItem).toContain("opacity: 0.68;");
+    expect(portalUtilityRow).toContain("color: oklch(var(--text-primary));");
+  });
+
   test("keeps public support and legal pages on a white light surface", () => {
     expect(publicInfoLayoutTsx).toContain("public-info-shell");
     expect(publicInfoLayoutTsx).toContain("bg-white text-slate-950");

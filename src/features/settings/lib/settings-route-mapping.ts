@@ -10,13 +10,6 @@ export type SettingsTabConfig = {
 
 export const ptHubSettingsTabs: SettingsTabConfig[] = [
   {
-    id: "public-profile",
-    label: "Public Profile",
-    description: "Marketplace and public coaching profile.",
-    path: "public-profile",
-    scope: "pt-hub",
-  },
-  {
     id: "account",
     label: "Account",
     description: "Identity and global account settings.",
@@ -64,15 +57,8 @@ export const workspaceSettingsTabs: SettingsTabConfig[] = [
   {
     id: "general",
     label: "General",
-    description: "Core workspace operating details.",
+    description: "Core workspace identity and operating details.",
     path: "general",
-    scope: "workspace",
-  },
-  {
-    id: "brand",
-    label: "Brand",
-    description: "Workspace identity and branded client-facing details.",
-    path: "brand",
     scope: "workspace",
   },
   {

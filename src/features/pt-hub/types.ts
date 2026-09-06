@@ -166,6 +166,7 @@ export interface PTClientSummary {
   workspaceName: string;
   displayName: string;
   status: string;
+  relationshipStatus: "active" | "removed" | "transferred_out";
   lifecycleState: string;
   manualRiskFlag: boolean;
   lifecycleChangedAt: string | null;
@@ -191,6 +192,23 @@ export interface PTClientStatsSnapshot {
   atRiskClients: number;
   onboardingIncompleteClients: number;
   overdueCheckinClients: number;
+}
+
+export interface PTActivationSummary {
+  workspaceExists: boolean;
+  activationWorkspaceId: string | null;
+  activationWorkspaceSlug: string | null;
+  profileComplete: boolean;
+  profilePublished: boolean;
+  hasFirstClient: boolean;
+  firstClientId: string | null;
+  hasWorkoutAssigned: boolean;
+  hasNutritionAssigned: boolean;
+  hasCheckInAssigned: boolean;
+  hasCoCoachInvitedOrActive: boolean;
+  clientCount: number;
+  coreCompletedCount: number;
+  coreTotalCount: number;
 }
 
 export interface PTClientDirectoryPage {

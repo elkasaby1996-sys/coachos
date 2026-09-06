@@ -2,30 +2,18 @@ import { AlertTriangle, EyeOff, Globe } from "lucide-react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { getSemanticBadgeVariant } from "../../../lib/semantic-status";
-import type {
-  PTAccountSettingsDraft,
-  PTProfileReadiness,
-  PTPublicationState,
-} from "../types";
+import type { PTProfileReadiness, PTPublicationState } from "../types";
 import { PtHubSectionCard } from "./pt-hub-section-card";
 
 export function PtHubPublicationPanel({
   publicationState,
   readiness,
-  profileVisibility,
   publishing,
-  updatingVisibility,
-  onProfileVisibilityChange,
   onTogglePublish,
 }: {
   publicationState: PTPublicationState;
   readiness: PTProfileReadiness;
-  profileVisibility: PTAccountSettingsDraft["profileVisibility"];
   publishing: boolean;
-  updatingVisibility: boolean;
-  onProfileVisibilityChange: (
-    nextVisibility: PTAccountSettingsDraft["profileVisibility"],
-  ) => Promise<void>;
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
   return (
@@ -67,37 +55,6 @@ export function PtHubPublicationPanel({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-            Profile visibility
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                { value: "draft", label: "Draft" },
-                { value: "private", label: "Private" },
-                { value: "listed", label: "Ready to list" },
-              ] as const
-            ).map((option) => (
-              <Button
-                key={option.value}
-                type="button"
-                size="sm"
-                variant={
-                  profileVisibility === option.value ? "default" : "secondary"
-                }
-                disabled={publishing || updatingVisibility}
-                onClick={() => void onProfileVisibilityChange(option.value)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Profile visibility must be set to Ready to list.
-          </p>
-        </div>
-
         {!publicationState.canPublish && !publicationState.isPublished ? (
           <div className="space-y-2 rounded-[22px] border border-warning/22 bg-warning/12 p-4">
             <div className="flex items-start gap-3">
@@ -120,7 +77,6 @@ export function PtHubPublicationPanel({
           className="w-full justify-between"
           disabled={
             publishing ||
-            updatingVisibility ||
             (!publicationState.canPublish && !publicationState.isPublished)
           }
           onClick={() => onTogglePublish(!publicationState.isPublished)}

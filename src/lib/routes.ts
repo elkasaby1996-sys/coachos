@@ -1,6 +1,5 @@
 export type PtHubSettingsTab =
   | "account"
-  | "public-profile"
   | "notifications"
   | "preferences"
   | "security"
@@ -9,7 +8,6 @@ export type PtHubSettingsTab =
 
 export type WorkspaceSettingsTab =
   | "general"
-  | "brand"
   | "client-experience"
   | "team"
   | "defaults"

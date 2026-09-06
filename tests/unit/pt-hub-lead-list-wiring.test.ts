@@ -65,15 +65,17 @@ describe("pt hub lead list package wiring", () => {
     );
   });
 
-  it("makes the row review action explicit while preserving full-row navigation", () => {
+  it("uses the row chevron as the review affordance while preserving full-row navigation", () => {
     const leadsPage = readSource("src/pages/pt-hub/leads.tsx");
 
     expect(leadsPage).toContain('data-lead-review-row=""');
-    expect(leadsPage).toContain("Review");
     expect(leadsPage).toContain("Status / Action");
-    expect(leadsPage).toContain("inline-flex rounded-[10px]");
+    expect(leadsPage).toContain("<ChevronRight");
     expect(leadsPage).toContain(
       "onClick={() => navigate(`/pt-hub/leads/${lead.id}`)}",
+    );
+    expect(leadsPage).not.toContain(
+      '{lead.status === "converted" ? "View" : "Review"}',
     );
   });
 

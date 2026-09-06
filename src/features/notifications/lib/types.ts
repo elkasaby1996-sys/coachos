@@ -6,6 +6,7 @@ export const notificationTypes = [
   "workout_updated",
   "checkin_requested",
   "checkin_submitted",
+  "checkin_reviewed",
   "message_received",
   "file_shared",
   "birthday_reminder",

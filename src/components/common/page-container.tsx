@@ -25,7 +25,7 @@ export function PageContainer<T extends ElementType = "div">({
         size === "portal"
           ? "w-full max-w-[1360px] px-4 sm:px-6 lg:px-8 xl:px-10"
           : size === "client-shell"
-            ? "w-full max-w-[1380px] px-4 sm:px-6 lg:px-6 xl:px-6"
+            ? "w-full max-w-none px-4 sm:px-6 lg:px-6 xl:px-6"
             : size === "pt-shell"
               ? "w-full max-w-none px-4 sm:px-5 lg:px-5 xl:px-6"
               : "w-full max-w-[1800px] 2xl:max-w-[2000px] px-4 sm:px-6 lg:px-8",

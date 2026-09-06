@@ -127,12 +127,13 @@ export function ClientSignupPage() {
       );
       if (signUpError) throw signUpError;
 
-      const userId = data.user?.id ?? user?.id;
+      const activeUser = data.session?.user ?? user ?? null;
+      const userId = activeUser?.id;
       if (userId) {
         await ensureClientProfile({
           userId,
           fullName,
-          avatarUrl: getUserAvatarUrl(data.user ?? user ?? null),
+          avatarUrl: getUserAvatarUrl(activeUser),
           email,
         });
       }
@@ -246,12 +247,6 @@ export function ClientSignupPage() {
       }
       onEmailPasswordSubmit={handleEmailSignup}
       onGoogle={handleGoogle}
-      onApple={async () => {
-        return { notice: "Apple sign-up will be wired next." };
-      }}
-      onFacebook={async () => {
-        return { notice: "Facebook sign-up will be wired next." };
-      }}
       onPhone={async () => {
         return { notice: "Phone sign-up will be wired next." };
       }}

@@ -1,29 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  CalendarClock,
-  Dumbbell,
-  Layers3,
-  Plus,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
-import { StatCard } from "../../components/ui/coachos/stat-card";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
+import { useWorkspaceWriteAccess } from "../../features/workspace-team";
 import { DashboardCard } from "../../components/pt/dashboard/DashboardCard";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 
@@ -51,6 +46,28 @@ const getErrorDetails = (error: unknown) => {
   return { code: "unknown", message: "Unknown error" };
 };
 
+const DELETE_PROTECTION_MESSAGE =
+  "Delete failed. This template is already assigned to a client and cannot be deleted. Existing client assignments prevent deletion. Historical records are preserved.";
+
+const isDeleteProtectionError = (error: unknown) => {
+  const details = getErrorDetails(error);
+  const message = details.message.toLowerCase();
+  return (
+    details.code === "23503" ||
+    details.code === "P0001" ||
+    message.includes("foreign key constraint") ||
+    message.includes("still referenced") ||
+    message.includes("cannot be deleted") ||
+    message.includes("already assigned")
+  );
+};
+
+const getTemplateDeleteErrorMessage = (error: unknown) => {
+  if (isDeleteProtectionError(error)) return DELETE_PROTECTION_MESSAGE;
+  const details = getErrorDetails(error);
+  return `Delete failed. ${details.message}`;
+};
+
 export function PtWorkoutTemplatesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -60,6 +77,7 @@ export function PtWorkoutTemplatesPage() {
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
+  const { canManageDelivery } = useWorkspaceWriteAccess();
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<"idle" | "saving">("idle");
   const [createError, setCreateError] = useState<string | null>(null);
@@ -105,7 +123,7 @@ export function PtWorkoutTemplatesPage() {
   });
 
   const handleCreate = async () => {
-    if (!workspaceId) return;
+    if (!workspaceId || !canManageDelivery) return;
     if (!form.name.trim()) {
       setCreateError("Template name is required.");
       return;
@@ -145,7 +163,7 @@ export function PtWorkoutTemplatesPage() {
   };
 
   const handleDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || !canManageDelivery) return;
 
     setDeleteStatus("deleting");
     setDeleteError(null);
@@ -156,8 +174,7 @@ export function PtWorkoutTemplatesPage() {
       .eq("id", deleteTarget.id);
 
     if (error) {
-      const details = getErrorDetails(error);
-      setDeleteError(`${details.code}: ${details.message}`);
+      setDeleteError(getTemplateDeleteErrorMessage(error));
       setDeleteStatus("idle");
       return;
     }
@@ -189,15 +206,6 @@ export function PtWorkoutTemplatesPage() {
       })),
     [templates],
   );
-  const recentTemplatesCount = useMemo(() => {
-    const monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    return templates.filter((template) => {
-      const createdAt = template.created_at
-        ? new Date(template.created_at).getTime()
-        : 0;
-      return createdAt >= monthAgo;
-    }).length;
-  }, [templates]);
 
   const workoutTypeOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -289,48 +297,7 @@ export function PtWorkoutTemplatesPage() {
         description="Manage the workout template library in the same operational layout as nutrition programs."
       />
 
-      <div className="flex justify-end">
-        <Button
-          onClick={() => {
-            setCreateError(null);
-            setCreateOpen(true);
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          New template
-        </Button>
-      </div>
-
-      <div className="page-kpi-block grid gap-4 md:grid-cols-3">
-        <StatCard
-          label="Workout Templates"
-          value={formattedTemplates.length}
-          helper="Reusable sessions ready to build from"
-          icon={Layers3}
-          accent
-          module="coaching"
-          className="h-full"
-        />
-        <StatCard
-          label="Workout Types"
-          value={workoutTypeOptions.length}
-          helper="Distinct training tags in this workspace"
-          icon={Dumbbell}
-          module="coaching"
-          className="h-full"
-        />
-        <StatCard
-          label="New This Month"
-          value={recentTemplatesCount}
-          helper="Created in the last 30 days"
-          icon={CalendarClock}
-          module="coaching"
-          iconClassName="text-[var(--state-info-text)]"
-          className="h-full"
-        />
-      </div>
-
-      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_13rem_12rem] xl:items-center">
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_13rem_12rem_auto] xl:items-center">
         <div className="relative min-w-0 flex-1">
           <Search className="app-search-icon h-4 w-4" />
           <Input
@@ -374,6 +341,18 @@ export function PtWorkoutTemplatesPage() {
           <option value="newest">Sort by newest</option>
           <option value="name">Sort by name</option>
         </Select>
+        {canManageDelivery ? (
+          <Button
+            className="w-full whitespace-nowrap xl:w-auto"
+            onClick={() => {
+              setCreateError(null);
+              setCreateOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            New template
+          </Button>
+        ) : null}
       </div>
 
       {workspaceError ? (
@@ -401,16 +380,15 @@ export function PtWorkoutTemplatesPage() {
           <DashboardCard title="No workout templates" className="bg-card/90">
             <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
               <p className="text-sm font-semibold">Create the first template</p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Start with one workout template.
-              </p>
-              <Button
-                className="mt-4"
-                size="sm"
-                onClick={() => setCreateOpen(true)}
-              >
-                Create template
-              </Button>
+              {canManageDelivery ? (
+                <Button
+                  className="mt-4"
+                  size="sm"
+                  onClick={() => setCreateOpen(true)}
+                >
+                  Create template
+                </Button>
+              ) : null}
             </div>
           </DashboardCard>
         ) : (
@@ -453,21 +431,23 @@ export function PtWorkoutTemplatesPage() {
                       navigate(`/pt/templates/workouts/${template.id}`)
                     }
                   >
-                    Edit
+                    {canManageDelivery ? "Edit" : "View"}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="flex-1 text-destructive hover:text-destructive"
-                    onClick={() => {
-                      setDeleteTarget(template);
-                      setDeleteError(null);
-                      setDeleteOpen(true);
-                    }}
-                  >
-                    <Trash2 className="mr-1 h-3.5 w-3.5" />
-                    Delete
-                  </Button>
+                  {canManageDelivery ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="flex-1 text-destructive hover:text-destructive"
+                      onClick={() => {
+                        setDeleteTarget(template);
+                        setDeleteError(null);
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" />
+                      Delete
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             </DashboardCard>
@@ -542,7 +522,10 @@ export function PtWorkoutTemplatesPage() {
             <Button variant="secondary" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button disabled={createStatus === "saving"} onClick={handleCreate}>
+            <Button
+              disabled={createStatus === "saving" || !canManageDelivery}
+              onClick={handleCreate}
+            >
               {createStatus === "saving"
                 ? "Creating..."
                 : "Create + Open Builder"}
@@ -564,12 +547,21 @@ export function PtWorkoutTemplatesPage() {
       >
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Delete template</DialogTitle>
+            <DialogTitle>Delete workout template?</DialogTitle>
+            <DialogDescription>
+              This removes{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name ?? "this workout template"}
+              </span>{" "}
+              from your library. Existing client assignments prevent deletion;
+              historical records are preserved.
+            </DialogDescription>
           </DialogHeader>
           {deleteError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-              {deleteError}
-            </div>
+            <Alert tone="danger">
+              <AlertTitle>Delete failed</AlertTitle>
+              <AlertDescription>{deleteError}</AlertDescription>
+            </Alert>
           ) : null}
           <DialogFooter>
             <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
@@ -577,7 +569,7 @@ export function PtWorkoutTemplatesPage() {
             </Button>
             <Button
               variant="secondary"
-              disabled={deleteStatus === "deleting"}
+              disabled={deleteStatus === "deleting" || !canManageDelivery}
               onClick={handleDelete}
             >
               {deleteStatus === "deleting" ? "Deleting..." : "Delete"}

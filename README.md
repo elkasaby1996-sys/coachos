@@ -84,9 +84,11 @@ npm run supabase:db:lint
 
 5. Open a PR. `Supabase CI` will validate the local database and migrations.
 
-6. After merge to `main`, the staging workflow pushes pending migrations to the staging Supabase project.
+6. After merge to `main`, run the manual `Supabase Migration Status` workflow to inspect the target environment migration ledger.
 
-7. Promote to production with the manual `Supabase Deploy Production` workflow.
+7. Apply pending migrations to staging with the manual `Supabase Deploy Staging` workflow. This workflow runs lint, build, and unit tests before `supabase db push`.
+
+8. Promote to production with the manual `Supabase Deploy Production` workflow.
 
 Historical migration files in `supabase/migrations` are intentionally preserved. If the project ever needs a clean baseline, use a planned squash/re-baseline process instead of deleting committed migration history.
 
@@ -103,6 +105,8 @@ Set these repository or environment secrets before using the deploy workflows:
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_PROJECT_ID`
 - `SUPABASE_DB_PASSWORD`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
 Use environment-scoped secrets so `supabase-staging` points to staging and `supabase-production` points to production.
 

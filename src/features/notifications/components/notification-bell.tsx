@@ -1,12 +1,6 @@
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
 import {
   DropdownMenu,
@@ -23,7 +17,6 @@ import {
   useNotificationsList,
   useUnreadNotificationCount,
 } from "../hooks/use-notifications";
-import { useNotificationRealtime } from "../hooks/use-notification-realtime";
 import { useSyncNotificationReminders } from "../hooks/use-sync-notification-reminders";
 import { resolveNotificationActionUrl } from "../lib/notification-route-resolver";
 import type { NotificationRecord } from "../lib/types";
@@ -41,9 +34,6 @@ export function NotificationBell({
   const { user } = useSessionAuth();
   const { role } = useBootstrapAuth();
   const [open, setOpen] = useState(false);
-  const [toastNotification, setToastNotification] =
-    useState<NotificationRecord | null>(null);
-  const reduceMotion = useReducedMotion();
   const notificationsQuery = useNotificationsList({
     userId: user?.id ?? null,
     limit: 8,
@@ -57,17 +47,6 @@ export function NotificationBell({
     userId: user?.id ?? null,
     role,
   });
-
-  useNotificationRealtime({
-    userId: user?.id ?? null,
-    onHighPriority: (notification) => setToastNotification(notification),
-  });
-
-  useEffect(() => {
-    if (!toastNotification) return;
-    const timeout = window.setTimeout(() => setToastNotification(null), 3500);
-    return () => window.clearTimeout(timeout);
-  }, [toastNotification]);
 
   const notifications = notificationsQuery.data ?? [];
   const unreadCount = unreadCountQuery.data ?? 0;
@@ -86,36 +65,6 @@ export function NotificationBell({
 
   return (
     <>
-      <AnimatePresence>
-        {toastNotification ? (
-          <motion.div
-            initial={
-              reduceMotion
-                ? { opacity: 1 }
-                : { opacity: 0, y: -18, scale: 0.98 }
-            }
-            animate={
-              reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }
-            }
-            exit={
-              reduceMotion
-                ? { opacity: 0 }
-                : { opacity: 0, y: -12, scale: 0.98 }
-            }
-            transition={{
-              duration: reduceMotion ? 0.16 : 0.24,
-              ease: "easeOut",
-            }}
-            className="fixed right-4 top-4 z-[70]"
-          >
-            <Alert className="w-[360px] max-w-[calc(100vw-2rem)] border-warning/30 bg-[oklch(0.2_0.02_255)] shadow-[0_20px_44px_-28px_rgb(0_0_0/0.85)]">
-              <AlertTitle>{toastNotification.title}</AlertTitle>
-              <AlertDescription>{toastNotification.body}</AlertDescription>
-            </Alert>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <Button

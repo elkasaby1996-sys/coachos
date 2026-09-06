@@ -37,13 +37,20 @@ npm run supabase:db:test
 
 ## Pre-Deploy
 
-1. Confirm backups/snapshots are available.
+1. Confirm backups/snapshots are available. On the Supabase Free plan, managed
+   backups are not available as launch safety proof. Run the manual logical
+   backup workflow before hosted migration deploy and confirm the release owner
+   has downloaded and stored the artifact privately.
 2. Review migration SQL for:
    - explicit schema qualification (`public.table`)
    - lock-heavy operations
    - backwards compatibility
 3. Validate migration on staging first.
 4. Prepare rollback SQL or compensating migration.
+
+Logical backup scope: the manual workflow dumps database roles, schema, and table
+data. Supabase Storage objects are not covered by this database dump and must be
+backed up separately if they are part of the release risk.
 
 ## Deploy
 
@@ -67,11 +74,12 @@ where proname in ('pt_dashboard_summary', 'pt_clients_summary', 'assign_workout_
 ## GitHub Deploy Flow
 
 1. Merge the migration PR into `main`.
-2. `Supabase Deploy Staging` runs automatically on `main` for Supabase-related changes.
-3. Confirm the staging database and app behavior.
-4. Trigger `Supabase Deploy Production` manually from GitHub Actions. Each deploy workflow reads `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, and `SUPABASE_DB_PASSWORD` from its GitHub environment.
-   Deploy workflows also deploy the `open-wearables` Edge Function after migrations. Before running them, make sure the target Supabase project has the required function secrets set: `OPEN_WEARABLES_API_URL`, `OPEN_WEARABLES_API_KEY`, and `ALLOWED_WEARABLE_REDIRECT_ORIGINS`.
-5. Re-run post-deploy checks after production push.
+2. Trigger `Supabase Migration Status` manually from GitHub Actions to inspect the linked environment migration ledger. This workflow is read-only and runs `supabase migration list --linked`.
+3. Trigger `Supabase Deploy Staging` manually from GitHub Actions after review. This workflow runs lint, build, and unit tests before `supabase db push`.
+4. Confirm the staging database and app behavior.
+5. Trigger `Supabase Deploy Production` manually from GitHub Actions. Deploy workflows read `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, `SUPABASE_DB_PASSWORD`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY` from the target GitHub environment. The read-only migration status workflow only requires the Supabase CLI secrets.
+   Deploy workflows also deploy the `open-wearables` and `exercise-dataset-search` Edge Functions after migrations. Before running them, make sure the target Supabase project has the required function secrets set. The exercise gateway requires `EXERCISE_DATASET_BASE_URL`, `EXERCISE_DATASET_API_KEY`, `EXERCISE_DATASET_API_KEY_HEADER`, and, when required by the provider, `EXERCISE_DATASET_API_HOST`. See `docs/exercise-dataset-gateway.md` for its required deployment and credential-rotation order.
+6. Re-run post-deploy checks after production push.
 
 ## Post-Deploy
 

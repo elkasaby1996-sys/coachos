@@ -7,7 +7,7 @@ const migration = readFileSync(
     process.cwd(),
     "supabase",
     "migrations",
-    "20260412152000_transfer_lead_sets_client_lifecycle_active.sql",
+    "20260704103000_client_continuity_disable_destructive_lead_transfer.sql",
   ),
   "utf8",
 );

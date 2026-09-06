@@ -78,7 +78,7 @@ export function useClientOnboarding() {
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, display_name, full_name, phone, location, location_country, timezone, gender, sex, unit_preference, goal, injuries, limitations, equipment, days_per_week, gym_name, email, training_type, avatar_url, photo_url, date_of_birth, dob, height_value, height_unit, height_cm, weight_value_current, weight_unit, current_weight, account_onboarding_completed_at",
+          "id, workspace_id, relationship_status, display_name, full_name, phone, location, location_country, timezone, gender, sex, unit_preference, goal, injuries, limitations, equipment, days_per_week, gym_name, email, training_type, avatar_url, photo_url, date_of_birth, dob, height_value, height_unit, height_cm, weight_value_current, weight_unit, current_weight, account_onboarding_completed_at",
         )
         .eq("user_id", userId)
         .order("created_at", { ascending: true });
@@ -88,7 +88,11 @@ export function useClientOnboarding() {
         (clientData ?? []) as ClientOnboardingClientProfile[]
       ).filter(Boolean);
       const client =
-        clientRows.find((row) => Boolean(row.workspace_id)) ??
+        clientRows.find(
+          (row) =>
+            Boolean(row.workspace_id) &&
+            (row.relationship_status ?? "active") === "active",
+        ) ??
         clientRows[0] ??
         null;
       if (!client?.id || !client.workspace_id) {

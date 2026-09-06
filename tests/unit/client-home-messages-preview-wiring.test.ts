@@ -17,12 +17,10 @@ describe("client home message preview wiring", () => {
       )}`);
   });
 
-  it("uses unified inbox thread params for workspace and lead preview links", () => {
-    expect(homePage).toContain("buildClientInboxThreadParam");
-    expect(homePage).toContain("/app/messages?thread=");
-  });
-
-  it("dedupes lead preview items before rendering", () => {
-    expect(homePage).toContain("dedupeLeadThreadSummaries");
+  it("keeps the old messages preview card out of the home dashboard", () => {
+    expect(homePage).not.toContain("home-section-messages");
+    expect(homePage).not.toContain("Messages and inbox");
+    expect(homePage).not.toContain("buildClientInboxThreadParam");
+    expect(homePage).not.toContain("dedupeLeadThreadSummaries");
   });
 });

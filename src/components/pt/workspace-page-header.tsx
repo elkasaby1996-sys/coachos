@@ -43,12 +43,12 @@ export function WorkspacePageHeader({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between",
+        "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
         className,
       )}
       style={toneStyle}
     >
-      <div className="space-y-3">
+      <div className="space-y-2">
         {eyebrow ? (
           <p
             className={cn(
@@ -66,14 +66,14 @@ export function WorkspacePageHeader({
         <div className="space-y-1">
           <h1
             className={cn(
-              "text-[1.82rem] font-semibold tracking-tight text-foreground",
+              "text-[1.58rem] font-semibold leading-none tracking-tight text-foreground sm:text-[1.86rem]",
               toneClasses.title,
             )}
           >
             {title}
           </h1>
           {description ? (
-            <p className="max-w-3xl text-sm leading-5 text-muted-foreground">
+            <p className="max-w-3xl text-[12px] leading-4 text-muted-foreground opacity-80">
               {description}
             </p>
           ) : null}

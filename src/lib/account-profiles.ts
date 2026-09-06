@@ -31,6 +31,7 @@ export type PtProfileRow = {
 export type ClientProfileRow = {
   id: string;
   workspace_id: string | null;
+  relationship_status?: string | null;
   user_id: string | null;
   status: string | null;
   display_name: string | null;
@@ -418,6 +419,8 @@ export async function syncPtAccountIdentity(params: {
   phone?: string | null;
   country?: string | null;
   city?: string | null;
+  subscriptionPlan?: string | null;
+  subscriptionStatus?: string | null;
   updateAuthMetadata?: boolean;
 }) {
   const fullName = normalizeText(params.fullName);
@@ -485,6 +488,14 @@ export async function syncPtAccountIdentity(params: {
   }
   if (params.city !== undefined)
     settingsPayload.city = normalizeText(params.city);
+  if (params.subscriptionPlan !== undefined) {
+    settingsPayload.subscription_plan = normalizeText(params.subscriptionPlan);
+  }
+  if (params.subscriptionStatus !== undefined) {
+    settingsPayload.subscription_status = normalizeText(
+      params.subscriptionStatus,
+    );
+  }
 
   const { error: settingsUpsertError } = await supabase
     .from("pt_hub_settings")

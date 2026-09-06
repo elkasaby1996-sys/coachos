@@ -21,12 +21,12 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { Skeleton } from "../../components/ui/skeleton";
-import { PageContainer } from "../../components/common/page-container";
 import {
   ActionButtonLabel,
   ActionStatusMessage,
 } from "../../components/common/action-feedback";
 import { supabase } from "../../lib/supabase";
+import { workoutTemplateExerciseQueryKeys } from "../../lib/exercise-query-contracts";
 import { getSupabaseErrorMessage } from "../../lib/supabase-errors";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { selectActiveClientProfile } from "../../lib/client-profile-selection";
@@ -213,7 +213,6 @@ export function ClientWorkoutRunPage() {
   const [finishError, setFinishError] = useState<string | null>(null);
   const [completionCelebrationOpen, setCompletionCelebrationOpen] =
     useState(false);
-  const [restTimerEnabled, setRestTimerEnabled] = useState(true);
   const [restAutoStart, setRestAutoStart] = useState(true);
   const celebrationCardRef = useRef<HTMLDivElement | null>(null);
   const celebrationStatRefs = useRef<HTMLDivElement[]>([]);
@@ -333,7 +332,7 @@ export function ClientWorkoutRunPage() {
   });
 
   const templateExercisesQuery = useQuery({
-    queryKey: ["workout-template-exercises", workoutTemplateId],
+    queryKey: workoutTemplateExerciseQueryKeys.runner(workoutTemplateId),
     enabled: !!workoutTemplateId,
     queryFn: async () => {
       const templateId = workoutTemplateId;
@@ -919,7 +918,7 @@ export function ClientWorkoutRunPage() {
     () =>
       exercises.reduce(
         (sum, exercise) =>
-          sum + exercise.sets.filter((s) => s.is_completed).length,
+          sum + exercise.sets.filter((setItem) => setItem.is_completed).length,
         0,
       ),
     [exercises],
@@ -1070,18 +1069,14 @@ export function ClientWorkoutRunPage() {
     assignedExercisesQuery.isLoading || templateExercisesQuery.isLoading;
 
   return (
-    <div className="w-full space-y-6 pb-16 md:pb-0">
+    <div className="w-full space-y-6">
       <section className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Workout run
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {workoutTitle}
-          </h1>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {workoutTitle}
+            </h1>
             <Badge variant="muted">In progress</Badge>
-            <span>Log your sets as you go.</span>
           </div>
         </div>
         <div className="flex gap-2">
@@ -1424,10 +1419,8 @@ export function ClientWorkoutRunPage() {
                   completedSets={completedSets}
                   totalSets={totalSets}
                   progressPct={progressPct}
-                  restTimerEnabled={restTimerEnabled}
                   autoStartEnabled={restAutoStart}
                   autoStartTrigger={completedSetCount}
-                  onToggleRestTimer={setRestTimerEnabled}
                   onToggleAutoStart={setRestAutoStart}
                 />
               </div>
@@ -1609,25 +1602,6 @@ export function ClientWorkoutRunPage() {
           </motion.div>
         ) : null}
       </AnimatePresence>
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/60 bg-background/80 backdrop-blur md:static md:border-none md:bg-transparent md:backdrop-blur-0">
-        <PageContainer className="flex items-center justify-between py-3">
-          <div className="text-xs text-muted-foreground">
-            {workoutSession
-              ? "Ready to finish? Save and log your session."
-              : "Start the workout to log sets."}
-          </div>
-          <Button
-            onClick={() => setFinishOpen(true)}
-            disabled={!workoutSession}
-          >
-            <ActionButtonLabel
-              state={finishStatus === "success" ? "success" : "idle"}
-              idleLabel="Finish workout"
-              successLabel="Workout logged"
-            />
-          </Button>
-        </PageContainer>
-      </div>
     </div>
   );
 }

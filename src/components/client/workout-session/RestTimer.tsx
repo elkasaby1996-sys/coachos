@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, TimerReset } from "lucide-react";
 import { Button } from "../../ui/button";
-import { DashboardCard } from "../../pt/dashboard/DashboardCard";
 
 const formatTime = (seconds: number) => {
   const safe = Math.max(0, Math.floor(seconds));
@@ -74,53 +73,55 @@ export function RestTimer({
   }, [duration, remaining]);
 
   return (
-    <DashboardCard title="Rest timer" subtitle="Stay on pace between sets.">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="text-3xl font-semibold tabular-nums text-foreground">
-            {formatTime(remaining)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {duration}s default
-          </div>
-        </div>
-        <div className="h-2 w-full rounded-full bg-muted/40">
-          <div
-            className="h-2 rounded-full bg-primary transition-all"
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={toggle}>
-            {isRunning ? (
-              <>
-                <Pause className="mr-2 h-4 w-4" /> Pause
-              </>
-            ) : (
-              <>
-                <Play className="mr-2 h-4 w-4" /> Start
-              </>
-            )}
-          </Button>
-          <Button size="sm" variant="secondary" onClick={reset}>
-            <TimerReset className="mr-2 h-4 w-4" /> Reset
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => addSeconds(30)}>
-            +30s
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => addSeconds(-30)}>
-            -30s
-          </Button>
-        </div>
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={autoStartEnabled}
-            onChange={(event) => onToggleAutoStart(event.target.checked)}
-          />
-          Auto-start on completed set
-        </label>
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground">Rest timer</p>
+        <p className="text-xs text-muted-foreground">
+          Stay on pace between sets.
+        </p>
       </div>
-    </DashboardCard>
+      <div className="flex items-center justify-between">
+        <div className="text-3xl font-semibold tabular-nums text-foreground">
+          {formatTime(remaining)}
+        </div>
+        <div className="text-xs text-muted-foreground">{duration}s default</div>
+      </div>
+      <div className="h-2 w-full rounded-full bg-muted/40">
+        <div
+          className="h-2 rounded-full bg-primary transition-all"
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={toggle}>
+          {isRunning ? (
+            <>
+              <Pause className="mr-2 h-4 w-4" /> Pause
+            </>
+          ) : (
+            <>
+              <Play className="mr-2 h-4 w-4" /> Start
+            </>
+          )}
+        </Button>
+        <Button size="sm" variant="secondary" onClick={reset}>
+          <TimerReset className="mr-2 h-4 w-4" /> Reset
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => addSeconds(30)}>
+          +30s
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => addSeconds(-30)}>
+          -30s
+        </Button>
+      </div>
+      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+        <input
+          type="checkbox"
+          checked={autoStartEnabled}
+          onChange={(event) => onToggleAutoStart(event.target.checked)}
+        />
+        Auto-start on completed set
+      </label>
+    </div>
   );
 }

@@ -23,10 +23,13 @@ import {
   StatusPill,
 } from "../../components/ui/coachos";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
+import { StickySaveBar } from "../../features/settings/components/settings-primitives";
+import { useDirtyNavigationGuard } from "../../features/settings/hooks/use-dirty-navigation-guard";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";
 import { cn } from "../../lib/utils";
 import { useWorkspace } from "../../lib/use-workspace";
+import { useWorkspaceWriteAccess } from "../../features/workspace-team";
 import {
   checkinQuestionTypeOptions,
   createEmptyCheckinQuestionDraft,
@@ -126,6 +129,7 @@ export function PtCheckinTemplatesPage() {
     loading: workspaceLoading,
     error: workspaceError,
   } = useWorkspace();
+  const { canManageDelivery } = useWorkspaceWriteAccess();
   const queryClient = useQueryClient();
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     null,
@@ -495,11 +499,12 @@ export function PtCheckinTemplatesPage() {
   };
 
   const handleSaveTemplate = async () => {
+    if (!canManageDelivery) return false;
     const validationError = validateEditor();
     if (validationError) {
       setToastVariant("error");
       setToastMessage(validationError);
-      return;
+      return false;
     }
 
     setSaveState("saving");
@@ -527,7 +532,7 @@ export function PtCheckinTemplatesPage() {
         setSelectedTemplateId(createdTemplate.id);
         setToastVariant("success");
         setToastMessage("Template created.");
-        return;
+        return true;
       }
 
       const nextTemplateFields = {
@@ -558,7 +563,7 @@ export function PtCheckinTemplatesPage() {
         setToastMessage(
           "Saved as a new template version so active clients and past check-ins stay unchanged.",
         );
-        return;
+        return true;
       }
 
       const { error: updateError } = await supabase
@@ -581,17 +586,20 @@ export function PtCheckinTemplatesPage() {
       });
       setToastVariant("success");
       setToastMessage("Template saved.");
+      return true;
     } catch (error) {
       setToastVariant("error");
       setToastMessage(
         error instanceof Error ? error.message : "Unable to save template.",
       );
+      return false;
     } finally {
       setSaveState("idle");
     }
   };
 
   const handleDuplicateTemplate = async () => {
+    if (!canManageDelivery) return;
     const validationError = validateEditor();
     if (validationError) {
       setToastVariant("error");
@@ -643,13 +651,30 @@ export function PtCheckinTemplatesPage() {
   };
 
   const handleStartNewTemplate = () => {
+    if (!canManageDelivery) return;
     setCreatingNewTemplate(true);
     setSelectedTemplateId(null);
     setEditor(emptyTemplateEditor());
   };
 
+  const handleDiscardTemplateChanges = () => {
+    setToastMessage(null);
+    if (selectedTemplate) {
+      setEditor(buildEditorFromTemplate(selectedTemplate, selectedQuestions));
+      return;
+    }
+    setEditor(emptyTemplateEditor());
+  };
+
+  const { guardDialog } = useDirtyNavigationGuard({
+    isDirty: hasUnsavedChanges && saveState === "idle",
+    onSave: handleSaveTemplate,
+    onDiscard: handleDiscardTemplateChanges,
+  });
+
   return (
     <div className="space-y-8">
+      {guardDialog}
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[320px]">
           <Alert
@@ -672,16 +697,12 @@ export function PtCheckinTemplatesPage() {
         description="Build question sets that feel coach-ready, stay aligned with the client renderer, and stay safe once clients start submitting."
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={handleStartNewTemplate}>
-              <Plus className="mr-2 h-4 w-4" />
-              New template
-            </Button>
-            <Button
-              onClick={handleSaveTemplate}
-              disabled={saveState !== "idle" || !hasUnsavedChanges}
-            >
-              {saveLabel}
-            </Button>
+            {canManageDelivery ? (
+              <Button variant="secondary" onClick={handleStartNewTemplate}>
+                <Plus className="mr-2 h-4 w-4" />
+                New template
+              </Button>
+            ) : null}
           </div>
         }
       />
@@ -758,8 +779,8 @@ export function PtCheckinTemplatesPage() {
             <EmptyState
               title="No check-in templates yet"
               description="Start with a reusable template, then assign it as a workspace default or a client override."
-              actionLabel="Create template"
-              onAction={handleStartNewTemplate}
+              actionLabel={canManageDelivery ? "Create template" : undefined}
+              onAction={canManageDelivery ? handleStartNewTemplate : undefined}
             />
           ) : (
             <div className="space-y-3">
@@ -846,7 +867,11 @@ export function PtCheckinTemplatesPage() {
                 variant="secondary"
                 size="sm"
                 onClick={handleDuplicateTemplate}
-                disabled={saveState !== "idle" || editor.questions.length === 0}
+                disabled={
+                  saveState !== "idle" ||
+                  editor.questions.length === 0 ||
+                  !canManageDelivery
+                }
               >
                 <Copy className="mr-2 h-4 w-4" />
                 Duplicate
@@ -1370,13 +1395,19 @@ export function PtCheckinTemplatesPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" onClick={handleStartNewTemplate}>
-                  <LayoutTemplate className="mr-2 h-4 w-4" />
-                  Start fresh
-                </Button>
+                {canManageDelivery ? (
+                  <Button variant="secondary" onClick={handleStartNewTemplate}>
+                    <LayoutTemplate className="mr-2 h-4 w-4" />
+                    Start fresh
+                  </Button>
+                ) : null}
                 <Button
                   onClick={handleSaveTemplate}
-                  disabled={saveState !== "idle" || !hasUnsavedChanges}
+                  disabled={
+                    saveState !== "idle" ||
+                    !hasUnsavedChanges ||
+                    !canManageDelivery
+                  }
                 >
                   {saveLabel}
                 </Button>
@@ -1385,6 +1416,13 @@ export function PtCheckinTemplatesPage() {
           </div>
         </DashboardCard>
       </div>
+      <StickySaveBar
+        isDirty={hasUnsavedChanges && canManageDelivery}
+        isSaving={saveState === "saving"}
+        onSave={handleSaveTemplate}
+        onDiscard={handleDiscardTemplateChanges}
+        statusText="Unsaved template changes"
+      />
     </div>
   );
 }

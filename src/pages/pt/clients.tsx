@@ -8,13 +8,12 @@ import {
   ShieldAlert,
   UsersRound,
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { PtHubClientTable } from "../../features/pt-hub/components/pt-hub-client-table";
@@ -31,7 +30,8 @@ import { useWorkspace } from "../../lib/use-workspace";
 
 export function PtClientsPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     workspaceId,
     loading: workspaceLoading,
@@ -64,13 +64,26 @@ export function PtClientsPage() {
   );
   const [segmentFilter, setSegmentFilter] =
     useState<ClientSegmentKey>(initialSegmentFilter);
+  const initialToastMessage =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "toastMessage" in location.state &&
+    typeof location.state.toastMessage === "string"
+      ? location.state.toastMessage
+      : null;
+  const [toastMessage, setToastMessage] = useState<string | null>(
+    initialToastMessage,
+  );
   const [page, setPage] = useState(0);
   const deferredSearchValue = useDeferredValue(searchValue);
+  const viewParam = searchParams.get("view");
+  const clientListView = viewParam === "archived" ? "archived" : "active";
   const hasWorkspaceContext = Boolean(workspaceId);
   const clientsQuery = usePtHubClientsPage({
     page,
     pageSize: 25,
     workspaceId: workspaceId ?? undefined,
+    relationshipScope: clientListView,
     lifecycle: lifecycleFilter,
     segment: segmentFilter,
     search: deferredSearchValue,
@@ -100,18 +113,44 @@ export function PtClientsPage() {
     (clientsQuery.isFetching && !clientsQuery.data);
   const hasAnyClients = stats.totalClients > 0;
   const isEmpty = totalCount === 0;
+  const emptyDescription =
+    clientListView === "archived"
+      ? "No archived clients yet. Removed or transferred-out client relationships will appear here."
+      : hasAnyClients
+        ? "No clients match the current filters."
+        : "You do not have any client records yet.";
   const queryError =
     clientsQuery.error instanceof Error ? clientsQuery.error.message : null;
   const errorMessage = workspaceError?.message ?? queryError;
 
   useEffect(() => {
     setPage(0);
-  }, [deferredSearchValue, lifecycleFilter, segmentFilter, workspaceId]);
+  }, [
+    deferredSearchValue,
+    lifecycleFilter,
+    segmentFilter,
+    workspaceId,
+    clientListView,
+  ]);
 
   useEffect(() => {
     setLifecycleFilter(initialLifecycleFilter);
     setSegmentFilter(initialSegmentFilter);
   }, [initialLifecycleFilter, initialSegmentFilter]);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timeout = setTimeout(() => setToastMessage(null), 3000);
+    return () => clearTimeout(timeout);
+  }, [toastMessage]);
+
+  useEffect(() => {
+    if (!initialToastMessage) return;
+    navigate(
+      { pathname: location.pathname, search: location.search },
+      { replace: true, state: null },
+    );
+  }, [initialToastMessage, location.pathname, location.search, navigate]);
 
   const openClient = (client: PTClientSummary) => {
     const detailPath =
@@ -122,9 +161,25 @@ export function PtClientsPage() {
       client.onboardingIncomplete ? `${detailPath}?tab=onboarding` : detailPath,
     );
   };
+  const setClientListView = (nextView: "active" | "archived") => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextView === "archived") {
+      nextParams.set("view", "archived");
+    } else {
+      nextParams.delete("view");
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
 
   return (
     <section className="space-y-6">
+      {toastMessage ? (
+        <Alert className="border-success/30">
+          <AlertTitle>Success</AlertTitle>
+          <AlertDescription>{toastMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+
       {errorMessage ? (
         <Alert className="border-destructive/30">
           <AlertTitle>Error</AlertTitle>
@@ -178,18 +233,13 @@ export function PtClientsPage() {
       </div>
 
       <PtHubSectionCard title="Client List" contentClassName="space-y-6">
-        <div className="grid gap-3 lg:grid-cols-[minmax(320px,1fr)_minmax(270px,0.75fr)_150px] lg:items-end lg:gap-4 lg:px-2">
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="pt-clients-search"
-              className="text-xs font-semibold text-muted-foreground"
-            >
-              Search
-            </Label>
+        <div className="grid gap-3 lg:grid-cols-[minmax(320px,1fr)_minmax(240px,0.65fr)_150px_auto] lg:items-center lg:gap-4 lg:px-2">
+          <div>
             <div className="relative">
               <Search className="app-search-icon h-4 w-4" />
               <Input
                 id="pt-clients-search"
+                aria-label="Search clients"
                 className="app-search-input"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
@@ -197,15 +247,10 @@ export function PtClientsPage() {
               />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="pt-clients-lifecycle"
-              className="text-xs font-semibold text-muted-foreground"
-            >
-              Lifecycle
-            </Label>
+          <div>
             <Select
               id="pt-clients-lifecycle"
+              aria-label="Lifecycle"
               variant="filter"
               value={lifecycleFilter}
               onChange={(event) => setLifecycleFilter(event.target.value)}
@@ -219,15 +264,10 @@ export function PtClientsPage() {
               <option value="churned">Churned</option>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="pt-clients-segment"
-              className="text-xs font-semibold text-muted-foreground"
-            >
-              Segment
-            </Label>
+          <div>
             <Select
               id="pt-clients-segment"
+              aria-label="Segment"
               variant="filter"
               value={segmentFilter}
               onChange={(event) =>
@@ -243,6 +283,42 @@ export function PtClientsPage() {
               <option value="paused">Paused clients</option>
             </Select>
           </div>
+          <div>
+            <div
+              id="pt-clients-relationship-view"
+              className="inline-flex h-11 items-center gap-1"
+              aria-label="Client relationship view"
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-pressed={clientListView === "active"}
+                onClick={() => setClientListView("active")}
+                className={`h-10 px-4 ${
+                  clientListView === "active"
+                    ? "border border-primary/25 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground"
+                    : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                }`}
+              >
+                Active
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-pressed={clientListView === "archived"}
+                onClick={() => setClientListView("archived")}
+                className={`h-10 px-4 ${
+                  clientListView === "archived"
+                    ? "border border-primary/25 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground"
+                    : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                }`}
+              >
+                Archived
+              </Button>
+            </div>
+          </div>
         </div>
 
         {isTableLoading ? (
@@ -254,11 +330,7 @@ export function PtClientsPage() {
         ) : isEmpty ? (
           <EmptyState
             title="No clients found"
-            description={
-              hasAnyClients
-                ? "No clients match the current filters."
-                : "You do not have any client records yet."
-            }
+            description={emptyDescription}
             icon={<UsersRound className="h-5 w-5 [stroke-width:1.7]" />}
           />
         ) : (
@@ -272,9 +344,11 @@ export function PtClientsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
           <p>
             {isEmpty
-              ? hasAnyClients
-                ? "No clients match the current filters."
-                : "No client records yet."
+              ? clientListView === "archived"
+                ? "No archived clients yet."
+                : hasAnyClients
+                  ? "No clients match the current filters."
+                  : "No client records yet."
               : `Showing ${rangeStart}-${rangeEnd} of ${totalCount} clients`}
           </p>
           <div className="flex items-center gap-2">

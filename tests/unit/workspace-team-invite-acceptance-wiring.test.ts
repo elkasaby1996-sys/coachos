@@ -31,6 +31,14 @@ describe("workspace team invite acceptance wiring", () => {
     expect(ptSignupSource).toContain("next: inviteRedirect");
   });
 
+  it("gates invite preview metadata before rendering it", () => {
+    expect(pageSource).toContain("deriveInviteDisplayAuthorization");
+    expect(pageSource).toContain("enabled: previewEnabled");
+    expect(pageSource).toContain("const displayPreview =");
+    expect(pageSource).toContain("<InvitePreviewCard preview={displayPreview}");
+    expect(pageSource).toContain("preview={displayPreview}");
+  });
+
   it("keeps invite acceptance server-side and redirects to the service result", () => {
     expect(pageSource).toContain("acceptWorkspaceTeamInvite");
     expect(pageSource).toContain("navigate(result.redirectTo");
@@ -40,11 +48,36 @@ describe("workspace team invite acceptance wiring", () => {
   });
 
   it("renders required terminal and mismatch copy", () => {
-    expect(pageSource).toContain("Sign in to accept");
-    expect(pageSource).toContain("Create account to accept");
+    expect(pageSource).toContain("Sign in to continue");
+    expect(pageSource).toContain("This invitation isn't available");
+    expect(pageSource).toContain(
+      "This workspace invitation can only be viewed by the email address it was sent to.",
+    );
+    expect(pageSource).toContain("Sign in with the invited account");
+    expect(pageSource).toContain(
+      "Please sign out and sign in with the email address that received this",
+    );
+    expect(pageSource).toContain("This invitation link isn't valid");
+    expect(pageSource).toContain(
+      "The invite link may be incorrect or no longer available.",
+    );
+    expect(pageSource).not.toContain("We could not load this team invite.");
+    expect(pageSource).not.toContain("Invitation unavailable for this account");
     expect(pageSource).toContain("This invite was sent to");
     expect(pageSource).toContain("This invite has expired");
     expect(pageSource).toContain("This invite is no longer available");
     expect(pageSource).toContain("This invite has already been accepted");
+  });
+
+  it("uses a unified visible safe-state invite CTA label", () => {
+    expect(pageSource).toContain("getSafeInviteHomeAction");
+    expect(pageSource).toContain('accountType === "client"');
+    expect(pageSource).toContain("Back to homepage");
+    expect(pageSource).toContain('to: "/app/home"');
+    expect(pageSource).toContain('to: "/pt-hub"');
+    expect(pageSource).toContain("accountType={accountType}");
+    expect(pageSource).toContain("safeHomeAction.label");
+    expect(pageSource).not.toContain("Back to Client Home");
+    expect(pageSource).not.toContain("Back to Home");
   });
 });

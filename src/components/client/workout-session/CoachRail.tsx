@@ -7,20 +7,16 @@ export function CoachRail({
   completedSets,
   totalSets,
   progressPct,
-  restTimerEnabled,
   autoStartEnabled,
   autoStartTrigger,
-  onToggleRestTimer,
   onToggleAutoStart,
 }: {
   sessionNotes: string | null;
   completedSets: number;
   totalSets: number;
   progressPct: number;
-  restTimerEnabled: boolean;
   autoStartEnabled: boolean;
   autoStartTrigger: number;
-  onToggleRestTimer: (next: boolean) => void;
   onToggleAutoStart: (next: boolean) => void;
 }) {
   return (
@@ -48,25 +44,15 @@ export function CoachRail({
             <ListChecks className="h-4 w-4 text-primary" />
             Track progress as you go.
           </div>
+          <div className="border-t border-border/60 pt-4">
+            <RestTimer
+              autoStartEnabled={autoStartEnabled}
+              autoStartTrigger={autoStartTrigger}
+              onToggleAutoStart={onToggleAutoStart}
+            />
+          </div>
         </div>
       </DashboardCard>
-      <DashboardCard title="Rest timer">
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={restTimerEnabled}
-            onChange={(event) => onToggleRestTimer(event.target.checked)}
-          />
-          Show timer panel
-        </label>
-      </DashboardCard>
-      {restTimerEnabled ? (
-        <RestTimer
-          autoStartEnabled={autoStartEnabled}
-          autoStartTrigger={autoStartTrigger}
-          onToggleAutoStart={onToggleAutoStart}
-        />
-      ) : null}
     </div>
   );
 }

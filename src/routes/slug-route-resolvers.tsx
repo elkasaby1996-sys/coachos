@@ -15,6 +15,9 @@ import { EmptyState } from "../components/ui/coachos/empty-state";
 import { appendSearchParams, routes } from "../lib/routes";
 import { supabase } from "../lib/supabase";
 import { useWorkspace } from "../lib/use-workspace";
+import { traceAsync, traceEnd, traceStart } from "../lib/perf-trace";
+import { getClientRouteGuardDecision } from "../lib/client-route-guard";
+import { getWorkspaceRouteGuardDecision } from "../lib/workspace-route-guard";
 import {
   buildLegacyWorkspaceEntryRedirectPath,
   buildLegacyWorkspaceSettingsRedirectPath,
@@ -69,6 +72,12 @@ function RouteNotFound({ title }: { title: string }) {
   );
 }
 
+type WorkspaceAccessContextRow = {
+  workspace_id: string;
+  role: string;
+  member_status: string;
+};
+
 export function WorkspaceSlugBoundary() {
   const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
   const { switchWorkspace } = useWorkspace();
@@ -76,19 +85,58 @@ export function WorkspaceSlugBoundary() {
     queryKey: ["route-workspace-slug", workspaceSlug],
     enabled: Boolean(workspaceSlug),
     queryFn: async () => {
-      return await resolveWorkspaceRouteParam(workspaceSlug);
+      return await traceAsync(
+        "WorkspaceSlugBoundary.slug_resolution",
+        () => resolveWorkspaceRouteParam(workspaceSlug),
+        { workspaceSlug },
+      );
     },
+  });
+  const workspaceAccessQuery = useQuery({
+    queryKey: ["route-workspace-access", workspaceQuery.data?.id],
+    enabled: Boolean(workspaceQuery.data?.id),
+    queryFn: async () => {
+      const { data, error } = await traceAsync(
+        "WorkspaceSlugBoundary.workspace_access_context",
+        () =>
+          supabase.rpc("workspace_access_context", {
+            p_workspace_id: workspaceQuery.data?.id,
+          }),
+        { workspaceId: workspaceQuery.data?.id },
+      );
+
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : null;
+      return (row ?? null) as WorkspaceAccessContextRow | null;
+    },
+  });
+  const workspaceAccessAllowed = Boolean(
+    workspaceAccessQuery.data?.workspace_id,
+  );
+  const guardDecision = getWorkspaceRouteGuardDecision({
+    routeLoading: workspaceQuery.isLoading,
+    accessLoading: workspaceAccessQuery.isLoading,
+    routeWorkspaceId: workspaceQuery.data?.id,
+    accessWorkspaceId: workspaceAccessQuery.data?.workspace_id,
+    routeError: workspaceQuery.error,
+    accessError: workspaceAccessQuery.error,
   });
 
   useEffect(() => {
-    if (workspaceQuery.data?.id) {
+    if (workspaceAccessAllowed && workspaceQuery.data?.id) {
+      const startedAt = traceStart("WorkspaceSlugBoundary.switchWorkspace", {
+        workspaceId: workspaceQuery.data.id,
+      });
       switchWorkspace(workspaceQuery.data.id);
+      traceEnd("WorkspaceSlugBoundary.switchWorkspace", startedAt, {
+        workspaceId: workspaceQuery.data.id,
+      });
     }
-  }, [switchWorkspace, workspaceQuery.data?.id]);
+  }, [switchWorkspace, workspaceAccessAllowed, workspaceQuery.data?.id]);
 
-  if (workspaceQuery.isLoading) return <RouteLoading />;
-  if (workspaceQuery.error || !workspaceQuery.data) {
-    return <RouteNotFound title="Workspace not found" />;
+  if (guardDecision === "loading") return <RouteLoading />;
+  if (guardDecision === "redirect") {
+    return <Navigate to={routes.ptHub()} replace />;
   }
 
   return <Outlet />;
@@ -98,7 +146,21 @@ type ClientRouteRow = {
   id: string;
   workspace_id: string;
   url_key: string | null;
+  relationship_status: string | null;
 };
+
+const getClientRouteKeyFallback = (clientId: string | null | undefined) =>
+  clientId
+    ? `c-${clientId.split("-").join("").slice(0, 8).toLowerCase()}`
+    : null;
+
+function getClientRouteRelationshipRank(status: string | null | undefined) {
+  const relationshipStatus = status ?? "active";
+  if (relationshipStatus === "active") return 0;
+  if (relationshipStatus === "removed") return 1;
+  if (relationshipStatus === "transferred_out") return 1;
+  return 2;
+}
 
 export function WorkspaceClientDetailRoute() {
   const { workspaceSlug, clientUrlKey } = useParams<{
@@ -115,23 +177,61 @@ export function WorkspaceClientDetailRoute() {
 
       const { data, error } = await supabase
         .from("clients")
-        .select("id, workspace_id, url_key")
+        .select("id, workspace_id, url_key, relationship_status")
         .eq("workspace_id", workspace.id)
-        .eq("url_key", clientUrlKey ?? "")
-        .maybeSingle<ClientRouteRow>();
+        .or(`url_key.eq.${clientUrlKey},url_key.is.null`)
+        .returns<ClientRouteRow[]>();
       if (error) throw error;
-      return data;
+      const candidates = (data ?? [])
+        .filter((client) => {
+          const persistedUrlKey = client.url_key?.trim() || null;
+          return (
+            persistedUrlKey === clientUrlKey ||
+            (!persistedUrlKey &&
+              getClientRouteKeyFallback(client.id) === clientUrlKey)
+          );
+        })
+        .sort(
+          (left, right) =>
+            getClientRouteRelationshipRank(left.relationship_status) -
+            getClientRouteRelationshipRank(right.relationship_status),
+        );
+
+      for (const client of candidates) {
+        // Mirrors public.can_access_client(client.id, 'clients.view') for historical route access.
+        const { data: accessAllowed, error: accessError } = await supabase.rpc(
+          "can_access_client",
+          {
+            p_client_id: client.id,
+            p_permission: "clients.view",
+          },
+        );
+        if (accessError) throw accessError;
+        if (accessAllowed === true) return client;
+      }
+
+      return null;
     },
   });
+  const guardDecision = getClientRouteGuardDecision({
+    routeLoading: clientQuery.isLoading,
+    clientId: clientQuery.data?.id,
+    accessLoading: false,
+    accessAllowed: Boolean(clientQuery.data),
+    routeError: clientQuery.error,
+    accessError: null,
+  });
 
-  if (clientQuery.isLoading) return <RouteLoading />;
-  if (clientQuery.error || !clientQuery.data) {
+  if (guardDecision === "loading") return <RouteLoading />;
+  if (guardDecision === "redirect") {
     return <RouteNotFound title="Client not found" />;
   }
+  const client = clientQuery.data;
+  if (!client) return <RouteNotFound title="Client not found" />;
 
   return (
     <Suspense fallback={<RouteLoading />}>
-      <LazyPtClientDetailPage clientIdOverride={clientQuery.data.id} />
+      <LazyPtClientDetailPage clientIdOverride={client.id} />
     </Suspense>
   );
 }

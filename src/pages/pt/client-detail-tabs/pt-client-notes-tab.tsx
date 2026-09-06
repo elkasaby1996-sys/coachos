@@ -13,6 +13,14 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../../components/ui/dialog";
 import { useSessionAuth } from "../../../lib/auth";
 import { supabase } from "../../../lib/supabase";
 import { getSupabaseErrorMessage } from "../../../lib/supabase-errors";
@@ -62,6 +70,7 @@ export function PtClientNotesTab({
   const [noteActionMessage, setNoteActionMessage] = useState<string | null>(
     null,
   );
+  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
   const noteLimitState = getCharacterLimitState({
     value: noteDraft,
     kind: "default_text",
@@ -203,8 +212,6 @@ export function PtClientNotesTab({
 
   const handleDeleteNote = async (noteId: string) => {
     if (!clientId || !workspaceId || !user?.id) return;
-    const confirmed = window.confirm("Delete this note?");
-    if (!confirmed) return;
     setNoteActionStatus("saving");
     setNoteActionMessage(null);
 
@@ -229,6 +236,7 @@ export function PtClientNotesTab({
     }
     setNoteActionStatus("idle");
     setNoteActionMessage("Note deleted.");
+    setDeleteNoteId(null);
     await queryClient.invalidateQueries({
       queryKey: ["pt-client-notes", clientId, workspaceId],
     });
@@ -241,6 +249,52 @@ export function PtClientNotesTab({
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.1fr)]">
+      <Dialog
+        open={Boolean(deleteNoteId)}
+        onOpenChange={(open) => {
+          if (!open && noteActionStatus !== "saving") {
+            setDeleteNoteId(null);
+            setNoteActionMessage(null);
+            setNoteActionStatus("idle");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Delete note?</DialogTitle>
+            <DialogDescription>
+              This permanently removes this note from the client record.
+            </DialogDescription>
+          </DialogHeader>
+          {noteActionStatus === "error" && noteActionMessage ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              {noteActionMessage}
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={noteActionStatus === "saving"}
+              onClick={() => setDeleteNoteId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
+              disabled={noteActionStatus === "saving" || !deleteNoteId}
+              onClick={() => {
+                if (deleteNoteId) void handleDeleteNote(deleteNoteId);
+              }}
+            >
+              {noteActionStatus === "saving" ? "Deleting..." : "Delete note"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card className="border-border/70 bg-card/80">
         <CardHeader>
           <CardTitle>Add note</CardTitle>
@@ -393,7 +447,10 @@ export function PtClientNotesTab({
                         className="text-destructive hover:text-destructive"
                         aria-label="Delete note"
                         disabled={noteActionStatus === "saving"}
-                        onClick={() => handleDeleteNote(note.id)}
+                        onClick={() => {
+                          setNoteActionMessage(null);
+                          setDeleteNoteId(note.id);
+                        }}
                       >
                         <Trash2 className="mr-1 h-3.5 w-3.5" />
                         Delete

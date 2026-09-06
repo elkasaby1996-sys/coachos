@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
+  CheckCircle2,
   ExternalLink,
   Globe,
   Instagram,
   Linkedin,
   MapPin,
-  Monitor,
-  Users,
   Youtube,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import gsap from "gsap";
 import { Badge } from "../../../components/ui/badge";
 import type { BadgeVariant } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -31,7 +30,7 @@ const coachingModeLabels: Record<string, string> = {
   one_on_one: "1:1 coaching",
   programming: "Programming",
   nutrition: "Nutrition",
-  accountability: "Consultation",
+  accountability: "Accountability",
 };
 
 const availabilityLabels: Record<string, string> = {
@@ -46,12 +45,52 @@ const socialPlatformIcons = {
   youtube: Youtube,
 } as const;
 
+const approachItems = [
+  {
+    title: "Start with context",
+    body: "Training history, current routine, constraints, and goals shape the starting plan.",
+  },
+  {
+    title: "Build the plan around real life",
+    body: "Training, nutrition guidance, habits, and check-ins should be demanding enough to create progress and realistic enough to follow.",
+  },
+  {
+    title: "Review what is actually happening",
+    body: "Check-ins, messages, adherence, performance, and recovery context inform the next coaching decision.",
+  },
+  {
+    title: "Adjust deliberately",
+    body: "Changes should respond to evidence and feedback rather than constant program switching.",
+  },
+];
+
+const experienceItems = [
+  "Individual training program",
+  "Nutrition guidance",
+  "Habit targets",
+  "Recurring check-ins",
+  "Coach-client messaging",
+  "Progress reviews",
+  "Supported wearable context, when enabled",
+];
+
+const successSteps = [
+  "Application submitted",
+  "Coach reviews",
+  "Coach may contact you",
+  "Approval or decline",
+];
+
 function getExternalHref(url: string) {
   const value = url.trim();
   if (!value) return "#";
   if (/^[a-z][a-z\d+.-]*:/i.test(value)) return value;
   if (value.startsWith("//")) return `https:${value}`;
   return `https://${value}`;
+}
+
+function getFirstName(name: string) {
+  return name.trim().split(/\s+/)[0] || "the coach";
 }
 
 export function PublicPtProfileView({
@@ -77,88 +116,42 @@ export function PublicPtProfileView({
   }>;
 }) {
   const title = profile.displayName || profile.fullName || "Coach";
+  const firstName = getFirstName(title);
   const reduceMotion = useReducedMotion();
-  const heroGlowRef = useRef<HTMLDivElement | null>(null);
-  const profileCardRef = useRef<HTMLDivElement | null>(null);
   const applyFormRef = useRef<HTMLDivElement | null>(null);
-  const sectionRefs = useRef<Array<HTMLElement | null>>([]);
   const hasPackages = shouldRenderPublicPackagesSection(packageOptions);
   const [packagePrefill, setPackagePrefill] = useState<{
     id: string;
     nonce: number;
   } | null>(null);
   const packageCards = useMemo(() => packageOptions, [packageOptions]);
-
-  useEffect(() => {
-    if (reduceMotion) {
-      sectionRefs.current.forEach((section) => {
-        if (!section) {
-          return;
-        }
-        gsap.set(section, { opacity: 1, y: 0 });
-      });
-      return;
-    }
-
-    const heroGlow = heroGlowRef.current;
-    const profileCard = profileCardRef.current;
-    if (!heroGlow || !profileCard) {
-      return;
-    }
-
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        heroGlow,
-        { xPercent: -4, yPercent: -2, scale: 0.96 },
-        {
-          xPercent: 4,
-          yPercent: 3,
-          scale: 1.06,
-          duration: 10,
-          ease: "sine.inOut",
-          repeat: -1,
-          yoyo: true,
-        },
-      );
-
-      gsap.fromTo(
-        profileCard,
-        { y: 12, rotateX: 1.5 },
-        {
-          y: -10,
-          rotateX: -1,
-          duration: 7.5,
-          ease: "sine.inOut",
-          repeat: -1,
-          yoyo: true,
-        },
-      );
-
-      sectionRefs.current.forEach((section, index) => {
-        if (!section) {
-          return;
-        }
-
-        gsap.fromTo(
-          section,
-          { y: 28, opacity: 0 },
+  const modes = [
+    ...profile.coachingModes.map((mode) => coachingModeLabels[mode] ?? mode),
+    ...profile.availabilityModes.map(
+      (mode) => availabilityLabels[mode] ?? mode,
+    ),
+  ];
+  const locationLabel = profile.locationLabel || "Location shared by coach";
+  const fitStatements =
+    profile.specialties.length > 0
+      ? profile.specialties.slice(0, 3).map((specialty) => ({
+          title: specialty,
+          body: `Built for clients looking for ${specialty.toLowerCase()} support with a structured coaching relationship.`,
+        }))
+      : [
           {
-            y: 0,
-            opacity: 1,
-            duration: 0.7,
-            delay: 0.15 + index * 0.08,
-            ease: "power2.out",
+            title: "Clear goals",
+            body: "Best for clients who can explain what they want coaching to help them improve.",
           },
-        );
-      });
-    });
-
-    return () => ctx.revert();
-  }, [reduceMotion, hasPackages, packageCards.length]);
-
-  const registerSection = (index: number) => (node: HTMLElement | null) => {
-    sectionRefs.current[index] = node;
-  };
+          {
+            title: "Consistent communication",
+            body: "Built for clients willing to share training context, feedback, and constraints.",
+          },
+          {
+            title: "Structured follow-through",
+            body: "Useful when you want a coach to review progress and adjust the plan deliberately.",
+          },
+        ];
 
   const handleApplyForPackage = (packageId: string) => {
     setPackagePrefill((prev) => ({
@@ -172,364 +165,355 @@ export function PublicPtProfileView({
   };
 
   return (
-    <div className="min-h-screen text-foreground">
+    <div className="min-h-screen bg-[#FBF9F1] text-[#171915]">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <motion.div
+        <Button
+          asChild
+          variant="ghost"
+          className="mb-6 h-auto gap-2 px-0 text-[11px] font-bold uppercase tracking-[0.18em] text-[#285D49] hover:bg-transparent hover:text-[#1f4939]"
+        >
+          <a href="/coaches">
+            <ArrowLeft className="h-4 w-4" />
+            Back to coach marketplace
+          </a>
+        </Button>
+
+        {preview && previewStatusBadges.length > 0 ? (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {previewStatusBadges.map((badge) => (
+              <Badge key={badge.label} variant={badge.tone ?? "info"}>
+                {badge.label}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
+
+        <motion.section
           initial={reduceMotion ? false : { opacity: 0, y: 18 }}
           animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: "easeOut" }}
-          className="overflow-hidden rounded-[36px] border border-border/70 bg-card/82 shadow-[0_32px_100px_-68px_oklch(var(--primary)/0.42)] backdrop-blur-2xl"
+          className="relative isolate overflow-hidden border-y border-[#285D49]/20 px-4 py-10 sm:px-8 lg:px-12 lg:py-16"
         >
-          <div className="relative overflow-hidden border-b border-border/60 bg-[linear-gradient(135deg,oklch(var(--card)/0.96),oklch(var(--secondary)/0.42))]">
-            <div
-              ref={heroGlowRef}
+          {profile.bannerImageUrl ? (
+            <img
+              src={profile.bannerImageUrl}
+              alt=""
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-[-8%] top-[-18%] h-[22rem] rounded-full bg-[radial-gradient(circle,oklch(var(--primary)/0.18),oklch(var(--primary)/0.04)_58%,transparent_74%)] blur-3xl"
+              className="absolute inset-0 -z-20 h-full w-full object-cover"
             />
-            {preview && previewStatusBadges.length > 0 ? (
-              <div className="absolute right-6 top-6 z-20 flex flex-wrap items-center justify-end gap-2 sm:right-8 sm:top-8">
-                {previewStatusBadges.map((badge) => (
+          ) : null}
+          <div
+            className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(251,249,241,0.96)_0%,rgba(251,249,241,0.9)_45%,rgba(251,249,241,0.42)_72%,rgba(251,249,241,0.78)_100%)]"
+            aria-hidden="true"
+          />
+          <div
+            className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_20%,rgba(40,93,73,0.22),transparent_32%)]"
+            aria-hidden="true"
+          />
+
+          <div className="max-w-3xl space-y-7">
+            <div className="space-y-4">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                {profile.profilePhotoUrl ? (
+                  <div className="h-28 w-28 shrink-0 overflow-hidden rounded-[8px] border border-[#285D49]/18 bg-[#FBF9F1] shadow-[0_24px_62px_-42px_rgba(15,38,29,0.5)] sm:h-32 sm:w-32 lg:h-36 lg:w-36">
+                    <img
+                      src={profile.profilePhotoUrl}
+                      alt={`${title} display photo`}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                ) : null}
+                <h1 className="font-serif text-5xl font-semibold leading-[0.96] tracking-normal text-[#0F261D] sm:text-6xl lg:text-7xl">
+                  {title}
+                </h1>
+              </div>
+              {profile.headline ? (
+                <p className="max-w-2xl text-2xl font-semibold leading-tight text-[#171915]">
+                  {profile.headline}
+                </p>
+              ) : null}
+              {profile.shortBio ? (
+                <p className="max-w-2xl text-base leading-7 text-[#43514B]">
+                  {profile.shortBio}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-sm text-[#43514B]">
+              {modes.length > 0 ? <span>{modes.join(" · ")}</span> : null}
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-4 w-4 text-[#285D49]" />
+                {locationLabel}
+              </span>
+            </div>
+
+            {profile.specialties.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {profile.specialties.slice(0, 6).map((specialty) => (
                   <Badge
-                    key={badge.label}
-                    variant={badge.tone ?? "info"}
-                    className="rounded-full border border-border/70 bg-card/78 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground shadow-[0_18px_42px_-34px_oklch(var(--primary)/0.48),inset_0_1px_0_oklch(1_0_0/0.62)] backdrop-blur-3xl"
+                    key={specialty}
+                    className="rounded-full border-[#285D49]/20 bg-[#E2EFE8] px-3 py-1 text-[#285D49]"
                   >
-                    {badge.label}
+                    {specialty}
                   </Badge>
                 ))}
               </div>
             ) : null}
-            {profile.bannerImageUrl ? (
-              <img
-                src={profile.bannerImageUrl}
-                alt={title}
-                className="h-[280px] w-full object-cover opacity-80 sm:h-[320px]"
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                className="bg-[#07543F] text-[#FBF9F1] hover:bg-[#0A3F31]"
+                onClick={() =>
+                  applyFormRef.current?.scrollIntoView({
+                    behavior: reduceMotion ? "auto" : "smooth",
+                    block: "start",
+                  })
+                }
+              >
+                Apply to work with {firstName}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button
+                asChild
+                variant="secondary"
+                className="border border-[#285D49]/30 bg-transparent text-[#0F261D] hover:bg-white/70"
+              >
+                <a href="#coaching-options">View coaching options</a>
+              </Button>
+            </div>
+          </div>
+        </motion.section>
+
+        <div className="grid gap-12 py-12 lg:grid-cols-[minmax(0,0.76fr)_minmax(0,1fr)] lg:py-16">
+          <SectionIntro eyebrow="About" title={`Meet ${firstName}.`} />
+          <div className="space-y-5">
+            <p className="text-lg leading-8 text-[#43514B]">
+              {profile.shortBio ||
+                `${firstName}'s public biography will appear here once the coach publishes it.`}
+            </p>
+            {profile.socialLinks.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {profile.socialLinks.map((link) => {
+                  const PlatformIcon =
+                    socialPlatformIcons[
+                      link.platform as keyof typeof socialPlatformIcons
+                    ] ?? Globe;
+
+                  return (
+                    <a
+                      key={link.platform}
+                      href={getExternalHref(link.url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#285D49]/18 bg-white/72 px-4 text-sm font-semibold text-[#285D49] transition hover:border-[#285D49]/35 hover:bg-white"
+                    >
+                      <PlatformIcon className="h-4 w-4" />
+                      {link.label}
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <section className="border-t border-[#285D49]/16 py-12 lg:py-16">
+          <SectionIntro
+            eyebrow="Coaching fit"
+            title="Who this coaching is built for."
+          />
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {fitStatements.map((item) => (
+              <InfoPanel key={item.title} title={item.title} body={item.body} />
+            ))}
+          </div>
+          <p className="mt-6 max-w-3xl border-l-2 border-[#285D49] pl-4 text-sm font-medium leading-6 text-[#43514B]">
+            The application gives both you and {firstName} a chance to decide
+            whether the coaching relationship is appropriate.
+          </p>
+        </section>
+
+        <section className="border-t border-[#285D49]/16 py-12 lg:py-16">
+          <SectionIntro
+            eyebrow="Approach"
+            title={`How ${firstName} coaches.`}
+          />
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {approachItems.map((item) => (
+              <InfoPanel key={item.title} title={item.title} body={item.body} />
+            ))}
+          </div>
+        </section>
+
+        <section className="border-t border-[#285D49]/16 py-12 lg:py-16">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)]">
+            <SectionIntro
+              eyebrow="The experience"
+              title="What working together may include."
+            />
+            <div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {experienceItems.map((item) => (
+                  <div
+                    key={item}
+                    className="flex min-h-14 items-center gap-3 rounded-[8px] border border-[#285D49]/14 bg-white/72 px-4 text-sm font-semibold text-[#26332E]"
+                  >
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-[#285D49]" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+              <p className="mt-5 text-sm leading-6 text-[#43514B]">
+                The exact combination depends on the coaching option you apply
+                for and the plan agreed after approval.
+              </p>
+              <Button
+                asChild
+                variant="ghost"
+                className="mt-2 px-0 text-[#285D49] hover:bg-transparent"
+              >
+                <a href="/for-clients">
+                  See the RepSync client experience
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="coaching-options"
+          className="border-t border-[#285D49]/16 py-12 lg:py-16"
+        >
+          <SectionIntro
+            eyebrow="Coaching options"
+            title="Choose the option closest to what you need."
+            body="Review the public options, then use the application to describe your goals and confirm your interest. Applying does not create a subscription or guarantee acceptance."
+          />
+          <div
+            className={hasPackages ? "mt-8 hidden lg:block" : "mt-8"}
+            data-testid={hasPackages ? "packages-section-desktop" : undefined}
+          >
+            <PublicPackageSection
+              packageOptions={packageCards}
+              onApply={handleApplyForPackage}
+              reduceMotion={Boolean(reduceMotion)}
+              coachFirstName={firstName}
+            />
+          </div>
+          {hasPackages ? (
+            <div
+              className="mt-8 lg:hidden"
+              data-testid="packages-section-mobile"
+            >
+              <PublicPackageSection
+                packageOptions={packageCards}
+                onApply={handleApplyForPackage}
+                reduceMotion={Boolean(reduceMotion)}
+                coachFirstName={firstName}
               />
-            ) : (
-              <div className="h-[280px] bg-[radial-gradient(circle_at_top_left,oklch(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_top_right,oklch(var(--accent)/0.28),transparent_28%),linear-gradient(135deg,oklch(var(--card)/0.98),oklch(var(--secondary)/0.58))] sm:h-[320px]" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/44 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-              <div className="flex flex-wrap items-end gap-5">
-                <div
-                  ref={profileCardRef}
-                  className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-border/70 bg-card/86 text-3xl font-semibold text-foreground shadow-[0_24px_60px_-42px_oklch(var(--primary)/0.46)] backdrop-blur-xl sm:h-28 sm:w-28"
-                >
-                  {profile.profilePhotoUrl ? (
-                    <img
-                      src={profile.profilePhotoUrl}
-                      alt={title}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    (title || "PT").slice(0, 2).toUpperCase()
-                  )}
-                </div>
+            </div>
+          ) : null}
+        </section>
 
-                <div className="min-w-0 flex-1 space-y-3">
-                  <div className="space-y-2">
-                    <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
-                      {title}
-                    </h1>
-                    <p className="max-w-3xl text-lg font-medium text-muted-foreground sm:text-xl">
-                      {profile.headline}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                    {profile.locationLabel ? (
-                      <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-1.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.52)]">
-                        <MapPin className="h-4 w-4" />
-                        {profile.locationLabel}
-                      </span>
-                    ) : null}
-                    {profile.availabilityModes.map((mode) => (
-                      <span
-                        key={mode}
-                        className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-1.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.52)]"
-                      >
-                        <Monitor className="h-4 w-4" />
-                        {availabilityLabels[mode] ?? mode}
-                      </span>
-                    ))}
-                    {profile.coachingModes.map((mode) => (
-                      <span
-                        key={mode}
-                        className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-1.5 shadow-[inset_0_1px_0_oklch(1_0_0/0.52)]"
-                      >
-                        <Users className="h-4 w-4" />
-                        {coachingModeLabels[mode] ?? mode}
-                      </span>
-                    ))}
-                  </div>
+        <section className="border-t border-[#285D49]/16 py-12 lg:py-16">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)]">
+            <SectionIntro
+              eyebrow="Background"
+              title="Credentials and coaching experience."
+            />
+            <div className="space-y-5">
+              {profile.certifications.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {profile.certifications.map((credential) => (
+                    <Badge
+                      key={credential}
+                      variant="secondary"
+                      className="rounded-full border-[#285D49]/18 bg-white/74 px-3 py-1 text-[#285D49]"
+                    >
+                      {credential}
+                    </Badge>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <InfoPanel
+                  title="Credentials supplied by coach"
+                  body="Credentials and experience will appear here when they are added to the public profile."
+                />
+              )}
+              {profile.coachingStyle ? (
+                <p className="text-base leading-7 text-[#43514B]">
+                  {profile.coachingStyle}
+                </p>
+              ) : null}
+              <p className="border-l-2 border-[#285D49] pl-4 text-sm leading-6 text-[#43514B]">
+                Credentials and experience are supplied by the coach unless
+                explicitly marked as verified by RepSync.
+              </p>
             </div>
           </div>
+        </section>
 
-          <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1.15fr)_360px]">
-            <div className="space-y-8">
-              <section ref={registerSection(0)} className="space-y-4 opacity-0">
-                <SectionHeader title="Overview" />
-                <div className="rounded-[28px] border border-border/60 bg-card/68 p-5 shadow-[0_22px_70px_-58px_oklch(var(--primary)/0.38)] backdrop-blur-xl sm:p-6">
-                  <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-                    <div className="space-y-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                        About
-                      </p>
-                      <p className="text-sm leading-7 text-muted-foreground sm:text-base">
-                        {profile.shortBio}
-                      </p>
-                    </div>
-                    <div className="space-y-3 border-t border-border/60 pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                        Coaching style
-                      </p>
-                      <p className="text-sm leading-7 text-muted-foreground">
-                        {profile.coachingStyle ||
-                          "Coaching style details will appear here once they are added."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section ref={registerSection(1)} className="space-y-4 opacity-0">
-                <SectionHeader title="Positioning" />
-                <div className="rounded-[28px] border border-border/60 bg-card/68 p-5 shadow-[0_22px_70px_-58px_oklch(var(--primary)/0.38)] backdrop-blur-xl sm:p-6">
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    <div className="space-y-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                        Specialties
-                      </p>
-                      {profile.specialties.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {profile.specialties.map((item) => (
-                            <Badge key={item}>{item}</Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <PlaceholderText text="Specialties will appear here once they are added." />
-                      )}
-                    </div>
-
-                    <div className="space-y-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                        Certifications
-                      </p>
-                      {profile.certifications.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {profile.certifications.map((item) => (
-                            <Badge key={item} variant="secondary">
-                              {item}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <PlaceholderText text="Certifications will appear here once they are added." />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {hasPackages ? (
-                <section
-                  ref={registerSection(2)}
-                  className="hidden space-y-4 opacity-0 lg:block"
-                  data-testid="packages-section-desktop"
-                >
-                  <PublicPackageSection
-                    packageOptions={packageCards}
-                    onApply={handleApplyForPackage}
-                    reduceMotion={Boolean(reduceMotion)}
-                  />
-                </section>
+        <section
+          ref={applyFormRef}
+          id="public-pt-apply-form"
+          className="border-t border-[#285D49]/16 py-12 lg:py-16"
+        >
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)]">
+            <SectionIntro
+              eyebrow="Application"
+              title={`Apply to work with ${title}.`}
+              body="Share enough context for the coach to understand what you are looking for. Submitting this form does not create a subscription or confirm a coaching place."
+            />
+            <div className="rounded-[8px] border border-[#285D49]/18 bg-white/78 p-5 shadow-[0_28px_90px_-72px_rgba(40,93,73,0.55)] sm:p-6">
+              {success ? (
+                <SuccessPanel slug={profile.slug} firstName={firstName} />
               ) : null}
-
-              <section ref={registerSection(3)} className="space-y-4 opacity-0">
-                <SectionHeader title="Proof" />
-                <div className="rounded-[28px] border border-border/60 bg-card/68 p-5 shadow-[0_22px_70px_-58px_oklch(var(--primary)/0.38)] backdrop-blur-xl sm:p-6">
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    <div className="space-y-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                        Testimonials
-                      </p>
-                      {profile.testimonials.length > 0 ? (
-                        <div className="space-y-3">
-                          {profile.testimonials.map((testimonial) => (
-                            <div
-                              key={`${testimonial.author}-${testimonial.quote}`}
-                              className="rounded-[22px] border border-border/55 bg-background/52 p-4"
-                            >
-                              <p className="text-sm text-foreground">
-                                "{testimonial.quote}"
-                              </p>
-                              <p className="mt-3 text-xs text-muted-foreground">
-                                {testimonial.author}
-                                {testimonial.role
-                                  ? ` - ${testimonial.role}`
-                                  : ""}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <PlaceholderText text="Testimonials will land here once proof modules are added." />
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                        Transformations
-                      </p>
-                      {profile.transformations.length > 0 ? (
-                        <div className="space-y-3">
-                          {profile.transformations.map((item) => (
-                            <div
-                              key={item.id}
-                              className="rounded-[22px] border border-border/55 bg-background/52 p-4"
-                            >
-                              {item.beforeImageUrl || item.afterImageUrl ? (
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                  <TransformationImage
-                                    label="Before"
-                                    src={item.beforeImageUrl}
-                                    title={item.title}
-                                  />
-                                  <TransformationImage
-                                    label="After"
-                                    src={item.afterImageUrl}
-                                    title={item.title}
-                                  />
-                                </div>
-                              ) : null}
-                              {item.title ? (
-                                <p className="mt-3 text-sm font-medium text-foreground">
-                                  {item.title}
-                                </p>
-                              ) : null}
-                              {item.summary ? (
-                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                                  {item.summary}
-                                </p>
-                              ) : null}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <PlaceholderText text="Transformation stories will show here once you add them in PT Hub." />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            <div className="space-y-6">
-              {hasPackages ? (
-                <section
-                  ref={registerSection(4)}
-                  className="space-y-4 opacity-0 lg:hidden"
-                  data-testid="packages-section-mobile"
-                >
-                  <PublicPackageSection
-                    packageOptions={packageCards}
-                    onApply={handleApplyForPackage}
-                    reduceMotion={Boolean(reduceMotion)}
-                  />
-                </section>
-              ) : null}
-
-              <div
-                ref={(node) => {
-                  registerSection(5)(node);
-                  applyFormRef.current = node;
-                }}
-                className="rounded-[28px] border border-primary/25 bg-card/76 p-6 opacity-0 shadow-[0_24px_80px_-58px_oklch(var(--primary)/0.44)] backdrop-blur-xl"
-                id="public-pt-apply-form"
-              >
-                <p className="text-sm font-medium text-primary">
-                  Work with {title}
-                </p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-                  Built to convert interest into a real application.
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  This page is powered directly from PT Hub content and is
-                  designed to move prospects from trust to inquiry.
-                </p>
-                <div className="mt-5 grid gap-3">
-                  <Button className="justify-between" disabled>
-                    Pricing inquiry
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                  <div className="rounded-[24px] border border-border/55 bg-background/60 p-4">
-                    <p className="text-sm font-medium text-foreground">
-                      Apply to work with {title}
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      Share your goals, training background, and package
-                      preference so the coach can review fit.
-                    </p>
-                    <div className="mt-4">
-                      <PublicPtApplyForm
-                        slug={profile.slug}
-                        preview={preview}
-                        submitting={submitting}
-                        success={success}
-                        identity={applicantIdentity}
-                        packageOptions={packageCards}
-                        packagePrefill={packagePrefill}
-                        onSubmit={onSubmitApplication}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                ref={registerSection(6)}
-                className="rounded-[28px] border border-border/60 bg-card/68 p-6 opacity-0 shadow-[0_22px_70px_-58px_oklch(var(--primary)/0.38)] backdrop-blur-xl"
-              >
-                <SectionHeader title="Social links" />
-                <div className="mt-4 space-y-2">
-                  {profile.socialLinks.length > 0 ? (
-                    profile.socialLinks.map((link) =>
-                      (() => {
-                        const PlatformIcon =
-                          socialPlatformIcons[
-                            link.platform as keyof typeof socialPlatformIcons
-                          ] ?? Globe;
-
-                        return (
-                          <a
-                            key={link.platform}
-                            href={getExternalHref(link.url)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center justify-between rounded-[20px] border border-border/55 bg-background/52 px-4 py-3 transition hover:border-primary/35 hover:bg-background/72"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-card/72 text-primary">
-                                <PlatformIcon className="h-4 w-4" />
-                              </div>
-                              <p className="text-sm font-medium text-foreground">
-                                {link.label}
-                              </p>
-                            </div>
-                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                          </a>
-                        );
-                      })(),
-                    )
-                  ) : (
-                    <PlaceholderText text="Public social links will show here once added in PT Hub." />
-                  )}
-                </div>
-              </div>
+              <p className="mb-4 rounded-[6px] border border-[#285D49]/14 bg-[#FBF9F1] px-4 py-3 text-xs leading-5 text-[#43514B]">
+                I understand that this application will be shared with the
+                selected coach so they can review and respond.
+              </p>
+              <PublicPtApplyForm
+                slug={profile.slug}
+                preview={preview}
+                submitting={submitting}
+                success={success}
+                identity={applicantIdentity}
+                packageOptions={packageCards}
+                packagePrefill={packagePrefill}
+                onSubmit={onSubmitApplication}
+              />
             </div>
           </div>
-        </motion.div>
+        </section>
+
+        <section className="rounded-[8px] bg-[#285D49] px-6 py-10 text-[#FBF9F1] sm:px-8 lg:px-10">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C9DED3]">
+                Still exploring?
+              </p>
+              <h2 className="mt-3 font-serif text-4xl font-semibold leading-tight">
+                Return to the marketplace to compare coaching approaches,
+                services, and availability.
+              </h2>
+            </div>
+            <Button asChild variant="secondary">
+              <a href="/coaches">
+                Browse more coaches
+                <ArrowRight className="h-4 w-4" />
+              </a>
+            </Button>
+          </div>
+        </section>
+
+        <p className="mx-auto max-w-4xl py-8 text-center text-xs leading-6 text-[#66736E]">
+          Profile information, credentials, services, availability, and pricing
+          are supplied by the coach unless explicitly stated otherwise. RepSync
+          does not guarantee coaching outcomes or replace medical advice.
+        </p>
       </div>
     </div>
   );
@@ -539,144 +523,168 @@ function PublicPackageSection({
   packageOptions,
   onApply,
   reduceMotion = false,
+  coachFirstName,
 }: {
   packageOptions: PTPublicPackageOption[];
   onApply: (packageId: string) => void;
   reduceMotion?: boolean;
+  coachFirstName: string;
 }) {
+  if (packageOptions.length === 0) {
+    return (
+      <InfoPanel
+        title="Coaching options discussed after application"
+        body={`Apply with your goals and ${coachFirstName} can confirm which coaching route is appropriate.`}
+      />
+    );
+  }
+
   return (
-    <>
-      <SectionHeader title="Packages" />
-      <div className="rounded-[28px] border border-border/60 bg-card/68 p-5 shadow-[0_22px_70px_-58px_oklch(var(--primary)/0.38)] backdrop-blur-xl sm:p-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          {packageOptions.map((packageOption) => {
-            const featureBullets =
-              getPublicPackageFeatureBullets(packageOption);
-            const hasFeatureBullets = featureBullets.length > 0;
-            return (
-              <motion.article
-                key={packageOption.id}
-                whileHover={
-                  reduceMotion
-                    ? undefined
-                    : {
-                        y: -6,
-                        scale: 1.01,
-                        boxShadow:
-                          "0 30px 74px -52px oklch(var(--primary) / 0.52)",
-                      }
-                }
-                transition={{ duration: 0.24, ease: "easeOut" }}
-                className="rounded-[24px] border border-border/65 bg-background/58 p-4 shadow-[0_20px_54px_-44px_oklch(var(--primary)/0.34)] transition-[border-color,background-color] duration-300 hover:border-primary/45 hover:bg-background/72"
-              >
-                <div className="space-y-2">
-                  <h3 className="text-base font-semibold text-foreground">
-                    {packageOption.label}
-                  </h3>
-                  {packageOption.subtitle ? (
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      {packageOption.subtitle}
-                    </p>
-                  ) : null}
-                  {packageOption.priceLabel ||
-                  packageOption.billingCadenceLabel ? (
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
-                      {packageOption.priceLabel ? (
-                        <span className="rounded-full border border-border/70 bg-card/72 px-2.5 py-1">
-                          {packageOption.currencyCode &&
-                          !packageOption.priceLabel
-                            .toUpperCase()
-                            .includes(packageOption.currencyCode.toUpperCase())
-                            ? `${packageOption.priceLabel} ${packageOption.currencyCode}`
-                            : packageOption.priceLabel}
-                        </span>
-                      ) : null}
-                      {packageOption.billingCadenceLabel ? (
-                        <span className="rounded-full border border-border/70 bg-card/72 px-2.5 py-1">
-                          {packageOption.billingCadenceLabel}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-
-                {hasFeatureBullets ? (
-                  <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                    {featureBullets.map((feature) => (
-                      <li
-                        key={`${packageOption.id}-${feature}`}
-                        className="flex gap-2"
-                      >
-                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : packageOption.description ? (
-                  <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                    {packageOption.description}
-                  </p>
-                ) : null}
-
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="mt-4 w-full justify-between"
-                  onClick={() => onApply(packageOption.id)}
-                >
-                  Apply for this package
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </motion.article>
-            );
-          })}
-        </div>
-      </div>
-    </>
+    <div className="grid gap-4 md:grid-cols-2">
+      {packageOptions.map((packageOption) => {
+        const featureBullets = getPublicPackageFeatureBullets(packageOption);
+        return (
+          <motion.article
+            key={packageOption.id}
+            whileHover={
+              reduceMotion
+                ? undefined
+                : {
+                    y: -4,
+                    boxShadow: "0 30px 74px -58px rgba(40, 93, 73, 0.5)",
+                  }
+            }
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="rounded-[8px] border border-[#285D49]/18 bg-white/78 p-5 transition-[border-color,background-color] hover:border-[#285D49]/35 hover:bg-white"
+          >
+            <h3 className="text-xl font-bold text-[#0F261D]">
+              {packageOption.label}
+            </h3>
+            {packageOption.subtitle || packageOption.description ? (
+              <p className="mt-3 text-sm leading-6 text-[#43514B]">
+                {packageOption.subtitle || packageOption.description}
+              </p>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[#285D49]">
+              {packageOption.billingCadenceLabel ? (
+                <span className="rounded-full border border-[#285D49]/18 px-3 py-1">
+                  {packageOption.billingCadenceLabel}
+                </span>
+              ) : null}
+              {packageOption.priceLabel ? (
+                <span className="rounded-full border border-[#285D49]/18 px-3 py-1">
+                  {packageOption.currencyCode &&
+                  !packageOption.priceLabel
+                    .toUpperCase()
+                    .includes(packageOption.currencyCode.toUpperCase())
+                    ? `${packageOption.priceLabel} ${packageOption.currencyCode}`
+                    : packageOption.priceLabel}
+                </span>
+              ) : null}
+            </div>
+            {featureBullets.length > 0 ? (
+              <ul className="mt-5 space-y-2 text-sm leading-6 text-[#43514B]">
+                {featureBullets.map((feature) => (
+                  <li
+                    key={`${packageOption.id}-${feature}`}
+                    className="flex gap-2"
+                  >
+                    <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[#285D49]" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <Button
+              type="button"
+              variant="secondary"
+              className="mt-5 w-full justify-between border border-[#285D49]/30 bg-transparent text-[#0F261D] hover:bg-white/70"
+              onClick={() => onApply(packageOption.id)}
+            >
+              Apply for {packageOption.label}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </motion.article>
+        );
+      })}
+    </div>
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
+function SuccessPanel({
+  slug,
+  firstName,
+}: {
+  slug: string;
+  firstName: string;
+}) {
   return (
-    <div className="flex items-center">
-      <h2 className="text-lg font-semibold tracking-tight text-foreground">
+    <div className="mb-5 rounded-[8px] border border-[#285D49]/18 bg-[#E2EFE8] p-5">
+      <h3 className="text-xl font-bold text-[#0F261D]">
+        Your application has been sent to {firstName}.
+      </h3>
+      <p className="mt-2 text-sm leading-6 text-[#43514B]">
+        {firstName} can now review your goals, experience, and coaching
+        interest. This is not an acceptance or subscription.
+      </p>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {successSteps.map((step) => (
+          <div
+            key={step}
+            className="flex items-center gap-2 rounded-[6px] bg-white/70 px-3 py-2 text-sm font-semibold text-[#285D49]"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {step}
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Button
+          asChild
+          variant="secondary"
+          className="border border-[#285D49]/30 bg-transparent text-[#0F261D] hover:bg-white/70"
+        >
+          <a href={`/p/${encodeURIComponent(slug)}`}>Return to profile</a>
+        </Button>
+        <Button asChild variant="secondary">
+          <a href="/coaches">Browse other coaches</a>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SectionIntro({
+  eyebrow,
+  title,
+  body,
+}: {
+  eyebrow: string;
+  title: string;
+  body?: string;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#285D49]">
+        {eyebrow}
+      </p>
+      <h2 className="mt-3 font-serif text-4xl font-semibold leading-[1.02] text-[#0F261D] sm:text-5xl">
         {title}
       </h2>
+      {body ? (
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-[#43514B]">
+          {body}
+        </p>
+      ) : null}
     </div>
   );
 }
 
-function PlaceholderText({ text }: { text: string }) {
-  return <p className="text-sm leading-6 text-muted-foreground">{text}</p>;
-}
-
-function TransformationImage({
-  label,
-  src,
-  title,
-}: {
-  label: string;
-  src: string | null;
-  title: string;
-}) {
+function InfoPanel({ title, body }: { title: string; body: string }) {
   return (
-    <div className="space-y-2">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {label}
-      </p>
-      <div className="overflow-hidden rounded-[18px] border border-border/60 bg-background/60">
-        {src ? (
-          <img
-            src={src}
-            alt={title ? `${title} ${label.toLowerCase()}` : label}
-            className="h-44 w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-44 items-center justify-center text-xs text-muted-foreground">
-            {label} photo not added yet
-          </div>
-        )}
-      </div>
-    </div>
+    <article className="rounded-[8px] border border-[#285D49]/16 bg-white/72 p-5">
+      <h3 className="text-lg font-bold text-[#0F261D]">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-[#43514B]">{body}</p>
+    </article>
   );
 }

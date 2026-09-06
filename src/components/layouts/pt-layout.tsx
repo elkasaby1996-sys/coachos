@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
   ClipboardList,
   Dumbbell,
   LayoutDashboard,
@@ -46,6 +47,7 @@ import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { cn } from "../../lib/utils";
 import { useWorkspace } from "../../lib/use-workspace";
+import { tracePoint } from "../../lib/perf-trace";
 import { LoadingScreen } from "../common/bootstrap-gate";
 import { AppFooter } from "../common/app-footer";
 import { PageContainer } from "../common/page-container";
@@ -227,6 +229,13 @@ const ptNavGroups: Array<{
         to: "/pt/nutrition-programs",
         icon: Apple,
         module: "coaching",
+      },
+      {
+        label: "Check-in Templates",
+        description: "Build reusable check-in forms and cadence defaults.",
+        to: "/pt/checkins/templates",
+        icon: ClipboardCheck,
+        module: "checkins",
       },
       {
         label: "Exercise Library",
@@ -570,10 +579,21 @@ export function PtLayout() {
   const isLightMode = resolvedTheme === "light";
   const currentModule = getModuleToneForPath(location.pathname);
   const routeTransitionKey = getWorkspaceRouteTransitionKey(location.pathname);
+  const mountTraceLoggedRef = useRef(false);
   const workspaceSettingsRouteMatch = location.pathname.match(
     /^\/workspace\/([^/]+)\/settings(?:\/|$)/,
   );
   const routeWorkspaceId = workspaceSettingsRouteMatch?.[1] ?? null;
+
+  useEffect(() => {
+    if (mountTraceLoggedRef.current) return;
+    mountTraceLoggedRef.current = true;
+    tracePoint("PtLayout.mount", {
+      pathname: location.pathname,
+      workspaceId,
+      loading,
+    });
+  }, [loading, location.pathname, workspaceId]);
   const headerWorkspaceId = routeWorkspaceId ?? workspaceId;
   const currentModuleClasses = getModuleToneClasses(currentModule);
   const errorMessage =
@@ -582,7 +602,6 @@ export function PtLayout() {
     (workspaceId ? null : "Workspace not found.");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
-  const [headerCondensed, setHeaderCondensed] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
@@ -682,6 +701,7 @@ export function PtLayout() {
     ],
   );
   const pageHeader = getPtRouteHeader(location.pathname, navGroups);
+  const isExerciseLibraryPage = location.pathname === "/pt/settings/exercises";
   const workspaceDisplayName = currentWorkspace?.name?.trim() || "PT Workspace";
   const workspaceSwitcherItems = workspaces.map((workspace) => ({
     id: workspace.id,
@@ -921,6 +941,15 @@ export function PtLayout() {
     setSearchHighlightIndex(0);
   }, [normalizedSearch, searchResults.length]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    document.body.classList.toggle("pt-workspace-portal-light", isLightMode);
+    return () => {
+      document.body.classList.remove("pt-workspace-portal-light");
+    };
+  }, [isLightMode]);
+
   const handleCreateWorkspace = async () => {
     if (hasWorkspaceNameOverLimit) {
       setCreateWorkspaceError(
@@ -1107,19 +1136,6 @@ export function PtLayout() {
     );
   }, [desktopNavCollapsed]);
 
-  useEffect(() => {
-    const mainElement = mainScrollRef.current;
-    if (!mainElement) return;
-
-    const handleScroll = () => {
-      setHeaderCondensed(mainElement.scrollTop > 24);
-    };
-
-    handleScroll();
-    mainElement.addEventListener("scroll", handleScroll, { passive: true });
-    return () => mainElement.removeEventListener("scroll", handleScroll);
-  }, [routeTransitionKey]);
-
   if (loading) {
     return <LoadingScreen message="Loading..." />;
   }
@@ -1299,7 +1315,7 @@ export function PtLayout() {
                 <header
                   className={cn(
                     "surface-panel-strong relative overflow-hidden rounded-[34px] border-border/70 px-4 transition-[padding,transform,box-shadow] duration-200 sm:px-5 lg:sticky lg:top-0 lg:z-20 lg:px-6",
-                    headerCondensed ? "py-3" : "py-4",
+                    "py-3",
                     isLightMode
                       ? "shadow-[0_28px_76px_-56px_oklch(0.28_0.02_190/0.14)]"
                       : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
@@ -1329,15 +1345,17 @@ export function PtLayout() {
                         <div
                           className={cn(
                             "min-w-0 transition-[gap] duration-200",
-                            headerCondensed ? "space-y-1" : "space-y-2",
+                            "space-y-1",
                           )}
                         >
                           <p
                             className={cn(
-                              "truncate font-semibold uppercase tracking-[0.06em] text-foreground transition-[font-size,line-height] duration-200",
-                              headerCondensed
-                                ? "text-[1.58rem] leading-none sm:text-[1.86rem]"
-                                : "text-[2rem] sm:text-[2.25rem]",
+                              "font-semibold uppercase tracking-[0.06em] text-foreground transition-[font-size,line-height] duration-200",
+                              isExerciseLibraryPage
+                                ? "whitespace-normal break-words text-[1.55rem] leading-tight sm:truncate sm:text-[1.86rem]"
+                                : "truncate",
+                              !isExerciseLibraryPage &&
+                                "text-[1.58rem] leading-none sm:text-[1.86rem]",
                               currentModuleClasses.title,
                             )}
                           >
@@ -1347,9 +1365,7 @@ export function PtLayout() {
                             <p
                               className={cn(
                                 "max-w-3xl text-muted-foreground transition-[font-size,line-height,opacity] duration-200",
-                                headerCondensed
-                                  ? "text-[12px] leading-4 opacity-80"
-                                  : "text-sm leading-5",
+                                "text-[12px] leading-4 opacity-80",
                               )}
                             >
                               {pageHeader.description}

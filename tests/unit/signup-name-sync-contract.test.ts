@@ -36,4 +36,11 @@ describe("signup name propagation contract", () => {
     expect(workspaceOnboarding).toContain("syncPtAccountIdentity");
     expect(ptHub).toContain("syncPtAccountIdentity");
   });
+
+  it("defers client profile provisioning until signup has an authenticated session", () => {
+    const clientSignup = read("src/pages/public/client-signup.tsx");
+
+    expect(clientSignup).toContain("data.session?.user ?? user ?? null");
+    expect(clientSignup).not.toContain("data.user?.id ?? user?.id");
+  });
 });

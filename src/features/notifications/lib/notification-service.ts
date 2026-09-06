@@ -44,6 +44,7 @@ const notificationPreferenceMap: Record<NotificationType, PreferenceKey> = {
   workout_updated: "workout_updated",
   checkin_requested: "checkin_requested",
   checkin_submitted: "checkin_submitted",
+  checkin_reviewed: "checkin_requested",
   message_received: "message_received",
   file_shared: "files_resources",
   birthday_reminder: "milestone_events",

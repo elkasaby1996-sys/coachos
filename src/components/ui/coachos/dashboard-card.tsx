@@ -14,6 +14,7 @@ export function DashboardCard({
   subtitle,
   action,
   className,
+  contentClassName,
   disableHoverMotion = false,
   children,
 }: {
@@ -21,6 +22,7 @@ export function DashboardCard({
   subtitle?: string;
   action?: ReactNode;
   className?: string;
+  contentClassName?: string;
   disableHoverMotion?: boolean;
   children: ReactNode;
 }) {
@@ -35,7 +37,7 @@ export function DashboardCard({
       }
     >
       <SurfaceCard className={cn(className)}>
-        <SurfaceCardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border/55 pb-4">
+        <SurfaceCardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/55 py-1 sm:py-1">
           <div>
             <SurfaceCardTitle className="text-base">{title}</SurfaceCardTitle>
             {subtitle ? (
@@ -46,7 +48,9 @@ export function DashboardCard({
           </div>
           {action}
         </SurfaceCardHeader>
-        <SurfaceCardContent className="pt-4">{children}</SurfaceCardContent>
+        <SurfaceCardContent className={cn("pt-[15px]", contentClassName)}>
+          {children}
+        </SurfaceCardContent>
       </SurfaceCard>
     </motion.div>
   );

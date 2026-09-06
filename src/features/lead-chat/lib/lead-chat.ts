@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { supabase } from "../../../lib/supabase";
 
 export type LeadConversationStatus = "open" | "archived";
@@ -6,6 +6,15 @@ export type LeadConversationStatus = "open" | "archived";
 export type LeadChatMessage = {
   id: string;
   conversationId: string;
+  senderUserId: string;
+  body: string;
+  sentAt: string;
+};
+
+export type ConvertedLeadHistoryMessage = {
+  id: string;
+  leadConversationId: string;
+  leadId: string;
   senderUserId: string;
   body: string;
   sentAt: string;
@@ -32,6 +41,7 @@ export type LeadConversationThread = {
 export type MyLeadChatThreadSummary = {
   leadId: string;
   conversationId: string | null;
+  convertedConversationId: string | null;
   conversationStatus: LeadConversationStatus | null;
   archivedReason: "converted" | "declined" | "manual" | null;
   leadStatus:
@@ -70,9 +80,19 @@ type LeadMessageRow = {
   sent_at: string;
 };
 
+type ConvertedLeadHistoryMessageRow = {
+  lead_conversation_id: string;
+  lead_id: string;
+  message_id: string;
+  sender_user_id: string;
+  body: string;
+  sent_at: string;
+};
+
 type MyLeadThreadRow = {
   lead_id: string;
   conversation_id: string | null;
+  converted_conversation_id: string | null;
   conversation_status: string | null;
   archived_reason: string | null;
   lead_status: string;
@@ -142,6 +162,19 @@ function mapLeadMessage(row: LeadMessageRow): LeadChatMessage {
   };
 }
 
+function mapConvertedLeadHistoryMessage(
+  row: ConvertedLeadHistoryMessageRow,
+): ConvertedLeadHistoryMessage {
+  return {
+    id: row.message_id,
+    leadConversationId: row.lead_conversation_id,
+    leadId: row.lead_id,
+    senderUserId: row.sender_user_id,
+    body: row.body,
+    sentAt: row.sent_at,
+  };
+}
+
 export function useLeadConversationThread(leadId: string | null | undefined) {
   return useQuery({
     queryKey: ["lead-chat-thread", leadId],
@@ -198,6 +231,33 @@ export function useLeadConversationThread(leadId: string | null | undefined) {
         messages: (messagesData ?? []).map(mapLeadMessage),
       } satisfies LeadConversationThread;
     },
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useConvertedLeadHistory(
+  conversationId: string | null | undefined,
+) {
+  return useQuery({
+    queryKey: ["converted-lead-history", conversationId],
+    enabled: Boolean(conversationId),
+    staleTime: 1000 * 60,
+    queryFn: async () => {
+      if (!conversationId) return [] satisfies ConvertedLeadHistoryMessage[];
+
+      const { data, error } = await supabase.rpc(
+        "converted_lead_history_for_conversation",
+        {
+          p_conversation_id: conversationId,
+        },
+      );
+
+      if (error) throw error;
+      return ((data ?? []) as ConvertedLeadHistoryMessageRow[]).map(
+        mapConvertedLeadHistoryMessage,
+      );
+    },
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -242,6 +302,7 @@ export function useMyLeadChatThreads() {
       return ((data ?? []) as MyLeadThreadRow[]).map((row) => ({
         leadId: row.lead_id,
         conversationId: row.conversation_id,
+        convertedConversationId: row.converted_conversation_id,
         conversationStatus: normalizeConversationStatus(
           row.conversation_status,
         ),
@@ -261,6 +322,7 @@ export function useMyLeadChatThreads() {
         unreadCount: row.unread_count ?? 0,
       })) satisfies MyLeadChatThreadSummary[];
     },
+    placeholderData: keepPreviousData,
   });
 }
 

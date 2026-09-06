@@ -1,15 +1,21 @@
-import { type KeyboardEvent, useEffect, useId, useState } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useState,
+} from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowUpRight,
   CheckCircle2,
-  Circle,
+  Copy,
   EyeOff,
   Globe,
   ImageIcon,
-  Lock,
+  Info,
   Plus,
   Save,
   Sparkles,
@@ -28,22 +34,34 @@ import {
 } from "../../../components/ui/tabs";
 import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import type { StoredProfileDraft } from "../lib/pt-hub";
-import { getPublicCoachUrl, slugifyValue } from "../lib/pt-hub";
+import {
+  getPublicCoachUrl,
+  mapPublicPtPackageOptionsFromPackages,
+  slugifyValue,
+  usePtPackages,
+  usePtProfileSlugAvailability,
+} from "../lib/pt-hub";
+import {
+  PUBLIC_PROFILE_SLUG_MAX_LENGTH,
+  validatePublicProfileSlug,
+} from "../lib/public-profile-slug";
 import {
   uploadPtProfileMedia,
   type PtProfileMediaKind,
 } from "../lib/pt-profile-media";
 import type {
-  PTAccountSettingsDraft,
   PTAvailabilityMode,
   PTCoachingMode,
   PTProfile,
+  PTProfilePreviewData,
   PTProfileReadiness,
   PTProfileReadinessItem,
   PTPublicationState,
 } from "../types";
 import { PtHubSectionCard } from "./pt-hub-section-card";
+import { PtHubProfilePreview } from "./pt-hub-profile-preview";
 import { useSessionAuth } from "../../../lib/auth";
+import { routes } from "../../../lib/routes";
 import { cn } from "../../../lib/utils";
 import {
   getCharacterLimitState,
@@ -101,32 +119,6 @@ const profileBuilderSteps = [
     keys: [],
   },
 ] as const;
-
-const visibilityOptions: Array<{
-  value: PTAccountSettingsDraft["profileVisibility"];
-  label: string;
-  description: string;
-  icon: typeof Circle;
-}> = [
-  {
-    value: "draft",
-    label: "Draft",
-    description: "Keep the profile in setup while you edit content.",
-    icon: Circle,
-  },
-  {
-    value: "private",
-    label: "Private",
-    description: "Publishable content stays hidden from discovery.",
-    icon: Lock,
-  },
-  {
-    value: "listed",
-    label: "Listed when published",
-    description: "Make the profile eligible for public listing after publish.",
-    icon: Globe,
-  },
-];
 
 function listToInput(values: string[]) {
   return values.join(", ");
@@ -214,6 +206,42 @@ function getStepCompletion(
   };
 }
 
+function InfoHint({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const hintId = useId();
+
+  return (
+    <span
+      className="relative inline-flex"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setOpen(false);
+        }
+      }}
+    >
+      <button
+        type="button"
+        className="inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        aria-label={label}
+        aria-expanded={open}
+        aria-describedby={open ? hintId : undefined}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <Info className="h-3.5 w-3.5 [stroke-width:1.8]" />
+      </button>
+      {open ? (
+        <span
+          id={hintId}
+          role="tooltip"
+          className="absolute left-0 top-full z-30 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-md border border-border bg-popover px-3 py-2 text-xs leading-5 text-popover-foreground shadow-md"
+        >
+          {children}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function ChipInput({
   id,
   label,
@@ -227,7 +255,7 @@ function ChipInput({
 }: {
   id: string;
   label: string;
-  helperText: string;
+  helperText?: string;
   placeholder: string;
   values: string[];
   value: string;
@@ -256,9 +284,11 @@ function ChipInput({
       <label htmlFor={id} className="text-sm font-medium text-foreground">
         {label}
       </label>
-      <p className="max-w-[62ch] text-sm leading-6 text-muted-foreground">
-        {helperText}
-      </p>
+      {helperText ? (
+        <p className="max-w-[62ch] text-sm leading-6 text-muted-foreground">
+          {helperText}
+        </p>
+      ) : null}
       <Input
         id={id}
         isInvalid={isInvalid}
@@ -331,9 +361,6 @@ function PtHubLiveProfilePreview({
               <ImageIcon className="h-5 w-5 text-muted-foreground" />
             )}
           </div>
-          <Badge variant={form.isPublished ? "success" : "secondary"}>
-            {form.isPublished ? "Published" : "Draft"}
-          </Badge>
         </div>
         <div>
           <p className="text-lg font-semibold leading-tight text-foreground">
@@ -394,6 +421,38 @@ function createDraft(profile: PTProfile): StoredProfileDraft {
   };
 }
 
+function getDraftProfilePreviewData(
+  draft: StoredProfileDraft,
+): PTProfilePreviewData {
+  const displayName = draft.displayName.trim() || draft.fullName.trim();
+  const slug = validatePublicProfileSlug(draft.slug, {
+    allowEmpty: true,
+  }).slug;
+
+  return {
+    fullName: draft.fullName,
+    displayName,
+    slug,
+    headline: draft.headline,
+    searchableHeadline: draft.searchableHeadline,
+    shortBio: draft.shortBio,
+    specialties: draft.specialties,
+    certifications: draft.certifications,
+    coachingStyle: draft.coachingStyle,
+    coachingModes: draft.coachingModes,
+    availabilityModes: draft.availabilityModes,
+    locationLabel: draft.locationLabel,
+    marketplaceVisible: draft.marketplaceVisible,
+    isPublished: draft.isPublished,
+    publicUrl: getPublicCoachUrl(slug),
+    profilePhotoUrl: draft.profilePhotoUrl,
+    bannerImageUrl: draft.bannerImageUrl,
+    socialLinks: draft.socialLinks,
+    testimonials: draft.testimonials,
+    transformations: draft.transformations,
+  };
+}
+
 function applyUploadedProfileMedia(
   draft: StoredProfileDraft,
   params: {
@@ -435,14 +494,11 @@ function PtHubProfileLaunchPanel({
   displayNameValue,
   readiness,
   publicationState,
-  profileVisibility,
   saving,
   publishing,
-  updatingVisibility,
   mediaBusy,
   hasChanges,
   hasOverLimitErrors,
-  onProfileVisibilityChange,
   onSave,
   onTogglePublish,
 }: {
@@ -450,38 +506,49 @@ function PtHubProfileLaunchPanel({
   displayNameValue: string;
   readiness: PTProfileReadiness;
   publicationState: PTPublicationState;
-  profileVisibility: PTAccountSettingsDraft["profileVisibility"];
   saving: boolean;
   publishing: boolean;
-  updatingVisibility: boolean;
   mediaBusy: boolean;
   hasChanges: boolean;
   hasOverLimitErrors: boolean;
-  onProfileVisibilityChange: (
-    nextVisibility: PTAccountSettingsDraft["profileVisibility"],
-  ) => Promise<void>;
   onSave: (draft: StoredProfileDraft) => Promise<void>;
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
+  const [copiedPublicUrl, setCopiedPublicUrl] = useState(false);
   const missingItems = readiness.checklist.filter((item) => !item.complete);
   const topMissingItems = missingItems.slice(0, 2);
   const remainingMissingCount = missingItems.length - topMissingItems.length;
-  const selectedVisibilityOption =
-    visibilityOptions.find((option) => option.value === profileVisibility) ??
-    visibilityOptions[0]!;
+  const publicSlugValidation = validatePublicProfileSlug(form.slug, {
+    allowEmpty: true,
+  });
+  const publicProfilePath =
+    publicSlugValidation.valid && publicSlugValidation.slug
+      ? routes.publicProfile(publicSlugValidation.slug)
+      : null;
+  const publicUrl = getPublicCoachUrl(publicSlugValidation.slug);
   const canPublishNow =
     publicationState.canPublish && !hasChanges && !hasOverLimitErrors;
   const primaryActionLabel = hasChanges
     ? "Save profile"
     : publicationState.isPublished
-      ? "Unpublish profile"
-      : "Publish profile";
+      ? "View public profile"
+      : readiness.readyForPublish
+        ? "Publish profile"
+        : "Finish profile";
+  const canCopyPublicUrl = Boolean(publicationState.isPublished && publicUrl);
+
+  const handleCopyPublicUrl = async () => {
+    if (!publicUrl) return;
+    await navigator.clipboard.writeText(publicUrl);
+    setCopiedPublicUrl(true);
+    window.setTimeout(() => setCopiedPublicUrl(false), 1800);
+  };
 
   return (
     <aside className="pt-hub-profile-launch-rail space-y-5">
       <PtHubSectionCard
         title="Launch panel"
-        description="Readiness, visibility, preview, and final actions in one place."
+        description="Readiness validates the profile. Publishing makes it live."
         contentClassName="space-y-4"
         actions={
           <Badge
@@ -541,47 +608,6 @@ function PtHubProfileLaunchPanel({
           </div>
         ) : null}
 
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-foreground">Visibility</p>
-            <span className="text-xs font-medium text-muted-foreground">
-              {selectedVisibilityOption.label}
-            </span>
-          </div>
-          <div
-            className="grid grid-cols-3 gap-1.5"
-            aria-label="Profile launch visibility"
-          >
-            {visibilityOptions.map((option) => {
-              const Icon = option.icon;
-              const selected = profileVisibility === option.value;
-
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={cn(
-                    "pt-hub-visibility-choice flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[16px] border px-2 py-2 text-center transition-[background-color,border-color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    selected
-                      ? "border-primary/45 bg-primary/10 text-foreground"
-                      : "border-border/60 bg-background/28 text-muted-foreground hover:border-border/80 hover:bg-background/45 hover:text-foreground",
-                  )}
-                  disabled={publishing || updatingVisibility}
-                  onClick={() => void onProfileVisibilityChange(option.value)}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate text-xs font-semibold">
-                    {option.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            {selectedVisibilityOption.description}
-          </p>
-        </div>
-
         <PtHubLiveProfilePreview
           form={form}
           displayNameValue={displayNameValue}
@@ -599,14 +625,17 @@ function PtHubProfileLaunchPanel({
             </Link>
           </Button>
           <Button
+            asChild={publicationState.isPublished && Boolean(publicUrl)}
             className="w-full justify-between"
             disabled={
               saving ||
               publishing ||
-              updatingVisibility ||
               mediaBusy ||
               hasOverLimitErrors ||
-              (!hasChanges && !publicationState.isPublished && !canPublishNow)
+              (!hasChanges &&
+                !publicationState.isPublished &&
+                readiness.readyForPublish &&
+                !canPublishNow)
             }
             onClick={() => {
               if (hasChanges) {
@@ -618,28 +647,66 @@ function PtHubProfileLaunchPanel({
                 return;
               }
 
+              if (!readiness.readyForPublish || publicationState.isPublished) {
+                return;
+              }
+
               void onTogglePublish(!publicationState.isPublished);
             }}
           >
-            <span>
-              {mediaBusy
-                ? "Finish uploads first"
-                : saving
-                  ? "Saving..."
-                  : publishing
-                    ? "Updating..."
-                    : hasOverLimitErrors
-                      ? "Fix field limits"
-                      : primaryActionLabel}
-            </span>
-            {hasChanges ? (
-              <Save className="h-4 w-4" />
-            ) : publicationState.isPublished ? (
-              <EyeOff className="h-4 w-4" />
+            {publicationState.isPublished && publicProfilePath ? (
+              <a href={publicProfilePath} target="_blank" rel="noreferrer">
+                <span>{primaryActionLabel}</span>
+                <ArrowUpRight className="h-4 w-4" />
+              </a>
             ) : (
-              <Globe className="h-4 w-4" />
+              <>
+                <span>
+                  {mediaBusy
+                    ? "Finish uploads first"
+                    : saving
+                      ? "Saving..."
+                      : publishing
+                        ? "Updating..."
+                        : hasOverLimitErrors
+                          ? "Fix profile errors"
+                          : primaryActionLabel}
+                </span>
+                {hasChanges ? (
+                  <Save className="h-4 w-4" />
+                ) : publicationState.isPublished ? (
+                  <ArrowUpRight className="h-4 w-4" />
+                ) : readiness.readyForPublish ? (
+                  <Globe className="h-4 w-4" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+              </>
             )}
           </Button>
+          {canCopyPublicUrl ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-between"
+              onClick={() => void handleCopyPublicUrl()}
+            >
+              {copiedPublicUrl ? "Link copied" : "Copy link"}
+              <Copy className="h-4 w-4" />
+            </Button>
+          ) : null}
+          {publicationState.isPublished ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-between text-muted-foreground hover:text-foreground"
+              disabled={saving || publishing || mediaBusy}
+              onClick={() => void onTogglePublish(false)}
+            >
+              {publishing ? "Updating..." : "Unpublish profile"}
+              <EyeOff className="h-4 w-4" />
+            </Button>
+          ) : null}
         </div>
       </PtHubSectionCard>
     </aside>
@@ -650,24 +717,16 @@ export function PtHubProfileEditor({
   profile,
   readiness,
   publicationState,
-  profileVisibility,
   saving,
   publishing,
-  updatingVisibility,
-  onProfileVisibilityChange,
   onSave,
   onTogglePublish,
 }: {
   profile: PTProfile;
   readiness: PTProfileReadiness;
   publicationState: PTPublicationState;
-  profileVisibility: PTAccountSettingsDraft["profileVisibility"];
   saving: boolean;
   publishing: boolean;
-  updatingVisibility: boolean;
-  onProfileVisibilityChange: (
-    nextVisibility: PTAccountSettingsDraft["profileVisibility"],
-  ) => Promise<void>;
   onSave: (draft: StoredProfileDraft) => Promise<void>;
   onTogglePublish: (nextPublished: boolean) => Promise<void>;
 }) {
@@ -675,9 +734,11 @@ export function PtHubProfileEditor({
   const fieldIdPrefix = useId();
   const [activeTab, setActiveTab] = useState("identity");
   const { user } = useSessionAuth();
+  const packagesQuery = usePtPackages();
   const [form, setForm] = useState<StoredProfileDraft>(createDraft(profile));
   const [specialtiesInput, setSpecialtiesInput] = useState("");
   const [certificationsInput, setCertificationsInput] = useState("");
+  const [locationInput, setLocationInput] = useState("");
   const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
@@ -685,6 +746,7 @@ export function PtHubProfileEditor({
     setForm(createDraft(profile));
     setSpecialtiesInput("");
     setCertificationsInput("");
+    setLocationInput("");
     setMediaError(null);
     setUploadingTarget(null);
   }, [profile]);
@@ -703,8 +765,15 @@ export function PtHubProfileEditor({
   const quickWins = readiness.checklist
     .filter((item) => !item.complete)
     .slice(0, 4);
+  const showLaunchPriorities =
+    !publicationState.isPublished || !readiness.readyForPublish;
   const mediaBusy = Boolean(uploadingTarget);
   const displayNameValue = form.displayName.trim() || form.fullName.trim();
+  const locationValues = inputToList(form.locationLabel);
+  const previewData = getDraftProfilePreviewData(form);
+  const packageOptions = mapPublicPtPackageOptionsFromPackages(
+    packagesQuery.data ?? [],
+  );
   const displayNameLimitState = getCharacterLimitState({
     value: form.displayName,
     kind: "short_name",
@@ -737,11 +806,24 @@ export function PtHubProfileEditor({
   });
   const slugLimitState = getCharacterLimitState({
     value: form.slug,
-    kind: "short_name",
+    limit: PUBLIC_PROFILE_SLUG_MAX_LENGTH,
     fieldLabel: "Public slug",
   });
+  const slugValidation = validatePublicProfileSlug(form.slug, {
+    allowEmpty: true,
+  });
+  const slugAvailabilityQuery = usePtProfileSlugAvailability(form.slug);
+  const slugAvailability = slugAvailabilityQuery.data;
+  const slugErrorText =
+    slugValidation.error ??
+    (slugAvailability && !slugAvailability.available
+      ? slugAvailability.message || "This public slug is already in use."
+      : null);
+  const slugChangedAfterPublish =
+    profile.isPublished &&
+    slugValidation.slug !== validatePublicProfileSlug(profile.slug).slug;
   const locationLimitState = getCharacterLimitState({
-    value: form.locationLabel,
+    value: listToInput([...locationValues, locationInput]),
     kind: "default_text",
     fieldLabel: "Location",
   });
@@ -766,19 +848,20 @@ export function PtHubProfileEditor({
       fieldLabel: `${link.label} URL`,
     }),
   );
-  const hasOverLimitErrors = hasCharacterLimitError([
-    displayNameLimitState,
-    headlineLimitState,
-    shortBioLimitState,
-    specialtiesLimitState,
-    certificationsLimitState,
-    coachingStyleLimitState,
-    slugLimitState,
-    locationLimitState,
-    ...transformationTitleStates,
-    ...transformationSummaryStates,
-    ...socialLinkStates,
-  ]);
+  const hasOverLimitErrors =
+    hasCharacterLimitError([
+      displayNameLimitState,
+      headlineLimitState,
+      shortBioLimitState,
+      specialtiesLimitState,
+      certificationsLimitState,
+      coachingStyleLimitState,
+      slugLimitState,
+      locationLimitState,
+      ...transformationTitleStates,
+      ...transformationSummaryStates,
+      ...socialLinkStates,
+    ]) || Boolean(slugErrorText);
 
   const updateTransformation = (
     transformationId: string,
@@ -839,7 +922,7 @@ export function PtHubProfileEditor({
   return (
     <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.36fr)_360px]">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
-        <TabsList className="pt-hub-profile-step-rail h-auto min-h-[4.25rem] w-full justify-start gap-1.5 overflow-x-auto rounded-[24px] p-1.5 xl:overflow-visible">
+        <TabsList className="pt-hub-profile-step-rail h-auto min-h-[4rem] w-full justify-start gap-1.5 overflow-x-auto rounded-[24px] p-1.5 xl:justify-center xl:overflow-visible">
           {profileBuilderSteps.map((step) => {
             const isActive = activeTab === step.value;
             const completion = getStepCompletion(step.keys, readiness);
@@ -849,11 +932,9 @@ export function PtHubProfileEditor({
               <TabsTrigger
                 key={step.value}
                 className={cn(
-                  "pt-hub-profile-step-trigger group flex items-center",
+                  "pt-hub-profile-step-trigger group flex items-center justify-center",
                   isActive ? "text-foreground" : "text-muted-foreground",
-                  isActive
-                    ? "min-w-[12.5rem] gap-3 xl:flex-[1.7]"
-                    : "min-w-[6.25rem] justify-center gap-2 sm:min-w-[7.25rem] xl:flex-1",
+                  "min-w-[6.75rem] gap-2 sm:min-w-[7.25rem] xl:min-w-0 xl:flex-1",
                 )}
                 value={step.value}
               >
@@ -872,107 +953,94 @@ export function PtHubProfileEditor({
                     }
                   />
                 ) : null}
-                <span
-                  className={cn(
-                    "relative z-10 flex shrink-0 items-center justify-center rounded-full border",
-                    isActive ? "h-8 w-8" : "h-7 w-7",
-                    isComplete
-                      ? "border-success/40 bg-success/12 text-success"
-                      : "border-border/70 bg-background/40 text-muted-foreground",
-                  )}
-                  aria-hidden="true"
-                >
-                  {isComplete ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
+                {isComplete ? (
+                  <CheckCircle2
+                    className="relative z-10 h-4.5 w-4.5 shrink-0 text-success"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <span
+                    className={cn(
+                      "relative z-10 flex shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/40 text-muted-foreground",
+                      isActive ? "h-8 w-8" : "h-7 w-7",
+                    )}
+                    aria-hidden="true"
+                  >
                     <span className="font-mono text-[11px] tabular-nums">
                       {completion.total > 0
                         ? `${completion.complete}/${completion.total}`
                         : "OK"}
                     </span>
-                  )}
-                </span>
-                <span
-                  className={cn(
-                    "relative z-10 min-w-0 text-left",
-                    !isActive && "flex min-w-0 flex-col items-start",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "block font-semibold",
-                      isActive ? "text-sm" : "text-xs sm:text-sm",
-                    )}
-                  >
+                  </span>
+                )}
+                <span className={cn("relative z-10 min-w-0 text-center")}>
+                  <span className="block text-xs font-semibold sm:text-sm">
                     {step.label}
                   </span>
-                  {isActive ? (
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                      {step.description}
-                    </span>
-                  ) : null}
                 </span>
               </TabsTrigger>
             );
           })}
         </TabsList>
 
-        <div className="pt-hub-support-rail mt-5 rounded-[24px] px-5 py-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)] lg:items-center">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <p className="text-sm font-semibold text-foreground">
-                  Launch priorities
-                </p>
-                <Badge variant="secondary">
-                  {readiness.completionPercent}% complete
-                </Badge>
-              </div>
-              <p className="max-w-[66ch] text-sm leading-6 text-muted-foreground">
-                Complete the highest-signal items while you edit. The launch
-                panel keeps save, preview, visibility, and publishing in one
-                place.
-              </p>
-            </div>
-            <div className="grid gap-2">
-              {quickWins.length > 0 ? (
-                quickWins.slice(0, 3).map((item) => (
-                  <div
-                    key={item.key}
-                    className="pt-hub-support-tile flex items-start justify-between gap-3 rounded-[18px] px-4 py-3"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {item.label}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                        {item.guidance}
-                      </p>
-                    </div>
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="ghost"
-                      className="shrink-0"
-                    >
-                      <Link to={item.href}>Fix</Link>
-                    </Button>
-                  </div>
-                ))
-              ) : (
-                <div className="pt-hub-support-tile rounded-[18px] px-4 py-3">
-                  <p className="text-sm font-medium text-foreground">
-                    Ready to publish
+        {showLaunchPriorities ? (
+          <div className="pt-hub-support-rail mt-5 rounded-[24px] px-5 py-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)] lg:items-center">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">
+                    Launch priorities
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    Review the live preview, then publish from the launch panel.
-                  </p>
+                  <Badge variant="secondary">
+                    {readiness.completionPercent}% complete
+                  </Badge>
                 </div>
-              )}
+                <p className="max-w-[66ch] text-sm leading-6 text-muted-foreground">
+                  Complete the highest-signal items while you edit. The launch
+                  panel keeps save, preview, and publishing in one place.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                {quickWins.length > 0 ? (
+                  quickWins.slice(0, 3).map((item) => (
+                    <div
+                      key={item.key}
+                      className="pt-hub-support-tile flex items-start justify-between gap-3 rounded-[18px] px-4 py-3"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {item.label}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          {item.guidance}
+                        </p>
+                      </div>
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="ghost"
+                        className="shrink-0"
+                      >
+                        <Link to={item.href}>Fix</Link>
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="pt-hub-support-tile rounded-[18px] px-4 py-3">
+                    <p className="text-sm font-medium text-foreground">
+                      Ready to publish
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Review the live preview, then publish from the launch
+                      panel.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
 
         {mediaError ? (
           <div className="mt-5 rounded-[22px] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -1128,9 +1196,6 @@ export function PtHubProfileEditor({
                 }
                 placeholder="How clients will see your brand"
               />
-              <p className="text-sm leading-6 text-muted-foreground">
-                Use the name clients should recognize on your public profile.
-              </p>
               <FieldCharacterMeta
                 count={displayNameLimitState.count}
                 limit={displayNameLimitState.limit}
@@ -1161,10 +1226,6 @@ export function PtHubProfileEditor({
                 }
                 placeholder="High-performance coach for founders, athletes, and operators"
               />
-              <p className="text-sm leading-6 text-muted-foreground">
-                Name the audience, the outcome, and the training edge in one
-                line.
-              </p>
               <FieldCharacterMeta
                 count={headlineLimitState.count}
                 limit={headlineLimitState.limit}
@@ -1179,9 +1240,6 @@ export function PtHubProfileEditor({
               >
                 Short bio
               </label>
-              <p className="text-sm leading-6 text-muted-foreground">
-                Keep this focused on your method, client fit, and proof.
-              </p>
               <div className="space-y-1">
                 <div className="relative">
                   <Textarea
@@ -1232,7 +1290,6 @@ export function PtHubProfileEditor({
                 <ChipInput
                   id={`${fieldIdPrefix}-specialties`}
                   label="Specialties"
-                  helperText="Add focused lanes prospects can scan quickly."
                   placeholder="Strength, fat loss, executive performance"
                   values={form.specialties}
                   value={specialtiesInput}
@@ -1253,7 +1310,6 @@ export function PtHubProfileEditor({
                 <ChipInput
                   id={`${fieldIdPrefix}-certifications`}
                   label="Certifications"
-                  helperText="Add credentials that support your authority."
                   placeholder="NASM CPT, Precision Nutrition, EXOS"
                   values={form.certifications}
                   value={certificationsInput}
@@ -1272,16 +1328,18 @@ export function PtHubProfileEditor({
             </div>
 
             <div className="space-y-2 pt-1">
-              <label
-                htmlFor={`${fieldIdPrefix}-coaching-style`}
-                className="text-sm font-medium text-foreground"
-              >
-                Coaching style
-              </label>
-              <p className="text-sm text-muted-foreground">
-                Describe how you coach, communicate, and keep clients
-                accountable from week one to peak adherence.
-              </p>
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor={`${fieldIdPrefix}-coaching-style`}
+                  className="text-sm font-medium text-foreground"
+                >
+                  Coaching style
+                </label>
+                <InfoHint label="Coaching style guidance">
+                  Describe how you coach, communicate, and keep clients
+                  accountable from week one to peak adherence.
+                </InfoHint>
+              </div>
             </div>
             <Textarea
               id={`${fieldIdPrefix}-coaching-style`}
@@ -1305,13 +1363,15 @@ export function PtHubProfileEditor({
             <div className="space-y-4 pt-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <label className="text-sm font-medium text-foreground">
-                    Transformation proof
-                  </label>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Add before-and-after stories with real media so the public
-                    profile has visual proof.
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Transformation proof
+                    </label>
+                    <InfoHint label="Transformation proof guidance">
+                      Add before-and-after stories with real media so the public
+                      profile has visual proof.
+                    </InfoHint>
+                  </div>
                 </div>
                 <Button
                   type="button"
@@ -1574,23 +1634,42 @@ export function PtHubProfileEditor({
               </label>
               <Input
                 id={`${fieldIdPrefix}-slug`}
-                isInvalid={slugLimitState.overLimit}
+                isInvalid={slugLimitState.overLimit || Boolean(slugErrorText)}
                 value={form.slug}
                 onChange={(event) =>
                   setForm((prev) => ({
                     ...prev,
-                    slug: slugifyValue(event.target.value),
+                    slug: event.target.value,
                   }))
                 }
                 placeholder="your-name-coach"
               />
               <p className="text-sm leading-6 text-muted-foreground">
-                Keep it short, readable, and close to your public coach name.
+                Use lowercase letters, numbers, and single hyphens. Keep it
+                short, readable, and close to your public coach name.
               </p>
+              {slugErrorText ? (
+                <p className="text-sm font-medium text-destructive">
+                  {slugErrorText}
+                </p>
+              ) : slugAvailability?.available ? (
+                <p className="text-sm font-medium text-success">
+                  This public slug is available.
+                </p>
+              ) : slugAvailabilityQuery.isFetching ? (
+                <p className="text-sm text-muted-foreground">
+                  Checking slug availability...
+                </p>
+              ) : null}
+              {slugChangedAfterPublish ? (
+                <p className="text-sm font-medium text-warning">
+                  Changing your public URL may break links you already shared.
+                </p>
+              ) : null}
               <FieldCharacterMeta
                 count={slugLimitState.count}
                 limit={slugLimitState.limit}
-                errorText={slugLimitState.errorText}
+                errorText={slugLimitState.errorText ?? undefined}
               />
             </div>
             <div className="rounded-[20px] bg-background/45 p-4">
@@ -1670,23 +1749,20 @@ export function PtHubProfileEditor({
 
               <div className="app-form-grid">
                 <div className="app-form-col-12 space-y-2">
-                  <label
-                    htmlFor={`${fieldIdPrefix}-location`}
-                    className="text-sm font-medium text-foreground"
-                  >
-                    Location
-                  </label>
-                  <Input
+                  <ChipInput
                     id={`${fieldIdPrefix}-location`}
+                    label="Location"
+                    placeholder="Riyadh, Dubai, London"
+                    values={locationValues}
+                    value={locationInput}
                     isInvalid={locationLimitState.overLimit}
-                    value={form.locationLabel}
-                    onChange={(event) =>
+                    onValueChange={setLocationInput}
+                    onValuesChange={(nextValues) =>
                       setForm((prev) => ({
                         ...prev,
-                        locationLabel: event.target.value,
+                        locationLabel: listToInput(nextValues),
                       }))
                     }
-                    placeholder="Riyadh, Saudi Arabia"
                   />
                   <FieldCharacterMeta
                     count={locationLimitState.count}
@@ -1749,59 +1825,38 @@ export function PtHubProfileEditor({
         </TabsContent>
 
         <TabsContent value="preview" className="space-y-5">
-          <PtHubSectionCard
-            title="Public profile preview"
-            description="Use the dedicated preview page for the full layout. This tab keeps a fast editorial snapshot inside the editor."
-          >
-            <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background/70">
-              <div className="h-40 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.4),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.18),transparent_34%),linear-gradient(135deg,rgba(44,24,16,0.95),rgba(20,14,11,1))]" />
-              <div className="space-y-4 p-6">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-2xl font-semibold text-foreground">
-                      {displayNameValue || "Display name"}
-                    </p>
-                    <p className="mt-1 text-sm text-primary">
-                      {form.headline || "Headline goes here"}
-                    </p>
-                  </div>
-                  <Badge variant="secondary">Draft preview</Badge>
-                </div>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  {form.shortBio ||
-                    "Short bio preview. Your PT Hub profile powers the public coach page and future marketplace surfaces."}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {form.specialties.length > 0 ? (
-                    form.specialties.map((item) => (
-                      <Badge key={item}>{item}</Badge>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Specialties will appear here.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </PtHubSectionCard>
+          <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background/70">
+            <PtHubProfilePreview
+              profile={previewData}
+              packageOptions={packageOptions}
+              statusBadges={[
+                {
+                  label: publicationState.isPublished
+                    ? "Published"
+                    : "Unpublished",
+                  tone: publicationState.isPublished ? "success" : "warning",
+                },
+                {
+                  label: `${readiness.completionPercent}% ready`,
+                  tone: "info",
+                },
+              ]}
+            />
+          </div>
         </TabsContent>
       </Tabs>
 
-      <div className="xl:sticky xl:top-28 xl:self-start">
+      <div className="xl:sticky xl:top-28 xl:col-start-2 xl:row-start-1 xl:self-start">
         <PtHubProfileLaunchPanel
           form={form}
           displayNameValue={displayNameValue}
           readiness={readiness}
           publicationState={publicationState}
-          profileVisibility={profileVisibility}
           saving={saving}
           publishing={publishing}
-          updatingVisibility={updatingVisibility}
           mediaBusy={mediaBusy}
           hasChanges={hasChanges}
           hasOverLimitErrors={hasOverLimitErrors}
-          onProfileVisibilityChange={onProfileVisibilityChange}
           onSave={onSave}
           onTogglePublish={onTogglePublish}
         />

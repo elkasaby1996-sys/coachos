@@ -82,6 +82,8 @@ export function getNotificationTypeLabel(
       return "Check-in requested";
     case "checkin_submitted":
       return "Check-in submitted";
+    case "checkin_reviewed":
+      return "Check-in reviewed";
     case "message_received":
       return "Message received";
     case "birthday_reminder":
@@ -119,6 +121,7 @@ export function getNotificationIcon(notification: NotificationRecord) {
       return Dumbbell;
     case "checkin_requested":
     case "checkin_submitted":
+    case "checkin_reviewed":
     case "checkin_due_tomorrow":
       return ClipboardList;
     case "message_received":
@@ -152,6 +155,7 @@ export function getNotificationModuleTone(
       return "coaching";
     case "checkin_requested":
     case "checkin_submitted":
+    case "checkin_reviewed":
     case "checkin_due_tomorrow":
     case "workout_due_today":
     case "calendar_mention":

@@ -27,29 +27,34 @@ export function useAuth(): AuthContextValue {
   const { authLoading, session, user } = useSessionAuth();
   const {
     bootstrapError,
-    bootstrapLoading,
     bootstrapResolved,
-    bootstrapStale,
     refreshRole,
     role,
+    bootstrapStale,
+    bootstrapUserId,
   } = useBootstrapAuth();
+  const hasSameUserCachedBootstrap = Boolean(
+    session?.user.id && bootstrapStale && bootstrapUserId === session.user.id,
+  );
+  const awaitingBootstrap =
+    Boolean(session) && !bootstrapResolved && !hasSameUserCachedBootstrap;
 
   return useMemo(
     () => ({
       session,
       user,
-      role: bootstrapResolved || bootstrapStale ? role : null,
-      isLoading: authLoading || bootstrapLoading,
-      loading: authLoading || bootstrapLoading,
+      role: bootstrapResolved || hasSameUserCachedBootstrap ? role : null,
+      isLoading: authLoading || awaitingBootstrap,
+      loading: authLoading || awaitingBootstrap,
       roleError: bootstrapError?.message ?? null,
       refreshRole,
     }),
     [
+      awaitingBootstrap,
       authLoading,
       bootstrapError,
-      bootstrapLoading,
       bootstrapResolved,
-      bootstrapStale,
+      hasSameUserCachedBootstrap,
       refreshRole,
       role,
       session,
