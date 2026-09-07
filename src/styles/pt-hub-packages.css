@@ -1,0 +1,21 @@
+.pt-hub-package-toolbar {
+  display: grid;
+  align-items: end;
+  gap: 1rem;
+}
+
+.pt-hub-package-filter {
+  display: grid;
+  min-width: 0;
+  gap: 0.5rem;
+}
+
+.pt-hub-package-search-input[data-ui="field"] {
+  padding-inline-start: 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .pt-hub-package-toolbar {
+    grid-template-columns: minmax(0, 1fr) 13rem;
+  }
+}

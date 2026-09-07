@@ -69,6 +69,7 @@ import {
 } from "../lib/pt-hub-package-state";
 import type { PTPackage, PTPackageStatus } from "../types";
 import { PtHubSectionCard } from "./pt-hub-section-card";
+import "../../../styles/pt-hub-packages.css";
 
 type PackageEditorState = {
   title: string;
@@ -665,42 +666,28 @@ export function PtHubPackageManager() {
       editState.status !== "active" || visibilityBusy || busyKey === "reorder";
 
     return (
-      <div
-        key={pkg.id}
-        className={cn(
-          "rounded-[var(--ui-radius-card)] border border-border/65 bg-background/40 px-4 py-4 transition hover:border-border hover:bg-background/55",
-          isArchived && "bg-background/25 opacity-90",
-        )}
-      >
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
-          <div className="min-w-0 space-y-3">
+      <div key={pkg.id} className={cn("py-5", isArchived && "opacity-80")}>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate text-sm font-semibold text-foreground sm:text-base">
+              <p className="min-w-0 break-words text-sm font-semibold leading-relaxed text-foreground sm:text-base">
                 {pkg.title}
               </p>
               <Badge variant={packageStateVariant(editState)}>
                 {getPackageDisplayState(editState)}
               </Badge>
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
               {formatPackagePriceLabel(editState) ? (
-                <span className="inline-flex items-center rounded-full border border-border/65 bg-background/75 px-2.5 py-1 font-medium text-foreground">
+                <span className="font-medium tabular-nums text-foreground">
                   {formatPackagePriceLabel(editState)}
                 </span>
               ) : null}
               {editState.billingCadenceLabel ? (
-                <span className="inline-flex items-center rounded-full border border-border/65 bg-background/75 px-2.5 py-1 font-medium text-foreground">
+                <span className="text-muted-foreground">
                   {editState.billingCadenceLabel}
                 </span>
               ) : null}
-              <span
-                className={cn(
-                  "inline-flex items-center rounded-full border px-2.5 py-1 font-medium",
-                  getVisibilityPillClassName(editState),
-                )}
-              >
-                {getVisibilityPillCopy(editState)}
-              </span>
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span>Updated {getPackageLastUpdatedLabel(pkg)}</span>
@@ -711,40 +698,47 @@ export function PtHubPackageManager() {
               )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-            <label className="inline-flex h-9 items-center gap-2 rounded-full border border-border/60 bg-background/55 px-2.5 text-xs font-medium text-foreground">
+          <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground">
               <Switch
                 checked={editState.isPublic}
                 disabled={isVisibilityDisabled}
+                aria-label={`Show ${pkg.title} on public profile`}
                 onCheckedChange={(checked) =>
                   void handleToggleVisibility(pkg.id, checked)
                 }
               />
               Public
             </label>
-            <div className="inline-flex h-9 items-center rounded-full border border-border/60 bg-background/55 p-0.5">
+            <div
+              className="inline-flex items-center rounded-xl border border-border/60"
+              role="group"
+              aria-label={`Display order for ${pkg.title}`}
+            >
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
-                className="h-8 w-8 rounded-full p-0"
+                className="h-11 w-11 cursor-pointer rounded-l-xl rounded-r-none p-0 motion-safe:hover:translate-y-0"
+                data-no-button-motion="true"
                 disabled={busyKey === "reorder" || !canMoveUp}
                 onClick={() => void handleMove(pkg.id, "up")}
                 aria-label={`Move ${pkg.title} up`}
               >
-                <ArrowUp className="h-4 w-4" />
+                <ArrowUp className="h-4 w-4" aria-hidden="true" />
                 <span className="sr-only">Move up</span>
               </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
-                className="h-8 w-8 rounded-full p-0"
+                className="h-11 w-11 cursor-pointer rounded-l-none rounded-r-xl p-0 motion-safe:hover:translate-y-0"
+                data-no-button-motion="true"
                 disabled={busyKey === "reorder" || !canMoveDown}
                 onClick={() => void handleMove(pkg.id, "down")}
                 aria-label={`Move ${pkg.title} down`}
               >
-                <ArrowDown className="h-4 w-4" />
+                <ArrowDown className="h-4 w-4" aria-hidden="true" />
                 <span className="sr-only">Move down</span>
               </Button>
             </div>
@@ -752,10 +746,12 @@ export function PtHubPackageManager() {
               type="button"
               size="sm"
               variant="secondary"
-              className="h-9 rounded-full px-3"
+              className="h-11 cursor-pointer rounded-xl px-3 motion-safe:hover:translate-y-0"
+              data-no-button-motion="true"
+              aria-label={`Edit ${pkg.title}`}
               onClick={() => setEditingPackageId(pkg.id)}
             >
-              <Pencil className="h-4 w-4" />
+              <Pencil className="h-4 w-4" aria-hidden="true" />
               Edit
             </Button>
           </div>
@@ -781,6 +777,7 @@ export function PtHubPackageManager() {
       <PtHubSectionCard
         title="Packages"
         description="Control package visibility and order."
+        contentClassName="space-y-5"
         actions={
           <Button
             type="button"
@@ -792,8 +789,8 @@ export function PtHubPackageManager() {
           </Button>
         }
       >
-        <div className="app-filter-grid pt-hub-management-toolbar">
-          <div className="app-filter-search space-y-1.5">
+        <div className="pt-hub-package-toolbar">
+          <div className="pt-hub-package-filter">
             <Label
               htmlFor="package-search"
               className="text-xs font-medium text-muted-foreground"
@@ -801,17 +798,20 @@ export function PtHubPackageManager() {
               Search
             </Label>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground [stroke-width:1.7]" />
+              <Search
+                className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground [stroke-width:1.7]"
+                aria-hidden="true"
+              />
               <Input
                 id="package-search"
-                className="app-filter-control pl-9"
+                className="pt-hub-package-search-input h-11"
                 value={packageSearchValue}
                 onChange={(event) => setPackageSearchValue(event.target.value)}
-                placeholder="Search offers, pricing, or package copy"
+                placeholder="Search packages…"
               />
             </div>
           </div>
-          <div className="app-filter-control-sm space-y-1.5">
+          <div className="pt-hub-package-filter">
             <Label
               htmlFor="package-state-filter"
               className="text-xs font-medium text-muted-foreground"
@@ -822,7 +822,7 @@ export function PtHubPackageManager() {
               id="package-state-filter"
               size="sm"
               variant="filter"
-              className="app-filter-control"
+              className="h-11"
               value={activeFilter}
               onChange={(event) =>
                 setActiveFilter(event.target.value as PTPackageManagementFilter)
@@ -854,15 +854,15 @@ export function PtHubPackageManager() {
         ) : null}
 
         {splitFiltered.reorderable.length > 0 ? (
-          <div className="space-y-3">
+          <div className="divide-y divide-border/60 border-t border-border/60">
             {splitFiltered.reorderable.map((pkg) => renderPackageRow(pkg))}
           </div>
         ) : null}
 
         {splitFiltered.archived.length > 0 ? (
-          <div className="space-y-3">
+          <div className="divide-y divide-border/60 border-t border-border/60">
             {activeFilter === "all" ? (
-              <p className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">
+              <p className="pt-5 text-xs font-semibold normal-case tracking-normal text-muted-foreground">
                 Archived packages
               </p>
             ) : null}
