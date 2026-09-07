@@ -210,11 +210,11 @@ describe("PT Hub client table badge cleanup", () => {
 
   it("keeps PT Hub lifecycle and segment filter controls unchanged", () => {
     expect(ptHubClientsPageSource).toContain('relationshipScope: "all"');
-    expect(ptHubClientsPageSource).toContain(
-      "value={lifecycleFilter}\n            onChange={(event) => setLifecycleFilter(event.target.value)}",
+    expect(ptHubClientsPageSource).toMatch(
+      /value=\{lifecycleFilter\}\s+onChange=\{\(event\) => setLifecycleFilter\(event.target.value\)\}/,
     );
-    expect(ptHubClientsPageSource).toContain(
-      "value={segmentFilter}\n            onChange={(event) =>\n              setSegmentFilter(event.target.value as ClientSegmentKey)",
+    expect(ptHubClientsPageSource).toMatch(
+      /value=\{segmentFilter\}\s+onChange=\{\(event\) =>\s+setSegmentFilter\(event.target.value as ClientSegmentKey\)/,
     );
     expect(ptHubClientsPageSource).toContain(
       '<option value="checkin_overdue">',

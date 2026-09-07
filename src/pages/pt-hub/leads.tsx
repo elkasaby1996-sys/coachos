@@ -1,25 +1,20 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  Activity,
-  CheckCircle2,
   ChevronRight,
-  Clock3,
   MessageSquarePlus,
   RefreshCw,
   Search,
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
-import { StatCard } from "../../components/ui/coachos/stat-card";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { PtHubLeadStatusBadge } from "../../features/pt-hub/components/pt-hub-lead-status-badge";
 import { ptHubLeadStatuses } from "../../features/pt-hub/components/pt-hub-lead-statuses";
-import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
-import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
+import { LeadPanel as PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-lead-surface";
 import {
   deriveLeadPackageFilterOptions,
   filterLeadsByPackageContext,
@@ -33,10 +28,6 @@ import {
 } from "../../features/pt-hub/lib/pt-hub";
 import type { PTLeadStatus } from "../../features/pt-hub/types";
 import { formatRelativeTime } from "../../lib/relative-time";
-import {
-  getSemanticToneClasses,
-  type SemanticTone,
-} from "../../lib/semantic-status";
 
 type LeadStatusFilter =
   | PTLeadStatus
@@ -74,16 +65,7 @@ const triageFilterOptions = ["new", "waiting24h", "unread"] satisfies Array<
   Exclude<LeadTriageFilter, "all">
 >;
 
-const leadStatusTone: Record<PTLeadStatus, SemanticTone> = {
-  new: "warning",
-  contacted: "info",
-  approved_pending_workspace: "warning",
-  converted: "success",
-  declined: "danger",
-};
-
-const leadPipelineGridClass =
-  "lg:grid-cols-[minmax(0,1fr)_minmax(220px,0.75fr)_140px_minmax(260px,auto)]";
+const leadPipelineGridClass = "lead-pipeline-grid";
 
 function PtHubLeadListSkeleton() {
   return (
@@ -327,31 +309,28 @@ export function PtHubLeadsPage() {
   const leadKpiMetrics = [
     {
       label: "Needs response",
-      value: triageCounts.waiting24h + triageCounts.unread,
+      value: leads.filter(
+        (lead) =>
+          lead.leadUnreadCount > 0 ||
+          (lead.status === "new" &&
+            Date.now() - new Date(lead.submittedAt).getTime() >= 86_400_000),
+      ).length,
       detail: "Waiting 24h or unread",
-      icon: Clock3,
-      accent: true,
     },
     {
       label: "New leads",
       value: stats.fresh,
       detail: "Unreviewed applications",
-      icon: MessageSquarePlus,
-      iconClassName: "text-[var(--state-warning-text)]",
     },
     {
       label: "Active pipeline",
       value: stats.activePipeline,
       detail: "Contacted or approved",
-      icon: Activity,
-      iconClassName: "text-[var(--state-info-text)]",
     },
     {
       label: "Converted",
       value: stats.converted,
       detail: "Assigned clients",
-      icon: CheckCircle2,
-      iconClassName: "text-[var(--state-success-text)]",
     },
   ];
 
@@ -388,30 +367,30 @@ export function PtHubLeadsPage() {
   };
 
   return (
-    <section className="pt-hub-page-stack">
-      <PtHubPageHeader
-        eyebrow="Leads"
-        title="Review new inquiries"
-        description='See "Apply to Work With Me" submissions and decide who to follow up with next.'
-      />
+    <main className="analytics-page leads-page">
+      <header className="analytics-heading">
+        <div>
+          <h1>Leads</h1>
+          <p>New inquiries, meaningful conversations, and the next step.</p>
+        </div>
+        <Link to="/pt-hub/analytics" className="lead-outline-link">
+          View analytics <ChevronRight size={16} />
+        </Link>
+      </header>
 
       <div
-        className="page-kpi-block pt-hub-kpi-grid"
+        className="analytics-metrics"
         data-columns="4"
         aria-label="Lead intake summary"
       >
-        {leadKpiMetrics.map((metric) => (
-          <StatCard
-            key={metric.label}
-            surface="pt-hub"
-            module="leads"
-            label={metric.label}
-            value={metric.value}
-            helper={metric.detail}
-            icon={metric.icon}
-            iconClassName={metric.iconClassName}
-            accent={metric.accent}
-          />
+        {leadKpiMetrics.map(({ label, value, detail }) => (
+          <div className="analytics-metric" key={label}>
+            <div className="analytics-metric-label">{label}</div>
+            <strong>
+              {isInitialLeadsLoading || showErrorState ? "—" : value}
+            </strong>
+            <p>{detail}</p>
+          </div>
         ))}
       </div>
 
@@ -419,8 +398,15 @@ export function PtHubLeadsPage() {
         title="Lead Pipeline"
         description="Search, filter, and open the next inquiry to review."
         contentClassName="space-y-5"
+        actions={
+          <span className="analytics-tag">
+            {isInitialLeadsLoading
+              ? "Loading"
+              : `${filteredLeads.length} of ${leads.length} leads`}
+          </span>
+        }
       >
-        <div className="app-filter-grid pt-hub-management-toolbar pt-hub-leads-filter-toolbar">
+        <div className="lead-filter-toolbar">
           <div className="space-y-1.5">
             <label
               htmlFor="lead-search-filter"
@@ -448,6 +434,7 @@ export function PtHubLeadsPage() {
             </label>
             <Select
               id="lead-triage-filter"
+              aria-label="Triage"
               size="sm"
               variant="filter"
               className="app-filter-control"
@@ -473,6 +460,7 @@ export function PtHubLeadsPage() {
             </label>
             <Select
               id="lead-status-filter"
+              aria-label="Status"
               size="sm"
               variant="filter"
               className="app-filter-control"
@@ -497,6 +485,7 @@ export function PtHubLeadsPage() {
             </label>
             <Select
               id="lead-package-filter"
+              aria-label="Package"
               size="sm"
               variant="filter"
               className="app-filter-control"
@@ -519,7 +508,7 @@ export function PtHubLeadsPage() {
               type="button"
               variant="ghost"
               size="sm"
-              className="h-11 min-h-11 rounded-full border border-border/55 bg-background/45 px-4 text-xs font-semibold text-muted-foreground shadow-[inset_0_1px_0_oklch(var(--background)/0.55)] transition-colors hover:border-primary/20 hover:bg-background/70 hover:text-foreground disabled:border-border/35 disabled:bg-background/25 disabled:text-muted-foreground/45"
+              className="lead-reset"
               aria-label="Reset lead filters"
               disabled={!hasActiveFilters}
               onClick={resetFilters}
@@ -586,38 +575,41 @@ export function PtHubLeadsPage() {
             icon={<MessageSquarePlus className="h-5 w-5 [stroke-width:1.7]" />}
           />
         ) : (
-          <div className="pt-hub-data-shell p-2">
-            <div
-              className={`hidden gap-4 rounded-[14px] border border-border/60 bg-background/60 px-5 py-3 text-xs font-semibold normal-case tracking-normal text-muted-foreground lg:grid ${leadPipelineGridClass}`}
-            >
+          <div className="lead-directory">
+            <div className={`lead-directory-head ${leadPipelineGridClass}`}>
               <span>Lead</span>
               <span>Package</span>
               <span>Submitted</span>
               <span>Status / Action</span>
             </div>
-            <div className="ui-inset mt-2 divide-y divide-border/45 overflow-hidden border border-border/45">
+            <div className="lead-directory-body">
               {filteredLeads.map((lead) => {
                 const packageLabel = getLeadPrimaryPackageLabel(lead);
-                const statusMarkerTone = getSemanticToneClasses(
-                  leadStatusTone[lead.status],
-                ).marker;
                 const statusActionState = leadStatusActionById[lead.id];
                 return (
                   <div
                     key={lead.id}
                     data-lead-review-row=""
-                    className={`group grid w-full cursor-pointer gap-4 px-4 py-4 text-left transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-background/70 lg:items-center ${leadPipelineGridClass}`}
+                    className={`lead-directory-row ${leadPipelineGridClass}`}
                     onClick={() => navigate(`/pt-hub/leads/${lead.id}`)}
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <span
-                        aria-hidden
-                        className={`pt-hub-row-status-dot ${statusMarkerTone} transition-colors group-hover:bg-[var(--module-leads-bg-soft)]`}
-                      />
+                      <span aria-hidden className="lead-avatar">
+                        {lead.fullName
+                          .split(/\s+/)
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map((word) => word[0])
+                          .join("")}
+                      </span>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-foreground">
+                        <Link
+                          className="lead-name-link"
+                          to={`/pt-hub/leads/${lead.id}`}
+                          onClick={(event) => event.stopPropagation()}
+                        >
                           {lead.fullName}
-                        </p>
+                        </Link>
                         <p className="truncate text-xs text-muted-foreground">
                           {lead.email ?? lead.phone ?? lead.sourceLabel}
                         </p>
@@ -637,15 +629,11 @@ export function PtHubLeadsPage() {
                     </div>
 
                     <div className="space-y-1 text-sm text-muted-foreground">
-                      <p>
-                        {formatRelativeTime(
-                          lead.leadLastMessageAt ?? lead.submittedAt,
-                        )}
-                      </p>
+                      <p>{formatRelativeTime(lead.submittedAt)}</p>
                       <p className="text-xs">Submitted</p>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
+                    <div className="lead-row-actions">
                       {lead.leadUnreadCount > 0 ? (
                         <span className="rounded-[8px] border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
                           {lead.leadUnreadCount} unread
@@ -655,7 +643,8 @@ export function PtHubLeadsPage() {
                       {lead.status === "new" ? (
                         <button
                           type="button"
-                          className="ui-inset border border-border/70 px-3 py-1.5 text-xs font-semibold text-foreground transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-primary/20 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                          className="lead-contact-action"
+                          data-no-button-motion="true"
                           disabled={statusActionState === "saving"}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -681,6 +670,6 @@ export function PtHubLeadsPage() {
           </div>
         )}
       </PtHubSectionCard>
-    </section>
+    </main>
   );
 }

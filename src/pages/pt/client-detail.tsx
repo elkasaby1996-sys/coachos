@@ -1,4 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
+import "../../styles/pt-hub-analytics.css";
+import "../../styles/pt-hub-clients.css";
 import {
   Suspense,
   useCallback,
@@ -4681,7 +4683,7 @@ export function PtClientDetailPage({
         </DialogContent>
       </Dialog>
 
-      <div className="w-full space-y-6">
+      <div className="analytics-page client-profile-page w-full">
         {identityLoading ? (
           <Card className="rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur">
             <CardContent className="space-y-4 p-5">
@@ -4696,18 +4698,18 @@ export function PtClientDetailPage({
             </CardContent>
           </Card>
         ) : (
-          <Card className="ops-surface-strong backdrop-blur">
+          <Card className="client-profile-heading">
             <CardContent className="space-y-5 p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex flex-wrap items-start gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-[18px] border border-border/70 bg-background/70 text-sm font-semibold text-foreground">
+                  <div className="client-profile-avatar" aria-hidden="true">
                     {getInitials(clientSnapshot?.display_name)}
                   </div>
                   <div className="space-y-2">
                     <div className="client-detail-header-name-row flex flex-wrap items-center gap-2">
-                      <h2 className="text-xl font-semibold tracking-tight">
+                      <h1>
                         {clientSnapshot?.display_name ?? "Client profile"}
-                      </h2>
+                      </h1>
                       <ClientDetailInlineStatusBadges
                         statusDisplay={clientGlobalStatusDisplay}
                       />
@@ -4979,7 +4981,7 @@ export function PtClientDetailPage({
           </Card>
         )}
 
-        <div className="grid items-stretch gap-7 lg:grid-cols-3">
+        <div className="client-profile-summary grid items-stretch gap-5 lg:grid-cols-3">
           <DashboardCard
             title="To-Do"
             action={
@@ -5128,9 +5130,12 @@ export function PtClientDetailPage({
             </div>
           </DashboardCard>
 
-          <section className="lg:col-span-2 lg:h-full">
+          <section
+            className="client-profile-metrics lg:col-span-2 lg:h-full"
+            aria-label="Client activity summary"
+          >
             {statsLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:h-full lg:auto-rows-fr">
+              <div className="client-profile-metric-grid">
                 {Array.from({ length: 4 }).map((_, index) => (
                   <Card key={index} className="border-border/70 bg-card/80">
                     <CardHeader className="space-y-2">
@@ -5141,7 +5146,7 @@ export function PtClientDetailPage({
                 ))}
               </div>
             ) : clientSnapshot ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:h-full lg:auto-rows-fr">
+              <div className="client-profile-metric-grid">
                 <StatCard
                   label="Adherence"
                   value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
@@ -5335,7 +5340,7 @@ export function PtClientDetailPage({
                 onValueChange={setActiveTab}
                 className="space-y-4"
               >
-                <div className="ui-inset p-2">
+                <div className="client-profile-tab-bar">
                   <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl !border-0 bg-transparent p-0 shadow-none sm:grid-cols-3 xl:grid-cols-5">
                     {workbenchTabs.map((tab) => (
                       <TabsTrigger

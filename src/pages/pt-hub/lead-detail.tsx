@@ -5,6 +5,7 @@ import { AlertTriangle } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { PtHubLeadDetailView } from "../../features/pt-hub/components/pt-hub-lead-detail-view";
+import { LeadPanel } from "../../features/pt-hub/components/pt-hub-lead-surface";
 import {
   addPtHubLeadNote,
   approvePtHubLead,
@@ -77,18 +78,43 @@ export function PtHubLeadDetailPage() {
 
   if (leadsQuery.isLoading) {
     return (
-      <section className="pt-hub-page-stack">
-        <EmptyState
-          title="Loading lead"
-          description="We’re pulling the latest inquiry details now."
-        />
+      <section className="analytics-page lead-profile-page">
+        <LeadPanel
+          title="Lead profile"
+          description="Loading the latest application details."
+        >
+          <p role="status" className="lead-empty-copy">
+            Loading lead…
+          </p>
+        </LeadPanel>
+      </section>
+    );
+  }
+
+  if (leadsQuery.isError && !lead) {
+    return (
+      <section className="analytics-page lead-profile-page">
+        <LeadPanel
+          title="Unable to load lead"
+          description="The application details couldn’t be loaded."
+        >
+          <div role="alert">
+            <Button
+              variant="secondary"
+              disabled={leadsQuery.isFetching}
+              onClick={() => void leadsQuery.refetch()}
+            >
+              Retry
+            </Button>
+          </div>
+        </LeadPanel>
       </section>
     );
   }
 
   if (!lead) {
     return (
-      <section className="pt-hub-page-stack">
+      <section className="analytics-page lead-profile-page">
         <EmptyState
           title="Lead not found"
           description="This inquiry may have been removed or the link is no longer valid."
@@ -115,10 +141,15 @@ export function PtHubLeadDetailPage() {
       currentUserId={user?.id ?? null}
       leadChatMessages={leadChatThreadQuery.data?.messages ?? []}
       leadChatStatus={
-        leadChatThreadQuery.data?.conversation
-          ? leadChatThreadQuery.data.conversation.status
-          : "missing"
+        leadChatThreadQuery.isPending
+          ? "loading"
+          : leadChatThreadQuery.isError
+            ? "error"
+            : leadChatThreadQuery.data?.conversation
+              ? leadChatThreadQuery.data.conversation.status
+              : "missing"
       }
+      onRetryChat={() => void leadChatThreadQuery.refetch()}
       leadChatArchivedReason={
         leadChatThreadQuery.data?.conversation?.archivedReason ?? null
       }

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
   MessageSquarePlus,
+  ArrowUpRight,
   XCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -21,8 +22,7 @@ import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
 import { Textarea } from "../../../components/ui/textarea";
 import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
-import { PtHubPageHeader } from "./pt-hub-page-header";
-import { PtHubSectionCard } from "./pt-hub-section-card";
+import { LeadPanel as PtHubSectionCard } from "./pt-hub-lead-surface";
 import { PtHubLeadStatusBadge } from "./pt-hub-lead-status-badge";
 import { ptHubLeadStatuses } from "./pt-hub-lead-statuses";
 import { getPackageDisplayState } from "../lib/pt-hub-package-state";
@@ -58,6 +58,7 @@ export function PtHubLeadDetailView({
   leadChatMessages,
   leadChatStatus,
   leadChatArchivedReason,
+  onRetryChat,
   sendingLeadMessage,
   saving,
   onUpdateStatus,
@@ -72,7 +73,8 @@ export function PtHubLeadDetailView({
   workspaces: Array<{ id: string; name: string }>;
   currentUserId: string | null;
   leadChatMessages: PTLeadMessage[];
-  leadChatStatus: "open" | "archived" | "missing";
+  leadChatStatus: "open" | "archived" | "missing" | "loading" | "error";
+  onRetryChat?: () => void;
   leadChatArchivedReason: "converted" | "declined" | "manual" | null;
   sendingLeadMessage: boolean;
   saving: boolean;
@@ -90,6 +92,7 @@ export function PtHubLeadDetailView({
   onAddNote: (leadId: string, body: string) => Promise<void>;
 }) {
   const [nextStatus, setNextStatus] = useState<PTLeadStatus>("new");
+  const initializedLeadId = useRef<string | null>(null);
   const [noteBody, setNoteBody] = useState("");
   const [leadMessageBody, setLeadMessageBody] = useState("");
   const [workspaceAssignment, setWorkspaceAssignment] = useState<string>(
@@ -130,6 +133,9 @@ export function PtHubLeadDetailView({
     : "contacted";
 
   useEffect(() => {
+    // Background query refreshes must not clear notes or workspace selections.
+    if (initializedLeadId.current === lead.id) return;
+    initializedLeadId.current = lead.id;
     setNextStatus(lead.status ?? "new");
     setNoteBody("");
     setLeadMessageBody("");
@@ -142,6 +148,10 @@ export function PtHubLeadDetailView({
     );
     setNewWorkspaceName("");
   }, [lead, workspaces]);
+
+  useEffect(() => {
+    setNextStatus(lead.status ?? "new");
+  }, [lead.id, lead.status]);
 
   const isCreatingWorkspace =
     workspaceAssignment === CREATE_NEW_WORKSPACE_VALUE;
@@ -210,23 +220,42 @@ export function PtHubLeadDetailView({
   };
 
   return (
-    <section className="pt-hub-page-stack">
-      <PtHubPageHeader
-        module="leads"
-        eyebrow="Lead profile"
-        title={lead.fullName}
-        description={`Submitted ${formatRelativeTime(lead.submittedAt)}. Review the inquiry, update status, and keep internal qualification notes in one place.`}
-        actions={
-          <Button asChild variant="secondary">
-            <Link to="/pt-hub/leads">
-              <ArrowLeft className="h-4 w-4" />
-              Back to leads
-            </Link>
-          </Button>
-        }
-      />
+    <main className="analytics-page lead-profile-page">
+      <Link to="/pt-hub/leads" className="lead-back-link">
+        <ArrowLeft size={15} />
+        Back to leads
+      </Link>
+      <header className="analytics-heading lead-profile-heading">
+        <div className="lead-identity">
+          <span className="lead-avatar lead-avatar-large" aria-hidden="true">
+            {lead.fullName
+              .split(/\s+/)
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((word) => word[0])
+              .join("")}
+          </span>
+          <div>
+            <p className="analytics-eyebrow">LEAD PROFILE</p>
+            <h1>
+              {lead.fullName}
+              <span>.</span>
+            </h1>
+            <p>Submitted {formatRelativeTime(lead.submittedAt)}</p>
+          </div>
+        </div>
+        {lead.convertedClientId && (
+          <Link
+            to={`/pt/clients/${lead.convertedClientId}`}
+            className="lead-outline-link"
+          >
+            Open client profile
+            <ArrowUpRight size={16} />
+          </Link>
+        )}
+      </header>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="lead-profile-meta">
         <Badge module="leads" variant="muted">
           {lead.sourceLabel}
         </Badge>
@@ -238,12 +267,40 @@ export function PtHubLeadDetailView({
         <PtHubLeadStatusBadge status={lead.status} />
       </div>
 
-      <div className="pt-hub-work-grid xl:grid-cols-[minmax(0,1.2fr)_330px]">
-        <div className="pt-hub-page-stack">
+      <section
+        className="lead-stage-panel"
+        aria-label="Current application stage"
+      >
+        <div className="lead-stage-caption">
+          <span>APPLICATION JOURNEY</span>
+          {lead.status === "declined" && <span>Application declined</span>}
+        </div>
+        <ol className="lead-stages">
+          {[
+            { key: "new", label: "Submitted" },
+            { key: "contacted", label: "In conversation" },
+            { key: "approved_pending_workspace", label: "Approved" },
+            { key: "converted", label: "Converted" },
+          ].map((stage, index) => (
+            <li
+              key={stage.key}
+              aria-current={stage.key === lead.status ? "step" : undefined}
+              data-current={stage.key === lead.status}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <strong>{stage.label}</strong>
+              <i aria-hidden="true" />
+            </li>
+          ))}
+        </ol>
+      </section>
+      <div className="lead-profile-grid">
+        <div className="lead-profile-main">
           <PtHubSectionCard
             module="leads"
             title="Application snapshot"
             description="Key details from the inquiry."
+            className="lead-facts"
           >
             <DetailRow label="Source" value={lead.sourceLabel} />
             <DetailRow label="Email" value={lead.email || "Not provided"} />
@@ -262,6 +319,7 @@ export function PtHubLeadDetailView({
             module="leads"
             title="Package interest"
             description="Package context captured for qualification review."
+            className="lead-package-context"
           >
             <DetailRow
               label="Selected at application"
@@ -301,10 +359,31 @@ export function PtHubLeadDetailView({
             title="Lead chat"
             description="Pre-workspace conversation between you and this lead."
           >
-            {leadChatStatus === "missing" ? (
-              <p className="text-sm text-muted-foreground">
-                Lead chat is being prepared. Try again in a moment.
+            {leadChatStatus === "loading" ? (
+              <p role="status" className="lead-empty-copy">
+                Loading conversation…
               </p>
+            ) : leadChatStatus === "error" ? (
+              <div role="alert" className="lead-empty-copy">
+                <p>Conversation couldn’t be loaded.</p>
+                {onRetryChat && (
+                  <Button variant="secondary" onClick={onRetryChat}>
+                    Retry chat
+                  </Button>
+                )}
+              </div>
+            ) : leadChatStatus === "missing" ? (
+              <div className="lead-chat-empty">
+                <MessageSquarePlus size={24} aria-hidden="true" />
+                <div>
+                  <h3>Chat isn’t available yet</h3>
+                  <p>
+                    {lead.applicantUserId
+                      ? "There is no conversation linked to this application yet."
+                      : "This lead has no linked account. Chat becomes available when an account and conversation are linked."}
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="space-y-3">
                 {leadChatStatus === "archived" ? (
@@ -319,7 +398,7 @@ export function PtHubLeadDetailView({
                 ) : null}
 
                 {leadChatMessages.length > 0 ? (
-                  <div className="ui-inset max-h-[22rem] space-y-2 overflow-y-auto border border-border/60 p-3">
+                  <div className="lead-chat-history max-h-[22rem] space-y-2 overflow-y-auto p-3">
                     {leadChatMessages.map((message) => {
                       const isCurrentUser =
                         currentUserId && message.senderUserId === currentUserId;
@@ -352,11 +431,15 @@ export function PtHubLeadDetailView({
                 )}
 
                 {leadChatStatus === "open" ? (
-                  <div className="ui-inset space-y-3 border border-border/60 p-4">
-                    <label className="text-sm font-medium text-foreground">
+                  <div className="lead-form-section space-y-3">
+                    <label
+                      htmlFor="lead-message-body"
+                      className="text-sm font-medium text-foreground"
+                    >
                       Message lead
                     </label>
                     <Textarea
+                      id="lead-message-body"
                       isInvalid={leadMessageLimitState.overLimit}
                       className="min-h-[110px]"
                       value={leadMessageBody}
@@ -400,10 +483,7 @@ export function PtHubLeadDetailView({
             <div className="space-y-3">
               {lead.notes.length > 0 ? (
                 lead.notes.map((note) => (
-                  <div
-                    key={note.id}
-                    className="ui-inset border border-border/60 p-4"
-                  >
+                  <div key={note.id} className="lead-note">
                     <p className="text-sm text-foreground">{note.body}</p>
                     <p className="mt-2 text-xs text-muted-foreground">
                       Added {formatRelativeTime(note.createdAt)}
@@ -417,11 +497,15 @@ export function PtHubLeadDetailView({
               )}
             </div>
 
-            <div className="ui-inset space-y-3 border border-border/60 p-4">
-              <label className="text-sm font-medium text-foreground">
+            <div className="lead-form-section space-y-3">
+              <label
+                htmlFor="lead-note-body"
+                className="text-sm font-medium text-foreground"
+              >
                 Add note
               </label>
               <Textarea
+                id="lead-note-body"
                 isInvalid={noteLimitState.overLimit}
                 className="min-h-[120px]"
                 value={noteBody}
@@ -451,17 +535,23 @@ export function PtHubLeadDetailView({
           </PtHubSectionCard>
         </div>
 
-        <div className="pt-hub-page-stack">
+        <div className="lead-profile-sidebar">
           <PtHubSectionCard
             module="leads"
             title="Status management"
-            description="Move the lead through the PT Hub CRM pipeline."
+            description="Choose the next step for this application."
+            className="lead-status-panel"
           >
             <div className="space-y-3">
-              <label className="text-sm font-medium text-foreground">
+              <label
+                htmlFor="lead-status-update"
+                className="text-sm font-medium text-foreground"
+              >
                 Update status
               </label>
               <Select
+                id="lead-status-update"
+                aria-label="Update status"
                 value={statusSelectValue}
                 onChange={(event) =>
                   setNextStatus(event.target.value as PTLeadStatus)
@@ -485,11 +575,16 @@ export function PtHubLeadDetailView({
               </Button>
             </div>
 
-            <div className="ui-inset space-y-3 border border-border/60 p-4">
-              <label className="text-sm font-medium text-foreground">
+            <div className="lead-form-section space-y-3">
+              <label
+                htmlFor="lead-workspace-assignment"
+                className="text-sm font-medium text-foreground"
+              >
                 Workspace assignment for approval
               </label>
               <Select
+                id="lead-workspace-assignment"
+                aria-label="Workspace assignment for approval"
                 value={workspaceAssignment}
                 onChange={(event) => setWorkspaceAssignment(event.target.value)}
               >
@@ -509,6 +604,7 @@ export function PtHubLeadDetailView({
               {isCreatingWorkspace ? (
                 <>
                   <Input
+                    aria-label="New workspace name"
                     isInvalid={workspaceNameLimitState.overLimit}
                     value={newWorkspaceName}
                     onChange={(event) =>
@@ -545,7 +641,7 @@ export function PtHubLeadDetailView({
                 </p>
               ) : null}
 
-              <div className="flex flex-wrap gap-2">
+              <div className="lead-approval-actions">
                 <Button
                   className="flex-1"
                   disabled={approveDisabled || isConvertedLead}
@@ -660,17 +756,15 @@ export function PtHubLeadDetailView({
           </PtHubSectionCard>
         </div>
       </div>
-    </section>
+    </main>
   );
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="ui-panel border border-border/60 p-4">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-2 text-sm text-foreground">{value}</p>
-    </div>
+    <dl className="lead-detail-row" data-detail-label={label}>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </dl>
   );
 }
