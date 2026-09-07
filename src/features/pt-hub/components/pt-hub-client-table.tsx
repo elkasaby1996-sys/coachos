@@ -132,6 +132,9 @@ export function PtHubClientTable({
                   <button
                     type="button"
                     className="workspace-client-open"
+                    // A transform would re-anchor the stretched hit area to
+                    // this button and make hover toggle at the row edges.
+                    data-no-button-motion="true"
                     onClick={() => onOpen(client)}
                     aria-label={t(
                       "ptHub.clients.table.openClientAria",

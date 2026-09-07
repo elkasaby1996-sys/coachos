@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet, useParams } from "react-router-dom";
+import { Skeleton } from "../../../components/ui/skeleton";
 import {
   SettingsPageShell,
   SettingsSectionCard,
@@ -115,17 +117,30 @@ export function WorkspaceSettingsLayoutPage() {
 
   return (
     <SettingsPageShell tabs={<SettingsTabs tabs={tabs} />}>
-      <Outlet
-        context={
-          {
-            workspaceId: resolvedWorkspaceId,
-            canManage: access.canManage,
-            isOwner: access.isOwner,
-            role: access.role,
-            workspace: workspaceQuery.data ?? null,
-          } satisfies WorkspaceSettingsOutletContext
+      <Suspense
+        fallback={
+          <div
+            role="status"
+            aria-label="Loading settings"
+            className="space-y-4"
+          >
+            <span className="sr-only">Loading settings…</span>
+            <Skeleton className="h-64 rounded-[var(--ui-radius-card)]" />
+          </div>
         }
-      />
+      >
+        <Outlet
+          context={
+            {
+              workspaceId: resolvedWorkspaceId,
+              canManage: access.canManage,
+              isOwner: access.isOwner,
+              role: access.role,
+              workspace: workspaceQuery.data ?? null,
+            } satisfies WorkspaceSettingsOutletContext
+          }
+        />
+      </Suspense>
     </SettingsPageShell>
   );
 }

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -358,14 +357,9 @@ export function PtPerformanceMarkersPage() {
         title="Performance Markers"
         description="Build the shared Performance Marker library your clients can be assigned across every workspace you coach in."
         actions={
-          <>
-            <Button asChild variant="secondary" size="sm">
-              <Link to="/settings/defaults">Back to settings</Link>
-            </Button>
-            <Button size="sm" onClick={openCreateDialog}>
-              New performance marker
-            </Button>
-          </>
+          <Button size="sm" onClick={openCreateDialog}>
+            New performance marker
+          </Button>
         }
       />
 

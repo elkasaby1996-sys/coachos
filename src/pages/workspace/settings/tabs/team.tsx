@@ -33,10 +33,7 @@ import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { Select } from "../../../../components/ui/select";
 import { Skeleton } from "../../../../components/ui/skeleton";
-import {
-  SettingsHeader,
-  SettingsSectionCard,
-} from "../../../../features/settings/components/settings-primitives";
+import { SettingsSectionCard } from "../../../../features/settings/components/settings-primitives";
 import {
   createWorkspaceTeamInvite,
   listWorkspaceTeamSettings,
@@ -1019,14 +1016,6 @@ export function WorkspaceTeamSettingsPage() {
 
   return (
     <div className="space-y-5">
-      <SettingsHeader
-        scope="Workspace"
-        title="Team & Permissions"
-        description="Invite coaches and assistants to help manage clients in this workspace."
-        showKicker={false}
-        showScope={false}
-      />
-
       <TeamToast
         message={toast?.message ?? null}
         variant={toast?.variant ?? "success"}

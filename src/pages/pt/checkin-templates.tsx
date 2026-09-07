@@ -689,81 +689,9 @@ export function PtCheckinTemplatesPage() {
       <WorkspacePageHeader
         title="Check-in Templates"
         description="Build question sets that feel coach-ready, stay aligned with the client renderer, and stay safe once clients start submitting."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            {canManageDelivery ? (
-              <Button variant="secondary" onClick={handleStartNewTemplate}>
-                <Plus className="mr-2 h-4 w-4" />
-                New template
-              </Button>
-            ) : null}
-          </div>
-        }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <DashboardCard title="Template Library">
-          {workspaceError ? (
-            <EmptyState
-              title="Workspace unavailable"
-              description="We couldn't load your workspace context."
-            />
-          ) : templatesQuery.isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
-            </div>
-          ) : templateRows.length === 0 ? (
-            <EmptyState
-              title="No check-in templates yet"
-              description="Start with a reusable template, then assign it as a workspace default or a client override."
-              actionLabel={canManageDelivery ? "Create template" : undefined}
-              onAction={canManageDelivery ? handleStartNewTemplate : undefined}
-            />
-          ) : (
-            <div className="space-y-3">
-              {templateRows.map((template) => {
-                const isSelected = template.id === selectedTemplateId;
-                return (
-                  <button
-                    key={template.id}
-                    type="button"
-                    onClick={() => {
-                      setCreatingNewTemplate(false);
-                      setSelectedTemplateId(template.id);
-                    }}
-                    className={cn(
-                      "w-full rounded-[20px] border px-4 py-4 text-left transition",
-                      isSelected
-                        ? "border-primary/60 bg-primary/6 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.7)]"
-                        : "border-border/70 bg-background/55 hover:bg-muted/40",
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-foreground">
-                          {template.name ?? "Untitled template"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {template.description?.trim() ||
-                            "No template description yet."}
-                        </p>
-                      </div>
-                      <StatusPill
-                        status={
-                          template.is_active === false ? "inactive" : "active"
-                        }
-                        statusMap={templateStatusMap}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </DashboardCard>
-
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <DashboardCard
           title={selectedTemplate ? "Template Builder" : "New Template"}
           subtitle={
@@ -1325,6 +1253,82 @@ export function PtCheckinTemplatesPage() {
               </div>
             </div>
           </div>
+        </DashboardCard>
+
+        <DashboardCard
+          title="Template Library"
+          action={
+            canManageDelivery ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleStartNewTemplate}
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                New template
+              </Button>
+            ) : null
+          }
+        >
+          {workspaceError ? (
+            <EmptyState
+              title="Workspace unavailable"
+              description="We couldn't load your workspace context."
+            />
+          ) : templatesQuery.isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          ) : templateRows.length === 0 ? (
+            <EmptyState
+              title="No check-in templates yet"
+              description="Start with a reusable template, then assign it as a workspace default or a client override."
+              actionLabel={canManageDelivery ? "Create template" : undefined}
+              onAction={canManageDelivery ? handleStartNewTemplate : undefined}
+            />
+          ) : (
+            <div className="space-y-3">
+              {templateRows.map((template) => {
+                const isSelected = template.id === selectedTemplateId;
+                return (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => {
+                      setCreatingNewTemplate(false);
+                      setSelectedTemplateId(template.id);
+                    }}
+                    className={cn(
+                      "w-full rounded-[20px] border px-4 py-4 text-left transition",
+                      isSelected
+                        ? "border-primary/60 bg-primary/6 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.7)]"
+                        : "border-border/70 bg-background/55 hover:bg-muted/40",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">
+                          {template.name ?? "Untitled template"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {template.description?.trim() ||
+                            "No template description yet."}
+                        </p>
+                      </div>
+                      <StatusPill
+                        status={
+                          template.is_active === false ? "inactive" : "active"
+                        }
+                        statusMap={templateStatusMap}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </DashboardCard>
       </div>
       <StickySaveBar

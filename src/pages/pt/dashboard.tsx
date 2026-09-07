@@ -206,9 +206,35 @@ export function PtDashboardPage() {
           unreadCount: number;
           coachTodos: CoachTodo[];
         };
+        const dashboardCheckins = summary?.checkins ?? [];
+        // Older dashboard summaries omit reviewed_at. Read the missing status
+        // so completed reviews are not shown as submissions awaiting review.
+        const missingReviewStatus = dashboardCheckins.filter(
+          (checkin) => checkin.reviewed_at === undefined,
+        );
+        if (missingReviewStatus.length > 0) {
+          const { data: reviewStatuses, error: reviewStatusError } =
+            await supabase
+              .from("checkins")
+              .select("id, reviewed_at")
+              .in(
+                "id",
+                missingReviewStatus.map((checkin) => checkin.id),
+              );
+          if (reviewStatusError) throw reviewStatusError;
+          const reviewedAtById = new Map(
+            (reviewStatuses ?? []).map((checkin) => [
+              checkin.id,
+              checkin.reviewed_at,
+            ]),
+          );
+          for (const checkin of missingReviewStatus) {
+            checkin.reviewed_at = reviewedAtById.get(checkin.id) ?? null;
+          }
+        }
         setClients(summary?.clients ?? []);
         setAssignedWorkouts(summary?.assignedWorkouts ?? []);
-        setCheckins(summary?.checkins ?? []);
+        setCheckins(dashboardCheckins);
         setUnreadCount(summary?.unreadCount ?? 0);
         setCoachTodos(summary?.coachTodos ?? []);
 
@@ -880,7 +906,13 @@ export function PtDashboardPage() {
                           <button
                             key={row.id}
                             type="button"
-                            onClick={() => navigate("/pt/checkins")}
+                            onClick={() =>
+                              navigate(
+                                row.client_id
+                                  ? `/pt/clients/${row.client_id}?tab=checkins&checkin=${row.id}`
+                                  : "/pt/checkins",
+                              )
+                            }
                             className="workspace-dashboard-row flex w-full items-center justify-between gap-3 text-left"
                           >
                             <div className="min-w-0 flex-1">

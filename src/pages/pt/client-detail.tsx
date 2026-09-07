@@ -49,12 +49,15 @@ import {
   MessageCircle,
   Moon,
   MoreHorizontal,
+  Loader2,
   Pencil,
   Play,
+  Plus,
   Rocket,
   Sparkles,
   ArrowRightLeft,
   Upload,
+  Trash2,
   XCircle,
   Archive,
 } from "lucide-react";
@@ -1135,6 +1138,10 @@ export function PtClientDetailPage({
   const [checkinsPage, setCheckinsPage] = useState(0);
   const checkinsPageSize = 12;
   const [checkinsList, setCheckinsList] = useState<CheckinRow[]>([]);
+  const requestedCheckinId = new URLSearchParams(location.search).get(
+    "checkin",
+  );
+  const openedCheckinLinkRef = useRef<string | null>(null);
 
   const today = useMemo(() => new Date(), []);
   const isDev = import.meta.env.DEV;
@@ -1912,6 +1919,25 @@ export function PtClientDetailPage({
     const rows = baselinePhotosQuery.data;
     return () => revokePrivateObjectUrls(rows);
   }, [baselinePhotosQuery.data]);
+
+  // Review links must resolve older submissions even when future scheduled
+  // check-ins fill the first page of the client's history.
+  const linkedCheckinQuery = useQuery({
+    queryKey: ["pt-client-checkins", clientId, "linked", requestedCheckinId],
+    enabled: !!clientId && active === "checkins" && !!requestedCheckinId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("checkins")
+        .select(
+          "id, week_ending_saturday, submitted_at, reviewed_at, reviewed_by_user_id, pt_feedback, created_at",
+        )
+        .eq("client_id", clientId ?? "")
+        .eq("id", requestedCheckinId ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return data as CheckinRow | null;
+    },
+  });
 
   const checkinsQuery = useQuery({
     queryKey: ["pt-client-checkins", clientId, active, checkinsPage],
@@ -4333,21 +4359,43 @@ export function PtClientDetailPage({
     setReviewOpen(true);
   }, []);
 
-  useEffect(() => {
+  const closeCheckinReview = useCallback(() => {
+    setReviewOpen(false);
     const params = new URLSearchParams(location.search);
-    const targetCheckinId = params.get("checkin");
-    if (active !== "checkins" || !targetCheckinId) return;
-    const match = checkinsRows.find((row) => row.id === targetCheckinId);
+    if (params.has("checkin")) {
+      params.delete("checkin");
+      navigate(
+        { pathname: location.pathname, search: params.toString() },
+        { replace: true },
+      );
+    }
+    setSelectedCheckin(null);
+    setReviewTab("answers");
+    setFeedbackText("");
+    setFeedbackValidationMessage(null);
+    setFeedbackMessage(null);
+    setFeedbackStatus("idle");
+    setReviewPhotoLoadErrors({});
+    setReviewPhotoPreview(null);
+  }, [location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    if (active !== "checkins" || !requestedCheckinId) {
+      openedCheckinLinkRef.current = null;
+      return;
+    }
+    const linkKey = `${clientId}:${requestedCheckinId}`;
+    if (openedCheckinLinkRef.current === linkKey) return;
+    const match = linkedCheckinQuery.data;
     if (!match || (!match.submitted_at && !match.reviewed_at)) return;
-    if (reviewOpen && selectedCheckin?.id === targetCheckinId) return;
+    openedCheckinLinkRef.current = linkKey;
     openCheckinReview(match);
   }, [
     active,
-    checkinsRows,
-    location.search,
+    clientId,
+    linkedCheckinQuery.data,
+    requestedCheckinId,
     openCheckinReview,
-    reviewOpen,
-    selectedCheckin?.id,
   ]);
 
   const handleSaveCheckinReview = async (markReviewed: boolean) => {
@@ -4425,8 +4473,7 @@ export function PtClientDetailPage({
       queryKey: ["pt-checkins-queue"],
     });
     if (markReviewed) {
-      setReviewOpen(false);
-      setSelectedCheckin(null);
+      closeCheckinReview();
     }
   };
 
@@ -4471,7 +4518,8 @@ export function PtClientDetailPage({
 
   const addTask = async () => {
     const next = todoInput.trim();
-    if (!next || !workspaceQuery.data || !clientId || !user?.id) return;
+    if (!next || todoBusyId || !workspaceQuery.data || !clientId || !user?.id)
+      return;
     setTodoBusyId("new");
     const { data, error } = await supabase
       .from("client_coach_tasks")
@@ -4907,9 +4955,7 @@ export function PtClientDetailPage({
                           clientRiskFlags.map((flag) => {
                             const meta = getClientRiskFlagMeta(flag);
                             if (!meta) return null;
-                            return (
-                              <p key={flag}>{meta.shortLabel}</p>
-                            );
+                            return <p key={flag}>{meta.shortLabel}</p>;
                           })
                         ) : !clientSnapshot?.manual_risk_flag ? (
                           <p className="text-muted-foreground">
@@ -4936,27 +4982,73 @@ export function PtClientDetailPage({
         <div className="grid items-stretch gap-7 lg:grid-cols-3">
           <DashboardCard
             title="To-Do"
-            className="h-full lg:col-span-1"
-            contentClassName="flex h-full flex-col"
-          >
-            <div className="flex h-full flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <Input
-                  value={todoInput}
-                  onChange={(event) => setTodoInput(event.target.value)}
-                  placeholder="Add a new task"
-                />
-                <Button
-                  onClick={() => void addTask()}
-                  disabled={!todoInput.trim() || todoBusyId === "new"}
-                  aria-label="Add task"
+            action={
+              !clientTodosQuery.isLoading && !clientTodosQuery.isError ? (
+                <span
+                  className="rounded-full bg-muted/60 px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground"
+                  aria-live="polite"
                 >
-                  +
-                </Button>
-              </div>
-              <div className="flex flex-1 flex-col space-y-2.5">
+                  {clientTodos.filter((task) => !task.is_done).length} open
+                </span>
+              ) : null
+            }
+            className="flex h-full min-w-0 flex-col lg:col-span-1"
+            contentClassName="flex flex-1 flex-col"
+          >
+            <div className="flex flex-1 flex-col gap-4">
+              <form
+                className="space-y-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void addTask();
+                }}
+              >
+                <label
+                  htmlFor="client-todo-input"
+                  className="block text-xs font-medium text-muted-foreground"
+                >
+                  New task
+                </label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="client-todo-input"
+                    value={todoInput}
+                    onChange={(event) => setTodoInput(event.target.value)}
+                    placeholder="Add a follow-up or reminder"
+                    disabled={todoBusyId === "new"}
+                    className="min-w-0 flex-1"
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    className="h-11 w-11 shrink-0 cursor-pointer rounded-xl motion-safe:hover:translate-y-0"
+                    disabled={!todoInput.trim() || !!todoBusyId}
+                    aria-label={
+                      todoBusyId === "new" ? "Adding task" : "Add task"
+                    }
+                    title="Add task"
+                  >
+                    {todoBusyId === "new" ? (
+                      <Loader2
+                        className="h-4 w-4 motion-safe:animate-spin"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </Button>
+                </div>
+              </form>
+              <div
+                className="flex flex-1 flex-col"
+                aria-busy={clientTodosQuery.isLoading}
+              >
                 {clientTodosQuery.isLoading ? (
-                  <div className="space-y-2.5">
+                  <div
+                    className="space-y-2.5"
+                    role="status"
+                    aria-label="Loading tasks"
+                  >
                     {Array.from({ length: 3 }).map((_, index) => (
                       <Skeleton
                         key={index}
@@ -4964,47 +5056,73 @@ export function PtClientDetailPage({
                       />
                     ))}
                   </div>
+                ) : clientTodosQuery.isError ? (
+                  <div
+                    className="flex flex-1 flex-col items-center justify-center gap-2 py-3 text-center"
+                    role="alert"
+                  >
+                    <p className="text-sm text-muted-foreground">
+                      Tasks couldn’t be loaded.
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void clientTodosQuery.refetch()}
+                    >
+                      Try again
+                    </Button>
+                  </div>
                 ) : clientTodos.length === 0 ? (
-                  <div className="flex flex-1 items-center py-2">
-                    <div className="flex min-h-16 w-full items-center justify-center rounded-lg border border-dotted border-border/60 bg-transparent px-3 py-4 text-center text-sm text-muted-foreground">
-                      No tasks yet.
+                  <div className="flex flex-1 items-center rounded-xl bg-muted/35 px-3.5 py-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        No tasks yet
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Keep your next steps for this client here.
+                      </p>
                     </div>
                   </div>
                 ) : (
-                  clientTodos.map((task) => (
-                    <div
-                      key={task.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
-                    >
-                      <label className="flex flex-1 items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={task.is_done}
-                          onChange={() => void toggleTask(task)}
-                          disabled={todoBusyId === task.id}
-                          className="h-4 w-4 accent-primary"
-                        />
-                        <span
-                          className={cn(
-                            "font-medium",
-                            task.is_done
-                              ? "text-muted-foreground line-through"
-                              : "text-foreground",
-                          )}
-                        >
-                          {task.title}
-                        </span>
-                      </label>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => void removeTask(task.id)}
-                        disabled={todoBusyId === task.id}
+                  <ul className="divide-y divide-border/60">
+                    {clientTodos.map((task) => (
+                      <li
+                        key={task.id}
+                        className="flex items-center gap-2 py-1.5 text-sm"
                       >
-                        Remove
-                      </Button>
-                    </div>
-                  ))
+                        <label className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={task.is_done}
+                            onChange={() => void toggleTask(task)}
+                            disabled={!!todoBusyId}
+                            className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait"
+                          />
+                          <span
+                            className={cn(
+                              "min-w-0 break-words font-medium leading-relaxed",
+                              task.is_done
+                                ? "text-muted-foreground line-through"
+                                : "text-foreground",
+                            )}
+                          >
+                            {task.title}
+                          </span>
+                        </label>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-11 w-11 shrink-0 cursor-pointer rounded-xl hover:text-destructive motion-safe:hover:translate-y-0"
+                          onClick={() => void removeTask(task.id)}
+                          disabled={!!todoBusyId}
+                          aria-label={`Remove task: ${task.title}`}
+                          title="Remove task"
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </div>
@@ -5373,6 +5491,28 @@ export function PtClientDetailPage({
                   />
                 </TabsContent>
                 <TabsContent value="checkins">
+                  {requestedCheckinId &&
+                  (linkedCheckinQuery.isError ||
+                    (linkedCheckinQuery.isSuccess &&
+                      !linkedCheckinQuery.data)) ? (
+                    <Alert className="mb-4">
+                      <AlertTitle>Check-in unavailable</AlertTitle>
+                      <AlertDescription>
+                        This check-in could not be loaded for this client.
+                      </AlertDescription>
+                      {linkedCheckinQuery.isError ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="mt-3"
+                          onClick={() => void linkedCheckinQuery.refetch()}
+                          disabled={linkedCheckinQuery.isFetching}
+                        >
+                          Try again
+                        </Button>
+                      ) : null}
+                    </Alert>
+                  ) : null}
                   <div className="space-y-6">
                     <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
                       <DashboardCard
@@ -5791,28 +5931,8 @@ export function PtClientDetailPage({
       <Dialog
         open={reviewOpen}
         onOpenChange={(open) => {
-          setReviewOpen(open);
-          if (!open) {
-            const params = new URLSearchParams(location.search);
-            if (params.has("checkin")) {
-              params.delete("checkin");
-              navigate(
-                {
-                  pathname: location.pathname,
-                  search: params.toString(),
-                },
-                { replace: true },
-              );
-            }
-            setSelectedCheckin(null);
-            setReviewTab("answers");
-            setFeedbackText("");
-            setFeedbackValidationMessage(null);
-            setFeedbackMessage(null);
-            setFeedbackStatus("idle");
-            setReviewPhotoLoadErrors({});
-            setReviewPhotoPreview(null);
-          }
+          if (open) setReviewOpen(true);
+          else closeCheckinReview();
         }}
       >
         <DialogContent className="flex h-[min(92vh,760px)] max-h-[92vh] w-[min(96vw,1080px)] max-w-[1080px] flex-col overflow-hidden p-0">
@@ -6116,10 +6236,7 @@ export function PtClientDetailPage({
                   : "Client submission is required before this review can be completed."}
               </div>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                <Button
-                  variant="secondary"
-                  onClick={() => setReviewOpen(false)}
-                >
+                <Button variant="secondary" onClick={closeCheckinReview}>
                   Close
                 </Button>
                 <Button

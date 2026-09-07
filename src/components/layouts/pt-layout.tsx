@@ -21,6 +21,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Dumbbell,
+  Gauge,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -242,6 +243,13 @@ const ptNavGroups: Array<{
         description: "Review and organize reusable exercise assets.",
         to: "/pt/settings/exercises",
         icon: BookOpen,
+        module: "coaching",
+      },
+      {
+        label: "Performance Markers",
+        description: "Manage performance markers and assessment templates.",
+        to: "/pt/settings/baseline",
+        icon: Gauge,
         module: "coaching",
       },
     ],
@@ -513,10 +521,10 @@ function SidebarNav({
 
 function getWorkspaceRouteTransitionKey(pathname: string) {
   const workspaceSettingsMatch = pathname.match(
-    /^\/workspace\/([^/]+)\/settings(?:\/[^/]+)?(?:\/.*)?$/,
+    /^(\/(?:w|workspace)\/[^/]+\/settings)(?:\/.*)?$/,
   );
   if (workspaceSettingsMatch) {
-    return `/workspace/${workspaceSettingsMatch[1]}/settings`;
+    return workspaceSettingsMatch[1];
   }
   return pathname;
 }
