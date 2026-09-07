@@ -1363,7 +1363,7 @@ export function usePtHubPayments() {
   const settingsQuery = usePtHubSettings();
   const clientsQuery = usePtHubClients();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: [
       "pt-hub-payments",
       settingsQuery.dataUpdatedAt,
@@ -1414,6 +1414,15 @@ export function usePtHubPayments() {
       return { subscription, invoices, revenue };
     },
   });
+
+  return {
+    ...query,
+    sourceError: settingsQuery.error || clientsQuery.error,
+    retrySources: async () => {
+      await Promise.all([settingsQuery.refetch(), clientsQuery.refetch()]);
+      return query.refetch();
+    },
+  };
 }
 
 export function usePtHubAnalytics() {

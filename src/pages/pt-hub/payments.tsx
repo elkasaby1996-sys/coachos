@@ -1,13 +1,15 @@
-import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import {
-  AlertTriangle,
-  ArrowRight,
+  ArrowUpRight,
   CalendarClock,
-  CheckCircle2,
+  Check,
+  CircleDollarSign,
   CreditCard,
+  Download,
   Landmark,
   ReceiptText,
-  Settings,
+  RefreshCw,
+  Settings2,
   TrendingUp,
   UsersRound,
   Wallet,
@@ -15,401 +17,459 @@ import {
 import { Link } from "react-router-dom";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { EmptyState } from "../../components/ui/coachos/empty-state";
-import { StatCard } from "../../components/ui/coachos/stat-card";
-import { Skeleton } from "../../components/ui/skeleton";
-import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
-import { PtHubSectionCard } from "../../features/pt-hub/components/pt-hub-section-card";
 import { usePtHubPayments } from "../../features/pt-hub/lib/pt-hub";
 import { getSemanticBadgeVariant } from "../../lib/semantic-status";
+import "../../styles/pt-hub-analytics.css";
+import "../../styles/pt-hub-payments.css";
+
+function PaymentPanel({
+  title,
+  description,
+  children,
+  action,
+  className = "",
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`analytics-panel ${className}`}>
+      <header>
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+        {action}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function ReceiptIllustration() {
+  return (
+    <svg
+      className="payments-receipt-art"
+      viewBox="0 0 168 156"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle cx="84" cy="78" r="66" fill="currentColor" opacity=".05" />
+      <circle
+        cx="84"
+        cy="78"
+        r="53"
+        stroke="currentColor"
+        opacity=".16"
+        strokeDasharray="3 6"
+      />
+      <path
+        d="M61 21h64v109l-8-5-8 5-8-5-8 5-8-5-8 5-8-5-8 5V21Z"
+        fill="var(--analytics-panel)"
+        stroke="currentColor"
+        opacity=".4"
+      />
+      <path
+        d="M43 32h64v111l-8-5-8 5-8-5-8 5-8-5-8 5-8-5-8 5V32Z"
+        fill="var(--analytics-panel)"
+        stroke="currentColor"
+      />
+      <rect
+        x="54"
+        y="45"
+        width="18"
+        height="18"
+        rx="5"
+        fill="currentColor"
+        opacity=".12"
+      />
+      <path
+        d="M59 54h8m-4-4v8M55 79h40M55 89h25M55 112h15m14 0h11"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M53 101h44"
+        stroke="currentColor"
+        opacity=".25"
+        strokeDasharray="3 3"
+      />
+      <circle
+        cx="119"
+        cy="112"
+        r="19"
+        fill="var(--analytics-panel)"
+        stroke="currentColor"
+      />
+      <path
+        d="M119 104v16m-4-12h6a3 3 0 0 1 0 6h-4a3 3 0 0 1 0-6m0 9h7"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 export function PtHubPaymentsPage() {
   const paymentsQuery = usePtHubPayments();
-
-  if (paymentsQuery.isLoading) {
-    return <PtHubPaymentsLoadingState />;
-  }
-
   const subscription = paymentsQuery.data?.subscription;
-  const invoices = paymentsQuery.data?.invoices ?? [];
   const revenue = paymentsQuery.data?.revenue;
+  const invoices = (paymentsQuery.data?.invoices ?? []).filter(
+    (invoice) => !invoice.placeholder,
+  );
   const billingConnected = subscription?.billingConnected === true;
   const revenueConnected = revenue?.revenueConnected === true;
-  const hasLiveInvoices = invoices.some((invoice) => !invoice.placeholder);
-  const liveInvoices = invoices.filter((invoice) => !invoice.placeholder);
-  const planName = subscription?.planName ?? "Repsync Pro";
-  const billingStatus = subscription?.billingStatus ?? "Manual billing";
-  const monthlyRevenue = revenue?.monthlyRevenueLabel ?? "Not connected";
-  const activePayingClients =
-    revenue?.activePayingClientsLabel ?? "Not connected";
-  const potentialActiveClients = revenue?.potentialActiveClients ?? 0;
-  const readinessScore =
-    Number(billingConnected) +
-    Number(revenueConnected) +
-    Number(hasLiveInvoices);
-  const readinessLabel = `${readinessScore}/3`;
-  const readinessCopy =
-    readinessScore === 3
-      ? "Billing, revenue, and invoices are live."
-      : "Finish the missing billing connections before this becomes a live cashflow view.";
-
-  const paymentMetrics = [
-    {
-      label: "Billing readiness",
-      value: readinessLabel,
-      helper: readinessCopy,
-      icon: billingConnected ? CheckCircle2 : AlertTriangle,
-      accent: !billingConnected,
-      delta: {
-        value: billingConnected ? "Live" : "Setup",
-        tone: billingConnected ? "positive" : "warning",
-      },
-    },
+  const loading = paymentsQuery.isPending && !paymentsQuery.sourceError;
+  const error = paymentsQuery.error || paymentsQuery.sourceError;
+  const metrics = [
     {
       label: "Monthly revenue",
-      value: monthlyRevenue,
-      helper: revenueConnected
-        ? "Synced from billing"
-        : "Awaiting payment sync",
+      value: revenueConnected ? (revenue?.monthlyRevenueLabel ?? "—") : "—",
+      detail: revenueConnected
+        ? "Reported by your payment provider"
+        : "Available when revenue sync is connected",
       icon: TrendingUp,
-      accent: false,
-      delta: {
-        value: revenueConnected ? "Live" : "Pending",
-        tone: revenueConnected ? "positive" : "neutral",
-      },
     },
     {
-      label: "Paying clients",
-      value: activePayingClients,
-      helper: `${potentialActiveClients} active client${potentialActiveClients === 1 ? "" : "s"} can become billable`,
-      icon: UsersRound,
-      accent: false,
-      delta: {
-        value: revenueConnected ? "Synced" : "Estimate",
-        tone: revenueConnected ? "positive" : "neutral",
-      },
-    },
-    {
-      label: "Invoices",
-      value: hasLiveInvoices ? liveInvoices.length : "0",
-      helper: hasLiveInvoices ? "Live invoice history" : "No live invoices yet",
-      icon: ReceiptText,
-      accent: false,
-      delta: {
-        value: hasLiveInvoices ? "Ready" : "Quiet",
-        tone: hasLiveInvoices ? "positive" : "neutral",
-      },
-    },
-  ] as const;
-
-  const setupSteps = [
-    {
-      label: "Subscription plan",
-      value: planName,
-      complete: Boolean(subscription?.planName),
+      label: "Trailing revenue",
+      value: revenueConnected ? (revenue?.trailingRevenueLabel ?? "—") : "—",
+      detail: revenueConnected
+        ? "Provider-reported reporting window"
+        : "Historical revenue is not connected",
       icon: Wallet,
     },
     {
-      label: "Billing connection",
-      value: billingConnected ? "Connected" : billingStatus,
-      complete: billingConnected,
-      icon: Landmark,
+      label: "Paying clients",
+      value: revenueConnected
+        ? (revenue?.activePayingClientsLabel ?? "—")
+        : "—",
+      detail: revenueConnected
+        ? "Clients with recorded billing activity"
+        : "Payment records are not available yet",
+      icon: UsersRound,
     },
     {
-      label: "Revenue sync",
-      value: revenueConnected ? "Connected" : "Not connected",
-      complete: revenueConnected,
-      icon: TrendingUp,
-    },
-    {
-      label: "Invoice feed",
-      value: hasLiveInvoices ? `${liveInvoices.length} invoices` : "Not live",
-      complete: hasLiveInvoices,
+      label: "Invoices",
+      value: invoices.length ? invoices.length : billingConnected ? 0 : "—",
+      detail: invoices.length
+        ? "Available in your invoice history"
+        : billingConnected
+          ? "No invoices recorded yet"
+          : "Invoice history is not connected",
       icon: ReceiptText,
     },
-  ] as const;
+  ];
 
   return (
-    <section className="pt-hub-page-stack">
-      <PtHubPageHeader
-        eyebrow="Payments"
-        title="Billing and revenue"
-        description="Track billing readiness, client revenue potential, and invoice history."
-      />
-
-      <div
-        className="page-kpi-block pt-hub-kpi-grid"
-        data-columns="4"
-        aria-label="Payments summary"
-      >
-        {paymentMetrics.map((metric) => (
-          <StatCard
-            key={metric.label}
-            surface="pt-hub"
-            module="billing"
-            label={metric.label}
-            value={metric.value}
-            helper={metric.helper}
-            icon={metric.icon}
-            accent={metric.accent}
-            delta={metric.delta}
-          />
-        ))}
-      </div>
-
-      {paymentsQuery.isError ? (
-        <PtHubSectionCard
-          title="Billing data unavailable"
-          description="The page is showing fallback values until billing data can be loaded."
-          module="billing"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-warning/35 bg-warning/10 px-4 py-3">
-            <p className="text-sm text-muted-foreground">
-              Retry from billing settings or refresh the page if this persists.
-            </p>
-            <Button asChild variant="secondary" size="sm">
-              <Link to="/pt-hub/settings/billing">Open billing settings</Link>
-            </Button>
-          </div>
-        </PtHubSectionCard>
-      ) : null}
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.42fr)]">
-        <PtHubSectionCard
-          title="Billing Command Center"
-          description="A practical read on what is billable now and what still needs setup."
-          module="billing"
-          actions={
-            <Button asChild variant="secondary" size="sm">
-              <Link to="/pt-hub/settings/billing">
-                Billing settings
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </Button>
-          }
-          contentClassName="space-y-5"
-        >
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(18rem,0.5fr)]">
-            <div className="ui-inset border border-border/60 p-5">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    {billingConnected
-                      ? "Billing is connected"
-                      : "Billing is still manual"}
-                  </p>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                    {billingConnected
-                      ? "Invoices and subscription status can support live payment decisions."
-                      : "Use this as a readiness view until checkout, subscription management, and invoice sync are connected."}
-                  </p>
-                </div>
-                <Badge variant={billingConnected ? "success" : "warning"}>
-                  {billingConnected ? "Live billing" : "Setup required"}
-                </Badge>
-              </div>
-
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <PaymentSignal
-                  icon={CreditCard}
-                  label="Payment method"
-                  value={
-                    subscription?.paymentMethodLabel ??
-                    "No payment method connected"
-                  }
-                />
-                <PaymentSignal
-                  icon={CalendarClock}
-                  label="Renewal date"
-                  value={subscription?.renewalDate ?? "Not connected yet"}
-                />
-                <PaymentSignal
-                  icon={TrendingUp}
-                  label="Trailing revenue"
-                  value={revenue?.trailingRevenueLabel ?? "Not connected"}
-                />
-                <PaymentSignal
-                  icon={Wallet}
-                  label="Package pricing"
-                  value={
-                    subscription?.packagePricingLabel ||
-                    revenue?.packagePricingLabel ||
-                    "Add package pricing once billing is integrated"
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="ui-inset border border-border/60 p-5">
-              <p className="text-sm font-semibold text-foreground">
-                Revenue potential
-              </p>
-              <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground tabular-nums">
-                {potentialActiveClients}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Active client{potentialActiveClients === 1 ? "" : "s"} that can
-                become paying clients once payment collection is live.
-              </p>
-              <div className="ui-inset mt-5 border border-border/50 px-4 py-3">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Next meaningful upgrade
-                </p>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  Show expected monthly revenue from active packages when
-                  pricing is connected.
-                </p>
-              </div>
-            </div>
-          </div>
-        </PtHubSectionCard>
-
-        <PtHubSectionCard
-          title="Setup Rail"
-          description="What must be connected before the page becomes live."
-          module="billing"
-          contentClassName="space-y-3"
-        >
-          {setupSteps.map((step) => (
-            <PaymentSetupStep key={step.label} {...step} />
-          ))}
-          <Button asChild className="mt-2 w-full" variant="default">
-            <Link to="/pt-hub/settings/billing">
-              Configure billing
-              <Settings className="h-4 w-4" aria-hidden="true" />
-            </Link>
+    <main className="analytics-page payments-page">
+      <header className="analytics-heading">
+        <div>
+          <p className="analytics-eyebrow">
+            <CircleDollarSign size={14} /> YOUR BUSINESS, BALANCED
+          </p>
+          <h1>
+            Payments<span>.</span>
+          </h1>
+          <p>Client revenue, your subscription, and every invoice.</p>
+        </div>
+        <Link to="/pt-hub/settings/billing" className="payments-settings-link">
+          <Settings2 size={16} />
+          Billing settings
+          <ArrowUpRight size={15} />
+        </Link>
+      </header>
+      {error ? (
+        <section className="analytics-error" role="alert">
+          <h2>Payment details couldn’t be loaded</h2>
+          <p>Retry to load your subscription and payment information.</p>
+          <Button
+            variant="secondary"
+            onClick={() => void paymentsQuery.retrySources()}
+          >
+            <RefreshCw size={16} />
+            Retry
           </Button>
-        </PtHubSectionCard>
-      </div>
-
-      <PtHubSectionCard
-        title="Invoice Ledger"
-        description="A durable record of invoices once billing history is available."
-        module="billing"
-      >
-        {hasLiveInvoices ? (
-          <div className="overflow-hidden rounded-[var(--ui-radius-card)] border border-border/60">
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(9rem,0.34fr)_minmax(8rem,0.28fr)] gap-3 border-b border-border/55 bg-background/28 px-4 py-3 text-xs font-semibold text-muted-foreground">
-              <span>Invoice</span>
-              <span>Issued</span>
-              <span className="text-right">Amount / Status</span>
-            </div>
-            {liveInvoices.map((invoice) => (
-              <div
-                key={invoice.id}
-                className="grid grid-cols-[minmax(0,1fr)_minmax(9rem,0.34fr)_minmax(8rem,0.28fr)] items-center gap-3 border-b border-border/45 px-4 py-3 transition-colors last:border-b-0 hover:bg-background/30"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {invoice.label}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {invoice.downloadUrl
-                      ? "Download available"
-                      : "No download attached"}
-                  </p>
+        </section>
+      ) : loading ? (
+        <div className="payments-loading" role="status">
+          <span>Loading payment details…</span>
+          <div className="payments-loading-metrics" aria-hidden="true">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} />
+            ))}
+          </div>
+          <div className="payments-loading-panel" aria-hidden="true" />
+        </div>
+      ) : (
+        <>
+          <div className="payments-overview-label">
+            <span>FINANCIAL OVERVIEW</span>
+            <span
+              className={`payments-status ${revenueConnected ? "is-connected" : ""}`}
+            >
+              <i />
+              {revenueConnected
+                ? "Revenue connected"
+                : "Payment data not connected"}
+            </span>
+          </div>
+          <div className="analytics-metrics" aria-label="Payments summary">
+            {metrics.map(({ label, value, detail, icon: Icon }) => (
+              <div className="analytics-metric" key={label}>
+                <div className="analytics-metric-label">
+                  {label}
+                  <Icon aria-hidden="true" />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {invoice.issuedAt ?? "No issue date"}
-                </p>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-foreground">
-                    {invoice.amountLabel}
-                  </p>
-                  <Badge
-                    variant={getSemanticBadgeVariant(invoice.status)}
-                    className="mt-1 text-[10px]"
-                  >
-                    {invoice.status}
-                  </Badge>
-                </div>
+                <strong>{value}</strong>
+                <p>{detail}</p>
               </div>
             ))}
           </div>
-        ) : (
-          <EmptyState
-            title="No live invoices yet"
-            description="Invoice history will stay quiet until billing sync is connected. Keep the setup rail current so this ledger has a clear path to become useful."
-            actionLabel="Open billing settings"
-            onAction={() => {
-              window.location.href = "/pt-hub/settings/billing";
-            }}
-          />
-        )}
-      </PtHubSectionCard>
-    </section>
-  );
-}
-
-function PtHubPaymentsLoadingState() {
-  return (
-    <section className="pt-hub-page-stack">
-      <PtHubPageHeader
-        eyebrow="Payments"
-        title="Billing and revenue"
-        description="Loading billing readiness, revenue, and invoice history."
-      />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton
-            key={index}
-            className="h-[152px] rounded-[var(--ui-radius-card)]"
-          />
-        ))}
-      </div>
-      <Skeleton className="h-[340px] rounded-[var(--ui-radius-card)]" />
-    </section>
-  );
-}
-
-function PaymentSignal({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="ui-panel border border-border/55 px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <Icon className="h-4 w-4 text-billing" aria-hidden="true" />
-      </div>
-      <p className="mt-2 text-sm font-medium text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function PaymentSetupStep({
-  icon: Icon,
-  label,
-  value,
-  complete,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  complete: boolean;
-}) {
-  return (
-    <div className="ui-panel flex items-start gap-3 border border-border/55 px-4 py-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/55 bg-background/45 text-billing">
-        <Icon className="h-4 w-4" aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-foreground">{label}</p>
-          <Badge
-            variant={complete ? "success" : "muted"}
-            className="shrink-0 text-[10px]"
+          <div className="payments-main-grid">
+            <PaymentPanel
+              title="Client revenue"
+              description="A home for the money your coaching business earns."
+              action={
+                <span className="analytics-tag">
+                  {revenueConnected ? "Connected" : "Not connected"}
+                </span>
+              }
+            >
+              <div className="payments-revenue-intro">
+                <ReceiptIllustration />
+                <div>
+                  <p className="payments-kicker">
+                    {revenueConnected ? "REVENUE REPORTING" : "CLIENT BILLING"}
+                  </p>
+                  <h3>
+                    {revenueConnected
+                      ? "Your revenue, in view."
+                      : "Bring your payments into focus."}
+                  </h3>
+                  <p>
+                    {revenueConnected
+                      ? "Your payment provider supplies the revenue totals above. Invoice details appear below when available."
+                      : "Client payment collection is not available yet. Revenue totals will appear here when payment collection and reporting are connected."}
+                  </p>
+                  <Link className="analytics-link" to="/pt-hub/packages">
+                    View coaching packages <ArrowUpRight size={16} />
+                  </Link>
+                </div>
+              </div>
+              <div className="payments-connections">
+                <div>
+                  <span className="payments-connection-icon">
+                    <Landmark size={17} />
+                  </span>
+                  <div>
+                    <strong>Revenue sync</strong>
+                    <p>
+                      {revenueConnected
+                        ? "Revenue records are connected"
+                        : "Waiting for a payment data connection"}
+                    </p>
+                  </div>
+                  <span
+                    className={`payments-status ${revenueConnected ? "is-connected" : ""}`}
+                  >
+                    {revenueConnected ? <Check size={13} /> : <i />}
+                    {revenueConnected ? "Connected" : "Not connected"}
+                  </span>
+                </div>
+                <div>
+                  <span className="payments-connection-icon">
+                    <ReceiptText size={17} />
+                  </span>
+                  <div>
+                    <strong>Invoice history</strong>
+                    <p>
+                      {invoices.length
+                        ? `${invoices.length} invoice${invoices.length === 1 ? "" : "s"} available`
+                        : billingConnected
+                          ? "Connected · no invoices recorded yet"
+                          : "Available when billing history is connected"}
+                    </p>
+                  </div>
+                  <span
+                    className={`payments-status ${billingConnected || invoices.length ? "is-connected" : ""}`}
+                  >
+                    {billingConnected || invoices.length ? (
+                      <Check size={13} />
+                    ) : (
+                      <i />
+                    )}
+                    {billingConnected || invoices.length
+                      ? "Available"
+                      : "Not connected"}
+                  </span>
+                </div>
+              </div>
+            </PaymentPanel>
+            <PaymentPanel
+              title="Your RepSync plan"
+              description="Your subscription to the coaching platform."
+              className="payments-subscription"
+              action={<CreditCard size={20} className="analytics-panel-icon" />}
+            >
+              <div className="payments-plan">
+                <span className="payments-kicker">CURRENT PLAN</span>
+                <h3>{subscription?.planName || "No plan recorded"}</h3>
+                <span
+                  className={`payments-status ${billingConnected ? "is-connected" : ""}`}
+                >
+                  <i />
+                  {billingConnected
+                    ? "Billing connected"
+                    : "Billing not connected"}
+                </span>
+              </div>
+              <dl className="payments-plan-details">
+                <div>
+                  <dt>
+                    <Wallet size={15} />
+                    Plan status
+                  </dt>
+                  <dd>
+                    {billingConnected
+                      ? subscription?.billingStatus || "Not recorded"
+                      : "Not connected"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>
+                    <CreditCard size={15} />
+                    Payment method
+                  </dt>
+                  <dd>{subscription?.paymentMethodLabel || "Not connected"}</dd>
+                </div>
+                <div>
+                  <dt>
+                    <CalendarClock size={15} />
+                    Renews on
+                  </dt>
+                  <dd>{subscription?.renewalDate || "Not available"}</dd>
+                </div>
+              </dl>
+              <Link
+                to="/pt-hub/settings/billing"
+                className="payments-plan-link"
+              >
+                View subscription details <ArrowUpRight size={16} />
+              </Link>
+              <p className="payments-plan-note">
+                {billingConnected
+                  ? "Subscription billing is separate from the payments you collect from clients."
+                  : "Self-service subscription management will be available when the billing portal is connected."}
+              </p>
+            </PaymentPanel>
+          </div>
+          <PaymentPanel
+            title="Invoice history"
+            description="Issued invoices, amounts, and payment status."
+            action={
+              <span className="analytics-tag">
+                {invoices.length
+                  ? `${invoices.length} records`
+                  : billingConnected
+                    ? "No invoices"
+                    : "Not connected"}
+              </span>
+            }
           >
-            {complete ? "Ready" : "Pending"}
-          </Badge>
-        </div>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">{value}</p>
-      </div>
-    </div>
+            {invoices.length ? (
+              <div className="payments-invoice-scroll">
+                <table className="payments-invoices">
+                  <caption className="sr-only">Invoice history</caption>
+                  <thead>
+                    <tr>
+                      <th>Invoice</th>
+                      <th>Issued</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th>
+                        <span className="sr-only">Download</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoices.map((invoice) => (
+                      <tr key={invoice.id}>
+                        <th scope="row">{invoice.label}</th>
+                        <td>{invoice.issuedAt || "Not recorded"}</td>
+                        <td>{invoice.amountLabel}</td>
+                        <td>
+                          <Badge
+                            variant={getSemanticBadgeVariant(invoice.status)}
+                          >
+                            {invoice.status}
+                          </Badge>
+                        </td>
+                        <td>
+                          {invoice.downloadUrl &&
+                          /^https?:\/\//i.test(invoice.downloadUrl) ? (
+                            <a
+                              className="analytics-link"
+                              href={invoice.downloadUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Download ${invoice.label}`}
+                            >
+                              <Download size={16} />
+                            </a>
+                          ) : (
+                            <span className="payments-no-download">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="payments-invoice-empty">
+                <span className="payments-empty-icon">
+                  <ReceiptText size={24} strokeWidth={1.4} />
+                </span>
+                <div>
+                  <h3>
+                    {billingConnected
+                      ? "Your invoice history starts here."
+                      : "A clear record of every invoice."}
+                  </h3>
+                  <p>
+                    {billingConnected
+                      ? "There are no invoices to display yet. Issued invoices will appear here."
+                      : "Invoice details and downloads will appear once billing history is connected."}
+                  </p>
+                </div>
+              </div>
+            )}
+          </PaymentPanel>
+          <details className="analytics-coverage">
+            <summary>
+              About payment data <span aria-hidden="true">+</span>
+            </summary>
+            <div>
+              <p>
+                Revenue and paying-client totals use payment records when
+                connected. A dash means the data is unavailable. Active clients
+                and listed package prices are not used to estimate collected
+                revenue.
+              </p>
+              <p>
+                Your RepSync subscription covers your use of the platform.
+                Client revenue represents payments to your coaching business.
+                They are reported separately.
+              </p>
+            </div>
+          </details>
+        </>
+      )}
+    </main>
   );
 }
