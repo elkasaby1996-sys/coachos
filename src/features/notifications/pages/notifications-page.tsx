@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Skeleton } from "../../../components/ui/skeleton";
 import { useBootstrapAuth, useSessionAuth } from "../../../lib/auth";
@@ -157,12 +157,7 @@ export function NotificationsPage() {
       audience === "pt" && isWorkspaceTeamInviteNotification(notification);
     const inviteId = notification.entity_id ?? "";
     return (
-      <div
-        className={cn(
-          "flex shrink-0 flex-wrap items-center gap-2",
-          audience === "pt" ? "justify-end px-2 pb-2 sm:p-0" : "px-1 sm:px-0",
-        )}
-      >
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 px-2 pb-2 sm:p-0">
         {isTeamInvite ? (
           <>
             <Button
@@ -190,7 +185,7 @@ export function NotificationsPage() {
         ) : null}
         <Button
           size="sm"
-          variant="secondary"
+          variant={audience === "client" ? "ghost" : "secondary"}
           className="w-28"
           onClick={() =>
             notification.is_read
@@ -202,13 +197,19 @@ export function NotificationsPage() {
           {notification.is_read ? "Mark unread" : "Mark read"}
         </Button>
         <Button
-          size="sm"
+          size={audience === "client" ? "icon" : "sm"}
           variant="ghost"
           onClick={() => deleteMutation.mutate(notification.id)}
           disabled={deleteMutation.isPending}
+          aria-label="Delete notification"
+          title="Delete notification"
           className="text-muted-foreground hover:text-danger"
         >
-          Delete
+          {audience === "client" ? (
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            "Delete"
+          )}
         </Button>
       </div>
     );
@@ -218,18 +219,15 @@ export function NotificationsPage() {
     notification: NotificationRecord,
     audience: "client" | "pt",
   ) => {
-    const isPtAudience = audience === "pt";
-
     return (
       <div
         data-notification-id={notification.id}
+        data-unread={!notification.is_read}
         className={cn(
-          "flex flex-col gap-2 sm:flex-row sm:items-start",
-          isPtAudience &&
-            "rounded-2xl border border-border/70 bg-background/55 p-2 transition hover:border-border hover:bg-secondary/16 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3",
-          isPtAudience &&
-            !notification.is_read &&
+          "flex flex-col gap-2 rounded-2xl border border-border/70 bg-background/55 p-2 transition hover:border-border hover:bg-secondary/16 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3",
+          !notification.is_read &&
             "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)]",
+          audience === "client" && "client-notification-row",
         )}
       >
         <NotificationItem
@@ -238,7 +236,7 @@ export function NotificationsPage() {
           showActionLabel={audience !== "pt"}
           showTitle
           showTypeLabel
-          surface={audience === "pt" ? "embedded" : "card"}
+          surface="embedded"
           onClick={() => handleOpenNotification(notification)}
         />
         {renderNotificationActions(notification, audience)}

@@ -88,7 +88,11 @@ export function NotificationBell({
           variant="panel"
           align="end"
           sideOffset={10}
-          className="w-[380px] max-w-[92vw]"
+          className={cn(
+            "w-[380px] max-w-[92vw]",
+            viewAllHref.startsWith("/app") &&
+              "client-portal-menu client-notification-menu",
+          )}
         >
           <NotificationPanel
             notifications={notifications}

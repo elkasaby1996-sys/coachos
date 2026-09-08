@@ -44,9 +44,56 @@ export function NotificationItem({
   const hasAction = Boolean(notification.action_url);
   const module = getNotificationModuleTone(notification);
   const moduleClasses = getModuleToneClasses(module);
+  if (compact && audience === "client") {
+    const previewTitle = title || typeLabel;
+    return (
+      <button
+        type="button"
+        data-notification-read={notification.is_read}
+        className={cn("client-notification-preview", className)}
+        {...props}
+      >
+        <span className="client-notification-preview-icon">
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <span className="min-w-0">
+          <span className="flex items-start gap-2">
+            <span className="min-w-0 flex-1 break-words text-sm font-semibold leading-5 text-foreground">
+              {previewTitle}
+            </span>
+            {!notification.is_read ? (
+              <span className="client-notification-unread-dot">
+                <span className="sr-only">Unread</span>
+              </span>
+            ) : null}
+          </span>
+          {body && body !== previewTitle ? (
+            <span className="mt-1 line-clamp-2 break-words text-[13px] leading-5 text-muted-foreground">
+              {body}
+            </span>
+          ) : null}
+          <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            {source !== "Sender unavailable" ? <span>{source}</span> : null}
+            {source !== "Sender unavailable" ? (
+              <span aria-hidden="true">·</span>
+            ) : null}
+            <time dateTime={notification.created_at}>
+              {formatRelativeTime(notification.created_at)}
+            </time>
+            {notification.priority === "high" ? (
+              <span className="text-[var(--state-warning-text)]">
+                High priority
+              </span>
+            ) : null}
+          </span>
+        </span>
+      </button>
+    );
+  }
   return (
     <button
       type="button"
+      data-notification-read={notification.is_read}
       className={cn(
         "group grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:grid-cols-[2.5rem_minmax(0,1fr)_7.5rem]",
         surface === "card"

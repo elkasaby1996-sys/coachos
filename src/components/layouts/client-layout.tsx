@@ -307,7 +307,7 @@ export function ClientLayout() {
                           variant="menu"
                           align="end"
                           sideOffset={10}
-                          className="w-56"
+                          className="client-portal-menu client-profile-menu w-56"
                         >
                           <DropdownMenuLabel>Profile</DropdownMenuLabel>
                           <DropdownMenuSeparator />

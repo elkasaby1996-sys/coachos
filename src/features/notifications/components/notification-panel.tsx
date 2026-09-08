@@ -37,7 +37,9 @@ export function NotificationPanel({
 
   return (
     <motion.div
-      className="overflow-hidden"
+      className={
+        audience === "client" ? "client-notification-panel" : "overflow-hidden"
+      }
       initial={reduceMotion ? undefined : "hidden"}
       animate={reduceMotion ? undefined : "visible"}
       variants={
@@ -54,8 +56,14 @@ export function NotificationPanel({
             }
       }
     >
-      <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
-        <div>
+      <div className="notification-panel-heading flex items-center justify-between border-b border-border/70 px-4 py-3">
+        <div
+          className={
+            audience === "client"
+              ? "flex min-w-0 flex-wrap items-center gap-x-2"
+              : undefined
+          }
+        >
           <p className="text-sm font-semibold text-foreground">Notifications</p>
           {unreadCount > 0 ? (
             <p className="text-xs text-muted-foreground">
@@ -74,7 +82,13 @@ export function NotificationPanel({
         </Button>
       </div>
 
-      <div className="max-h-[420px] space-y-2 overflow-y-auto px-3 py-3">
+      <div
+        className={
+          audience === "client"
+            ? "client-notification-preview-list max-h-[420px] overflow-y-auto p-2"
+            : "max-h-[420px] space-y-2 overflow-y-auto px-3 py-3"
+        }
+      >
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -131,11 +145,17 @@ export function NotificationPanel({
       </div>
 
       <Separator className="bg-border/70" />
-      <div className="flex justify-end px-4 py-3">
-        <Button asChild variant="secondary" size="sm" className="h-9">
-          <Link to={viewAllHref}>View all</Link>
-        </Button>
-      </div>
+      {audience === "client" ? (
+        <Link className="client-notification-footer" to={viewAllHref}>
+          View all notifications
+        </Link>
+      ) : (
+        <div className="flex justify-end px-4 py-3">
+          <Button asChild variant="secondary" size="sm" className="h-9">
+            <Link to={viewAllHref}>View all</Link>
+          </Button>
+        </div>
+      )}
     </motion.div>
   );
 }
