@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "../../lib/icons";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 import { Button } from "../../components/ui/button";
 import {

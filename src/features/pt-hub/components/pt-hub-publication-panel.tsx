@@ -1,4 +1,4 @@
-import { AlertTriangle, EyeOff, Globe } from "lucide-react";
+import { AlertTriangle, EyeOff, Globe } from "../../../lib/icons";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { getSemanticBadgeVariant } from "../../../lib/semantic-status";

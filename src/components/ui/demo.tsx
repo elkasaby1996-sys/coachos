@@ -1,5 +1,5 @@
 import { AuthComponent } from "./sign-up";
-import { Dumbbell } from "lucide-react";
+import { Dumbbell } from "../../lib/icons";
 
 const CustomLogo = () => (
   <div className="rounded-md bg-primary p-1.5 text-primary-foreground">

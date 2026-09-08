@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { ArrowLeft, Home } from "lucide-react";
+import { ArrowLeft, Home } from "../lib/icons";
 import {
   Navigate,
   Outlet,

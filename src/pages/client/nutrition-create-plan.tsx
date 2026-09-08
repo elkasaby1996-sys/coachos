@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronDown, Copy, Plus, X } from "lucide-react";
+import { ChevronDown, Copy, Plus, X } from "../../lib/icons";
 import { ActionStatusMessage } from "../../components/common/action-feedback";
 import {
   EmptyStateBlock,

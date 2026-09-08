@@ -13,7 +13,7 @@ import {
   UserMinus,
   Users,
   X,
-} from "lucide-react";
+} from "../../../../lib/icons";
 import {
   Alert,
   AlertDescription,

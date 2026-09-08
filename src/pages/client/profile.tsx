@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { CalendarDays, Dumbbell, MapPin, UserRound } from "lucide-react";
+import { CalendarDays, Dumbbell, MapPin, UserRound } from "../../lib/icons";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {

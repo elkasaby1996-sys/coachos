@@ -1,21 +1,25 @@
 import "../../styles/client-portal.css";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  ClipboardCheck,
-  CalendarDays,
   ChevronDown,
-  Compass,
-  Dumbbell,
-  Home,
   LogOut,
-  MessageCircle,
   Moon,
-  MoreHorizontal,
   Settings,
-  UtensilsCrossed,
   UserCircle,
-  Watch,
-} from "lucide-react";
+} from "../../lib/icons";
+import {
+  Home as HouseIcon,
+  Dumbbell as BarbellIcon,
+  Utensils as ForkKnifeIcon,
+  ListChecks as ListChecksIcon,
+  Watch as WatchIcon,
+  ClipboardList as ClipboardTextIcon,
+  MessageCircle as ChatCircleDotsIcon,
+  Compass as CompassIcon,
+  Settings as GearSixIcon,
+  MoreHorizontal as DotsThreeIcon,
+  type AppIcon as PhosphorIcon,
+} from "../../lib/icons";
 import { useState } from "react";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
@@ -54,58 +58,72 @@ const navItems = [
   {
     label: "Home",
     to: "/app/home",
-    icon: Home,
+    icon: HouseIcon,
     module: "overview" as ModuleTone,
   },
   {
     label: "Workouts",
     to: "/app/workouts",
-    icon: Dumbbell,
+    icon: BarbellIcon,
     module: "checkins" as ModuleTone,
   },
   {
     label: "Nutrition",
     to: "/app/nutrition",
-    icon: UtensilsCrossed,
+    icon: ForkKnifeIcon,
     module: "checkins" as ModuleTone,
   },
   {
     label: "Habits",
     to: "/app/habits",
-    icon: CalendarDays,
+    icon: ListChecksIcon,
     module: "checkins" as ModuleTone,
   },
   {
     label: "Wearables",
     to: "/app/wearables",
-    icon: Watch,
+    icon: WatchIcon,
     module: "analytics" as ModuleTone,
   },
   {
     label: "Check-ins",
     to: "/app/checkins",
-    icon: ClipboardCheck,
+    icon: ClipboardTextIcon,
     module: "checkins" as ModuleTone,
   },
   {
     label: "Messages",
     to: "/app/messages",
-    icon: MessageCircle,
+    icon: ChatCircleDotsIcon,
     module: "coaching" as ModuleTone,
   },
   {
     label: "Coach Marketplace",
     to: "/app/find-coach",
-    icon: Compass,
+    icon: CompassIcon,
     module: "leads" as ModuleTone,
   },
   {
     label: "Settings",
     to: "/app/settings",
-    icon: Settings,
+    icon: GearSixIcon,
     module: "settings" as ModuleTone,
   },
 ];
+
+function ClientNavIcon({
+  icon: Icon,
+  active = false,
+}: {
+  icon: PhosphorIcon;
+  active?: boolean;
+}) {
+  return (
+    <span className="client-nav-icon" aria-hidden="true">
+      <Icon weight={active ? "duotone" : "regular"} />
+    </span>
+  );
+}
 
 const shouldShowOnboardingBanner = (pathname: string) => {
   return (
@@ -192,6 +210,12 @@ export function ClientLayout() {
   const visibleNavItems = navItems;
   const isWorkoutDetail = /^\/app\/workout-(run|summary)\//.test(
     location.pathname,
+  );
+
+  const isMoreActive = visibleNavItems.some(
+    (item) =>
+      !["Home", "Workouts", "Nutrition", "Messages"].includes(item.label) &&
+      location.pathname.startsWith(item.to),
   );
 
   if (loading) {
@@ -377,8 +401,18 @@ export function ClientLayout() {
                           item.label === "Workouts" && isWorkoutDetail
                         }
                       >
-                        <item.icon className="h-4 w-4" aria-hidden="true" />
-                        <span>{item.label}</span>
+                        {({ isActive }) => (
+                          <>
+                            <ClientNavIcon
+                              icon={item.icon}
+                              active={
+                                isActive ||
+                                (item.label === "Workouts" && isWorkoutDetail)
+                              }
+                            />
+                            <span>{item.label}</span>
+                          </>
+                        )}
                       </NavLink>
                     ))}
                   </nav>
@@ -462,8 +496,18 @@ export function ClientLayout() {
                   className="client-portal-mobile-link"
                   data-active={item.label === "Workouts" && isWorkoutDetail}
                 >
-                  <item.icon className="h-5 w-5" aria-hidden="true" />
-                  <span>{item.label}</span>
+                  {({ isActive }) => (
+                    <>
+                      <ClientNavIcon
+                        icon={item.icon}
+                        active={
+                          isActive ||
+                          (item.label === "Workouts" && isWorkoutDetail)
+                        }
+                      />
+                      <span>{item.label}</span>
+                    </>
+                  )}
                 </NavLink>
               ))}
             <DropdownMenu>
@@ -472,14 +516,9 @@ export function ClientLayout() {
                   type="button"
                   className="client-portal-mobile-link"
                   aria-label="More pages"
-                  data-active={visibleNavItems.some(
-                    (item) =>
-                      !["Home", "Workouts", "Nutrition", "Messages"].includes(
-                        item.label,
-                      ) && location.pathname.startsWith(item.to),
-                  )}
+                  data-active={isMoreActive}
                 >
-                  <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+                  <ClientNavIcon icon={DotsThreeIcon} active={isMoreActive} />
                   <span>More</span>
                 </button>
               </DropdownMenuTrigger>
@@ -487,7 +526,7 @@ export function ClientLayout() {
                 align="end"
                 side="top"
                 sideOffset={12}
-                className="w-56"
+                className="client-portal-menu client-more-menu w-56"
               >
                 {visibleNavItems
                   .filter(
@@ -499,8 +538,12 @@ export function ClientLayout() {
                   .map((item) => (
                     <DropdownMenuItem key={item.to} asChild>
                       <NavLink to={item.to}>
-                        <item.icon className="h-4 w-4" aria-hidden="true" />
-                        {item.label}
+                        {({ isActive }) => (
+                          <>
+                            <ClientNavIcon icon={item.icon} active={isActive} />
+                            {item.label}
+                          </>
+                        )}
                       </NavLink>
                     </DropdownMenuItem>
                   ))}

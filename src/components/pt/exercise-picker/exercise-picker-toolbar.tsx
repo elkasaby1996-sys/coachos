@@ -1,4 +1,4 @@
-import { Plus, RotateCcw, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "../../../lib/icons";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 

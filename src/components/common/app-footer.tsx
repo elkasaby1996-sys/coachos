@@ -1,4 +1,4 @@
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "../../lib/icons";
 import { Link } from "react-router-dom";
 import {
   LANGUAGE_OPTIONS,

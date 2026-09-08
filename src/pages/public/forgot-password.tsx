@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { KeyRound, Mail } from "lucide-react";
+import { KeyRound, Mail } from "../../lib/icons";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 import { Button } from "../../components/ui/button";
 import {

@@ -6,7 +6,7 @@ import { convertWeight } from "../../lib/client-measurements";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Minus } from "../../lib/icons";
 import {
   CartesianGrid,
   Line,

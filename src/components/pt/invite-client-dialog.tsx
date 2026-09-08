@@ -1,5 +1,5 @@
 import { ReactElement, useEffect, useMemo, useState } from "react";
-import { Check, Copy, Link2 } from "lucide-react";
+import { Check, Copy, Link2 } from "../../lib/icons";
 import { Button } from "../ui/button";
 import {
   Dialog,

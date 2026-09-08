@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, RefreshCcw } from "lucide-react";
+import { AlertTriangle, RefreshCcw } from "../../lib/icons";
 import { Button } from "../../components/ui/button";
 import {
   Card,

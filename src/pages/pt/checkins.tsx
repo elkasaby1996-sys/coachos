@@ -7,7 +7,7 @@ import {
   CalendarClock,
   ClipboardCheck,
   TimerReset,
-} from "lucide-react";
+} from "../../lib/icons";
 import { Button } from "../../components/ui/button";
 import {
   DashboardCard,

@@ -10,7 +10,7 @@ import {
   RefreshCw,
   Unlink,
   Watch,
-} from "lucide-react";
+} from "../../lib/icons";
 import {
   Line,
   LineChart,

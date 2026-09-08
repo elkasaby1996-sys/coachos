@@ -8,7 +8,7 @@ import {
   Lock,
   TriangleAlert,
   XCircle,
-} from "lucide-react";
+} from "../../../lib/icons";
 import { Button } from "../../ui/button";
 import { Card } from "../../ui/card";
 import { Reveal } from "../../common/motion-primitives";

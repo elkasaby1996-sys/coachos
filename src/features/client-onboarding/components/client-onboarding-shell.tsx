@@ -9,7 +9,7 @@ import {
   PencilLine,
   Save,
   ShieldCheck,
-} from "lucide-react";
+} from "../../../lib/icons";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";

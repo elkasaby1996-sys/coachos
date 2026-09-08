@@ -18,7 +18,7 @@ import {
   Search,
   Send,
   X,
-} from "lucide-react";
+} from "../../lib/icons";
 import { Button } from "../ui/button";
 import { EmptyState, Skeleton } from "../ui/coachos";
 import { Input } from "../ui/input";

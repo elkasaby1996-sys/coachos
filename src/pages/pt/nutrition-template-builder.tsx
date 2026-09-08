@@ -2,7 +2,7 @@ import { NotificationToast } from "../../components/common/notification-toast";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from "../../lib/icons";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {

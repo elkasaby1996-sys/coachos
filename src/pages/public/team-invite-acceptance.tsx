@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Users,
   XCircle,
-} from "lucide-react";
+} from "../../lib/icons";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";

@@ -8,7 +8,7 @@ import {
   Search,
   ShieldAlert,
   UsersRound,
-} from "lucide-react";
+} from "../../lib/icons";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { EmptyState } from "../../components/ui/coachos/empty-state";

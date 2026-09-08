@@ -1,5 +1,5 @@
 import { ButtonHTMLAttributes } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight } from "../../../lib/icons";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { cn } from "../../../lib/utils";
 import {

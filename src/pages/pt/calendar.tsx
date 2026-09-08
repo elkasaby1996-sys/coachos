@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AtSign, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { AtSign, ChevronLeft, ChevronRight, Plus } from "../../lib/icons";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { Bell } from "lucide-react";
+import { Bell } from "../../../lib/icons";
 import { Button } from "../../../components/ui/button";
 import { Separator } from "../../../components/ui/separator";
 import { useWindowedRows } from "../../../hooks/use-windowed-rows";

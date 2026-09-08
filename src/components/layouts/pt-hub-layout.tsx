@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Building,
+  BarChart3,
   Check,
   ChevronDown,
   Globe,
@@ -12,13 +13,13 @@ import {
   Moon,
   PanelsTopLeft,
   Package,
-  SlidersHorizontal,
+  Settings,
   Sun,
-  UserRound,
+  UserCircle,
   UsersRound,
   Wallet,
   X,
-} from "lucide-react";
+} from "../../lib/icons";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { PageContainer } from "../common/page-container";
@@ -86,7 +87,7 @@ const hubNavGroups = [
         label: "Coach Profile",
         labelKey: "ptHub.nav.coachProfile",
         to: "/pt-hub/profile",
-        icon: UserRound,
+        icon: UserCircle,
         module: "profile" as const,
       },
       {
@@ -141,7 +142,7 @@ const hubNavGroups = [
         label: "Analytics",
         labelKey: "ptHub.nav.analytics",
         to: "/pt-hub/analytics",
-        icon: PanelsTopLeft,
+        icon: BarChart3,
         module: "analytics" as const,
       },
     ],
@@ -154,7 +155,7 @@ const hubNavGroups = [
         label: "Settings",
         labelKey: "ptHub.nav.settings",
         to: "/pt-hub/settings",
-        icon: SlidersHorizontal,
+        icon: Settings,
         module: "settings" as const,
       },
     ],
@@ -790,7 +791,7 @@ export function PtHubLayout() {
                         onClick={() => navigate("/pt-hub/settings")}
                       >
                         <span className="app-dropdown-icon-badge">
-                          <SlidersHorizontal className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
+                          <Settings className="h-4 w-4 text-[var(--module-settings-text)] [stroke-width:1.7]" />
                         </span>
                         <span className="font-medium text-foreground">
                           {t("common.settings", "Settings")}
@@ -940,7 +941,11 @@ function SidebarContent({
                             getModuleToneClasses(item.module).navIcon,
                           )}
                         >
-                          <Icon className="h-4 w-4 [stroke-width:1.7]" />
+                          <Icon
+                            className="h-5 w-5"
+                            weight={isActive ? "duotone" : "regular"}
+                            aria-hidden="true"
+                          />
                         </span>
                         <div className="min-w-0 flex-1 self-center">
                           <div className="relative z-10 flex min-w-0 items-center justify-between gap-2">

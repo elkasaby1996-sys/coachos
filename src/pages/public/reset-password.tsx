@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { KeyRound } from "lucide-react";
+import { KeyRound } from "../../lib/icons";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 import { Button } from "../../components/ui/button";
 import {

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "../../lib/icons";
 
 export type ActionVisualState = "idle" | "saving" | "success" | "error";
 

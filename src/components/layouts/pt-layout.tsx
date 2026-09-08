@@ -4,7 +4,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ComponentType,
   type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
@@ -33,7 +32,8 @@ import {
   Settings,
   Users,
   X,
-} from "lucide-react";
+  type AppIcon,
+} from "../../lib/icons";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import {
@@ -160,7 +160,7 @@ type PtNavItem = {
   label: string;
   description: string;
   to: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: AppIcon;
   module: ModuleTone;
 };
 
@@ -479,7 +479,11 @@ function SidebarNav({
                           getModuleToneClasses(item.module).navIcon,
                         )}
                       >
-                        <Icon className="h-4 w-4 [stroke-width:1.7]" />
+                        <Icon
+                          className="h-5 w-5"
+                          weight={isActive ? "duotone" : "regular"}
+                          aria-hidden="true"
+                        />
                       </span>
                       {!collapsed ? (
                         <motion.div

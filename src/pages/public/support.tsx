@@ -5,7 +5,7 @@ import {
   Mail,
   ShieldCheck,
   Timer,
-} from "lucide-react";
+} from "../../lib/icons";
 import { PublicInfoCard, PublicInfoLayout } from "./public-info-layout";
 
 const supportEmail = "support@repsync.com";

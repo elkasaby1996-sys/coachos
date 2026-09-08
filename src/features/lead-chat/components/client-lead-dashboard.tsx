@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageSquarePlus } from "lucide-react";
+import { MessageSquarePlus } from "../../../lib/icons";
 import {
   Alert,
   AlertDescription,

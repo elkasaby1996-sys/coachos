@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, FlaskConical, HeartPulse, Upload } from "lucide-react";
+import { FileText, FlaskConical, HeartPulse, Upload } from "../../../lib/icons";
 import { EmptyState } from "../../../components/ui/coachos";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
 import { Button } from "../../../components/ui/button";

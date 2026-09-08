@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "../../lib/icons";
 import { Button } from "../../components/ui/button";
 import { AppShellBackgroundLayer } from "../../components/common/app-shell-background";
 import { EmptyState } from "../../components/ui/coachos/empty-state";

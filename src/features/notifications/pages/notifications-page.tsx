@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, Trash2 } from "lucide-react";
+import { Bell, Trash2 } from "../../../lib/icons";
 import { Button } from "../../../components/ui/button";
 import { Skeleton } from "../../../components/ui/skeleton";
 import { useBootstrapAuth, useSessionAuth } from "../../../lib/auth";

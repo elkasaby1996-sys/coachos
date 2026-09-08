@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle } from "../../lib/icons";
 import { useNavigate } from "react-router-dom";
 import {
   buildClientInboxThreadParam,

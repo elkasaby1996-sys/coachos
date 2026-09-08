@@ -26,7 +26,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules/lucide-react/")) {
+          if (id.includes("node_modules/@phosphor-icons/react/")) {
             return "vendor-icons";
           }
 

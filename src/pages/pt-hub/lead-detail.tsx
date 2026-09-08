@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "../../lib/icons";
 import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/coachos/empty-state";
 import { PtHubLeadDetailView } from "../../features/pt-hub/components/pt-hub-lead-detail-view";

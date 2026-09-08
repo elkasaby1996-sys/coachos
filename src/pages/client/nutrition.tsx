@@ -2,7 +2,7 @@ import { hydrateNutritionAssignmentContext } from "../../lib/nutrition-assignmen
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "../../lib/icons";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowUpRight, Building2, Check, Plus } from "lucide-react";
+import { ArrowUpRight, Building2, Check, Plus } from "../../lib/icons";
 import {
   DropdownMenuContent,
   DropdownMenuItem,

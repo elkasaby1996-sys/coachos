@@ -87,7 +87,7 @@ import {
 } from "../../lib/assignment-semantics";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
-import { GripVertical, MoreHorizontal, Trash2 } from "lucide-react";
+import { GripVertical, MoreHorizontal, Trash2 } from "../../lib/icons";
 
 const getErrorDetails = (error: unknown) => {
   if (!error) return { code: "unknown", message: "Unknown error" };

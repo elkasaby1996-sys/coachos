@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown, Search } from "../../../lib/icons";
 import { Input } from "../../ui/input";
 import {
   BODY_REGIONS,

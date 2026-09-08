@@ -8,7 +8,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Search, SendHorizontal, Trash2 } from "lucide-react";
+import { Search, SendHorizontal, Trash2 } from "../../lib/icons";
 import {
   AlertDialog,
   AlertDialogCancel,

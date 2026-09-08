@@ -5,7 +5,7 @@ import {
   Search,
   UserPlus,
   UsersRound,
-} from "lucide-react";
+} from "../../lib/icons";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { InviteClientDialog } from "../../components/pt/invite-client-dialog";
 import { Button } from "../../components/ui/button";

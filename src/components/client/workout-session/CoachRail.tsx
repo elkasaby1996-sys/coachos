@@ -1,4 +1,4 @@
-import { ListChecks } from "lucide-react";
+import { ListChecks } from "../../../lib/icons";
 import { DashboardCard } from "../../pt/dashboard/DashboardCard";
 import { RestTimer } from "./RestTimer";
 

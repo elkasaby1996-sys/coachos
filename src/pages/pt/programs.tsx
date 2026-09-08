@@ -9,7 +9,7 @@ import {
   Pencil,
   Search,
   Trash2,
-} from "lucide-react";
+} from "../../lib/icons";
 import { Button } from "../../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";

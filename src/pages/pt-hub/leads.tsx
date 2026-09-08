@@ -5,7 +5,7 @@ import {
   MessageSquarePlus,
   RefreshCw,
   Search,
-} from "lucide-react";
+} from "../../lib/icons";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { EmptyState } from "../../components/ui/coachos/empty-state";

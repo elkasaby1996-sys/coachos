@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { Check, List, ScanSearch } from "lucide-react";
+import { Check, List, ScanSearch } from "../../../lib/icons";
 import {
   BODY_REGIONS,
   getMuscleMetadata,

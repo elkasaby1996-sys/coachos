@@ -1,5 +1,5 @@
 import type { KeyboardEvent, ReactNode } from "react";
-import { ChevronDown, Dumbbell, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, Dumbbell, RotateCcw, Search } from "../../../lib/icons";
 import { AnatomicalMuscleSelector } from "../anatomical-muscle-selector";
 import { ProviderAnatomyFilterFields } from "../provider-anatomy-filter-fields";
 import { Badge } from "../../ui/badge";

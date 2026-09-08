@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { UserRound } from "lucide-react";
+import { UserRound } from "../../lib/icons";
 import { AuthPageLoader } from "../../components/common/auth-page-loader";
 import { AuthComponent } from "../../components/ui/sign-up";
 import { Input } from "../../components/ui/input";

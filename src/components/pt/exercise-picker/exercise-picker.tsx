@@ -6,7 +6,7 @@ import {
   type SetStateAction,
 } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Database, Library, RefreshCcw } from "lucide-react";
+import { Database, Library, RefreshCcw } from "../../../lib/icons";
 import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";

@@ -9,7 +9,7 @@ import {
   Globe2,
   Sparkles,
   UserPlus,
-} from "lucide-react";
+} from "../../../lib/icons";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { EmptyState } from "../../../components/ui/coachos/empty-state";

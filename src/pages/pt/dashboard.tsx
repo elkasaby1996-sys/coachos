@@ -8,7 +8,7 @@ import {
   Rocket,
   Trash2,
   UsersRound,
-} from "lucide-react";
+} from "../../lib/icons";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Input } from "../../components/ui/input";

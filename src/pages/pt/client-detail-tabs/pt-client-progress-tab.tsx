@@ -8,7 +8,7 @@ import {
   MessageCircle,
   Rocket,
   Sparkles,
-} from "lucide-react";
+} from "../../../lib/icons";
 import {
   DashboardCard,
   EmptyState,

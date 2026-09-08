@@ -9,7 +9,7 @@ import {
   ShieldAlert,
   Trophy,
   UserPlus,
-} from "lucide-react";
+} from "../../../lib/icons";
 import type { NotificationRecord, NotificationType } from "./types";
 import type { ModuleTone } from "../../../lib/module-tone";
 

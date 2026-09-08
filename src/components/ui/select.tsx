@@ -1,6 +1,6 @@
 import * as React from "react";
 import { type VariantProps } from "class-variance-authority";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "../../lib/icons";
 import {
   DropdownMenu,
   DropdownMenuContent,

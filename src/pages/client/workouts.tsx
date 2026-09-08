@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { GripVertical } from "lucide-react";
+import { GripVertical } from "../../lib/icons";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {

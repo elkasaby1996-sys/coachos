@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "../../../lib/icons";
 import { FieldCharacterMeta } from "../../../components/common/field-character-meta";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";

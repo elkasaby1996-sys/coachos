@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles } from "lucide-react";
+import { Sparkles } from "../../lib/icons";
 import { PortalPageHeader } from "../../components/client/portal/portal-ui";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";

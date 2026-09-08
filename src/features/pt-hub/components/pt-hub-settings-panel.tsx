@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, BellRing, Save, ShieldCheck } from "lucide-react";
+import { AlertTriangle, BellRing, Save, ShieldCheck } from "../../../lib/icons";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";

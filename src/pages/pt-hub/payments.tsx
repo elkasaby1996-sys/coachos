@@ -12,7 +12,7 @@ import {
   TrendingUp,
   UsersRound,
   Wallet,
-} from "lucide-react";
+} from "../../lib/icons";
 import { Link } from "react-router-dom";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Activity, Save } from "lucide-react";
+import { Activity, Save } from "../../../../lib/icons";
 import {
   Alert,
   AlertDescription,

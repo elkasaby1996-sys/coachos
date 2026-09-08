@@ -63,7 +63,7 @@ import {
   Trash2,
   XCircle,
   Archive,
-} from "lucide-react";
+} from "../../lib/icons";
 import {
   Dialog,
   DialogContent,

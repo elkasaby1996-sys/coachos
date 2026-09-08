@@ -6,8 +6,8 @@ import {
   MessageSquarePlus,
   Sparkles,
   UsersRound,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+} from "../../lib/icons";
+import type { AppIcon } from "../../lib/icons";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { StatCard } from "../../components/ui/coachos/stat-card";
@@ -48,7 +48,7 @@ const metricIconMap = {
   "new-leads-month": MessageSquarePlus,
   "checkins-due": Sparkles,
   "onboarding-in-progress": ClipboardList,
-} as const satisfies Record<string, LucideIcon>;
+} as const satisfies Record<string, AppIcon>;
 
 function getMetricGridClassName(metricCount: number) {
   if (metricCount <= 2) return "pt-hub-kpi-grid-wide";

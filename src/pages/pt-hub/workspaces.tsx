@@ -1,6 +1,6 @@
 import { NotificationToast } from "../../components/common/notification-toast";
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus } from "../../lib/icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";

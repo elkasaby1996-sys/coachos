@@ -1,4 +1,4 @@
-import { ChevronDown, Dumbbell } from "lucide-react";
+import { ChevronDown, Dumbbell } from "../../../lib/icons";
 import { Skeleton } from "../../ui/skeleton";
 import {
   groupExerciseBrowserMatches,

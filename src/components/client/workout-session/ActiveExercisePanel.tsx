@@ -1,4 +1,4 @@
-import { Film } from "lucide-react";
+import { Film } from "../../../lib/icons";
 import { Button } from "../../ui/button";
 import { DashboardCard } from "../../pt/dashboard/DashboardCard";
 

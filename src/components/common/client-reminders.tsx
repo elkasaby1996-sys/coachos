@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { BellRing } from "lucide-react";
+import { BellRing } from "../../lib/icons";
 import { Button } from "../ui/button";
 import { supabase } from "../../lib/supabase";
 import { safeSelect } from "../../lib/supabase-safe";

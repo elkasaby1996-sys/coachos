@@ -1,4 +1,4 @@
-import { Laptop, Moon, Sun } from "lucide-react";
+import { Laptop, Moon, Sun } from "../../lib/icons";
 import { useTheme } from "./theme-provider";
 import { Button } from "../ui/button";
 import { LIGHT_MODE_ENABLED } from "../../lib/theme";

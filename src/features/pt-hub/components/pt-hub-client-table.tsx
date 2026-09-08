@@ -1,4 +1,4 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "../../../lib/icons";
 import type { BadgeVariant } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { TagInfoBadge } from "../../../components/ui/coachos/status-pill";

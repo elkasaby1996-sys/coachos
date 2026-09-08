@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, FlaskConical, HeartPulse, Upload } from "lucide-react";
+import { FileText, FlaskConical, HeartPulse, Upload } from "../../lib/icons";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";

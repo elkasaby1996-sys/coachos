@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Eye, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import {
+  Copy,
+  Eye,
+  Loader2,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from "../../lib/icons";
 import { duplicateWorkoutTemplate } from "../../lib/duplicate-workout-template";
 import { WorkoutTemplatePreviewDialog } from "../../components/pt/workout-template-preview-dialog";
 import { Button } from "../../components/ui/button";

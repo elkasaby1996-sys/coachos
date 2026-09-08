@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check } from "../../../lib/icons";
 import { DashboardCard } from "../../pt/dashboard/DashboardCard";
 
 export type ExerciseNavItem = {

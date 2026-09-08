@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { Search } from "../../../lib/icons";
 import type {
   ClientLifecycleState,
   ClientSegmentKey,

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "../../../lib/icons";
 import { EmptyState } from "../../../components/ui/coachos";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
 import { Button } from "../../../components/ui/button";

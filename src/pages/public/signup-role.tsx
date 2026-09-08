@@ -1,6 +1,6 @@
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "../../lib/icons";
 import { AppFooter } from "../../components/common/app-footer";
 import {
   AuthFlowBackground,

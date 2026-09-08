@@ -69,7 +69,7 @@ import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useSearchParams } from "react-router-dom";
-import { Play, Plus, RefreshCcw } from "lucide-react";
+import { Play, Plus, RefreshCcw } from "../../lib/icons";
 
 type ExerciseFormState = {
   name: string;

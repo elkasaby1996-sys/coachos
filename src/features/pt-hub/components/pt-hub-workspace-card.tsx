@@ -1,4 +1,4 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "../../../lib/icons";
 import { Button } from "../../../components/ui/button";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { cn } from "../../../lib/utils";

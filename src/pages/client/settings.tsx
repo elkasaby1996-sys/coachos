@@ -15,7 +15,7 @@ import {
   Shield,
   Trash2,
   User,
-} from "lucide-react";
+} from "../../lib/icons";
 import {
   AlertDialog,
   AlertDialogCancel,
