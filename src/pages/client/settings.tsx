@@ -241,28 +241,28 @@ const notificationGroups: Array<{
     ],
   },
   {
-    title: "Progress and Check-ins",
+    title: "Progress and check-ins",
     items: [
       {
         key: "checkin_requested",
         label: "Check-in reminders",
-        description: "Prompt when coach review check-ins are requested.",
+        description: "Reminders to complete a check-in for your coach.",
       },
       {
         key: "checkin_submitted",
         label: "Check-in confirmations",
-        description: "Confirmation when check-ins are submitted or processed.",
+        description:
+          "Updates when you submit a check-in or its status changes.",
       },
       {
         key: "inactivity_alerts",
-        label: "Habit and consistency nudges",
-        description: "Nudges when activity drops so you can get back on track.",
+        label: "Activity reminders",
+        description: "Reminders when you have been less active.",
       },
       {
         key: "milestone_events",
         label: "Progress milestones",
-        description:
-          "Celebrate streaks and milestone events in your coaching journey.",
+        description: "Get updates about streaks and milestones.",
       },
     ],
   },
@@ -272,7 +272,7 @@ const notificationGroups: Array<{
       {
         key: "system_events",
         label: "Coach/service updates and billing reminders",
-        description: "Important account, service, and system-level updates.",
+        description: "Updates about your account and coaching service.",
       },
     ],
   },
@@ -937,7 +937,7 @@ export function ClientSettingsPage() {
               <StatusBanner
                 variant="info"
                 title="Loading profile"
-                description="Fetching your current account details."
+                description="Loading your account details."
               />
             ) : clientProfileQuery.isError ? (
               <StatusBanner
@@ -1012,7 +1012,7 @@ export function ClientSettingsPage() {
                   </SettingsFieldRow>
                 </SettingsSectionCard>
 
-                <SettingsSectionCard title="Personal Details">
+                <SettingsSectionCard title="Personal details">
                   <SettingsFieldRow label="Date of birth">
                     <Input
                       id="client-settings-dob"
@@ -1158,7 +1158,7 @@ export function ClientSettingsPage() {
 
         {activeTab === "preferences" ? (
           <div className="space-y-4">
-            <SettingsSectionCard title="App Preferences">
+            <SettingsSectionCard title="App preferences">
               <SettingsFieldRow label="Units">
                 <Select
                   id="client-settings-units"
@@ -1252,7 +1252,7 @@ export function ClientSettingsPage() {
 
         {activeTab === "notifications" ? (
           <div className="space-y-4">
-            <SettingsSectionCard title="Delivery Channels">
+            <SettingsSectionCard title="Notification delivery">
               <SettingsFieldRow label="Channel defaults">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <NotificationToggleField
@@ -1325,7 +1325,7 @@ export function ClientSettingsPage() {
 
         {activeTab === "privacy-security" ? (
           <div className="space-y-4">
-            <SettingsSectionCard title="Sign-in Security">
+            <SettingsSectionCard title="Sign-in security">
               <SettingsFieldRow label="Authentication">
                 <DisabledSettingField
                   value={session?.user?.email ? "Email + password" : "Unknown"}
@@ -1383,8 +1383,7 @@ export function ClientSettingsPage() {
             <SettingsSectionCard title="Sessions">
               <SettingsFieldRow label="Active sessions">
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Session management is account-wide. Use this action to sign
-                  out of other devices.
+                  This signs you out on all devices, including this one.
                 </p>
                 <div className="flex justify-end">
                   <Button
@@ -1404,8 +1403,7 @@ export function ClientSettingsPage() {
             <SettingsSectionCard title="Account deletion">
               <SettingsFieldRow label="Request account deletion">
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Deletion and deactivation requests are handled through support
-                  to protect historical coaching records.
+                  Contact support to request account deletion or deactivation.
                 </p>
                 <div className="flex justify-end">
                   <Button
@@ -1429,13 +1427,13 @@ export function ClientSettingsPage() {
               <StatusBanner
                 variant="info"
                 title="Loading billing"
-                description="Fetching your active service and billing summary."
+                description="Loading your coaching service and billing details."
               />
             ) : billingQuery.data?.billingStatus === "none" ? (
               <EmptyStateBlock
                 icon={<CreditCard className="h-5 w-5" />}
-                title="No active billing relationship"
-                description="You do not have an active paid coaching service attached to this account yet."
+                title="No paid coaching service"
+                description="No paid coaching service is linked to your account."
                 actions={
                   <Button onClick={() => navigate("/app/find-coach")}>
                     Find a Coach
@@ -1444,7 +1442,7 @@ export function ClientSettingsPage() {
               />
             ) : (
               <>
-                <SettingsSectionCard title="Current Service">
+                <SettingsSectionCard title="Current service">
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
                       <p className="field-label">Provider</p>
@@ -1476,19 +1474,19 @@ export function ClientSettingsPage() {
                   </div>
                 </SettingsSectionCard>
 
-                <SettingsSectionCard title="Billing Status">
+                <SettingsSectionCard title="Billing status">
                   <SettingsFieldRow label="Status">
                     <div className="flex items-center gap-2">
-                      <Badge variant="success">Active</Badge>
+                      <Badge variant="muted">Not connected</Badge>
                       <span className="text-sm text-muted-foreground">
-                        Billing details remain in placeholder mode until payment
-                        integration is connected.
+                        Billing is not connected. Payment details are not
+                        available here yet.
                       </span>
                     </div>
                   </SettingsFieldRow>
                 </SettingsSectionCard>
 
-                <SettingsSectionCard title="Invoice History">
+                <SettingsSectionCard title="Invoice history">
                   {invoices.length > 0 ? (
                     <div className="space-y-2">
                       {invoices.map((invoice) => (
@@ -1501,7 +1499,7 @@ export function ClientSettingsPage() {
                               {invoice.label}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Invoice sync placeholder
+                              Invoice details are not available yet.
                             </p>
                           </div>
                           <Badge variant="muted">{invoice.amount}</Badge>
@@ -1513,15 +1511,15 @@ export function ClientSettingsPage() {
                       centered
                       icon={<CalendarClock className="h-4 w-4" />}
                       title="No invoices yet"
-                      description="Your invoice history will appear here once billing sync is connected."
+                      description="Invoices will appear here when billing is connected."
                     />
                   )}
                 </SettingsSectionCard>
 
-                <SettingsSectionCard title="Payment Method">
+                <SettingsSectionCard title="Payment method">
                   <SettingsFieldRow label="Saved card">
                     <p className="text-sm text-muted-foreground">
-                      No payment method wired yet.
+                      No payment method is connected.
                     </p>
                   </SettingsFieldRow>
                 </SettingsSectionCard>
@@ -1536,8 +1534,8 @@ export function ClientSettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Request account deletion?</AlertDialogTitle>
             <AlertDialogDescription>
-              This opens a support request so we can safely process account
-              deletion without damaging historical logs.
+              Send a deletion request to support. This does not delete your
+              account immediately.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

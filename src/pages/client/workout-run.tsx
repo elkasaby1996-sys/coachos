@@ -1163,7 +1163,7 @@ export function ClientWorkoutRunPage() {
                 <CardTitle>Workout</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>This workout has no exercises yet, so it is not runnable.</p>
+                <p>No exercises have been added to this workout yet.</p>
                 <div className="flex flex-wrap gap-2">
                   {workoutSession ? (
                     <Button variant="secondary" onClick={handleSkipWorkout}>
@@ -1477,7 +1477,7 @@ export function ClientWorkoutRunPage() {
             ) : null}
             {finishStatus === "success" ? (
               <ActionStatusMessage tone="success">
-                Workout logged. Wrapping up your session...
+                Workout saved. Opening your summary...
               </ActionStatusMessage>
             ) : null}
             <div className="flex flex-wrap gap-2">
@@ -1529,8 +1529,7 @@ export function ClientWorkoutRunPage() {
                   Workout logged
                 </h3>
                 <p className="max-w-lg text-sm text-muted-foreground">
-                  Your session is saved, your coach notes are attached, and your
-                  progress is being folded into the next check-in.
+                  Your workout and notes have been saved.
                 </p>
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">

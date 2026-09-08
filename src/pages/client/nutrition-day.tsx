@@ -258,7 +258,7 @@ export function ClientNutritionDayPage() {
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <DashboardCard title="Meals" subtitle="Tap to edit completion">
+          <DashboardCard title="Meals" subtitle="Mark meals as completed.">
             <div className="space-y-2">
               {meals.map((meal) => {
                 const isSelected = meal.id === selectedMealId;
@@ -282,11 +282,11 @@ export function ClientNutritionDayPage() {
             </div>
           </DashboardCard>
 
-          <DashboardCard title="Meal Detail" subtitle="Update actual intake">
+          <DashboardCard title="Meal details" subtitle="Update actual intake">
             {!selectedMeal ? (
               <EmptyState
                 title="Select a meal"
-                description="Choose a meal from the left rail."
+                description="Select a meal to view its details."
               />
             ) : (
               <div className="space-y-3">
@@ -384,7 +384,7 @@ export function ClientNutritionDayPage() {
                     </div>
                   ) : (
                     <p className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm text-muted-foreground">
-                      No meal components have been added yet.
+                      No foods have been added to this meal yet.
                     </p>
                   )}
                 </div>

@@ -399,7 +399,7 @@ export function ClientMedicalPage() {
     <div className="portal-shell">
       <PortalPageHeader
         title="Medical"
-        subtitle="Keep your medical history, test values, and uploaded reports in one place for your coaching workflow."
+        subtitle="Share medical information that may affect your training with your coach."
         stateText={
           clientProfile?.display_name
             ? `Shared with ${clientProfile.display_name}'s coach`
@@ -410,7 +410,7 @@ export function ClientMedicalPage() {
       <StatusBanner
         variant="info"
         title="Your coach can review anything entered here"
-        description="Medical history, lab values, and uploaded files are visible inside the PT medical workspace so your program can reflect the right context."
+        description="Your coach can see the medical history, test results, and files you add here."
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.05fr)]">
@@ -493,8 +493,7 @@ export function ClientMedicalPage() {
                 <SurfaceCardTitle>Lab result</SurfaceCardTitle>
               </div>
               <SurfaceCardDescription>
-                Enter a single test with its value and unit so your coach can
-                scan it quickly.
+                Enter the test name, result, and unit shown on your report.
               </SurfaceCardDescription>
             </SurfaceCardHeader>
             <SurfaceCardContent className="space-y-4">
@@ -554,7 +553,7 @@ export function ClientMedicalPage() {
                     className="app-field app-field-textarea min-h-[96px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={labNotes}
                     onChange={(event) => setLabNotes(event.target.value)}
-                    placeholder="Optional context or anything your coach should keep in mind."
+                    placeholder="Add any notes about this result."
                   />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -660,7 +659,7 @@ export function ClientMedicalPage() {
             <SurfaceCardHeader className="pb-4">
               <SurfaceCardTitle>History on file</SurfaceCardTitle>
               <SurfaceCardDescription>
-                A timeline of medical context that your coach can reference.
+                Medical history you have shared with your coach.
               </SurfaceCardDescription>
             </SurfaceCardHeader>
             <SurfaceCardContent className="space-y-3">
@@ -709,7 +708,7 @@ export function ClientMedicalPage() {
               ) : (
                 <EmptyStateBlock
                   title="No medical history yet"
-                  description="Add your relevant history here so your coach has the right context when planning training and nutrition."
+                  description="Add any medical history your coach should consider when planning your training."
                   icon={<HeartPulse className="h-5 w-5" />}
                 />
               )}
@@ -720,7 +719,7 @@ export function ClientMedicalPage() {
             <SurfaceCardHeader className="pb-4">
               <SurfaceCardTitle>Lab results</SurfaceCardTitle>
               <SurfaceCardDescription>
-                Structured test values you have shared with your coach.
+                Test results you have shared with your coach.
               </SurfaceCardDescription>
             </SurfaceCardHeader>
             <SurfaceCardContent className="space-y-3">
@@ -775,7 +774,7 @@ export function ClientMedicalPage() {
               ) : (
                 <EmptyStateBlock
                   title="No lab values added yet"
-                  description="Add structured results when you want your coach to review a specific test value quickly."
+                  description="Add a test result for your coach to review."
                   icon={<FlaskConical className="h-5 w-5" />}
                 />
               )}
@@ -786,7 +785,7 @@ export function ClientMedicalPage() {
             <SurfaceCardHeader className="pb-4">
               <SurfaceCardTitle>Uploaded reports</SurfaceCardTitle>
               <SurfaceCardDescription>
-                Files you have shared inside the medical workspace.
+                Reports you have shared with your coach.
               </SurfaceCardDescription>
             </SurfaceCardHeader>
             <SurfaceCardContent className="space-y-3">

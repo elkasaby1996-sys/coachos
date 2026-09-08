@@ -53,7 +53,7 @@ describe("client settings page contract", () => {
 
   it("keeps privacy/security scope without MFA or data export", () => {
     expect(settingsPageSource).toContain(
-      'SettingsSectionCard title="Sign-in Security"',
+      'SettingsSectionCard title="Sign-in security"',
     );
     expect(settingsPageSource).toContain(
       'SettingsSectionCard title="Sessions"',
@@ -67,20 +67,18 @@ describe("client settings page contract", () => {
 
   it("keeps billing tab focused on active service and excludes invite/application copy", () => {
     expect(settingsPageSource).toContain(
-      'SettingsSectionCard title="Current Service"',
+      'SettingsSectionCard title="Current service"',
     );
     expect(settingsPageSource).toContain(
-      'SettingsSectionCard title="Billing Status"',
+      'SettingsSectionCard title="Billing status"',
     );
     expect(settingsPageSource).toContain(
-      'SettingsSectionCard title="Invoice History"',
+      'SettingsSectionCard title="Invoice history"',
     );
     expect(settingsPageSource).toContain(
-      'SettingsSectionCard title="Payment Method"',
+      'SettingsSectionCard title="Payment method"',
     );
-    expect(settingsPageSource).toContain(
-      'title="No active billing relationship"',
-    );
+    expect(settingsPageSource).toContain('title="No paid coaching service"');
 
     expect(settingsPageSource).not.toContain("Pending applications");
     expect(settingsPageSource).not.toContain("Invites");

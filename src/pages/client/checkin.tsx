@@ -557,7 +557,7 @@ export function ClientCheckinPage() {
     missingTemplate,
   );
   const assignedNotOpenDescription = clientCheckinPageState.nextDueDate
-    ? `Your next check-in is scheduled for ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}. The form will unlock when that date arrives.`
+    ? `Your next check-in is scheduled for ${formatCheckinDueDate(clientCheckinPageState.nextDueDate)}. You can complete the form on that date.`
     : "Your coach has set up check-ins, but there is no open check-in yet.";
 
   useEffect(() => {
@@ -1212,7 +1212,7 @@ export function ClientCheckinPage() {
                 Assigned check-ins
               </SurfaceCardTitle>
               <SurfaceCardDescription>
-                Due, overdue, and upcoming cycles.
+                Check-ins to complete and upcoming dates.
               </SurfaceCardDescription>
             </SurfaceCardHeader>
             <SurfaceCardContent className="space-y-2 pt-4">
@@ -1295,7 +1295,7 @@ export function ClientCheckinPage() {
                 Previous check-ins
               </SurfaceCardTitle>
               <SurfaceCardDescription>
-                Recent submitted and reviewed cycles.
+                Past check-ins and coach feedback.
               </SurfaceCardDescription>
             </SurfaceCardHeader>
             <SurfaceCardContent className="space-y-2 pt-4">
@@ -1349,7 +1349,7 @@ export function ClientCheckinPage() {
               ) : (
                 <EmptyStateBlock
                   title="No previous check-ins yet"
-                  description="Submitted and reviewed check-ins will appear here for reference."
+                  description="Your submitted check-ins and coach feedback will appear here."
                 />
               )}
             </SurfaceCardContent>
@@ -1535,7 +1535,7 @@ export function ClientCheckinPage() {
             <StatusBanner
               variant="info"
               title="Check-in not open yet"
-              description={`This cycle is scheduled for ${checkinDueDateLabel}. The questions, photos, and submission controls unlock on that date to keep the check-in tied to the right period.`}
+              description={`This check-in is scheduled for ${checkinDueDateLabel}. You can answer the questions, add photos, and submit it on that date.`}
             />
           ) : null}
 
@@ -1731,7 +1731,7 @@ export function ClientCheckinPage() {
                             ) : (
                               <StatusBanner
                                 variant="warning"
-                                title="Options not configured yet"
+                                title="No answer options yet"
                                 description="Your coach still needs to add options for this question."
                               />
                             )
@@ -1809,7 +1809,7 @@ export function ClientCheckinPage() {
               ) : !clientProfile ? (
                 <EmptyState
                   title="No profile found"
-                  description="A client profile is required before check-ins can load."
+                  description="Complete your profile to access check-ins."
                 />
               ) : missingTemplate ? (
                 <EmptyState
@@ -1967,7 +1967,7 @@ export function ClientCheckinPage() {
                   Scheduled for {checkinDueDateLabel}
                 </p>
                 <p className="text-muted-foreground">
-                  You can complete this check-in when its assigned date arrives.
+                  You can complete this check-in on its scheduled date.
                 </p>
               </div>
               <Button variant="secondary" onClick={() => navigate("/app/home")}>

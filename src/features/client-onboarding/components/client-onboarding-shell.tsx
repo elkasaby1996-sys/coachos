@@ -803,14 +803,14 @@ export function ClientOnboardingShell() {
               </div>
               <div className="space-y-1.5">
                 <p className="text-xs uppercase tracking-[0.24em] text-primary/80">
-                  Workspace onboarding
+                  Getting started
                 </p>
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                  Guided onboarding for your coaching workspace
+                  Set up your coaching account
                 </h1>
                 <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                  Move through each step, save as you go, and submit once
-                  everything is ready for coach review.
+                  Complete each step, then submit your details to your coach.
+                  You can save and return later.
                 </p>
               </div>
             </div>
@@ -824,7 +824,7 @@ export function ClientOnboardingShell() {
                 Save for later
               </Button>
               <Button asChild variant="ghost">
-                <Link to="/app/home">Back to workspace</Link>
+                <Link to="/app/home">Back to home</Link>
               </Button>
             </div>
           </div>
@@ -1972,14 +1972,13 @@ export function ClientOnboardingShell() {
                   </div>
                 ) : summary.latestDraftBaseline ? (
                   <div className="ui-inset border border-border/70 p-4 text-sm text-muted-foreground">
-                    A baseline draft already exists. Resume it and submit to
-                    complete this onboarding step.
+                    You have an unfinished initial assessment. Continue where
+                    you left off.
                   </div>
                 ) : (
                   <div className="ui-inset border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
-                    Start the assessment when you&apos;re ready. It will open
-                    the existing baseline flow and return you here after
-                    submission.
+                    Complete your initial assessment, then return here to finish
+                    setting up your account.
                   </div>
                 )}
               </div>
@@ -2119,7 +2118,7 @@ export function ClientOnboardingShell() {
                 {summary.awaitingReview
                   ? "Read-only while your coach reviews this onboarding."
                   : saveState === "saved"
-                    ? "Draft saved and ready for the next step."
+                    ? "Your draft is saved."
                     : saveState === "saving" || saveState === "autosaving"
                       ? "Saving your latest changes..."
                       : "Draft changes save automatically while you work."}

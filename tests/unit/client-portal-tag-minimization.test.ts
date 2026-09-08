@@ -39,7 +39,7 @@ const combinedClientSurfaceSource =
 describe("client portal tag minimization", () => {
   it("keeps removed-only client home copy safe and relationship-neutral", () => {
     expect(clientSurfaceSources.home).toContain(
-      "You do not currently have an active coaching workspace.",
+      "You are not currently linked to a coach.",
     );
     expect(clientSurfaceSources.home).not.toContain("Removed");
     expect(clientSurfaceSources.home).not.toContain("Transferred out");
@@ -133,7 +133,7 @@ describe("client portal tag minimization", () => {
     );
     expect(clientSurfaceSources.home).not.toContain("weeklyStats");
     expect(clientSurfaceSources.home).toContain("Daily log");
-    expect(clientSurfaceSources.home).toContain("Save quick log");
+    expect(clientSurfaceSources.home).toContain("Save daily log");
     expect(clientSurfaceSources.home).toContain("home-habit-steps");
     expect(clientSurfaceSources.home).not.toContain(
       "Tap each daily basic as it is done.",

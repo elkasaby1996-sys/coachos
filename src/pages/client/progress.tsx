@@ -585,12 +585,12 @@ export function ClientProgressPage() {
     const parts: string[] = [];
     if (weightDelta !== null) {
       parts.push(
-        `Body weight moved ${weightDelta > 0 ? "up" : weightDelta < 0 ? "down" : "sideways"} ${Math.abs(weightDelta).toFixed(1)} ${weightUnit}.`,
+        `Body weight change: ${weightDelta > 0 ? "+" : ""}${weightDelta.toFixed(1)} ${weightUnit}.`,
       );
     }
     if (sleepDelta !== null) {
       parts.push(
-        `Sleep shifted ${sleepDelta > 0 ? "up" : sleepDelta < 0 ? "down" : "sideways"} ${Math.abs(sleepDelta).toFixed(1)} hrs.`,
+        `Sleep change: ${sleepDelta > 0 ? "+" : ""}${sleepDelta.toFixed(1)} hrs.`,
       );
     }
     if (stepsDelta !== null) {
@@ -659,7 +659,7 @@ export function ClientProgressPage() {
       ) : !hasAnyData ? (
         <EmptyStateBlock
           title="No progress data yet"
-          description="Log habits, complete workouts, and submit your baseline to start seeing meaningful trends here."
+          description="Your measurements, daily logs, and completed workouts will appear here."
           actions={
             <>
               <Button
@@ -732,7 +732,7 @@ export function ClientProgressPage() {
               ) : (
                 <EmptyStateBlock
                   title="Not enough body-weight entries yet"
-                  description="Keep logging weight over the next few check-ins to unlock a clearer chart."
+                  description="Add another weight entry to see how it has changed."
                   className="min-h-[19rem]"
                   actions={
                     hasBaseline ? (
@@ -757,7 +757,7 @@ export function ClientProgressPage() {
 
             <ChartSurface
               title="Training volume"
-              description="Logged output across your recent sessions."
+              description="Weight multiplied by reps, added across your logged sets."
               latestLabel={
                 filteredLoadSeries.length > 0
                   ? `${filteredLoadSeries[filteredLoadSeries.length - 1]?.volume?.toFixed(0) ?? "--"} volume`
@@ -816,7 +816,7 @@ export function ClientProgressPage() {
                 <SurfaceCardHeader className="pb-4">
                   <SurfaceCardTitle>Recovery and activity</SurfaceCardTitle>
                   <SurfaceCardDescription>
-                    Supporting signals that influence readiness and consistency.
+                    Your logged sleep and daily steps.
                   </SurfaceCardDescription>
                 </SurfaceCardHeader>
                 <SurfaceCardContent className="space-y-4">
@@ -862,7 +862,7 @@ export function ClientProgressPage() {
                         ) : (
                           <EmptyStateBlock
                             title="Sleep trend pending"
-                            description="Log sleep across a few days to make this recovery signal useful."
+                            description="Log your sleep on more days to compare your entries."
                             className="min-h-[12rem]"
                           />
                         )}
@@ -904,7 +904,7 @@ export function ClientProgressPage() {
                         ) : (
                           <EmptyStateBlock
                             title="Step trend pending"
-                            description="A few logged activity days will make this section more informative."
+                            description="Log your steps on more days to compare your entries."
                             className="min-h-[12rem]"
                           />
                         )}
@@ -928,8 +928,7 @@ export function ClientProgressPage() {
               <SurfaceCardHeader className="pb-4">
                 <SurfaceCardTitle>Exercise changes</SurfaceCardTitle>
                 <SurfaceCardDescription>
-                  The strongest positive or negative movement across tracked
-                  exercises.
+                  Exercises with the largest changes in logged performance.
                 </SurfaceCardDescription>
               </SurfaceCardHeader>
               <SurfaceCardContent>
@@ -966,8 +965,7 @@ export function ClientProgressPage() {
                               />
                             </div>
                             <p className="text-sm leading-6 text-muted-foreground">
-                              Compare your earliest and latest logged sets for a
-                              quick performance read.
+                              Compare your first and most recent logged sets.
                             </p>
                           </div>
                           <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[18rem]">
@@ -1007,7 +1005,7 @@ export function ClientProgressPage() {
                 ) : (
                   <EmptyStateBlock
                     title="No exercise trend data yet"
-                    description="Log a few sessions with working sets to unlock performance-change summaries."
+                    description="Log sets for the same exercise in more than one session to compare them."
                     actions={
                       <Button
                         variant="secondary"
@@ -1026,7 +1024,7 @@ export function ClientProgressPage() {
             <SurfaceCardHeader className="pb-4">
               <SurfaceCardTitle>Progress summary</SurfaceCardTitle>
               <SurfaceCardDescription>
-                A quick read on what the recent data is saying.
+                Changes over the selected period.
               </SurfaceCardDescription>
             </SurfaceCardHeader>
             <SurfaceCardContent>
@@ -1034,11 +1032,11 @@ export function ClientProgressPage() {
                 <div className="space-y-3">
                   <p className="text-base leading-7 text-foreground">
                     {insightText ||
-                      "Keep logging consistently to unlock clearer trend signals and stronger coach-facing insights."}
+                      "Add more daily logs or completed workouts to see changes over time."}
                   </p>
                   <p className="text-sm leading-6 text-muted-foreground">
-                    This summary updates from your baseline, habit logs, and
-                    completed workout set logs.
+                    Based on your initial assessment, daily logs, and completed
+                    sets.
                   </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">

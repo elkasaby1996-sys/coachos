@@ -505,7 +505,7 @@ export function ClientWearablesPage() {
             <StatusBanner
               variant="info"
               title="No workouts yet"
-              description="Workouts imported from Open Wearables will appear here."
+              description="Workouts synced from your connected device will appear here."
             />
           ) : (
             (activitiesQuery.data ?? []).map((activity) => (
@@ -576,7 +576,7 @@ export function ClientWearablesPage() {
               <StatusBanner
                 variant="info"
                 title="No trend data yet"
-                description="Trend data will appear after the next Open Wearables import."
+                description="Your charts will update when new device data syncs."
               />
             ) : (
               <div className="ui-inset h-52 border border-border/60 p-3">
@@ -628,7 +628,7 @@ export function ClientWearablesPage() {
         />
         <EmptyStateBlock
           title="Wearables are not enabled"
-          description="Your coaching workspace has not enabled wearable data sharing yet."
+          description="Your coach has not enabled wearable data sharing yet."
           icon={<Watch className="h-5 w-5" />}
         />
       </div>
@@ -662,7 +662,7 @@ export function ClientWearablesPage() {
         <StatusBanner
           variant="info"
           title={`${lastInactiveConnection.provider.toUpperCase()} disconnected`}
-          description="This wearable is no longer connected. You can start a new Open Wearables connection below."
+          description="Your device is disconnected. Connect it again below."
         />
       ) : null}
 
@@ -678,8 +678,7 @@ export function ClientWearablesPage() {
           <SurfaceCardHeader>
             <SurfaceCardTitle>No wearable connected</SurfaceCardTitle>
             <SurfaceCardDescription>
-              Choose an allowed provider to start the Open Wearables connection
-              flow.
+              Choose your device provider, then select Connect.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent className="space-y-4">
@@ -700,7 +699,7 @@ export function ClientWearablesPage() {
                 disabled={!clientId || connectMutation.isPending}
               >
                 <LinkIcon className="mr-2 h-4 w-4" />
-                {connectMutation.isPending ? "Opening..." : "Connect provider"}
+                {connectMutation.isPending ? "Opening..." : "Connect"}
               </Button>
             </div>
             <StatusBanner
@@ -882,7 +881,7 @@ export function ClientWearablesPage() {
                   <StatusBanner
                     variant="info"
                     title="No health scores yet"
-                    description="Open Wearables has not imported health scores for this window."
+                    description="No health scores have synced for these dates."
                   />
                 ) : (
                   latestScores.slice(0, 4).map((score) => (

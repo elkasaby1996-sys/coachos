@@ -260,8 +260,8 @@ export function ClientAccountOnboardingPage() {
         <CardHeader className="space-y-2">
           <CardTitle>Finish your client account</CardTitle>
           <p className="text-sm text-muted-foreground">
-            This is your canonical client profile. We'll prefill these details
-            wherever they show up later.
+            Save your details so you do not have to enter them again when
+            joining a coach.
           </p>
         </CardHeader>
         <CardContent>

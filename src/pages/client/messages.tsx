@@ -1060,7 +1060,7 @@ export function ClientMessagesPage() {
         <StatusBanner
           variant="warning"
           title="Some conversations could not load"
-          description="You can still use available threads. Retry to refresh lead and coaching inbox data."
+          description="You can still open the conversations that loaded. Select Retry to load the others."
           actions={
             <Button
               variant="secondary"
@@ -1223,7 +1223,7 @@ export function ClientMessagesPage() {
             <SurfaceCardContent className="flex min-h-[30rem] items-center justify-center py-8">
               <EmptyStateBlock
                 title="Pick a conversation"
-                description="Select a lead or active coaching conversation from the inbox list."
+                description="Select a conversation from your inbox."
               />
             </SurfaceCardContent>
           ) : selectedThreadMessageLoading ? (
@@ -1235,7 +1235,7 @@ export function ClientMessagesPage() {
           ) : selectedThreadMessageError ? (
             <SurfaceCardContent className="flex min-h-[30rem] items-center justify-center py-8">
               <EmptyStateBlock
-                title="Unable to load this thread"
+                title="Unable to load this conversation"
                 description="Try again or select another conversation."
                 actions={
                   <EmptyStateActionButton
@@ -1365,7 +1365,7 @@ export function ClientMessagesPage() {
                               setVisibleMessageCount((current) => current + 100)
                             }
                           >
-                            Show older loaded messages
+                            Show older messages
                           </Button>
                         </div>
                       ) : null}
@@ -1464,7 +1464,7 @@ export function ClientMessagesPage() {
                   ) : (
                     <EmptyStateBlock
                       title="No messages yet"
-                      description="This lead conversation has no messages yet."
+                      description="No messages have been sent in this conversation yet."
                     />
                   )}
 
@@ -1555,7 +1555,8 @@ export function ClientMessagesPage() {
                 <div className="border-t border-border/60 bg-background/55 px-4 py-4">
                   <SectionCard>
                     <p className="text-sm text-muted-foreground">
-                      This conversation is archived and read-only.
+                      This conversation is archived. You can read past messages
+                      but cannot send new ones.
                     </p>
                   </SectionCard>
                 </div>
@@ -1570,8 +1571,8 @@ export function ClientMessagesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Hide conversation?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the conversation from your inbox view. Message
-              history is not erased.
+              Hide this conversation from your inbox. Your messages will be
+              kept.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

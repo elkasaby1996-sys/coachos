@@ -1034,7 +1034,7 @@ function ClientWorkspaceHomePage() {
         {weeklyPlanQuery.isLoading ? (
           <LoadingPanel
             title="Loading calendar"
-            description="Mapping the next 7 days of training and recovery."
+            description="Loading your schedule for the next 7 days."
           />
         ) : (
           <>
@@ -1102,7 +1102,7 @@ function ClientWorkspaceHomePage() {
             {weeklyPlan.length === 0 ? (
               <EmptyStateBlock
                 title="No sessions scheduled yet"
-                description="Focus on recovery basics while your coach builds your next training block."
+                description="Your scheduled workouts and rest days will appear here."
               />
             ) : null}
           </>
@@ -1137,8 +1137,8 @@ function ClientWorkspaceHomePage() {
       {!hasWorkspaceMembership ? (
         <StatusBanner
           variant="info"
-          title="You do not currently have an active coaching workspace."
-          description="Your client account is still active. Use a coach invite when you are ready to join a workspace again."
+          title="You are not currently linked to a coach."
+          description="You can still use your account. Accept a coach invitation to receive assigned plans."
         />
       ) : null}
 
@@ -1546,7 +1546,7 @@ function ClientWorkspaceHomePage() {
                 >
                   {quickHabitSaveStatus === "saving"
                     ? "Saving..."
-                    : "Save quick log"}
+                    : "Save daily log"}
                 </Button>
                 <Button
                   type="button"
@@ -1558,7 +1558,7 @@ function ClientWorkspaceHomePage() {
               </div>
               {quickHabitSaveStatus === "saved" ? (
                 <ActionStatusMessage tone="success">
-                  Quick habit log saved.
+                  Daily log saved.
                 </ActionStatusMessage>
               ) : null}
               {quickHabitSaveStatus === "error" && quickHabitError ? (
@@ -1591,8 +1591,7 @@ function ClientWorkspaceHomePage() {
           <SurfaceCardHeader>
             <SurfaceCardTitle>Workouts and nutrition</SurfaceCardTitle>
             <SurfaceCardDescription>
-              One account-level view of today and next-up actions across
-              personal and coached plans.
+              Your personal and coach-assigned plans for today.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent className="grid gap-6 lg:grid-cols-2">
@@ -1713,7 +1712,7 @@ function ClientWorkspaceHomePage() {
               {todayNutritionQuery.isLoading ? (
                 <LoadingPanel
                   title="Loading nutrition"
-                  description="Pulling in today’s meals and macro targets."
+                  description="Loading your meals and nutrition targets for today."
                 />
               ) : todayNutrition ? (
                 <>
@@ -1908,7 +1907,7 @@ function ClientWorkspaceHomePage() {
           <SurfaceCardHeader>
             <SurfaceCardTitle>Lead conversations</SurfaceCardTitle>
             <SurfaceCardDescription>
-              Continue pre-workspace chat in the same home surface.
+              Continue your conversation with a coach.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent>
@@ -1959,7 +1958,7 @@ export function ClientHomePage() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Workspace access activated</DialogTitle>
+            <DialogTitle>Your coaching account is connected</DialogTitle>
             <DialogDescription>
               You have been added to{" "}
               <span className="font-medium text-foreground">

@@ -410,7 +410,7 @@ export function ClientLayout() {
                   <StatusBanner
                     variant="warning"
                     title="Complete your basics first"
-                    description="Before we open the workspace, we need your basic personal details so your coach knows who they are working with."
+                    description="Add your basic details so your coach can identify your account."
                     actions={
                       <>
                         <Button

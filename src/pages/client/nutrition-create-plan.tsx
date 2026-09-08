@@ -572,8 +572,8 @@ export function ClientNutritionCreatePlanPage() {
     return (
       <div className="space-y-6">
         <PortalPageHeader
-          title="Create Personal Plan"
-          subtitle="Set up a 1-week nutrition plan using the shared nutrition system."
+          title="Create nutrition plan"
+          subtitle="Plan your meals for one week."
         />
         <EmptyStateBlock
           title="Client profile not found"

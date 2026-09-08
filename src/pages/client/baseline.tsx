@@ -953,13 +953,13 @@ export function ClientBaselinePage() {
             <CardHeader>
               <CardTitle>Body metrics</CardTitle>
               <p className="text-sm text-muted-foreground">
-                We always store metric units. Please keep units visible.
+                Use the unit shown beside each field.
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               {metricsStatus === "error" && metricsError ? (
                 <Alert tone="danger" className="border-danger/30 sm:col-span-2">
-                  <AlertTitle>Baseline metrics save failed</AlertTitle>
+                  <AlertTitle>Could not save your measurements</AlertTitle>
                   <AlertDescription>
                     <div className="space-y-1 text-xs text-muted-foreground">
                       <div>code: {metricsError.code ?? "n/a"}</div>
@@ -1207,7 +1207,7 @@ export function ClientBaselinePage() {
               ) : visibleTemplates.length === 0 ? (
                 <EmptyStateBlock
                   title="Performance markers are not ready yet"
-                  description="No active performance markers are enabled for your coaching space yet. You can still move on to photos and return later if needed."
+                  description="Your coach has not added performance markers yet. You can continue to the photos."
                 />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
