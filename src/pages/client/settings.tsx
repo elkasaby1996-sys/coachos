@@ -1,3 +1,8 @@
+import {
+  ProfilePhotoPicker,
+  TimezonePicker,
+  isValidTimezone,
+} from "../../components/client/profile-inputs";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -363,11 +368,13 @@ function NotificationToggleField({
   label,
   description,
   checked,
+  disabled = false,
   onCheckedChange,
 }: {
   label: string;
   description: string;
   checked: boolean;
+  disabled?: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
@@ -379,7 +386,12 @@ function NotificationToggleField({
             {description}
           </p>
         </div>
-        <Switch checked={checked} onCheckedChange={onCheckedChange} />
+        <Switch
+          aria-label={label}
+          disabled={disabled}
+          checked={checked}
+          onCheckedChange={onCheckedChange}
+        />
       </div>
     </Card>
   );
@@ -403,6 +415,7 @@ export function ClientSettingsPage() {
   const [profileForm, setProfileForm] = useState<ProfileFormState>(
     defaultProfileFormState,
   );
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
 
   const [preferencesForm, setPreferencesForm] = useState<PreferencesFormState>(
@@ -616,28 +629,22 @@ export function ClientSettingsPage() {
     [notificationForm, notificationsInitial],
   );
 
-  const avatarPreview = normalizeText(profileForm.avatarUrl);
-  const profileTitleInitial = (
-    profileForm.fullName.trim().charAt(0) || "C"
-  ).toUpperCase();
   const passwordTooShort = newPassword.length > 0 && newPassword.length < 8;
   const passwordMismatch =
     confirmPassword.length > 0 && newPassword !== confirmPassword;
 
-  const invoices =
-    billingQuery.data?.billingStatus === "active"
-      ? [
-          {
-            id: "placeholder-invoice",
-            label:
-              "Invoice history will appear here once billing sync is connected.",
-            amount: "Pending",
-          },
-        ]
-      : [];
+  const invoices: Array<{ id: string; label: string; amount: string }> = [];
 
   const handleProfileSave = async () => {
     if (!clientProfileQuery.data?.id) return;
+    if (!isValidTimezone(profileForm.timezone)) {
+      setBanner({
+        tone: "error",
+        title: "Choose a timezone",
+        description: "Select a valid timezone before saving your profile.",
+      });
+      return;
+    }
     setProfileSaving(true);
     setBanner(null);
 
@@ -952,34 +959,21 @@ export function ClientSettingsPage() {
             ) : clientProfileQuery.data ? (
               <>
                 <SettingsSectionCard title="Identity">
-                  <SettingsFieldRow label="Avatar">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-background/45 text-base font-semibold text-muted-foreground">
-                        {avatarPreview ? (
-                          <img
-                            src={avatarPreview}
-                            alt={profileForm.fullName || "Client avatar"}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          profileTitleInitial
-                        )}
-                      </div>
-                      <Input
-                        id="client-settings-avatar-url"
-                        value={profileForm.avatarUrl}
-                        onChange={(event) =>
-                          setProfileForm((prev) => ({
-                            ...prev,
-                            avatarUrl: event.target.value,
-                          }))
-                        }
-                        placeholder="Paste avatar URL"
-                      />
-                    </div>
+                  <SettingsFieldRow label="Profile photo">
+                    <ProfilePhotoPicker
+                      onBusyChange={setPhotoUploading}
+                      value={profileForm.avatarUrl}
+                      onChange={(avatarUrl) =>
+                        setProfileForm((prev) => ({ ...prev, avatarUrl }))
+                      }
+                      disabled={profileSaving}
+                    />
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Full name">
+                  <SettingsFieldRow
+                    label="Full name"
+                    htmlFor="client-settings-full-name"
+                  >
                     <Input
                       id="client-settings-full-name"
                       value={profileForm.fullName}
@@ -997,7 +991,10 @@ export function ClientSettingsPage() {
                     <DisabledSettingField value={profileEmail} />
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Phone number">
+                  <SettingsFieldRow
+                    label="Phone number"
+                    htmlFor="client-settings-phone"
+                  >
                     <Input
                       id="client-settings-phone"
                       value={profileForm.phone}
@@ -1013,7 +1010,10 @@ export function ClientSettingsPage() {
                 </SettingsSectionCard>
 
                 <SettingsSectionCard title="Personal details">
-                  <SettingsFieldRow label="Date of birth">
+                  <SettingsFieldRow
+                    label="Date of birth"
+                    htmlFor="client-settings-dob"
+                  >
                     <Input
                       id="client-settings-dob"
                       type="date"
@@ -1027,7 +1027,10 @@ export function ClientSettingsPage() {
                     />
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Gender">
+                  <SettingsFieldRow
+                    label="Gender"
+                    htmlFor="client-settings-gender"
+                  >
                     <Select
                       id="client-settings-gender"
                       value={profileForm.gender}
@@ -1048,7 +1051,10 @@ export function ClientSettingsPage() {
                     </Select>
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Height">
+                  <SettingsFieldRow
+                    label="Height"
+                    htmlFor="client-settings-height"
+                  >
                     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
                       <Input
                         id="client-settings-height"
@@ -1065,6 +1071,7 @@ export function ClientSettingsPage() {
                       />
                       <Select
                         id="client-settings-height-unit"
+                        aria-label="Height unit"
                         value={profileForm.heightUnit}
                         onChange={(event) =>
                           setProfileForm((prev) => ({
@@ -1082,7 +1089,10 @@ export function ClientSettingsPage() {
                     </div>
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Weight">
+                  <SettingsFieldRow
+                    label="Weight"
+                    htmlFor="client-settings-weight"
+                  >
                     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
                       <Input
                         id="client-settings-weight"
@@ -1099,6 +1109,7 @@ export function ClientSettingsPage() {
                       />
                       <Select
                         id="client-settings-weight-unit"
+                        aria-label="Weight unit"
                         value={profileForm.weightUnit}
                         onChange={(event) =>
                           setProfileForm((prev) => ({
@@ -1116,24 +1127,23 @@ export function ClientSettingsPage() {
                     </div>
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Timezone">
-                    <Input
+                  <SettingsFieldRow
+                    label="Timezone"
+                    htmlFor="client-settings-timezone"
+                  >
+                    <TimezonePicker
                       id="client-settings-timezone"
                       value={profileForm.timezone}
-                      onChange={(event) =>
-                        setProfileForm((prev) => ({
-                          ...prev,
-                          timezone: event.target.value,
-                        }))
+                      onChange={(timezone) =>
+                        setProfileForm((prev) => ({ ...prev, timezone }))
                       }
-                      placeholder="Asia/Riyadh"
                     />
                   </SettingsFieldRow>
                 </SettingsSectionCard>
 
                 <StickySaveBar
                   isDirty={profileDirty}
-                  isSaving={profileSaving}
+                  isSaving={profileSaving || photoUploading}
                   statusText="Unsaved profile changes"
                   onDiscard={() => setProfileForm(profileInitial)}
                   onSave={handleProfileSave}
@@ -1279,8 +1289,9 @@ export function ClientSettingsPage() {
                   />
                   <NotificationToggleField
                     label="Push"
-                    description="Mobile push support when enabled on your device."
-                    checked={notificationForm.push_enabled}
+                    description="Push notifications are not available yet. This device has not been registered."
+                    disabled
+                    checked={false}
                     onCheckedChange={(checked) =>
                       setNotificationForm((prev) => ({
                         ...prev,
@@ -1332,7 +1343,10 @@ export function ClientSettingsPage() {
                 />
               </SettingsFieldRow>
 
-              <SettingsFieldRow label="Current password">
+              <SettingsFieldRow
+                label="Current password"
+                htmlFor="client-settings-current-password"
+              >
                 <Input
                   id="client-settings-current-password"
                   type="password"
@@ -1342,7 +1356,10 @@ export function ClientSettingsPage() {
                 />
               </SettingsFieldRow>
 
-              <SettingsFieldRow label="New password">
+              <SettingsFieldRow
+                label="New password"
+                htmlFor="client-settings-new-password"
+              >
                 <Input
                   id="client-settings-new-password"
                   type="password"
@@ -1357,7 +1374,10 @@ export function ClientSettingsPage() {
                 ) : null}
               </SettingsFieldRow>
 
-              <SettingsFieldRow label="Confirm password">
+              <SettingsFieldRow
+                label="Confirm password"
+                htmlFor="client-settings-confirm-password"
+              >
                 <Input
                   id="client-settings-confirm-password"
                   type="password"
@@ -1510,7 +1530,7 @@ export function ClientSettingsPage() {
                     <EmptyStateBlock
                       centered
                       icon={<CalendarClock className="h-4 w-4" />}
-                      title="No invoices yet"
+                      title="Billing is not connected"
                       description="Invoices will appear here when billing is connected."
                     />
                   )}

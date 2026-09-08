@@ -1,3 +1,4 @@
+import { hydrateNutritionAssignmentContext } from "../../lib/nutrition-assignment-context";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -171,7 +172,10 @@ function NutritionDayCard({ row, onOpen }: NutritionDayCardProps) {
         </div>
       </SurfaceCardHeader>
       <SurfaceCardContent className="space-y-3">
-        <div className="grid grid-cols-4 gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-center text-xs">
+        <div
+          aria-label="Planned nutrition targets"
+          className="grid grid-cols-4 gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-center text-xs"
+        >
           <div>
             <p className="text-muted-foreground">Cals</p>
             <p className="font-semibold">{Math.round(row.macros.calories)}</p>
@@ -255,6 +259,7 @@ export function ClientNutritionPage() {
         .eq("status", "active")
         .order("start_date", { ascending: false });
       if (error) throw error;
+      await Promise.all((data ?? []).map(hydrateNutritionAssignmentContext));
       return (data ?? []) as AssignedNutritionPlanRow[];
     },
   });
@@ -284,6 +289,9 @@ export function ClientNutritionPage() {
         .lte("date", rangeEnd)
         .order("date", { ascending: true });
       if (error) throw error;
+      await Promise.all(
+        (data ?? []).map((row) => hydrateNutritionAssignmentContext(row.plan)),
+      );
       return (data ?? []) as AssignedNutritionDayRow[];
     },
   });
@@ -369,31 +377,29 @@ export function ClientNutritionPage() {
       const plan = getSingleRelation(day.plan);
       const template = getSingleRelation(plan?.nutrition_template);
       const sourceWorkspaceId = template?.workspace_id ?? null;
-      const sourceLabel = buildUnifiedSourceLabel({
-        workspaceId: sourceWorkspaceId,
-        workspaceName: sourceWorkspaceId
-          ? (workspaceNameById.get(sourceWorkspaceId) ?? null)
-          : null,
-      });
-      const sourceKind = classifyUnifiedSourceKind({
-        workspaceId: sourceWorkspaceId,
-      });
+      const sourceLabel = !template
+        ? "Assigned"
+        : buildUnifiedSourceLabel({
+            workspaceId: sourceWorkspaceId,
+            workspaceName: sourceWorkspaceId
+              ? (workspaceNameById.get(sourceWorkspaceId) ?? null)
+              : null,
+          });
+      const sourceKind = !template
+        ? "assigned"
+        : classifyUnifiedSourceKind({
+            workspaceId: sourceWorkspaceId,
+          });
       const meals = mealsByDayId.get(day.id) ?? [];
       const mealsCompleted = meals.filter((meal) =>
         (meal.logs ?? []).some((log) => Boolean(log.is_completed)),
       ).length;
       const macros = meals.reduce(
         (acc, meal) => {
-          const latestLog =
-            (meal.logs ?? [])
-              .filter((log) => Boolean(log.consumed_at))
-              .sort((a, b) =>
-                (a.consumed_at ?? "") < (b.consumed_at ?? "") ? 1 : -1,
-              )[0] ?? null;
-          acc.calories += n(latestLog?.actual_calories ?? meal.calories);
-          acc.protein_g += n(latestLog?.actual_protein_g ?? meal.protein_g);
-          acc.carbs_g += n(latestLog?.actual_carbs_g ?? meal.carbs_g);
-          acc.fat_g += n(latestLog?.actual_fat_g ?? meal.fat_g);
+          acc.calories += n(meal.calories);
+          acc.protein_g += n(meal.protein_g);
+          acc.carbs_g += n(meal.carbs_g);
+          acc.fat_g += n(meal.fat_g);
           return acc;
         },
         { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },

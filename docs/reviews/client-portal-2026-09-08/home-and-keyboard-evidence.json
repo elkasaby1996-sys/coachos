@@ -1,0 +1,23 @@
+[
+  {
+    "test": "Home rest day",
+    "text": "Message coach\n\nToday's workout\n\nYour coach has not assigned a workout plan yet.\n\nWorkout details will appear here when your coach assigns a plan.\n\nNot assigned\nOpen habit log\n\nToday's nutrition\n\nYour coach has not assigned a nutrition plan yet.\n\nCALORIES\n\n0 kcal\n\nPROTEIN\n\n0g\n\nCARBS\n\n0g\n\nFATS\n\n0g\n\nNo plan assigned\nOpen nutrition\nYour week\n\nSep 8 – Sep 14, 2026\n\nLOADING CALENDAR\n\nLoading your schedule for the next 7 days.\n\nDaily log\n\nRecord your nutrition, recovery, and activity.\n\n0/10 logged\n\nNutrition\n\nCalories\nProtein\nCarbs\nFats\n\nRecovery\n\nSleep\nEnergy\nHunger\nStress\n\nBody + activity\n\nWeight\n\nUnit\n\nkg\nlb\nSteps\nSave daily log\nOpen full log\n\nComplete your profile\n\n8/14 fields complete. Filling in the rest helps your coach tailor the plan.\nFinish profile"
+  },
+  {
+    "test": "Home partial request failure",
+    "text": "Message coach\n\nSome parts of home are unavailable\n\nA few cards could not be refreshed right now, but the rest of your dashboard is still available.\n\nToday's workout\n\nRest day\n\nCoach note\n\nTake an easy walk if comfortable.\n\nRest day\nOpen habit log\n\nToday's nutrition\n\nYour coach has not assigned a nutrition plan yet.\n\nCALORIES\n\n0 kcal\n\nPROTEIN\n\n40g\n\nCARBS\n\n65g\n\nFATS\n\n20g\n\nNo plan assigned\nOpen nutrition\nYour week\n\nSep 8 – Sep 14, 2026\n\nTue\n8\n\nRest day\n\nRest day\nWed\n9\n\nNo workout scheduled\n\nUnscheduled\nThu\n10\n\nWorkout\n\nScheduled\nFri\n11\n\nNo workout scheduled\n\nUnscheduled\nSat\n12\n\nNo workout scheduled\n\nUnscheduled\nSun\n13\n\nNo workout scheduled\n\nUnscheduled\nMon\n14\n\nNo workout scheduled\n\nUnscheduled\nDaily log\n\nRecord your nutrition, recovery, and activity.\n\n0/10 logged\n\nNutrition\n\nCalories\nProtein\nCarbs\nFats\n\nRecovery\n\nSleep\nEnergy\nHunger\nStress\n\nBody + activity\n\nWeight\n\nUnit\n\nkg\nlb\nSteps\nSave daily log\nOpen full log\n\nComplete your profile\n\n8/14 fields complete. Filling in the rest helps your coach tailor the plan.\nFinish profile"
+  },
+  {
+    "test": "Home recovers after reload",
+    "partialError": 0
+  },
+  {
+    "test": "keyboard profile next field",
+    "focus": {
+      "id": "client-settings-full-name",
+      "outline": "oklch(0.178 0.02 118) none 0px",
+      "shadow": "oklab(0 0 0 / 0) 0px 0px 0px 0px",
+      "labels": []
+    }
+  }
+]

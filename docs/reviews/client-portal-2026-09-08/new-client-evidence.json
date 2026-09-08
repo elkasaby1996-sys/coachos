@@ -1,0 +1,165 @@
+{
+  "onboardingCompletedThroughUI": true,
+  "results": [
+    {
+      "route": "home",
+      "width": 375,
+      "text": "Message coach\n\nYou are not currently linked to a coach.\n\nYou can still use your account. Accept a coach invitation to receive assigned plans.\n\nToday's workout\n\nYour coach has not assigned a workout plan yet.\n\nWorkout details will appear here when your coach assigns a plan.\n\nNot assigned\nOpen habit log\n\nToday's nutrition\n\nYour coach has not assigned a nutrition plan yet.\n\nCALORIES\n\n0 kcal\n\nPROTEIN\n\n0g\n\nCARBS\n\n0g\n\nFATS\n\n0g\n\nNo plan assigned\nOpen nutrition\nYour week\n\nSep 8 – Sep 14, 2026\n\nTue\n8\n\nNo workout scheduled\n\nUnscheduled\nWed\n9\n\nNo workout scheduled\n\nUnscheduled\nThu\n10\n\nNo workout scheduled\n\nUnscheduled\nFri\n11\n\nNo workout scheduled\n\nUnscheduled\nSat\n12\n\nNo workout scheduled\n\nUnscheduled\nSun\n13\n\nNo workout scheduled\n\nUnscheduled\nMon\n14\n\nNo workout scheduled\n\nUnscheduled\n\nNo sessions scheduled yet\n\nYour scheduled workouts and rest days will appear here.\nDaily log\n\nRecord your nutrition, recovery, and activity.\n\n0/10 logged\n\nNutrition\n\nCalories\nProtein\nCarbs\nFats\n\nRecovery\n\nSleep\nEnergy\nHunger\nStress\n\nBody + activity\n\nWeight\n\nUnit\n\nkg\nlb\nSteps\nSave daily log\nOpen full log"
+    },
+    {
+      "route": "workouts",
+      "width": 375,
+      "text": "Create workout\n\nNo workouts yet\n\nCreate a personal workout or wait for your coach to assign one.\nCreate workout\nFind a Coach"
+    },
+    {
+      "route": "nutrition",
+      "width": 375,
+      "text": "Create plan\nToday\n\nYour meals and nutrition plan for today.\n\nNo nutrition tasks today\n\nCreate a personal plan or check upcoming days.\nPersonal templates\n\nKeep meal plans to use again. Archive plans you have used to preserve your history, or delete unused plans.\n\nNo personal templates yet\n\nCreate your first personal plan to get started."
+    },
+    {
+      "route": "habits",
+      "width": 375,
+      "text": "Log date: 2026-09-08\nDate\nDaily log\n\nSelect a date to edit. You can change logs from today or the previous 6 days.\n\nNutrition\n\nCalories(kcal)\nProtein (g)\nCarbs (g)\nFats (g)\n\nRecovery\n\nSleep (hours)\nEnergy (1-10)\nHunger (1-10)\nStress (1-10)\n\nBody + activity\n\nWeight (kg)\nWeight unit\nkg\nlb\nSteps\nNo changes yet.\nNo changes to save\n7-day trends\n\nYour daily entries from the past week.\n\nNo habits logged yet\n\nSave a daily log to see your entries here."
+    },
+    {
+      "route": "checkins",
+      "width": 375,
+      "text": "Choose a check-in\nCheck-in form\n\nChoose a check-in cycle to continue.\n\nYour check-in form will appear here once your coach assigns one.\n\nWeekly questions\n\nShare the latest updates for this check-in period.\n\nYour coach has not assigned a check-in schedule yet.\n\nCheck back soon once your coach adds a schedule."
+    },
+    {
+      "route": "messages",
+      "width": 375,
+      "text": "Inbox\n\nNo conversations yet\n\nStart with Find a Coach or wait for your coach to message you.\nFind a Coach\nOpen Home\nSelect a conversation\n\nChoose a thread from your inbox\n\nPick a conversation\n\nSelect a conversation from your inbox."
+    },
+    {
+      "route": "progress",
+      "width": 375,
+      "text": "Last 4 weeks\nLast 8 weeks\n\nNo progress data yet\n\nYour measurements, daily logs, and completed workouts will appear here.\nLog habits\nComplete baseline\nStart workout"
+    },
+    {
+      "route": "wearables",
+      "width": 375,
+      "text": "No wearable connected\n\nChoose your device provider, then select Connect.\n\nGARMIN\nWHOOP\nConnect\n\nConsent\n\nI consent to share wearable health and activity data with my coaching workspace for coaching context. Wearable data does not complete habits automatically."
+    },
+    {
+      "route": "home",
+      "width": 768,
+      "text": "Message coach\n\nYou are not currently linked to a coach.\n\nYou can still use your account. Accept a coach invitation to receive assigned plans.\n\nToday's workout\n\nYour coach has not assigned a workout plan yet.\n\nWorkout details will appear here when your coach assigns a plan.\n\nNot assigned\nOpen habit log\n\nToday's nutrition\n\nYour coach has not assigned a nutrition plan yet.\n\nCALORIES\n\n0 kcal\n\nPROTEIN\n\n0g\n\nCARBS\n\n0g\n\nFATS\n\n0g\n\nNo plan assigned\nOpen nutrition\nYour week\n\nSep 8 – Sep 14, 2026\n\nTue\n8\n\nNo workout scheduled\n\nUnscheduled\nWed\n9\n\nNo workout scheduled\n\nUnscheduled\nThu\n10\n\nNo workout scheduled\n\nUnscheduled\nFri\n11\n\nNo workout scheduled\n\nUnscheduled\nSat\n12\n\nNo workout scheduled\n\nUnscheduled\nSun\n13\n\nNo workout scheduled\n\nUnscheduled\nMon\n14\n\nNo workout scheduled\n\nUnscheduled\n\nNo sessions scheduled yet\n\nYour scheduled workouts and rest days will appear here.\nDaily log\n\nRecord your nutrition, recovery, and activity.\n\n0/10 logged\n\nNutrition\n\nCalories\nProtein\nCarbs\nFats\n\nRecovery\n\nSleep\nEnergy\nHunger\nStress\n\nBody + activity\n\nWeight\n\nUnit\n\nkg\nlb\nSteps\nSave daily log\nOpen full log"
+    },
+    {
+      "route": "workouts",
+      "width": 768,
+      "text": "Create workout\n\nNo workouts yet\n\nCreate a personal workout or wait for your coach to assign one.\nCreate workout\nFind a Coach"
+    },
+    {
+      "route": "nutrition",
+      "width": 768,
+      "text": "Create plan\nToday\n\nYour meals and nutrition plan for today.\n\nNo nutrition tasks today\n\nCreate a personal plan or check upcoming days.\nPersonal templates\n\nKeep meal plans to use again. Archive plans you have used to preserve your history, or delete unused plans.\n\nNo personal templates yet\n\nCreate your first personal plan to get started."
+    },
+    {
+      "route": "habits",
+      "width": 768,
+      "text": "Log date: 2026-09-08\nDate\nDaily log\n\nSelect a date to edit. You can change logs from today or the previous 6 days.\n\nNutrition\n\nCalories(kcal)\nProtein (g)\nCarbs (g)\nFats (g)\n\nRecovery\n\nSleep (hours)\nEnergy (1-10)\nHunger (1-10)\nStress (1-10)\n\nBody + activity\n\nWeight (kg)\nWeight unit\nkg\nlb\nSteps\nNo changes yet.\nNo changes to save\n7-day trends\n\nYour daily entries from the past week.\n\nNo habits logged yet\n\nSave a daily log to see your entries here."
+    },
+    {
+      "route": "checkins",
+      "width": 768,
+      "text": "Choose a check-in\nCheck-in form\n\nChoose a check-in cycle to continue.\n\nYour check-in form will appear here once your coach assigns one.\n\nWeekly questions\n\nShare the latest updates for this check-in period.\n\nYour coach has not assigned a check-in schedule yet.\n\nCheck back soon once your coach adds a schedule."
+    },
+    {
+      "route": "messages",
+      "width": 768,
+      "text": "Inbox\n\nNo conversations yet\n\nStart with Find a Coach or wait for your coach to message you.\nFind a Coach\nOpen Home\nSelect a conversation\n\nChoose a thread from your inbox\n\nPick a conversation\n\nSelect a conversation from your inbox."
+    },
+    {
+      "route": "progress",
+      "width": 768,
+      "text": ""
+    },
+    {
+      "route": "wearables",
+      "width": 768,
+      "text": "No wearable connected\n\nChoose your device provider, then select Connect.\n\nGARMIN\nWHOOP\nConnect\n\nConsent\n\nI consent to share wearable health and activity data with my coaching workspace for coaching context. Wearable data does not complete habits automatically."
+    },
+    {
+      "route": "home",
+      "width": 1024,
+      "text": "Message coach\n\nYou are not currently linked to a coach.\n\nYou can still use your account. Accept a coach invitation to receive assigned plans.\n\nToday's workout\n\nYour coach has not assigned a workout plan yet.\n\nWorkout details will appear here when your coach assigns a plan.\n\nNot assigned\nOpen habit log\n\nToday's nutrition\n\nYour coach has not assigned a nutrition plan yet.\n\nCALORIES\n\n0 kcal\n\nPROTEIN\n\n0g\n\nCARBS\n\n0g\n\nFATS\n\n0g\n\nNo plan assigned\nOpen nutrition\nYour week\n\nSep 8 – Sep 14, 2026\n\nTue\n8\n\nNo workout scheduled\n\nUnscheduled\nWed\n9\n\nNo workout scheduled\n\nUnscheduled\nThu\n10\n\nNo workout scheduled\n\nUnscheduled\nFri\n11\n\nNo workout scheduled\n\nUnscheduled\nSat\n12\n\nNo workout scheduled\n\nUnscheduled\nSun\n13\n\nNo workout scheduled\n\nUnscheduled\nMon\n14\n\nNo workout scheduled\n\nUnscheduled\n\nNo sessions scheduled yet\n\nYour scheduled workouts and rest days will appear here.\nDaily log\n\nRecord your nutrition, recovery, and activity.\n\n0/10 logged\n\nNutrition\n\nCalories\nProtein\nCarbs\nFats\n\nRecovery\n\nSleep\nEnergy\nHunger\nStress\n\nBody + activity\n\nWeight\n\nUnit\n\nkg\nlb\nSteps\nSave daily log\nOpen full log"
+    },
+    {
+      "route": "workouts",
+      "width": 1024,
+      "text": "Create workout\n\nNo workouts yet\n\nCreate a personal workout or wait for your coach to assign one.\nCreate workout\nFind a Coach"
+    },
+    {
+      "route": "nutrition",
+      "width": 1024,
+      "text": "Create plan\nToday\n\nYour meals and nutrition plan for today.\n\nNo nutrition tasks today\n\nCreate a personal plan or check upcoming days.\nPersonal templates\n\nKeep meal plans to use again. Archive plans you have used to preserve your history, or delete unused plans.\n\nNo personal templates yet\n\nCreate your first personal plan to get started."
+    },
+    {
+      "route": "habits",
+      "width": 1024,
+      "text": "Log date: 2026-09-08\nDate\nDaily log\n\nSelect a date to edit. You can change logs from today or the previous 6 days.\n\nNutrition\n\nCalories(kcal)\nProtein (g)\nCarbs (g)\nFats (g)\n\nRecovery\n\nSleep (hours)\nEnergy (1-10)\nHunger (1-10)\nStress (1-10)\n\nBody + activity\n\nWeight (kg)\nWeight unit\nkg\nlb\nSteps\nNo changes yet.\nNo changes to save\n7-day trends\n\nYour daily entries from the past week.\n\nNo habits logged yet\n\nSave a daily log to see your entries here."
+    },
+    {
+      "route": "checkins",
+      "width": 1024,
+      "text": "Assigned check-ins\n\nCheck-ins to complete and upcoming dates.\n\nNo check-in schedule assigned\n\nYour coach has not assigned a check-in schedule yet.\nPrevious check-ins\n\nPast check-ins and coach feedback.\n\nNo previous check-ins yet\n\nYour submitted check-ins and coach feedback will appear here.\nCheck-in form\n\nChoose a check-in cycle to continue.\n\nYour check-in form will appear here once your coach assigns one.\n\nWeekly questions\n\nShare the latest updates for this check-in period.\n\nYour coach has not assigned a check-in schedule yet.\n\nCheck back soon once your coach adds a schedule."
+    },
+    {
+      "route": "messages",
+      "width": 1024,
+      "text": "Inbox\n\nNo conversations yet\n\nStart with Find a Coach or wait for your coach to message you.\nFind a Coach\nOpen Home\nSelect a conversation\n\nChoose a thread from your inbox\n\nPick a conversation\n\nSelect a conversation from your inbox."
+    },
+    {
+      "route": "progress",
+      "width": 1024,
+      "text": "Last 4 weeks\nLast 8 weeks\n\nNo progress data yet\n\nYour measurements, daily logs, and completed workouts will appear here.\nLog habits\nComplete baseline\nStart workout"
+    },
+    {
+      "route": "wearables",
+      "width": 1024,
+      "text": "No wearable connected\n\nChoose your device provider, then select Connect.\n\nGARMIN\nWHOOP\nConnect\n\nConsent\n\nI consent to share wearable health and activity data with my coaching workspace for coaching context. Wearable data does not complete habits automatically."
+    },
+    {
+      "route": "home",
+      "width": 1440,
+      "text": "Message coach\n\nYou are not currently linked to a coach.\n\nYou can still use your account. Accept a coach invitation to receive assigned plans.\n\nToday's workout\n\nYour coach has not assigned a workout plan yet.\n\nWorkout details will appear here when your coach assigns a plan.\n\nNot assigned\nOpen habit log\n\nToday's nutrition\n\nYour coach has not assigned a nutrition plan yet.\n\nCALORIES\n\n0 kcal\n\nPROTEIN\n\n0g\n\nCARBS\n\n0g\n\nFATS\n\n0g\n\nNo plan assigned\nOpen nutrition\nYour week\n\nSep 8 – Sep 14, 2026\n\nTue\n8\n\nNo workout scheduled\n\nUnscheduled\nWed\n9\n\nNo workout scheduled\n\nUnscheduled\nThu\n10\n\nNo workout scheduled\n\nUnscheduled\nFri\n11\n\nNo workout scheduled\n\nUnscheduled\nSat\n12\n\nNo workout scheduled\n\nUnscheduled\nSun\n13\n\nNo workout scheduled\n\nUnscheduled\nMon\n14\n\nNo workout scheduled\n\nUnscheduled\n\nNo sessions scheduled yet\n\nYour scheduled workouts and rest days will appear here.\nDaily log\n\nRecord your nutrition, recovery, and activity.\n\n0/10 logged\n\nNutrition\n\nCalories\nProtein\nCarbs\nFats\n\nRecovery\n\nSleep\nEnergy\nHunger\nStress\n\nBody + activity\n\nWeight\n\nUnit\n\nkg\nlb\nSteps\nSave daily log\nOpen full log"
+    },
+    {
+      "route": "workouts",
+      "width": 1440,
+      "text": "Create workout\n\nNo workouts yet\n\nCreate a personal workout or wait for your coach to assign one.\nCreate workout\nFind a Coach"
+    },
+    {
+      "route": "nutrition",
+      "width": 1440,
+      "text": "Create plan\nToday\n\nYour meals and nutrition plan for today.\n\nNo nutrition tasks today\n\nCreate a personal plan or check upcoming days.\nPersonal templates\n\nKeep meal plans to use again. Archive plans you have used to preserve your history, or delete unused plans.\n\nNo personal templates yet\n\nCreate your first personal plan to get started."
+    },
+    {
+      "route": "habits",
+      "width": 1440,
+      "text": "Log date: 2026-09-08\nDate\nDaily log\n\nSelect a date to edit. You can change logs from today or the previous 6 days.\n\nNutrition\n\nCalories(kcal)\nProtein (g)\nCarbs (g)\nFats (g)\n\nRecovery\n\nSleep (hours)\nEnergy (1-10)\nHunger (1-10)\nStress (1-10)\n\nBody + activity\n\nWeight (kg)\nWeight unit\nkg\nlb\nSteps\nNo changes yet.\nNo changes to save\n7-day trends\n\nYour daily entries from the past week.\n\nNo habits logged yet\n\nSave a daily log to see your entries here."
+    },
+    {
+      "route": "checkins",
+      "width": 1440,
+      "text": "Assigned check-ins\n\nCheck-ins to complete and upcoming dates.\n\nNo check-in schedule assigned\n\nYour coach has not assigned a check-in schedule yet.\nPrevious check-ins\n\nPast check-ins and coach feedback.\n\nNo previous check-ins yet\n\nYour submitted check-ins and coach feedback will appear here.\nCheck-in form\n\nChoose a check-in cycle to continue.\n\nYour check-in form will appear here once your coach assigns one.\n\nWeekly questions\n\nShare the latest updates for this check-in period.\n\nYour coach has not assigned a check-in schedule yet.\n\nCheck back soon once your coach adds a schedule."
+    },
+    {
+      "route": "messages",
+      "width": 1440,
+      "text": "Inbox\n\nNo conversations yet\n\nStart with Find a Coach or wait for your coach to message you.\nFind a Coach\nOpen Home\nSelect a conversation\n\nChoose a thread from your inbox\n\nPick a conversation\n\nSelect a conversation from your inbox."
+    },
+    {
+      "route": "progress",
+      "width": 1440,
+      "text": "Last 4 weeks\nLast 8 weeks\n\nNo progress data yet\n\nYour measurements, daily logs, and completed workouts will appear here.\nLog habits\nComplete baseline\nStart workout"
+    },
+    {
+      "route": "wearables",
+      "width": 1440,
+      "text": "No wearable connected\n\nChoose your device provider, then select Connect.\n\nGARMIN\nWHOOP\nConnect\n\nConsent\n\nI consent to share wearable health and activity data with my coaching workspace for coaching context. Wearable data does not complete habits automatically."
+    }
+  ]
+}

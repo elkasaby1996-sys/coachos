@@ -1,3 +1,8 @@
+import {
+  completedTraining,
+  type TrainingSet,
+} from "../../lib/completed-training";
+import { convertWeight } from "../../lib/client-measurements";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -37,14 +42,6 @@ type HabitPoint = {
   weight_unit: string | null;
   sleep_hours: number | null;
   steps: number | null;
-};
-
-type SetLogPoint = {
-  reps: number | null;
-  weight: number | null;
-  created_at: string | null;
-  exercise_id: string | null;
-  exercise: { name: string | null } | { name: string | null }[] | null;
 };
 
 type BaselineWeightPoint = {
@@ -310,13 +307,49 @@ export function ClientProgressPage() {
       const { data, error } = await supabase
         .from("workout_set_logs")
         .select(
-          "reps, weight, created_at, exercise_id, exercise:exercises(name), workout_session:workout_sessions!inner(client_id)",
+          "reps, weight, created_at, exercise_id, is_completed, exercise:exercises(name), workout_session:workout_sessions!inner(id, client_id, completed_at, assigned_workout:assigned_workouts(assigned_workout_exercises(exercise_id, actual_weight_unit, weight_unit, default_weight_unit)))",
         )
         .eq("workout_session.client_id", clientId ?? "")
-        .gte("created_at", `${startKey}T00:00:00.000Z`)
+        .eq("is_completed", true)
+        .not("workout_session.completed_at", "is", null)
+        .gte(
+          "workout_session.completed_at",
+          `${addDaysToDateString(startKey, -1)}T00:00:00.000Z`,
+        )
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as SetLogPoint[];
+      return (data ?? []).map((row) => {
+        const session = Array.isArray(row.workout_session)
+          ? row.workout_session[0]
+          : row.workout_session;
+        const workout = Array.isArray(session?.assigned_workout)
+          ? session.assigned_workout[0]
+          : session?.assigned_workout;
+        const units = new Set(
+          (workout?.assigned_workout_exercises ?? [])
+            .filter((item) => item.exercise_id === row.exercise_id)
+            .map(
+              (item) =>
+                item.actual_weight_unit ??
+                item.weight_unit ??
+                item.default_weight_unit,
+            )
+            .filter(Boolean),
+        );
+        const exercise = Array.isArray(row.exercise)
+          ? row.exercise[0]
+          : row.exercise;
+        return {
+          sessionId: session?.id ?? "",
+          exerciseId: row.exercise_id,
+          name: exercise?.name ?? "Exercise",
+          completedAt: session?.completed_at ?? "",
+          completed: row.is_completed,
+          weight: row.weight,
+          unit: units.size === 1 ? [...units][0] : null,
+          reps: row.reps,
+        };
+      }) as TrainingSet[];
     },
   });
 
@@ -368,15 +401,8 @@ export function ClientProgressPage() {
     setLogsQuery.error ||
     baselineWeightQuery.error;
 
-  const weightUnit = useMemo(() => {
-    const fromLogs = (habitsQuery.data ?? []).find(
-      (row) => row.weight_unit,
-    )?.weight_unit;
-    if (fromLogs) return fromLogs;
-    return clientProfile?.unit_preference?.toLowerCase() === "imperial"
-      ? "lb"
-      : "kg";
-  }, [habitsQuery.data, clientProfile?.unit_preference]);
+  const weightUnit =
+    clientProfile?.unit_preference?.toLowerCase() === "imperial" ? "lb" : "kg";
 
   const habitSeries = useMemo(() => {
     const rows = habitsQuery.data ?? [];
@@ -412,7 +438,7 @@ export function ClientProgressPage() {
       weight.push({
         dateKey: row.log_date,
         label: toShortDate(row.log_date),
-        value: row.weight_value,
+        value: convertWeight(row.weight_value, row.weight_unit, weightUnit),
       });
     });
 
@@ -426,124 +452,27 @@ export function ClientProgressPage() {
   }, [baselineWeightQuery.data, habitsQuery.data, weightUnit]);
 
   const exerciseTrends = useMemo(() => {
-    const rows = setLogsQuery.data ?? [];
-    const byDate = new Map<
-      string,
-      { volume: number; weightSum: number; weightCount: number }
-    >();
-    const byExercise = new Map<
-      string,
-      {
-        name: string;
-        firstWeight: number | null;
-        latestWeight: number | null;
-        firstVolume: number | null;
-        latestVolume: number | null;
-      }
-    >();
-
-    rows.forEach((row) => {
-      const dateKey = row.created_at ? row.created_at.slice(0, 10) : null;
-      const reps = typeof row.reps === "number" ? row.reps : null;
-      const weight = typeof row.weight === "number" ? row.weight : null;
-      const volume = reps !== null && weight !== null ? reps * weight : null;
-
-      if (dateKey) {
-        const current = byDate.get(dateKey) ?? {
-          volume: 0,
-          weightSum: 0,
-          weightCount: 0,
-        };
-        if (typeof volume === "number" && volume > 0) current.volume += volume;
-        if (typeof weight === "number" && weight > 0) {
-          current.weightSum += weight;
-          current.weightCount += 1;
-        }
-        byDate.set(dateKey, current);
-      }
-
-      if (!row.exercise_id) return;
-      const exerciseName = Array.isArray(row.exercise)
-        ? (row.exercise[0]?.name ?? "Exercise")
-        : (row.exercise?.name ?? "Exercise");
-      const existing = byExercise.get(row.exercise_id) ?? {
-        name: exerciseName,
-        firstWeight: null,
-        latestWeight: null,
-        firstVolume: null,
-        latestVolume: null,
-      };
-
-      if (
-        existing.firstWeight === null &&
-        typeof weight === "number" &&
-        weight > 0
-      ) {
-        existing.firstWeight = weight;
-      }
-      if (typeof weight === "number" && weight > 0) {
-        existing.latestWeight = weight;
-      }
-      if (
-        existing.firstVolume === null &&
-        typeof volume === "number" &&
-        volume > 0
-      ) {
-        existing.firstVolume = volume;
-      }
-      if (typeof volume === "number" && volume > 0) {
-        existing.latestVolume = volume;
-      }
-
-      byExercise.set(row.exercise_id, existing);
-    });
-
-    const loadSeries: LoadSeriesPoint[] = [...byDate.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([dateKey, value]) => ({
-        dateKey,
-        label: toShortDate(dateKey),
-        volume: Number(value.volume.toFixed(1)),
-        avgWeight:
-          value.weightCount > 0
-            ? Number((value.weightSum / value.weightCount).toFixed(1))
-            : null,
-      }));
-
-    const changes = [...byExercise.values()]
-      .map((row) => ({
-        name: row.name,
-        weightDelta:
-          row.firstWeight !== null && row.latestWeight !== null
-            ? row.latestWeight - row.firstWeight
-            : null,
-        volumeDelta:
-          row.firstVolume !== null && row.latestVolume !== null
-            ? row.latestVolume - row.firstVolume
-            : null,
-        weightPct:
-          row.firstWeight !== null &&
-          row.latestWeight !== null &&
-          row.firstWeight !== 0
-            ? ((row.latestWeight - row.firstWeight) / row.firstWeight) * 100
-            : null,
-        volumePct:
-          row.firstVolume !== null &&
-          row.latestVolume !== null &&
-          row.firstVolume !== 0
-            ? ((row.latestVolume - row.firstVolume) / row.firstVolume) * 100
-            : null,
-      }))
-      .filter((row) => row.weightDelta !== null || row.volumeDelta !== null)
-      .sort(
-        (a, b) =>
-          Math.abs((b.weightDelta ?? 0) + (b.volumeDelta ?? 0) / 10) -
-          Math.abs((a.weightDelta ?? 0) + (a.volumeDelta ?? 0) / 10),
-      )
-      .slice(0, 6);
-
-    return { loadSeries, changes };
-  }, [setLogsQuery.data]);
+    const result = completedTraining(
+      setLogsQuery.data ?? [],
+      weightUnit,
+      cutoffKey,
+      todayKey,
+      clientProfile?.timezone ?? "UTC",
+    );
+    return {
+      ...result,
+      loadSeries: result.loadSeries.map((row) => ({
+        ...row,
+        label: toShortDate(row.dateKey),
+      })),
+    };
+  }, [
+    setLogsQuery.data,
+    weightUnit,
+    cutoffKey,
+    todayKey,
+    clientProfile?.timezone,
+  ]);
 
   const filteredWeightSeries = useMemo(
     () => filterSeriesByCutoff(habitSeries.weight, cutoffKey),
@@ -599,7 +528,9 @@ export function ClientProgressPage() {
       );
     }
     if (typeof latestLoad === "number" && latestLoad > 0) {
-      parts.push(`Latest logged training volume is ${latestLoad.toFixed(0)}.`);
+      parts.push(
+        `Latest completed training volume is ${latestLoad.toFixed(0)} ${weightUnit}·reps.`,
+      );
     }
     return parts.join(" ");
   }, [
@@ -757,10 +688,10 @@ export function ClientProgressPage() {
 
             <ChartSurface
               title="Training volume"
-              description="Weight multiplied by reps, added across your logged sets."
+              description={`Completed sets from finished workouts. Weight × reps, in ${weightUnit}·reps. Comparisons need two sessions within this date range.`}
               latestLabel={
                 filteredLoadSeries.length > 0
-                  ? `${filteredLoadSeries[filteredLoadSeries.length - 1]?.volume?.toFixed(0) ?? "--"} volume`
+                  ? `${filteredLoadSeries[filteredLoadSeries.length - 1]?.volume?.toFixed(0) ?? "--"} ${weightUnit}·reps`
                   : undefined
               }
             >
@@ -783,7 +714,12 @@ export function ClientProgressPage() {
                         axisLine={{ stroke: axisColor }}
                         tickLine={{ stroke: axisColor }}
                       />
-                      <Tooltip />
+                      <Tooltip
+                        formatter={(value: number | string) => [
+                          `${Number(value).toFixed(1)} ${weightUnit}\u00b7reps`,
+                          "Completed volume",
+                        ]}
+                      />
                       <Line
                         type="monotone"
                         dataKey="volume"
@@ -973,7 +909,7 @@ export function ClientProgressPage() {
                               <p className="field-label">Weight</p>
                               <p className="mt-1 text-sm text-foreground">
                                 {item.weightDelta !== null
-                                  ? `${item.weightDelta > 0 ? "+" : ""}${item.weightDelta.toFixed(1)} (${item.weightPct !== null ? `${item.weightPct > 0 ? "+" : ""}${item.weightPct.toFixed(1)}%` : "--"})`
+                                  ? `${item.weightDelta > 0 ? "+" : ""}${item.weightDelta.toFixed(1)} ${weightUnit} (${item.weightPct !== null ? `${item.weightPct > 0 ? "+" : ""}${item.weightPct.toFixed(1)}%` : "--"})`
                                   : "--"}
                               </p>
                             </div>
@@ -981,7 +917,7 @@ export function ClientProgressPage() {
                               <p className="field-label">Volume</p>
                               <p className="mt-1 text-sm text-foreground">
                                 {item.volumeDelta !== null
-                                  ? `${item.volumeDelta > 0 ? "+" : ""}${item.volumeDelta.toFixed(0)} (${item.volumePct !== null ? `${item.volumePct > 0 ? "+" : ""}${item.volumePct.toFixed(1)}%` : "--"})`
+                                  ? `${item.volumeDelta > 0 ? "+" : ""}${item.volumeDelta.toFixed(0)} ${weightUnit}·reps (${item.volumePct !== null ? `${item.volumePct > 0 ? "+" : ""}${item.volumePct.toFixed(1)}%` : "--"})`
                                   : "--"}
                               </p>
                             </div>

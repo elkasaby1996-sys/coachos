@@ -1,3 +1,5 @@
+import { hydrateNutritionAssignmentContext } from "../../lib/nutrition-assignment-context";
+import { sumRecorded, formatRecorded } from "../../lib/client-measurements";
 import "../../styles/client-home.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -253,6 +255,11 @@ function ClientWorkspaceHomePage() {
         .eq("date", todayKey)
         .order("date", { ascending: true });
       if (error) throw error;
+      await Promise.all(
+        (data ?? []).map((row) =>
+          hydrateNutritionAssignmentContext(row.assigned_nutrition_plan),
+        ),
+      );
       return data ?? [];
     },
   });
@@ -395,7 +402,7 @@ function ClientWorkspaceHomePage() {
     [todayWorkoutQuery.data],
   );
   const todayWorkout = todayWorkoutList[0] ?? null;
-  const isRestDay = !todayWorkout || todayWorkout.day_type === "rest";
+  const isRestDay = todayWorkout?.day_type === "rest";
   const todayWorkoutStatus =
     todayWorkout?.status === "pending"
       ? "planned"
@@ -431,26 +438,20 @@ function ClientWorkspaceHomePage() {
         consumed_at?: string | null;
       }>;
     }>;
-    return meals.reduce<{
-      calories: number;
-      protein_g: number;
-      carbs_g: number;
-      fat_g: number;
-    }>(
-      (acc, meal) => {
-        const latest = (meal.logs ?? [])
+    const logs = meals.map(
+      (meal) =>
+        (meal.logs ?? [])
           .slice()
           .sort((a, b) =>
-            String(a.consumed_at ?? "") < String(b.consumed_at ?? "") ? 1 : -1,
-          )[0];
-        acc.calories += latest?.actual_calories ?? meal.calories ?? 0;
-        acc.protein_g += latest?.actual_protein_g ?? meal.protein_g ?? 0;
-        acc.carbs_g += latest?.actual_carbs_g ?? meal.carbs_g ?? 0;
-        acc.fat_g += latest?.actual_fat_g ?? meal.fat_g ?? 0;
-        return acc;
-      },
-      { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
+            String(b.consumed_at).localeCompare(String(a.consumed_at)),
+          )[0],
     );
+    return {
+      calories: sumRecorded(logs.map((log) => log?.actual_calories)),
+      protein_g: sumRecorded(logs.map((log) => log?.actual_protein_g)),
+      carbs_g: sumRecorded(logs.map((log) => log?.actual_carbs_g)),
+      fat_g: sumRecorded(logs.map((log) => log?.actual_fat_g)),
+    };
   }, [todayNutrition]);
   const workoutsWeek = workoutsWeekQuery.data ?? [];
   const weeklyPlan = useMemo(
@@ -908,7 +909,67 @@ function ClientWorkspaceHomePage() {
   const nutritionRequestDraft = encodeURIComponent(
     "Can you set my nutrition targets for this week?",
   );
+  const nextActionQuery = useQuery({
+    queryKey: ["client-home-next-action", clientId, todayKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const [sessions, checkins, feedback] = await Promise.all([
+        supabase
+          .from("workout_sessions")
+          .select(
+            "id,assigned_workout_id,assigned_workout:assigned_workouts(day_type)",
+          )
+          .eq("client_id", clientId)
+          .is("completed_at", null)
+          .order("started_at", { ascending: false })
+          .limit(1),
+        supabase
+          .from("checkins")
+          .select("id,week_ending_saturday")
+          .eq("client_id", clientId)
+          .is("submitted_at", null)
+          .lte("week_ending_saturday", todayKey)
+          .order("week_ending_saturday")
+          .limit(1),
+        supabase
+          .from("notifications")
+          .select("id,entity_id,title")
+          .eq("recipient_user_id", session?.user.id)
+          .eq("type", "checkin_reviewed")
+          .is("read_at", null)
+          .order("created_at", { ascending: false })
+          .limit(1),
+      ]);
+      for (const result of [sessions, checkins, feedback])
+        if (result.error) throw result.error;
+      return {
+        session: sessions.data?.[0],
+        checkin: checkins.data?.[0],
+        feedback: feedback.data?.[0],
+      };
+    },
+  });
   const primaryAction = (() => {
+    const activeSession = nextActionQuery.data?.session;
+    if (
+      activeSession &&
+      (Array.isArray(activeSession.assigned_workout)
+        ? activeSession.assigned_workout[0]
+        : activeSession.assigned_workout
+      )?.day_type !== "rest"
+    )
+      return {
+        label: "Resume workout",
+        onClick: () =>
+          navigate(buildWorkoutRunPath(activeSession.assigned_workout_id)),
+      };
+    const dueCheckin = nextActionQuery.data?.checkin;
+    if (dueCheckin)
+      return {
+        label: "Complete check-in",
+        onClick: () => navigate(`/app/checkins?checkin=${dueCheckin.id}`),
+      };
+
     if (!clientId) {
       return {
         label: "Find a Coach",
@@ -968,6 +1029,7 @@ function ClientWorkspaceHomePage() {
   }, [focusModule]);
 
   const homeDataError =
+    nextActionQuery.error ??
     coachActivityQuery.error ??
     todayWorkoutQuery.error ??
     todayNutritionQuery.error ??
@@ -1116,11 +1178,55 @@ function ClientWorkspaceHomePage() {
       className="portal-shell client-home-redesign"
       data-testid="client-home-page"
     >
-      <header className="flex justify-end">
-        <Button variant="secondary" onClick={() => navigate("/app/messages")}>
-          Message coach
-        </Button>
+      <header className="flex flex-wrap justify-end gap-2">
+        {nextActionQuery.data?.feedback?.entity_id && (
+          <Button
+            onClick={() =>
+              navigate(
+                `/app/checkins?checkin=${nextActionQuery.data?.feedback?.entity_id}`,
+              )
+            }
+          >
+            Read coach feedback
+          </Button>
+        )}
+        {!clientProfile?.workspace_id && (
+          <Button variant="secondary" onClick={() => navigate(findCoachHref)}>
+            Find a coach
+          </Button>
+        )}
+        {(workspaceConversationPreviewQuery.data?.length ?? 0) > 0 && (
+          <Button variant="secondary" onClick={() => navigate("/app/messages")}>
+            Message coach
+          </Button>
+        )}
       </header>
+
+      <SectionCard
+        className="flex flex-wrap items-center justify-between gap-4"
+        aria-label="Next action"
+      >
+        <div className="space-y-1">
+          <p className="font-semibold">Next up</p>
+          <p className="text-sm text-muted-foreground">
+            {nextActionQuery.data?.session
+              ? "Continue your unfinished session."
+              : nextActionQuery.data?.checkin
+                ? `Your check-in for ${nextActionQuery.data.checkin.week_ending_saturday} is ready to complete.`
+                : isRestDay
+                  ? "Rest day. You can still record your daily habits."
+                  : todayWorkout
+                    ? "Your scheduled workout is ready below."
+                    : clientProfile?.workspace_id
+                      ? "No workout is scheduled today."
+                      : "Plan your first personal workout, or find a coach."}
+          </p>
+        </div>
+        <Button onClick={primaryAction.onClick}>
+          {primaryAction.label}
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </Button>
+      </SectionCard>
 
       {homeDataError ? (
         <StatusBanner
@@ -1165,18 +1271,32 @@ function ClientWorkspaceHomePage() {
             )}
             <div className="client-home-card-footer">
               <span>{summaryTrainingBadgeLabel}</span>
-              <Button onClick={primaryAction.onClick}>
-                {primaryAction.label}
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </Button>
+              {todayWorkout && !isRestDay && (
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    navigate(
+                      todayWorkoutStatus === "completed"
+                        ? `/app/workout-summary/${todayWorkout.id}`
+                        : buildWorkoutRunPath(todayWorkout.id),
+                    )
+                  }
+                >
+                  Open workout
+                </Button>
+              )}
             </div>
           </SectionCard>
           <SectionCard className="client-home-agenda-card">
             <div className="min-w-0 space-y-1">
-              <p className="client-home-card-label">Today&apos;s nutrition</p>
+              <p className="client-home-card-label">Recorded nutrition today</p>
               <p className="text-xl font-semibold leading-7 text-foreground [overflow-wrap:anywhere]">
                 {todayNutritionTemplate?.name ??
-                  "Your coach has not assigned a nutrition plan yet."}
+                  (todayNutrition
+                    ? "Your nutrition plan"
+                    : clientProfile?.workspace_id
+                      ? "No nutrition plan assigned yet."
+                      : "Create a personal nutrition plan to get started.")}
               </p>
             </div>
             <div className="client-home-macros">
@@ -1185,7 +1305,8 @@ function ClientWorkspaceHomePage() {
                   Calories
                 </p>
                 <p className="font-semibold text-foreground">
-                  {Math.round(todayNutritionTotals.calories)} kcal
+                  {formatRecorded(todayNutritionTotals.calories)}
+                  {todayNutritionTotals.calories !== null ? " kcal" : ""}
                 </p>
               </div>
               <div className="space-y-0.5">
@@ -1193,7 +1314,8 @@ function ClientWorkspaceHomePage() {
                   Protein
                 </p>
                 <p className="font-semibold text-foreground">
-                  {Math.round(todayNutritionTotals.protein_g)}g
+                  {formatRecorded(todayNutritionTotals.protein_g)}
+                  {todayNutritionTotals.protein_g !== null ? "g" : ""}
                 </p>
               </div>
               <div className="space-y-0.5">
@@ -1201,7 +1323,8 @@ function ClientWorkspaceHomePage() {
                   Carbs
                 </p>
                 <p className="font-semibold text-foreground">
-                  {Math.round(todayNutritionTotals.carbs_g)}g
+                  {formatRecorded(todayNutritionTotals.carbs_g)}
+                  {todayNutritionTotals.carbs_g !== null ? "g" : ""}
                 </p>
               </div>
               <div className="space-y-0.5">
@@ -1209,15 +1332,14 @@ function ClientWorkspaceHomePage() {
                   Fats
                 </p>
                 <p className="font-semibold text-foreground">
-                  {Math.round(todayNutritionTotals.fat_g)}g
+                  {formatRecorded(todayNutritionTotals.fat_g)}
+                  {todayNutritionTotals.fat_g !== null ? "g" : ""}
                 </p>
               </div>
             </div>
             <div className="client-home-card-footer">
               <span>
-                {todayNutritionTemplate
-                  ? "Your assigned plan"
-                  : "No plan assigned"}
+                {todayNutrition ? "Your assigned plan" : "No plan assigned"}
               </span>
               <Button
                 variant="secondary"
@@ -1700,7 +1822,11 @@ function ClientWorkspaceHomePage() {
                 </p>
                 <p className="text-lg font-semibold text-foreground">
                   {todayNutritionTemplate?.name ??
-                    "Your coach has not assigned a nutrition plan yet."}
+                    (todayNutrition
+                      ? "Your nutrition plan"
+                      : clientProfile?.workspace_id
+                        ? "No nutrition plan assigned yet."
+                        : "Create a personal nutrition plan to get started.")}
                 </p>
                 {todayNutritionTemplate ? (
                   <Badge variant="muted">
@@ -1792,25 +1918,25 @@ function ClientWorkspaceHomePage() {
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Calories</p>
                       <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.calories)}
+                        {formatRecorded(todayNutritionTotals.calories)}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Protein</p>
                       <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.protein_g)}
+                        {formatRecorded(todayNutritionTotals.protein_g)}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Carbs</p>
                       <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.carbs_g)}
+                        {formatRecorded(todayNutritionTotals.carbs_g)}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Fat</p>
                       <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.fat_g)}
+                        {formatRecorded(todayNutritionTotals.fat_g)}
                       </p>
                     </div>
                   </div>
@@ -1826,7 +1952,13 @@ function ClientWorkspaceHomePage() {
               ) : (
                 <EmptyStateBlock
                   title="No nutrition plan assigned"
-                  description="Your coach has not assigned a nutrition plan yet."
+                  description={
+                    todayNutrition
+                      ? "Your nutrition plan"
+                      : clientProfile?.workspace_id
+                        ? "No nutrition plan assigned yet."
+                        : "Create a personal nutrition plan to get started."
+                  }
                   actions={
                     upcomingNutritionDay?.id ? (
                       <Button

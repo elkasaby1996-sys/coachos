@@ -1,3 +1,8 @@
+import {
+  ProfilePhotoPicker,
+  TimezonePicker,
+  isValidTimezone,
+} from "../../components/client/profile-inputs";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -30,6 +35,7 @@ type FormState = {
   weightUnit: string;
   phone: string;
   avatarUrl: string;
+  timezone: string;
 };
 
 const emptyForm: FormState = {
@@ -42,6 +48,7 @@ const emptyForm: FormState = {
   weightUnit: "kg",
   phone: "",
   avatarUrl: "",
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 };
 
 export function ClientAccountOnboardingPage() {
@@ -57,6 +64,7 @@ export function ClientAccountOnboardingPage() {
   } = useBootstrapAuth();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [bootstrapping, setBootstrapping] = useState(true);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendingInviteToken = useMemo(
@@ -114,6 +122,9 @@ export function ClientAccountOnboardingPage() {
             ensuredProfile.weight_unit ??
             (ensuredProfile.unit_preference === "imperial" ? "lb" : "kg"),
           phone: ensuredProfile.phone ?? "",
+          timezone:
+            ensuredProfile.timezone ??
+            Intl.DateTimeFormat().resolvedOptions().timeZone,
           avatarUrl:
             ensuredProfile.avatar_url ??
             ensuredProfile.photo_url ??
@@ -185,6 +196,10 @@ export function ClientAccountOnboardingPage() {
       return;
     }
 
+    if (!isValidTimezone(form.timezone)) {
+      setError("Choose a valid timezone before continuing.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -203,6 +218,7 @@ export function ClientAccountOnboardingPage() {
       await updateClientCanonicalProfile(profile.id, {
         full_name: form.fullName,
         avatar_url: form.avatarUrl,
+        timezone: form.timezone,
         phone: form.phone,
         date_of_birth: form.dateOfBirth,
         sex: form.sex,
@@ -220,6 +236,7 @@ export function ClientAccountOnboardingPage() {
           ...profile,
           full_name: form.fullName,
           avatar_url: form.avatarUrl,
+          timezone: form.timezone,
           phone: form.phone,
           date_of_birth: form.dateOfBirth,
           sex: form.sex,
@@ -422,26 +439,27 @@ export function ClientAccountOnboardingPage() {
             </div>
 
             <div className="app-form-col-6 space-y-2">
-              <label
-                htmlFor="client-account-avatar"
-                className="text-sm font-medium"
-              >
-                Avatar URL
-              </label>
-              <Input
-                id="client-account-avatar"
+              <ProfilePhotoPicker
+                onBusyChange={setPhotoUploading}
                 value={form.avatarUrl}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    avatarUrl: event.target.value,
-                  }))
+                onChange={(avatarUrl) =>
+                  setForm((prev) => ({ ...prev, avatarUrl }))
                 }
                 disabled={bootstrapping}
-                placeholder="https://..."
               />
             </div>
 
+            <div className="app-form-col-12 space-y-2">
+              <label htmlFor="account-timezone">Timezone</label>
+              <TimezonePicker
+                id="account-timezone"
+                value={form.timezone}
+                onChange={(timezone) =>
+                  setForm((prev) => ({ ...prev, timezone }))
+                }
+                disabled={bootstrapping}
+              />
+            </div>
             {error ? (
               <div className="app-form-col-12 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
@@ -452,7 +470,7 @@ export function ClientAccountOnboardingPage() {
               <Button
                 type="submit"
                 className="h-11"
-                disabled={saving || bootstrapping}
+                disabled={saving || bootstrapping || photoUploading}
               >
                 {saving
                   ? "Saving..."

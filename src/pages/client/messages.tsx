@@ -1,3 +1,4 @@
+import { useRecordDraft } from "../../lib/record-drafts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -237,12 +238,6 @@ export function ClientMessagesPage() {
     kind: "default_text",
     fieldLabel: "Message",
   });
-
-  useEffect(() => {
-    if (!draftParam || hasAppliedDraftRef.current) return;
-    setMessageInput(draftParam);
-    hasAppliedDraftRef.current = true;
-  }, [draftParam]);
 
   useEffect(() => {
     setHiddenThreadIds(readHiddenThreadIdsForUser(session?.user?.id));
@@ -908,6 +903,60 @@ export function ClientMessagesPage() {
     })();
   }, [activeLeadId, leadThreadQuery.data?.messages, queryClient]);
 
+  useEffect(() => {
+    const update = () => {
+      const viewport = window.visualViewport;
+      document.documentElement.style.setProperty(
+        "--client-visual-height",
+        `${viewport?.height ?? window.innerHeight}px`,
+      );
+      const typing = Boolean(
+        document.activeElement?.closest(".client-message-composer"),
+      );
+      document.documentElement.classList.toggle(
+        "client-composing",
+        typing && window.innerWidth < 768,
+      );
+    };
+    const deferredUpdate = () => window.requestAnimationFrame(update);
+    window.visualViewport?.addEventListener("resize", update);
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", deferredUpdate);
+    update();
+    return () => {
+      window.visualViewport?.removeEventListener("resize", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", deferredUpdate);
+      document.documentElement.classList.remove("client-composing");
+    };
+  }, []);
+
+  const messageDraft = useRecordDraft<string>({
+    account: session?.user?.id,
+    kind: "conversation",
+    record: selectedThread?.id,
+    version: "1",
+    enabled: !!selectedThread?.isWritable,
+    onRestore: setMessageInput,
+  });
+  useEffect(() => {
+    setMessageInput("");
+  }, [selectedThread?.id]);
+  useEffect(() => {
+    if (messageDraft.ready && draftParam && !hasAppliedDraftRef.current) {
+      if (!messageInput) {
+        setMessageInput(draftParam);
+        messageDraft.save(draftParam);
+      }
+      hasAppliedDraftRef.current = true;
+    }
+  }, [messageDraft.ready, draftParam]);
+  const sentDraft = useRef<{
+    clear: () => Promise<void>;
+    thread: string;
+    body: string;
+  } | null>(null);
+
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (!selectedThread) {
@@ -921,6 +970,12 @@ export function ClientMessagesPage() {
       }
 
       const trimmed = messageInput.trim();
+      if (!messageDraft.ready) return;
+      sentDraft.current = {
+        clear: messageDraft.clear,
+        thread: selectedThread?.id ?? "",
+        body: messageInput,
+      };
       if (!trimmed) return;
 
       if (selectedThread.type === "workspace") {
@@ -946,7 +1001,11 @@ export function ClientMessagesPage() {
     },
     onSuccess: async (result) => {
       setSendError(null);
-      setMessageInput("");
+      if (sentDraft.current) {
+        await sentDraft.current.clear();
+        if (sentDraft.current.thread === selectedThread?.id)
+          setMessageInput("");
+      }
       updateTyping(false);
 
       if (!result) return;
@@ -1420,7 +1479,10 @@ export function ClientMessagesPage() {
                                 <EmptyStateActionButton
                                   key={prompt}
                                   label={prompt}
-                                  onClick={() => setMessageInput(prompt)}
+                                  onClick={() => {
+                                    setMessageInput(prompt);
+                                    messageDraft.save(prompt);
+                                  }}
                                 />
                               ))}
                             </>
@@ -1482,7 +1544,7 @@ export function ClientMessagesPage() {
               </SurfaceCardContent>
 
               {selectedThread.isWritable ? (
-                <div className="sticky bottom-0 border-t border-border/60 bg-background/75 px-4 pb-[calc(0.875rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+                <div className="client-message-composer sticky bottom-0 border-t border-border/60 bg-background/75 px-4 pb-[calc(0.875rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
                   <div className="space-y-2">
                     {sendError ? (
                       <p className="rounded-[16px] border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
@@ -1499,9 +1561,11 @@ export function ClientMessagesPage() {
                         style={{ height: 44, minHeight: 44, maxHeight: 44 }}
                         placeholder="Send a message..."
                         value={messageInput}
+                        disabled={!messageDraft.ready || sendMutation.isPending}
                         onChange={(event) => {
                           if (sendError) setSendError(null);
                           setMessageInput(event.target.value);
+                          messageDraft.save(event.target.value);
                         }}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" && !event.shiftKey) {
@@ -1535,15 +1599,41 @@ export function ClientMessagesPage() {
                         className="h-11 w-full min-w-[9rem] md:w-auto"
                         onClick={() => sendMutation.mutate()}
                         disabled={
+                          !messageDraft.ready ||
                           sendMutation.isPending ||
                           !messageInput.trim() ||
                           messageLimitState.overLimit
                         }
                       >
                         <SendHorizontal className="mr-2 h-4 w-4" />
-                        {sendMutation.isPending ? "Sending..." : "Send"}
+                        {sendMutation.isPending
+                          ? "Sending..."
+                          : sendError
+                            ? "Retry send"
+                            : "Send"}
                       </Button>
                     </div>
+                    {messageDraft.status && (
+                      <p role="status" className="text-xs">
+                        {messageDraft.status.replace(
+                          "Save or submit to share it with your coach.",
+                          "Send to share this message.",
+                        )}
+                      </p>
+                    )}
+                    {messageInput && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={sendMutation.isPending}
+                        onClick={async () => {
+                          await messageDraft.clear();
+                          setMessageInput("");
+                        }}
+                      >
+                        Discard draft
+                      </Button>
+                    )}
                     <FieldCharacterMeta
                       count={messageLimitState.count}
                       limit={messageLimitState.limit}

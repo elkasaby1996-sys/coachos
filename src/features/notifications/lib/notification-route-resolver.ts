@@ -51,6 +51,10 @@ function resolveEntityFallback(
     ) {
       return `/app/workouts/${notification.entity_id}`;
     }
+    if (notification.entity_type === "checkin" && notification.entity_id)
+      return `/app/checkins?checkin=${encodeURIComponent(notification.entity_id)}`;
+    if (notification.entity_type === "conversation" && notification.entity_id)
+      return `/app/messages?thread=${encodeURIComponent(`workspace:${notification.entity_id}`)}`;
     if (
       notification.entity_type === "file" ||
       notification.entity_type === "resource"
@@ -78,6 +82,17 @@ export function resolveNotificationActionUrl(
 ) {
   const normalized = normalizeRoute(notification.action_url);
   if (normalized && isAllowedForAudience(normalized, audience)) {
+    const genericClientRoutes = [
+      "/app/home",
+      "/app/checkin",
+      "/app/checkins",
+      "/app/workouts",
+      "/app/messages",
+    ];
+    if (audience === "client" && genericClientRoutes.includes(normalized)) {
+      const specific = resolveEntityFallback(notification, audience);
+      if (specific !== getNotificationFallbackRoute(audience)) return specific;
+    }
     return normalized;
   }
   if (notification.action_url) {

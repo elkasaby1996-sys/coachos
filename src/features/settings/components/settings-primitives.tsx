@@ -218,16 +218,23 @@ export function SettingsSectionCard({
 
 export function SettingsFieldRow({
   label,
+  htmlFor,
   children,
 }: {
   label: string;
+  htmlFor?: string;
   hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="grid gap-3 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)] lg:gap-6">
       <div className="flex min-h-[2.75rem] items-center">
-        <p className="text-sm font-medium text-foreground">{label}</p>
+        <label
+          htmlFor={htmlFor}
+          className="text-sm font-medium text-foreground"
+        >
+          {label}
+        </label>
       </div>
       <div className="min-w-0 space-y-3">{children}</div>
     </div>

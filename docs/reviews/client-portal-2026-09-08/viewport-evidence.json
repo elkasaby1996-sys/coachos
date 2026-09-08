@@ -1,0 +1,4387 @@
+{
+  "capturedAt": "2026-09-08T08:13:47.672Z",
+  "engine": "Chromium desktop resized; mobile engine checks separate",
+  "pageErrors": [
+    "Object"
+  ],
+  "results": [
+    {
+      "route": "home",
+      "width": 375,
+      "url": "/app/home",
+      "scrollWidth": 375,
+      "viewport": 375,
+      "text": "Message coach\n\nToday's workout\n\nLower Strength + Push\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nScheduled\nStart workout\n\nToday's nutrition\n\nYour coach has not assigned a nutrition plan yet.\n\nCALORIES\n\n0 kcal\n\nPROTEIN\n\n0g\n\nCARBS\n\n0g\n\nFATS\n\n0g\n\nNo plan assigned\nOpen nutrition\nYour week\n\nSep 8 – Sep 14, 2026\n\nTue\n8\n\nLower Strength + Push\n\nScheduled\nWed\n9\n\nNo workout scheduled\n\nUnscheduled\nThu\n10\n\nNo workout scheduled\n\nUnscheduled\nFri\n11\n\nNo workout scheduled\n\nUnscheduled\nSat\n12\n\nNo workout scheduled\n\nUnscheduled\nSun\n13\n\nNo workout scheduled\n\nUnscheduled\nMon\n14\n\nNo workout scheduled\n\nUnscheduled\nDaily log\n\nRecord your nutrition, recovery, and activity.\n\n10/10 logged\n\nNutrition\n\nCalories\nProtein\nCarbs\nFats\n\nRecovery\n\nSleep\nEnergy\nHunger\nStress\n\nBody + activity\n\nWeight\n\nUnit\n\nkg\nlb\nSteps\nSave daily log\nOpen full log\n\nComplete your profile\n\n8/14 fields complete. Filling in the rest helps your coach tailor the plan.\nFinish profile",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Message coach",
+          "width": 127,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 142,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Open nutrition",
+          "width": 145,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Previous week",
+          "width": 44,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Next week",
+          "width": 44,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Tue\n8\n\nLower Strength + Push\n\nScheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Wed\n9\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Thu\n10\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Fri\n11\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Sat\n12\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Sun\n13\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Mon\n14\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "kcal",
+          "width": 145,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 145,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 145,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 145,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "Hours",
+          "width": 145,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 145,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 145,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 145,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "kg",
+          "width": 145,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 71,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "lb",
+          "width": 71,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "0",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Save daily log",
+          "width": 116,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Open full log",
+          "width": 109,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Finish profile",
+          "width": 114,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "workouts",
+      "width": 375,
+      "url": "/app/workouts",
+      "scrollWidth": 375,
+      "viewport": 375,
+      "text": "Create workout\nToday\n\nWorkouts scheduled for today.\n\nLower Strength + Push\n\nstrength\n\nPlanned\nCoach\nToday\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nStart workout\nUpcoming\n\nYour scheduled workouts and rest days.\n\nNo upcoming workouts scheduled.\n\nRecently completed\n\nReview recent sessions and summaries.\n\nZone 4 Bike Intervals\n\nLogged 2 days ago\n\nCompleted\nCoach\nSun, Sep 6\n\nCoach note\n\nGreat pacing last week. Repeat before progressing.\n\nView summary\n\nShowing 1 of 1 completed workouts\n\nPrevious\nPage 1 of 1\nNext",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Create workout",
+          "width": 128,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 108,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View summary",
+          "width": 113,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Previous",
+          "width": 79,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Next",
+          "width": 57,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "nutrition",
+      "width": 375,
+      "url": "/app/nutrition",
+      "scrollWidth": 375,
+      "viewport": 375,
+      "text": "Create plan\nToday\n\nYour meals and nutrition plan for today.\n\nNo nutrition tasks today\n\nCreate a personal plan or check upcoming days.\nPersonal templates\n\nKeep meal plans to use again. Archive plans you have used to preserve your history, or delete unused plans.\n\nNo personal templates yet\n\nCreate your first personal plan to get started.",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Create plan",
+          "width": 131,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "habits",
+      "width": 375,
+      "url": "/app/habits",
+      "scrollWidth": 375,
+      "viewport": 375,
+      "text": "Log date: 2026-09-08\nDate\nDaily log\n\nSelect a date to edit. You can change logs from today or the previous 6 days.\n\nNutrition\n\nCalories(kcal)\nProtein (g)\nCarbs (g)\nFats (g)\n\nRecovery\n\nSleep (hours)\nEnergy (1-10)\nHunger (1-10)\nStress (1-10)\n\nBody + activity\n\nWeight (kg)\nWeight unit\nkg\nlb\nSteps\nSaved at 11:11 AM. No new changes.\nNo changes to save\n7-day trends\n\nYour daily entries from the past week.\n\nDays logged\n\n3/7\n\nAvg steps\n\n10,447\n\nAvg sleep\n\n7 hrs\n\nAvg protein\n\n137 g\n\nWeight change\n\n-0.1 kg",
+      "controls": [
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "label": "client-habits-log-date",
+          "width": 309,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 267,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 267,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 267,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 267,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 267,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 267,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 267,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 267,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 267,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 133,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "lb",
+          "width": 133,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 267,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "No changes to save",
+          "width": 267,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "checkins",
+      "width": 375,
+      "url": "/app/checkins",
+      "scrollWidth": 375,
+      "viewport": 375,
+      "text": "Choose a check-in\nCheck-in form\n\nSat, Aug 22 • Overdue\n\n1\n\nQuestions\n\n2\n\nPhotos\n\n3\n\nReview\n\nWeekly questions\n\nShare the latest updates for this check-in period.\n\nHow would you rate recovery this week?\n\nRequired\nChoose a score from 1 to 10.\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n\nBiggest win or blocker?\n\nRequired\n0/2 responses ready\nBack\nContinue",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Choose a check-in",
+          "width": 343,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "1\n\nQuestions",
+          "width": 95,
+          "height": 84,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2\n\nPhotos",
+          "width": 95,
+          "height": 84,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3\n\nReview",
+          "width": 95,
+          "height": 84,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "1",
+          "width": 130,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2",
+          "width": 130,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3",
+          "width": 130,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "4",
+          "width": 130,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "5",
+          "width": 130,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "6",
+          "width": 130,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "7",
+          "width": 130,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "8",
+          "width": 130,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "9",
+          "width": 130,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "10",
+          "width": 130,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": "textarea",
+          "label": "Share details...",
+          "width": 267,
+          "height": 132,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Back",
+          "width": 64,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Continue",
+          "width": 89,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "messages",
+      "width": 375,
+      "url": "/app/messages?thread=workspace%3Aa9082026-a001-4000-8000-000000000501",
+      "scrollWidth": 375,
+      "viewport": 375,
+      "text": "Inbox\n\nPortal Experience Review\n\nCalf is a little tight after the bike intervals.\n\ntoday\nPortal Experience Review\n\nCoach Portal Experience Review\n\nReview Coach · Coach\n09:11 AM\n\nGreat work on the first full week. Keep the easy run truly easy tomorrow.\n\nYou\n10:26 AM\n\nCalf is a little tight after the bike intervals. I logged notes.\n\nSend",
+      "controls": [
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Search conversations",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Portal Experience Review\n\nCalf is a little tight after the bike intervals.\n\ntoday",
+          "width": 301,
+          "height": 87,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": "textarea",
+          "label": "Message",
+          "width": 309,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Send",
+          "width": 309,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "progress",
+      "width": 375,
+      "url": "/app/progress",
+      "scrollWidth": 375,
+      "viewport": 375,
+      "text": "Last 4 weeks\nLast 8 weeks\nBody weight\n\nChanges since your submitted baseline and recent habit logs.\n\n67.9 kg\nAug 21\nSep 6\nSep 7\nSep 8\n0\n20\n40\n60\n80\nTraining volume\n\nWeight multiplied by reps, added across your logged sets.\n\nNot enough training-load data yet\n\nLog a couple of sessions with working sets and this chart will start to show useful changes.\nStart workout\nRecovery and activity\n\nYour logged sleep and daily steps.\n\nSleep hours\n\nSteps\n\nExercise changes\n\nExercises with the largest changes in logged performance.\n\nNo exercise trend data yet\n\nLog sets for the same exercise in more than one session to compare them.\nStart workout\nProgress summary\n\nChanges over the selected period.\n\nBody weight change: -0.5 kg. Sleep change: -0.4 hrs. Steps changed by -1680.\n\nBased on your initial assessment, daily logs, and completed sets.\n\nWeight trend\n\n-0.5 kg\n\nSleep trend\n\n-0.4 hrs\n\nStep trend\n\n-1680",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Last 4 weeks",
+          "width": 104,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Last 8 weeks",
+          "width": 104,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 251,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 251,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "wearables",
+      "width": 375,
+      "url": "/app/wearables",
+      "scrollWidth": 375,
+      "viewport": 375,
+      "text": "Connected device\nconnected\nGARMIN\nLast sync Sep 8, 10:51 AM\n\nReview your latest synced activity, sleep, and recovery alongside the data you log yourself.\n\nImport latest\nDisconnect\n\nSteps\n\nconnected\n\n10,420\n\nGARMIN\n\nSleep\n\nconnected\n\n7 hrs\n\nGARMIN\n\nRecovery\n\nno data\n\n--\n\nGARMIN\n\nLoad / strain\n\nno data\n\n--\n\nGARMIN\nSleep\n\nScore\n\nconnected\n\n84.0\n\nGARMIN\n\nEfficiency\n\nconnected\n\n91.0%\n\nGARMIN\nRecovery / load\n\nNo health scores yet\n\nNo health scores have synced for these dates.\nActivity\n\nActive minutes\n\nconnected\n\n74 min\n\nGARMIN\n\nResting HR\n\nconnected\n\n58.0 bpm\n\nGARMIN\nActivities / workouts\n1 imported workout\n7-day trends\nSteps\nActive\n09-07\n09-08\n0\n3000\n6000\n12000\n30-day trends\nSteps\nActive\n09-07\n09-08\n0\n3000\n6000\n12000",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Import latest",
+          "width": 301,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Disconnect",
+          "width": 301,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Activities / workouts\n1 imported workout",
+          "width": 301,
+          "height": 72,
+          "font": "16px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "settings?tab=profile",
+      "width": 375,
+      "url": "/app/settings?tab=profile",
+      "scrollWidth": 375,
+      "viewport": 375,
+      "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nIdentity\n\nAvatar\n\nR\n\nFull name\n\nEmail\n\nPhone number\n\nPersonal details\n\nDate of birth\n\nGender\n\nSelect\nMale\nFemale\nOther\nPrefer not to say\nFemale\n\nHeight\n\ncm\nin\ncm\n\nWeight\n\nkg\nlb\nkg\n\nTimezone",
+      "controls": [
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Profile",
+          "width": 75,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Preferences",
+          "width": 108,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Notifications",
+          "width": 114,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Privacy & Security",
+          "width": 145,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Billing",
+          "width": 72,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Paste avatar URL",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Your full name",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "",
+          "width": 301,
+          "height": 40,
+          "font": "14px",
+          "disabled": true
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "+966 ...",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "label": "client-settings-dob",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "Select\nMale\nFemale\nOther\nPrefer not to say",
+          "width": 341,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Female",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "170",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "cm\nin",
+          "width": 341,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "cm",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "70",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "kg\nlb",
+          "width": 341,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Asia/Riyadh",
+          "width": 301,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "onboarding",
+      "width": 375,
+      "url": "/app/onboarding?step=review-submit",
+      "scrollWidth": 375,
+      "viewport": 375,
+      "text": "Completed\n29% complete\nSaved today\n\nGETTING STARTED\n\nSet up your coaching account\n\nComplete each step, then submit your details to your coach. You can save and return later.\n\nSave for later\nBack to home\n\nOverall progress\n\n29%\n\nCompleted steps\n\n2/7\n\nRequired steps only count once enough detail has been saved.\n\nReadiness\n\nIn progress\n\nOnboarding is complete for this workspace.\n\nSteps\n\nShort progress rail for the onboarding flow.\n\nBasics\n\nDONE\n\nHow your coach should contact and identify you.\n\n2\n\nGoals\n\nNEXT\n\nWhat you want to achieve and how success should feel.\n\n3\n\nHistory\n\nNEXT\n\nYour current training context, access, and confidence.\n\n4\n\nLimitations\n\nNEXT\n\nAnything your coach should protect around immediately.\n\n5\n\nLifestyle\n\nNEXT\n\nThe routine constraints that shape your plan.\n\nAssessment\n\nDONE\n\nYour baseline metrics, markers, and progress photos.\n\n7\n\nReview\n\nCURRENT\n\nCheck everything, then send it for PT review.\n\nReview & Submit\n\nCheck everything, then send it for PT review.\n\nSubmission status\n\nStill missing items\n\nThe initial assessment must be submitted before this package can be sent.\n\nSaved draft\n\nSaved today\n\nDraft changes are preserved while you work.\n\nReview state\n\nIncomplete\n\nCheck each section below before you submit.\n\nBasics\n\nFull name\n\nReview Client\n\nPhone\n\n+974 5500 1101\n\nDate of birth\n\n1992-04-12\n\nSex / gender\n\nfemale\n\nHeight\n\n170 cm\n\nCurrent weight\n\n68.4 kg\n\nEmail\n\nzoe.ramirez.review0908@repsync.test\n\nLocation\n\nDoha\n\nTimezone\n\nAsia/Qatar\n\nUnits\n\nmetric\n\nAvatar URL\n\nNot provided\n\nGoals\n\nPrimary goal\n\nBuild strength while dropping 6 kg for a spring half marathon.\n\nSecondary goals\n\nNot provided\n\nMotivation\n\nNot provided\n\nTraining History\n\nExperience\n\nNot provided\n\nCurrent training frequency\n\nNot provided\n\nGym / equipment access\n\nNot provided\n\nTraining space\n\nNot provided\n\nCurrent routine\n\nNot provided\n\nConfidence\n\nNot provided\n\nDays available\n\nNot provided\n\nInjuries / Limitations\n\nCurrent injuries\n\nNot provided\n\nMovement limitations\n\nNot provided\n\nExercises to avoid\n\nNot provided\n\nSurgeries / history\n\nNot provided\n\nNutrition & Lifestyle\n\nDietary preferences\n\nNot provided\n\nAllergies / intolerances\n\nNot provided\n\nFoods avoided\n\nNot provided\n\nCooking confidence\n\nNot provided\n\nEating out frequency\n\nNot provided\n\nSleep quality\n\nNot provided\n\nStress level\n\nNot provided\n\nRoutine constraints\n\nNot provided\n\nPreferred training time\n\nNot provided\n\nInitial Assessment\nSubmitted\n\nYour baseline has been submitted and will travel with this onboarding package.\n\nDraft changes save automatically while you work.\nBack\nSubmit onboarding",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Save for later",
+          "width": 139,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Back to home",
+          "width": 117,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Basics\n\nDONE\n\nHow your coach should contact and identify you.",
+          "width": 301,
+          "height": 82,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2\n\nGoals\n\nNEXT\n\nWhat you want to achieve and how success should feel.",
+          "width": 301,
+          "height": 82,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3\n\nHistory\n\nNEXT\n\nYour current training context, access, and confidence.",
+          "width": 301,
+          "height": 82,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "4\n\nLimitations\n\nNEXT\n\nAnything your coach should protect around immediately.",
+          "width": 301,
+          "height": 82,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "5\n\nLifestyle\n\nNEXT\n\nThe routine constraints that shape your plan.",
+          "width": 301,
+          "height": 82,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Assessment\n\nDONE\n\nYour baseline metrics, markers, and progress photos.",
+          "width": 301,
+          "height": 82,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "7\n\nReview\n\nCURRENT\n\nCheck everything, then send it for PT review.",
+          "width": 301,
+          "height": 82,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Back",
+          "width": 88,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Submit onboarding",
+          "width": 150,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "home",
+      "width": 768,
+      "url": "/app/home",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "text": "Message coach\n\nToday's workout\n\nLower Strength + Push\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nScheduled\nStart workout\n\nToday's nutrition\n\nYour coach has not assigned a nutrition plan yet.\n\nCALORIES\n\n0 kcal\n\nPROTEIN\n\n0g\n\nCARBS\n\n0g\n\nFATS\n\n0g\n\nNo plan assigned\nOpen nutrition\nYour week\n\nSep 8 – Sep 14, 2026\n\nTue\n8\n\nLower Strength + Push\n\nScheduled\nWed\n9\n\nNo workout scheduled\n\nUnscheduled\nThu\n10\n\nNo workout scheduled\n\nUnscheduled\nFri\n11\n\nNo workout scheduled\n\nUnscheduled\nSat\n12\n\nNo workout scheduled\n\nUnscheduled\nSun\n13\n\nNo workout scheduled\n\nUnscheduled\nMon\n14\n\nNo workout scheduled\n\nUnscheduled\nDaily log\n\nRecord your nutrition, recovery, and activity.\n\n10/10 logged\n\nNutrition\n\nCalories\nProtein\nCarbs\nFats\n\nRecovery\n\nSleep\nEnergy\nHunger\nStress\n\nBody + activity\n\nWeight\n\nUnit\n\nkg\nlb\nSteps\nSave daily log\nOpen full log\n\nComplete your profile\n\n8/14 fields complete. Filling in the rest helps your coach tailor the plan.\nFinish profile",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Message coach",
+          "width": 127,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 142,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Open nutrition",
+          "width": 145,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Previous week",
+          "width": 44,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Next week",
+          "width": 44,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Tue\n8\n\nLower Strength + Push\n\nScheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Wed\n9\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Thu\n10\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Fri\n11\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Sat\n12\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Sun\n13\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Mon\n14\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "kcal",
+          "width": 98,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 98,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 98,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 98,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "Hours",
+          "width": 85,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 85,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 85,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 85,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "kg",
+          "width": 85,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 42,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "lb",
+          "width": 42,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "0",
+          "width": 182,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Save daily log",
+          "width": 116,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Open full log",
+          "width": 109,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Finish profile",
+          "width": 114,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "workouts",
+      "width": 768,
+      "url": "/app/workouts",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "text": "Create workout\nToday\n\nWorkouts scheduled for today.\n\nLower Strength + Push\n\nstrength\n\nPlanned\nCoach\nToday\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nStart workout\nUpcoming\n\nYour scheduled workouts and rest days.\n\nNo upcoming workouts scheduled.\n\nRecently completed\n\nReview recent sessions and summaries.\n\nZone 4 Bike Intervals\n\nLogged 2 days ago\n\nCompleted\nCoach\nSun, Sep 6\n\nCoach note\n\nGreat pacing last week. Repeat before progressing.\n\nView summary\n\nShowing 1 of 1 completed workouts\n\nPrevious\nPage 1 of 1\nNext",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Create workout",
+          "width": 128,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 108,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View summary",
+          "width": 113,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Previous",
+          "width": 79,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Next",
+          "width": 57,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "nutrition",
+      "width": 768,
+      "url": "/app/nutrition",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "text": "Create plan\nToday\n\nYour meals and nutrition plan for today.\n\nNo nutrition tasks today\n\nCreate a personal plan or check upcoming days.\nPersonal templates\n\nKeep meal plans to use again. Archive plans you have used to preserve your history, or delete unused plans.\n\nNo personal templates yet\n\nCreate your first personal plan to get started.",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Create plan",
+          "width": 131,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "habits",
+      "width": 768,
+      "url": "/app/habits",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "text": "Log date: 2026-09-08\nDate\nDaily log\n\nSelect a date to edit. You can change logs from today or the previous 6 days.\n\nNutrition\n\nCalories(kcal)\nProtein (g)\nCarbs (g)\nFats (g)\n\nRecovery\n\nSleep (hours)\nEnergy (1-10)\nHunger (1-10)\nStress (1-10)\n\nBody + activity\n\nWeight (kg)\nWeight unit\nkg\nlb\nSteps\nSaved at 11:11 AM. No new changes.\nNo changes to save\n7-day trends\n\nYour daily entries from the past week.\n\nDays logged\n\n3/7\n\nAvg steps\n\n10,447\n\nAvg sleep\n\n7 hrs\n\nAvg protein\n\n137 g\n\nWeight change\n\n-0.1 kg",
+      "controls": [
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "label": "client-habits-log-date",
+          "width": 147,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 306,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 306,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 306,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 306,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 306,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 306,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 306,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 306,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 306,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 152,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "lb",
+          "width": 152,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 306,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "No changes to save",
+          "width": 152,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "checkins",
+      "width": 768,
+      "url": "/app/checkins",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "text": "Choose a check-in\nCheck-in form\n\nSat, Aug 22 • Overdue\n\n1\n\nCurrent\n\nQuestions\n\n2\n\nUpcoming\n\nPhotos\n\n3\n\nUpcoming\n\nReview\n\nWeekly questions\n\nShare the latest updates for this check-in period.\n\nHow would you rate recovery this week?\n\nRequired\nChoose a score from 1 to 10.\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n\nBiggest win or blocker?\n\nRequired\n0/2 responses ready\nBack\nContinue",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Choose a check-in",
+          "width": 720,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "1\n\nCurrent\n\nQuestions",
+          "width": 215,
+          "height": 62,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2\n\nUpcoming\n\nPhotos",
+          "width": 215,
+          "height": 62,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3\n\nUpcoming\n\nReview",
+          "width": 215,
+          "height": 62,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "1",
+          "width": 56,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2",
+          "width": 56,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3",
+          "width": 56,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "4",
+          "width": 56,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "5",
+          "width": 56,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "6",
+          "width": 56,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "7",
+          "width": 56,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "8",
+          "width": 56,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "9",
+          "width": 56,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "10",
+          "width": 56,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": "textarea",
+          "label": "Share details...",
+          "width": 628,
+          "height": 132,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Back",
+          "width": 64,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Continue",
+          "width": 89,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "messages",
+      "width": 768,
+      "url": "/app/messages?thread=workspace%3Aa9082026-a001-4000-8000-000000000501",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "text": "Inbox\n\nPortal Experience Review\n\nCalf is a little tight after the bike intervals.\n\ntoday\nPortal Experience Review\n\nCoach Portal Experience Review\n\nReview Coach · Coach\n09:11 AM\n\nGreat work on the first full week. Keep the easy run truly easy tomorrow.\n\nYou\n10:26 AM\n\nCalf is a little tight after the bike intervals. I logged notes.\n\nSend",
+      "controls": [
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Search conversations",
+          "width": 670,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Portal Experience Review\n\nCalf is a little tight after the bike intervals.\n\ntoday",
+          "width": 670,
+          "height": 87,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": "textarea",
+          "label": "Message",
+          "width": 530,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Send",
+          "width": 144,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "progress",
+      "width": 768,
+      "url": "/app/progress",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "text": "Last 4 weeks\nLast 8 weeks\nBody weight\n\nChanges since your submitted baseline and recent habit logs.\n\n67.9 kg\nAug 21\nSep 6\nSep 7\nSep 8\n0\n20\n40\n60\n80\nTraining volume\n\nWeight multiplied by reps, added across your logged sets.\n\nNot enough training-load data yet\n\nLog a couple of sessions with working sets and this chart will start to show useful changes.\nStart workout\nRecovery and activity\n\nYour logged sleep and daily steps.\n\nSleep hours\n\nSteps\n\nExercise changes\n\nExercises with the largest changes in logged performance.\n\nNo exercise trend data yet\n\nLog sets for the same exercise in more than one session to compare them.\nStart workout\nProgress summary\n\nChanges over the selected period.\n\nBody weight change: -0.5 kg. Sleep change: -0.4 hrs. Steps changed by -1680.\n\nBased on your initial assessment, daily logs, and completed sets.\n\nWeight trend\n\n-0.5 kg\n\nSleep trend\n\n-0.4 hrs\n\nStep trend\n\n-1680",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Last 4 weeks",
+          "width": 104,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Last 8 weeks",
+          "width": 104,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 118,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 118,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "wearables",
+      "width": 768,
+      "url": "/app/wearables",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "text": "Connected device\nconnected\nGARMIN\nLast sync Sep 8, 10:51 AM\n\nReview your latest synced activity, sleep, and recovery alongside the data you log yourself.\n\nImport latest\nDisconnect\n\nSteps\n\nconnected\n\n10,420\n\nGARMIN\n\nSleep\n\nconnected\n\n7 hrs\n\nGARMIN\n\nRecovery\n\nno data\n\n--\n\nGARMIN\n\nLoad / strain\n\nno data\n\n--\n\nGARMIN\nSleep\n\nScore\n\nconnected\n\n84.0\n\nGARMIN\n\nEfficiency\n\nconnected\n\n91.0%\n\nGARMIN\nRecovery / load\n\nNo health scores yet\n\nNo health scores have synced for these dates.\nActivity\n\nActive minutes\n\nconnected\n\n74 min\n\nGARMIN\n\nResting HR\n\nconnected\n\n58.0 bpm\n\nGARMIN\nActivities / workouts\n1 imported workout\n7-day trends\nSteps\nActive\n09-07\n09-08\n0\n3000\n6000\n12000\n30-day trends\nSteps\nActive\n09-07\n09-08\n0\n3000\n6000\n12000",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Import latest",
+          "width": 145,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Disconnect",
+          "width": 135,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Activities / workouts\n1 imported workout",
+          "width": 670,
+          "height": 72,
+          "font": "16px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "settings?tab=profile",
+      "width": 768,
+      "url": "/app/settings?tab=profile",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nIdentity\n\nAvatar\n\nR\n\nFull name\n\nEmail\n\nPhone number\n\nPersonal details\n\nDate of birth\n\nGender\n\nSelect\nMale\nFemale\nOther\nPrefer not to say\nFemale\n\nHeight\n\ncm\nin\ncm\n\nWeight\n\nkg\nlb\nkg\n\nTimezone",
+      "controls": [
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Profile",
+          "width": 75,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Preferences",
+          "width": 108,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Notifications",
+          "width": 114,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Privacy & Security",
+          "width": 145,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Billing",
+          "width": 72,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Paste avatar URL",
+          "width": 670,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Your full name",
+          "width": 670,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "",
+          "width": 670,
+          "height": 40,
+          "font": "14px",
+          "disabled": true
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "+966 ...",
+          "width": 670,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "label": "client-settings-dob",
+          "width": 670,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "Select\nMale\nFemale\nOther\nPrefer not to say",
+          "width": 718,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Female",
+          "width": 670,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "170",
+          "width": 514,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "cm\nin",
+          "width": 718,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "cm",
+          "width": 144,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "70",
+          "width": 514,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "kg\nlb",
+          "width": 718,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 144,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Asia/Riyadh",
+          "width": 670,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "onboarding",
+      "width": 768,
+      "url": "/app/onboarding?step=review-submit",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "text": "Completed\n29% complete\nSaved today\n\nGETTING STARTED\n\nSet up your coaching account\n\nComplete each step, then submit your details to your coach. You can save and return later.\n\nSave for later\nBack to home\n\nOverall progress\n\n29%\n\nCompleted steps\n\n2/7\n\nRequired steps only count once enough detail has been saved.\n\nReadiness\n\nIn progress\n\nOnboarding is complete for this workspace.\n\nSteps\n\nShort progress rail for the onboarding flow.\n\nBasics\n\nDONE\n\nHow your coach should contact and identify you.\n\n2\n\nGoals\n\nNEXT\n\nWhat you want to achieve and how success should feel.\n\n3\n\nHistory\n\nNEXT\n\nYour current training context, access, and confidence.\n\n4\n\nLimitations\n\nNEXT\n\nAnything your coach should protect around immediately.\n\n5\n\nLifestyle\n\nNEXT\n\nThe routine constraints that shape your plan.\n\nAssessment\n\nDONE\n\nYour baseline metrics, markers, and progress photos.\n\n7\n\nReview\n\nCURRENT\n\nCheck everything, then send it for PT review.\n\nReview & Submit\n\nCheck everything, then send it for PT review.\n\nSubmission status\n\nStill missing items\n\nThe initial assessment must be submitted before this package can be sent.\n\nSaved draft\n\nSaved today\n\nDraft changes are preserved while you work.\n\nReview state\n\nIncomplete\n\nCheck each section below before you submit.\n\nBasics\n\nFull name\n\nReview Client\n\nPhone\n\n+974 5500 1101\n\nDate of birth\n\n1992-04-12\n\nSex / gender\n\nfemale\n\nHeight\n\n170 cm\n\nCurrent weight\n\n68.4 kg\n\nEmail\n\nzoe.ramirez.review0908@repsync.test\n\nLocation\n\nDoha\n\nTimezone\n\nAsia/Qatar\n\nUnits\n\nmetric\n\nAvatar URL\n\nNot provided\n\nGoals\n\nPrimary goal\n\nBuild strength while dropping 6 kg for a spring half marathon.\n\nSecondary goals\n\nNot provided\n\nMotivation\n\nNot provided\n\nTraining History\n\nExperience\n\nNot provided\n\nCurrent training frequency\n\nNot provided\n\nGym / equipment access\n\nNot provided\n\nTraining space\n\nNot provided\n\nCurrent routine\n\nNot provided\n\nConfidence\n\nNot provided\n\nDays available\n\nNot provided\n\nInjuries / Limitations\n\nCurrent injuries\n\nNot provided\n\nMovement limitations\n\nNot provided\n\nExercises to avoid\n\nNot provided\n\nSurgeries / history\n\nNot provided\n\nNutrition & Lifestyle\n\nDietary preferences\n\nNot provided\n\nAllergies / intolerances\n\nNot provided\n\nFoods avoided\n\nNot provided\n\nCooking confidence\n\nNot provided\n\nEating out frequency\n\nNot provided\n\nSleep quality\n\nNot provided\n\nStress level\n\nNot provided\n\nRoutine constraints\n\nNot provided\n\nPreferred training time\n\nNot provided\n\nInitial Assessment\nSubmitted\n\nYour baseline has been submitted and will travel with this onboarding package.\n\nDraft changes save automatically while you work.\nBack\nSubmit onboarding",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Save for later",
+          "width": 139,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Back to home",
+          "width": 117,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Basics\n\nDONE\n\nHow your coach should contact and identify you.",
+          "width": 670,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2\n\nGoals\n\nNEXT\n\nWhat you want to achieve and how success should feel.",
+          "width": 670,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3\n\nHistory\n\nNEXT\n\nYour current training context, access, and confidence.",
+          "width": 670,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "4\n\nLimitations\n\nNEXT\n\nAnything your coach should protect around immediately.",
+          "width": 670,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "5\n\nLifestyle\n\nNEXT\n\nThe routine constraints that shape your plan.",
+          "width": 670,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Assessment\n\nDONE\n\nYour baseline metrics, markers, and progress photos.",
+          "width": 670,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "7\n\nReview\n\nCURRENT\n\nCheck everything, then send it for PT review.",
+          "width": 670,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Back",
+          "width": 88,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Submit onboarding",
+          "width": 150,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "home",
+      "width": 1024,
+      "url": "/app/home",
+      "scrollWidth": 1024,
+      "viewport": 1024,
+      "text": "Message coach\n\nToday's workout\n\nLower Strength + Push\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nScheduled\nStart workout\n\nToday's nutrition\n\nYour coach has not assigned a nutrition plan yet.\n\nCALORIES\n\n0 kcal\n\nPROTEIN\n\n0g\n\nCARBS\n\n0g\n\nFATS\n\n0g\n\nNo plan assigned\nOpen nutrition\nYour week\n\nSep 8 – Sep 14, 2026\n\nTue\n8\n\nLower Strength + Push\n\nScheduled\nWed\n9\n\nNo workout scheduled\n\nUnscheduled\nThu\n10\n\nNo workout scheduled\n\nUnscheduled\nFri\n11\n\nNo workout scheduled\n\nUnscheduled\nSat\n12\n\nNo workout scheduled\n\nUnscheduled\nSun\n13\n\nNo workout scheduled\n\nUnscheduled\nMon\n14\n\nNo workout scheduled\n\nUnscheduled\nDaily log\n\nRecord your nutrition, recovery, and activity.\n\n10/10 logged\n\nNutrition\n\nCalories\nProtein\nCarbs\nFats\n\nRecovery\n\nSleep\nEnergy\nHunger\nStress\n\nBody + activity\n\nWeight\n\nUnit\n\nkg\nlb\nSteps\nSave daily log\nOpen full log\n\nComplete your profile\n\n8/14 fields complete. Filling in the rest helps your coach tailor the plan.\nFinish profile",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Message coach",
+          "width": 127,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 142,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Open nutrition",
+          "width": 145,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Previous week",
+          "width": 44,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Next week",
+          "width": 44,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Tue\n8\n\nLower Strength + Push\n\nScheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Wed\n9\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Thu\n10\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Fri\n11\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Sat\n12\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Sun\n13\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Mon\n14\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 132,
+          "height": 149,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "kcal",
+          "width": 140,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 140,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 140,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 140,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "Hours",
+          "width": 128,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 128,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 128,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 128,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "kg",
+          "width": 128,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 63,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "lb",
+          "width": 63,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "0",
+          "width": 268,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Save daily log",
+          "width": 116,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Open full log",
+          "width": 109,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Finish profile",
+          "width": 114,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "workouts",
+      "width": 1024,
+      "url": "/app/workouts",
+      "scrollWidth": 1024,
+      "viewport": 1024,
+      "text": "Create workout\nToday\n\nWorkouts scheduled for today.\n\nLower Strength + Push\n\nstrength\n\nPlanned\nCoach\nToday\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nStart workout\nUpcoming\n\nYour scheduled workouts and rest days.\n\nNo upcoming workouts scheduled.\n\nRecently completed\n\nReview recent sessions and summaries.\n\nZone 4 Bike Intervals\n\nLogged 2 days ago\n\nCompleted\nCoach\nSun, Sep 6\n\nCoach note\n\nGreat pacing last week. Repeat before progressing.\n\nView summary\n\nShowing 1 of 1 completed workouts\n\nPrevious\nPage 1 of 1\nNext",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Create workout",
+          "width": 128,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 108,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View summary",
+          "width": 113,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Previous",
+          "width": 79,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Next",
+          "width": 57,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "nutrition",
+      "width": 1024,
+      "url": "/app/nutrition",
+      "scrollWidth": 1024,
+      "viewport": 1024,
+      "text": "Create plan\nToday\n\nYour meals and nutrition plan for today.\n\nNo nutrition tasks today\n\nCreate a personal plan or check upcoming days.\nPersonal templates\n\nKeep meal plans to use again. Archive plans you have used to preserve your history, or delete unused plans.\n\nNo personal templates yet\n\nCreate your first personal plan to get started.",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Create plan",
+          "width": 131,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "habits",
+      "width": 1024,
+      "url": "/app/habits",
+      "scrollWidth": 1024,
+      "viewport": 1024,
+      "text": "Log date: 2026-09-08\nDate\nDaily log\n\nSelect a date to edit. You can change logs from today or the previous 6 days.\n\nNutrition\n\nCalories(kcal)\nProtein (g)\nCarbs (g)\nFats (g)\n\nRecovery\n\nSleep (hours)\nEnergy (1-10)\nHunger (1-10)\nStress (1-10)\n\nBody + activity\n\nWeight (kg)\nWeight unit\nkg\nlb\nSteps\nSaved at 11:11 AM. No new changes.\nNo changes to save\n7-day trends\n\nYour daily entries from the past week.\n\nDays logged\n\n3/7\n\nAvg steps\n\n10,447\n\nAvg sleep\n\n7 hrs\n\nAvg protein\n\n137 g\n\nWeight change\n\n-0.1 kg",
+      "controls": [
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "label": "client-habits-log-date",
+          "width": 147,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 209,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 209,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 209,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 209,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 209,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 209,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 209,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 209,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 209,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 104,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "lb",
+          "width": 104,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 209,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "No changes to save",
+          "width": 152,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "checkins",
+      "width": 1024,
+      "url": "/app/checkins",
+      "scrollWidth": 1024,
+      "viewport": 1024,
+      "text": "Assigned check-ins\n\nCheck-ins to complete and upcoming dates.\n\nSat, Aug 22\n\nOverdue assignment\n\nOverdue\nComplete\n\nSat, Aug 29\n\nOverdue assignment\n\nOverdue\nComplete\n\nSat, Sep 5\n\nOverdue assignment\n\nOverdue\nComplete\n\nSat, Sep 19\n\nScheduled cycle\n\nUpcoming\nOpens Sat, Sep 19\n\nSat, Sep 26\n\nScheduled cycle\n\nUpcoming\nOpens Sat, Sep 26\n\nSat, Oct 3\n\nScheduled cycle\n\nUpcoming\nOpens Sat, Oct 3\n\nSat, Oct 10\n\nScheduled cycle\n\nUpcoming\nOpens Sat, Oct 10\n\nSat, Oct 17\n\nScheduled cycle\n\nUpcoming\nOpens Sat, Oct 17\nPrevious check-ins\n\nPast check-ins and coach feedback.\n\nSat, Sep 12\n\nSubmitted Sep 7\n\nSubmitted\nView details\n\nSat, Sep 5\n\nNo submission saved\n\nOverdue\nView details\n\nSat, Aug 29\n\nNo submission saved\n\nOverdue\nView details\n\nSat, Aug 22\n\nNo submission saved\n\nOverdue\nView details\nCheck-in form\n\nSat, Aug 22 • Overdue\n\n1\n\nCurrent\n\nQuestions\n\n2\n\nUpcoming\n\nPhotos\n\n3\n\nUpcoming\n\nReview\n\nWeekly questions\n\nShare the latest updates for this check-in period.\n\nHow would you rate recovery this week?\n\nRequired\nChoose a score from 1 to 10.\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n\nBiggest win or blocker?\n\nRequired\n0/2 responses ready\nBack\nContinue",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Complete",
+          "width": 85,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Complete",
+          "width": 85,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Complete",
+          "width": 85,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Opens Sat, Sep 19",
+          "width": 129,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Opens Sat, Sep 26",
+          "width": 132,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Opens Sat, Oct 3",
+          "width": 122,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Opens Sat, Oct 10",
+          "width": 128,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Opens Sat, Oct 17",
+          "width": 126,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View details",
+          "width": 98,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View details",
+          "width": 98,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View details",
+          "width": 98,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View details",
+          "width": 98,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "1\n\nCurrent\n\nQuestions",
+          "width": 191,
+          "height": 62,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2\n\nUpcoming\n\nPhotos",
+          "width": 191,
+          "height": 62,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3\n\nUpcoming\n\nReview",
+          "width": 191,
+          "height": 62,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "1",
+          "width": 48,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2",
+          "width": 48,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3",
+          "width": 48,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "4",
+          "width": 48,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "5",
+          "width": 48,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "6",
+          "width": 48,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "7",
+          "width": 48,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "8",
+          "width": 48,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "9",
+          "width": 48,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "10",
+          "width": 48,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": "textarea",
+          "label": "Share details...",
+          "width": 556,
+          "height": 132,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Back",
+          "width": 64,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Continue",
+          "width": 89,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "messages",
+      "width": 1024,
+      "url": "/app/messages?thread=workspace%3Aa9082026-a001-4000-8000-000000000501",
+      "scrollWidth": 1024,
+      "viewport": 1024,
+      "text": "Inbox\n\nPortal Experience Review\n\nCalf is a little tight after the bike intervals.\n\ntoday\nPortal Experience Review\n\nCoach Portal Experience Review\n\nReview Coach · Coach\n09:11 AM\n\nGreat work on the first full week. Keep the easy run truly easy tomorrow.\n\nYou\n10:26 AM\n\nCalf is a little tight after the bike intervals. I logged notes.\n\nSend",
+      "controls": [
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Search conversations",
+          "width": 926,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Portal Experience Review\n\nCalf is a little tight after the bike intervals.\n\ntoday",
+          "width": 926,
+          "height": 87,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": "textarea",
+          "label": "Message",
+          "width": 786,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Send",
+          "width": 144,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "progress",
+      "width": 1024,
+      "url": "/app/progress",
+      "scrollWidth": 1024,
+      "viewport": 1024,
+      "text": "Last 4 weeks\nLast 8 weeks\nBody weight\n\nChanges since your submitted baseline and recent habit logs.\n\n67.9 kg\nAug 21\nSep 6\nSep 7\nSep 8\n0\n20\n40\n60\n80\n\nSep 7\n\nvalue : 68.1 kg\nTraining volume\n\nWeight multiplied by reps, added across your logged sets.\n\nNot enough training-load data yet\n\nLog a couple of sessions with working sets and this chart will start to show useful changes.\nStart workout\nRecovery and activity\n\nYour logged sleep and daily steps.\n\nSleep hours\n\nSteps\n\nExercise changes\n\nExercises with the largest changes in logged performance.\n\nNo exercise trend data yet\n\nLog sets for the same exercise in more than one session to compare them.\nStart workout\nProgress summary\n\nChanges over the selected period.\n\nBody weight change: -0.5 kg. Sleep change: -0.4 hrs. Steps changed by -1680.\n\nBased on your initial assessment, daily logs, and completed sets.\n\nWeight trend\n\n-0.5 kg\n\nSleep trend\n\n-0.4 hrs\n\nStep trend\n\n-1680",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Last 4 weeks",
+          "width": 104,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Last 8 weeks",
+          "width": 104,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 118,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 118,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "wearables",
+      "width": 1024,
+      "url": "/app/wearables",
+      "scrollWidth": 1024,
+      "viewport": 1024,
+      "text": "Connected device\nconnected\nGARMIN\nLast sync Sep 8, 10:51 AM\n\nReview your latest synced activity, sleep, and recovery alongside the data you log yourself.\n\nImport latest\nDisconnect\n\nSteps\n\nconnected\n\n10,420\n\nGARMIN\n\nSleep\n\nconnected\n\n7 hrs\n\nGARMIN\n\nRecovery\n\nno data\n\n--\n\nGARMIN\n\nLoad / strain\n\nno data\n\n--\n\nGARMIN\nSleep\n\nScore\n\nconnected\n\n84.0\n\nGARMIN\n\nEfficiency\n\nconnected\n\n91.0%\n\nGARMIN\nRecovery / load\n\nNo health scores yet\n\nNo health scores have synced for these dates.\nActivity\n\nActive minutes\n\nconnected\n\n74 min\n\nGARMIN\n\nResting HR\n\nconnected\n\n58.0 bpm\n\nGARMIN\nActivities / workouts\n1 imported workout\n7-day trends\nSteps\nActive\n09-07\n09-08\n0\n3000\n6000\n12000\n30-day trends\nSteps\nActive\n09-07\n09-08\n0\n3000\n6000\n12000",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Import latest",
+          "width": 145,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Disconnect",
+          "width": 135,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Activities / workouts\n1 imported workout",
+          "width": 926,
+          "height": 72,
+          "font": "16px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "settings?tab=profile",
+      "width": 1024,
+      "url": "/app/settings?tab=profile",
+      "scrollWidth": 1024,
+      "viewport": 1024,
+      "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nIdentity\n\nAvatar\n\nR\n\nFull name\n\nEmail\n\nPhone number\n\nPersonal details\n\nDate of birth\n\nGender\n\nSelect\nMale\nFemale\nOther\nPrefer not to say\nFemale\n\nHeight\n\ncm\nin\ncm\n\nWeight\n\nkg\nlb\nkg\n\nTimezone",
+      "controls": [
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Profile",
+          "width": 75,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Preferences",
+          "width": 108,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Notifications",
+          "width": 114,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Privacy & Security",
+          "width": 145,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Billing",
+          "width": 72,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Paste avatar URL",
+          "width": 682,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Your full name",
+          "width": 682,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "",
+          "width": 682,
+          "height": 40,
+          "font": "14px",
+          "disabled": true
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "+966 ...",
+          "width": 682,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "label": "client-settings-dob",
+          "width": 682,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "Select\nMale\nFemale\nOther\nPrefer not to say",
+          "width": 974,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Female",
+          "width": 682,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "170",
+          "width": 526,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "cm\nin",
+          "width": 974,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "cm",
+          "width": 144,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "70",
+          "width": 526,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "kg\nlb",
+          "width": 974,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 144,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Asia/Riyadh",
+          "width": 682,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "onboarding",
+      "width": 1024,
+      "url": "/app/onboarding?step=review-submit",
+      "scrollWidth": 1024,
+      "viewport": 1024,
+      "text": "Completed\n29% complete\nSaved today\n\nGETTING STARTED\n\nSet up your coaching account\n\nComplete each step, then submit your details to your coach. You can save and return later.\n\nSave for later\nBack to home\n\nOverall progress\n\n29%\n\nCompleted steps\n\n2/7\n\nRequired steps only count once enough detail has been saved.\n\nReadiness\n\nIn progress\n\nOnboarding is complete for this workspace.\n\nSteps\n\nShort progress rail for the onboarding flow.\n\nBasics\n\nDONE\n\nHow your coach should contact and identify you.\n\n2\n\nGoals\n\nNEXT\n\nWhat you want to achieve and how success should feel.\n\n3\n\nHistory\n\nNEXT\n\nYour current training context, access, and confidence.\n\n4\n\nLimitations\n\nNEXT\n\nAnything your coach should protect around immediately.\n\n5\n\nLifestyle\n\nNEXT\n\nThe routine constraints that shape your plan.\n\nAssessment\n\nDONE\n\nYour baseline metrics, markers, and progress photos.\n\n7\n\nReview\n\nCURRENT\n\nCheck everything, then send it for PT review.\n\nReview & Submit\n\nCheck everything, then send it for PT review.\n\nSubmission status\n\nStill missing items\n\nThe initial assessment must be submitted before this package can be sent.\n\nSaved draft\n\nSaved today\n\nDraft changes are preserved while you work.\n\nReview state\n\nIncomplete\n\nCheck each section below before you submit.\n\nBasics\n\nFull name\n\nReview Client\n\nPhone\n\n+974 5500 1101\n\nDate of birth\n\n1992-04-12\n\nSex / gender\n\nfemale\n\nHeight\n\n170 cm\n\nCurrent weight\n\n68.4 kg\n\nEmail\n\nzoe.ramirez.review0908@repsync.test\n\nLocation\n\nDoha\n\nTimezone\n\nAsia/Qatar\n\nUnits\n\nmetric\n\nAvatar URL\n\nNot provided\n\nGoals\n\nPrimary goal\n\nBuild strength while dropping 6 kg for a spring half marathon.\n\nSecondary goals\n\nNot provided\n\nMotivation\n\nNot provided\n\nTraining History\n\nExperience\n\nNot provided\n\nCurrent training frequency\n\nNot provided\n\nGym / equipment access\n\nNot provided\n\nTraining space\n\nNot provided\n\nCurrent routine\n\nNot provided\n\nConfidence\n\nNot provided\n\nDays available\n\nNot provided\n\nInjuries / Limitations\n\nCurrent injuries\n\nNot provided\n\nMovement limitations\n\nNot provided\n\nExercises to avoid\n\nNot provided\n\nSurgeries / history\n\nNot provided\n\nNutrition & Lifestyle\n\nDietary preferences\n\nNot provided\n\nAllergies / intolerances\n\nNot provided\n\nFoods avoided\n\nNot provided\n\nCooking confidence\n\nNot provided\n\nEating out frequency\n\nNot provided\n\nSleep quality\n\nNot provided\n\nStress level\n\nNot provided\n\nRoutine constraints\n\nNot provided\n\nPreferred training time\n\nNot provided\n\nInitial Assessment\nSubmitted\n\nYour baseline has been submitted and will travel with this onboarding package.\n\nDraft changes save automatically while you work.\nBack\nSubmit onboarding",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Save for later",
+          "width": 139,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Back to home",
+          "width": 117,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Basics\n\nDONE\n\nHow your coach should contact and identify you.",
+          "width": 926,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2\n\nGoals\n\nNEXT\n\nWhat you want to achieve and how success should feel.",
+          "width": 926,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3\n\nHistory\n\nNEXT\n\nYour current training context, access, and confidence.",
+          "width": 926,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "4\n\nLimitations\n\nNEXT\n\nAnything your coach should protect around immediately.",
+          "width": 926,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "5\n\nLifestyle\n\nNEXT\n\nThe routine constraints that shape your plan.",
+          "width": 926,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Assessment\n\nDONE\n\nYour baseline metrics, markers, and progress photos.",
+          "width": 926,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "7\n\nReview\n\nCURRENT\n\nCheck everything, then send it for PT review.",
+          "width": 926,
+          "height": 66,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Back",
+          "width": 88,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Submit onboarding",
+          "width": 150,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "home",
+      "width": 1440,
+      "url": "/app/home",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "text": "Message coach\n\nToday's workout\n\nLower Strength + Push\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nScheduled\nStart workout\n\nToday's nutrition\n\nYour coach has not assigned a nutrition plan yet.\n\nCALORIES\n\n0 kcal\n\nPROTEIN\n\n0g\n\nCARBS\n\n0g\n\nFATS\n\n0g\n\nNo plan assigned\nOpen nutrition\nYour week\n\nSep 8 – Sep 14, 2026\n\nTue\n8\n\nLower Strength + Push\n\nScheduled\nWed\n9\n\nNo workout scheduled\n\nUnscheduled\nThu\n10\n\nNo workout scheduled\n\nUnscheduled\nFri\n11\n\nNo workout scheduled\n\nUnscheduled\nSat\n12\n\nNo workout scheduled\n\nUnscheduled\nSun\n13\n\nNo workout scheduled\n\nUnscheduled\nMon\n14\n\nNo workout scheduled\n\nUnscheduled\nDaily log\n\nRecord your nutrition, recovery, and activity.\n\n10/10 logged\n\nNutrition\n\nCalories\nProtein\nCarbs\nFats\n\nRecovery\n\nSleep\nEnergy\nHunger\nStress\n\nBody + activity\n\nWeight\n\nUnit\n\nkg\nlb\nSteps\nSave daily log\nOpen full log\n\nComplete your profile\n\n8/14 fields complete. Filling in the rest helps your coach tailor the plan.\nFinish profile",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Message coach",
+          "width": 127,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 142,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Open nutrition",
+          "width": 145,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Previous week",
+          "width": 44,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Next week",
+          "width": 44,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Tue\n8\n\nLower Strength + Push\n\nScheduled",
+          "width": 183,
+          "height": 129,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Wed\n9\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 183,
+          "height": 129,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Thu\n10\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 183,
+          "height": 129,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Fri\n11\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 183,
+          "height": 129,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Sat\n12\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 183,
+          "height": 129,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Sun\n13\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 183,
+          "height": 129,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Mon\n14\n\nNo workout scheduled\n\nUnscheduled",
+          "width": 183,
+          "height": 129,
+          "font": "16px",
+          "disabled": true
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "kcal",
+          "width": 210,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 210,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 210,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "g",
+          "width": 210,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "Hours",
+          "width": 197,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 197,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 197,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "1-10",
+          "width": 197,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "kg",
+          "width": 197,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 98,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "lb",
+          "width": 98,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "0",
+          "width": 406,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Save daily log",
+          "width": 116,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Open full log",
+          "width": 109,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Finish profile",
+          "width": 114,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "workouts",
+      "width": 1440,
+      "url": "/app/workouts",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "text": "Create workout\nToday\n\nWorkouts scheduled for today.\n\nLower Strength + Push\n\nstrength\n\nPlanned\nCoach\nToday\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nStart workout\nUpcoming\n\nYour scheduled workouts and rest days.\n\nNo upcoming workouts scheduled.\n\nRecently completed\n\nReview recent sessions and summaries.\n\nZone 4 Bike Intervals\n\nLogged 2 days ago\n\nCompleted\nCoach\nSun, Sep 6\n\nCoach note\n\nGreat pacing last week. Repeat before progressing.\n\nView summary\n\nShowing 1 of 1 completed workouts\n\nPrevious\nPage 1 of 1\nNext",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Create workout",
+          "width": 128,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 108,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View summary",
+          "width": 113,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Previous",
+          "width": 79,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Next",
+          "width": 57,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "nutrition",
+      "width": 1440,
+      "url": "/app/nutrition",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "text": "Create plan\nToday\n\nYour meals and nutrition plan for today.\n\nNo nutrition tasks today\n\nCreate a personal plan or check upcoming days.\nPersonal templates\n\nKeep meal plans to use again. Archive plans you have used to preserve your history, or delete unused plans.\n\nNo personal templates yet\n\nCreate your first personal plan to get started.",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Create plan",
+          "width": 131,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "habits",
+      "width": 1440,
+      "url": "/app/habits",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "text": "Log date: 2026-09-08\nDate\nDaily log\n\nSelect a date to edit. You can change logs from today or the previous 6 days.\n\nNutrition\n\nCalories(kcal)\nProtein (g)\nCarbs (g)\nFats (g)\n\nRecovery\n\nSleep (hours)\nEnergy (1-10)\nHunger (1-10)\nStress (1-10)\n\nBody + activity\n\nWeight (kg)\nWeight unit\nkg\nlb\nSteps\nSaved at 11:11 AM. No new changes.\nNo changes to save\n7-day trends\n\nYour daily entries from the past week.\n\nDays logged\n\n3/7\n\nAvg steps\n\n10,447\n\nAvg sleep\n\n7 hrs\n\nAvg protein\n\n137 g\n\nWeight change\n\n-0.1 kg",
+      "controls": [
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "label": "client-habits-log-date",
+          "width": 147,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 313,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 313,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 313,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 313,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 313,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 313,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 313,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 313,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 313,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 156,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "lb",
+          "width": 156,
+          "height": 38,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "",
+          "width": 313,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "No changes to save",
+          "width": 152,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "checkins",
+      "width": 1440,
+      "url": "/app/checkins",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "text": "Assigned check-ins\n\nCheck-ins to complete and upcoming dates.\n\nSat, Aug 22\n\nOverdue assignment\n\nOverdue\nComplete\n\nSat, Aug 29\n\nOverdue assignment\n\nOverdue\nComplete\n\nSat, Sep 5\n\nOverdue assignment\n\nOverdue\nComplete\n\nSat, Sep 19\n\nScheduled cycle\n\nUpcoming\nOpens Sat, Sep 19\n\nSat, Sep 26\n\nScheduled cycle\n\nUpcoming\nOpens Sat, Sep 26\n\nSat, Oct 3\n\nScheduled cycle\n\nUpcoming\nOpens Sat, Oct 3\n\nSat, Oct 10\n\nScheduled cycle\n\nUpcoming\nOpens Sat, Oct 10\n\nSat, Oct 17\n\nScheduled cycle\n\nUpcoming\nOpens Sat, Oct 17\nPrevious check-ins\n\nPast check-ins and coach feedback.\n\nSat, Sep 12\n\nSubmitted Sep 7\n\nSubmitted\nView details\n\nSat, Sep 5\n\nNo submission saved\n\nOverdue\nView details\n\nSat, Aug 29\n\nNo submission saved\n\nOverdue\nView details\n\nSat, Aug 22\n\nNo submission saved\n\nOverdue\nView details\nCheck-in form\n\nSat, Aug 22 • Overdue\n\n1\n\nCurrent\n\nQuestions\n\n2\n\nUpcoming\n\nPhotos\n\n3\n\nUpcoming\n\nReview\n\nWeekly questions\n\nShare the latest updates for this check-in period.\n\nHow would you rate recovery this week?\n\nRequired\nChoose a score from 1 to 10.\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n\nBiggest win or blocker?\n\nRequired\n0/2 responses ready\nBack\nContinue",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Complete",
+          "width": 85,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Complete",
+          "width": 85,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Complete",
+          "width": 85,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Opens Sat, Sep 19",
+          "width": 129,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Opens Sat, Sep 26",
+          "width": 132,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Opens Sat, Oct 3",
+          "width": 122,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Opens Sat, Oct 10",
+          "width": 128,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Opens Sat, Oct 17",
+          "width": 126,
+          "height": 44,
+          "font": "13px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View details",
+          "width": 98,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View details",
+          "width": 98,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View details",
+          "width": 98,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "View details",
+          "width": 98,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "1\n\nCurrent\n\nQuestions",
+          "width": 330,
+          "height": 62,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2\n\nUpcoming\n\nPhotos",
+          "width": 330,
+          "height": 62,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3\n\nUpcoming\n\nReview",
+          "width": 330,
+          "height": 62,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "1",
+          "width": 90,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2",
+          "width": 90,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3",
+          "width": 90,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "4",
+          "width": 90,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "5",
+          "width": 90,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "6",
+          "width": 90,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "7",
+          "width": 90,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "8",
+          "width": 90,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "9",
+          "width": 90,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "10",
+          "width": 90,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": "textarea",
+          "label": "Share details...",
+          "width": 972,
+          "height": 132,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Back",
+          "width": 64,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Continue",
+          "width": 89,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "messages",
+      "width": 1440,
+      "url": "/app/messages?thread=workspace%3Aa9082026-a001-4000-8000-000000000501",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "text": "Inbox\n\nPortal Experience Review\n\nCalf is a little tight after the bike intervals.\n\ntoday\nPortal Experience Review\n\nCoach Portal Experience Review\n\nReview Coach · Coach\n09:11 AM\n\nGreat work on the first full week. Keep the easy run truly easy tomorrow.\n\nYou\n10:26 AM\n\nCalf is a little tight after the bike intervals. I logged notes.\n\nSend",
+      "controls": [
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Search conversations",
+          "width": 302,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Portal Experience Review\n\nCalf is a little tight after the bike intervals.\n\ntoday",
+          "width": 302,
+          "height": 87,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": "textarea",
+          "label": "Message",
+          "width": 826,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Send",
+          "width": 144,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "route": "progress",
+      "width": 1440,
+      "url": "/app/progress",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "text": "Last 4 weeks\nLast 8 weeks\nBody weight\n\nChanges since your submitted baseline and recent habit logs.\n\n67.9 kg\nAug 21\nSep 6\nSep 7\nSep 8\n0\n20\n40\n60\n80\nTraining volume\n\nWeight multiplied by reps, added across your logged sets.\n\nNot enough training-load data yet\n\nLog a couple of sessions with working sets and this chart will start to show useful changes.\nStart workout\nRecovery and activity\n\nYour logged sleep and daily steps.\n\nSleep hours\n\nSteps\n\nExercise changes\n\nExercises with the largest changes in logged performance.\n\nNo exercise trend data yet\n\nLog sets for the same exercise in more than one session to compare them.\nStart workout\nProgress summary\n\nChanges over the selected period.\n\nBody weight change: -0.5 kg. Sleep change: -0.4 hrs. Steps changed by -1680.\n\nBased on your initial assessment, daily logs, and completed sets.\n\nWeight trend\n\n-0.5 kg\n\nSleep trend\n\n-0.4 hrs\n\nStep trend\n\n-1680",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Last 4 weeks",
+          "width": 104,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Last 8 weeks",
+          "width": 104,
+          "height": 44,
+          "font": "13px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 118,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Start workout",
+          "width": 118,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "wearables",
+      "width": 1440,
+      "url": "/app/wearables",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "text": "Connected device\nconnected\nGARMIN\nLast sync Sep 8, 10:51 AM\n\nReview your latest synced activity, sleep, and recovery alongside the data you log yourself.\n\nImport latest\nDisconnect\n\nSteps\n\nconnected\n\n10,420\n\nGARMIN\n\nSleep\n\nconnected\n\n7 hrs\n\nGARMIN\n\nRecovery\n\nno data\n\n--\n\nGARMIN\n\nLoad / strain\n\nno data\n\n--\n\nGARMIN\nSleep\n\nScore\n\nconnected\n\n84.0\n\nGARMIN\n\nEfficiency\n\nconnected\n\n91.0%\n\nGARMIN\nRecovery / load\n\nNo health scores yet\n\nNo health scores have synced for these dates.\nActivity\n\nActive minutes\n\nconnected\n\n74 min\n\nGARMIN\n\nResting HR\n\nconnected\n\n58.0 bpm\n\nGARMIN\nActivities / workouts\n1 imported workout\n7-day trends\nSteps\nActive\n09-07\n09-08\n0\n3000\n6000\n12000\n30-day trends\nSteps\nActive\n09-07\n09-08\n0\n3000\n6000\n12000",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Import latest",
+          "width": 145,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Disconnect",
+          "width": 135,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Activities / workouts\n1 imported workout",
+          "width": 1342,
+          "height": 72,
+          "font": "16px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "settings?tab=profile",
+      "width": 1440,
+      "url": "/app/settings?tab=profile",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nIdentity\n\nAvatar\n\nR\n\nFull name\n\nEmail\n\nPhone number\n\nPersonal details\n\nDate of birth\n\nGender\n\nSelect\nMale\nFemale\nOther\nPrefer not to say\nFemale\n\nHeight\n\ncm\nin\ncm\n\nWeight\n\nkg\nlb\nkg\n\nTimezone",
+      "controls": [
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Profile",
+          "width": 75,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Preferences",
+          "width": 108,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Notifications",
+          "width": 114,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Privacy & Security",
+          "width": 145,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Billing",
+          "width": 72,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Paste avatar URL",
+          "width": 1098,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Your full name",
+          "width": 1098,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "",
+          "width": 1098,
+          "height": 40,
+          "font": "14px",
+          "disabled": true
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "+966 ...",
+          "width": 1098,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "label": "client-settings-dob",
+          "width": 1098,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "Select\nMale\nFemale\nOther\nPrefer not to say",
+          "width": 1390,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Female",
+          "width": 1098,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "170",
+          "width": 942,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "cm\nin",
+          "width": 1390,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "cm",
+          "width": 144,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "label": "70",
+          "width": 942,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "label": "kg\nlb",
+          "width": 1390,
+          "height": 44,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "kg",
+          "width": 144,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Asia/Riyadh",
+          "width": 1098,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "route": "onboarding",
+      "width": 1440,
+      "url": "/app/onboarding?step=review-submit",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "text": "Completed\n29% complete\nSaved today\n\nGETTING STARTED\n\nSet up your coaching account\n\nComplete each step, then submit your details to your coach. You can save and return later.\n\nSave for later\nBack to home\n\nOverall progress\n\n29%\n\nCompleted steps\n\n2/7\n\nRequired steps only count once enough detail has been saved.\n\nReadiness\n\nIn progress\n\nOnboarding is complete for this workspace.\n\nSteps\n\nShort progress rail for the onboarding flow.\n\nBasics\n\nDONE\n\nHow your coach should contact and identify you.\n\n2\n\nGoals\n\nNEXT\n\nWhat you want to achieve and how success should feel.\n\n3\n\nHistory\n\nNEXT\n\nYour current training context, access, and confidence.\n\n4\n\nLimitations\n\nNEXT\n\nAnything your coach should protect around immediately.\n\n5\n\nLifestyle\n\nNEXT\n\nThe routine constraints that shape your plan.\n\nAssessment\n\nDONE\n\nYour baseline metrics, markers, and progress photos.\n\n7\n\nReview\n\nCURRENT\n\nCheck everything, then send it for PT review.\n\nReview & Submit\n\nCheck everything, then send it for PT review.\n\nSubmission status\n\nStill missing items\n\nThe initial assessment must be submitted before this package can be sent.\n\nSaved draft\n\nSaved today\n\nDraft changes are preserved while you work.\n\nReview state\n\nIncomplete\n\nCheck each section below before you submit.\n\nBasics\n\nFull name\n\nReview Client\n\nPhone\n\n+974 5500 1101\n\nDate of birth\n\n1992-04-12\n\nSex / gender\n\nfemale\n\nHeight\n\n170 cm\n\nCurrent weight\n\n68.4 kg\n\nEmail\n\nzoe.ramirez.review0908@repsync.test\n\nLocation\n\nDoha\n\nTimezone\n\nAsia/Qatar\n\nUnits\n\nmetric\n\nAvatar URL\n\nNot provided\n\nGoals\n\nPrimary goal\n\nBuild strength while dropping 6 kg for a spring half marathon.\n\nSecondary goals\n\nNot provided\n\nMotivation\n\nNot provided\n\nTraining History\n\nExperience\n\nNot provided\n\nCurrent training frequency\n\nNot provided\n\nGym / equipment access\n\nNot provided\n\nTraining space\n\nNot provided\n\nCurrent routine\n\nNot provided\n\nConfidence\n\nNot provided\n\nDays available\n\nNot provided\n\nInjuries / Limitations\n\nCurrent injuries\n\nNot provided\n\nMovement limitations\n\nNot provided\n\nExercises to avoid\n\nNot provided\n\nSurgeries / history\n\nNot provided\n\nNutrition & Lifestyle\n\nDietary preferences\n\nNot provided\n\nAllergies / intolerances\n\nNot provided\n\nFoods avoided\n\nNot provided\n\nCooking confidence\n\nNot provided\n\nEating out frequency\n\nNot provided\n\nSleep quality\n\nNot provided\n\nStress level\n\nNot provided\n\nRoutine constraints\n\nNot provided\n\nPreferred training time\n\nNot provided\n\nInitial Assessment\nSubmitted\n\nYour baseline has been submitted and will travel with this onboarding package.\n\nDraft changes save automatically while you work.\nBack\nSubmit onboarding",
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": "submit",
+          "label": "Save for later",
+          "width": 139,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "A",
+          "type": "",
+          "label": "Back to home",
+          "width": 117,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Basics\n\nDONE\n\nHow your coach should contact and identify you.",
+          "width": 210,
+          "height": 82,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "2\n\nGoals\n\nNEXT\n\nWhat you want to achieve and how success should feel.",
+          "width": 210,
+          "height": 98,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "3\n\nHistory\n\nNEXT\n\nYour current training context, access, and confidence.",
+          "width": 210,
+          "height": 98,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "4\n\nLimitations\n\nNEXT\n\nAnything your coach should protect around immediately.",
+          "width": 210,
+          "height": 98,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "5\n\nLifestyle\n\nNEXT\n\nThe routine constraints that shape your plan.",
+          "width": 210,
+          "height": 82,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Assessment\n\nDONE\n\nYour baseline metrics, markers, and progress photos.",
+          "width": 210,
+          "height": 98,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "7\n\nReview\n\nCURRENT\n\nCheck everything, then send it for PT review.",
+          "width": 210,
+          "height": 82,
+          "font": "16px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Back",
+          "width": 88,
+          "height": 44,
+          "font": "14px",
+          "disabled": false
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Submit onboarding",
+          "width": 150,
+          "height": 44,
+          "font": "14px",
+          "disabled": true
+        }
+      ]
+    }
+  ]
+}

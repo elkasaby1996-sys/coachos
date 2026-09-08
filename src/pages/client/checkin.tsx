@@ -1,3 +1,4 @@
+import { useRecordDraft } from "../../lib/record-drafts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -455,9 +456,7 @@ export function ClientCheckinPage() {
     if (!templateId) return null;
     const { data, error } = await supabase
       .from("checkin_templates")
-      .select(
-        "id, name, checkin_questions(id, question_text, prompt, question_type, response_type, type, input_type, options, is_required, sort_order, position)",
-      )
+      .select("id, name, checkin_questions(*)")
       .eq("id", templateId)
       .limit(1);
     if (error) throw error;
@@ -600,7 +599,12 @@ export function ClientCheckinPage() {
       clearLocalEditState();
       return;
     }
-    if (hydratedCheckinId === checkinId) return;
+    if (
+      hydratedCheckinId === checkinId ||
+      answersQuery.isLoading ||
+      photosQuery.isLoading
+    )
+      return;
 
     const hydratedAnswers: Record<string, QuestionValue> = {};
     (answersQuery.data ?? []).forEach((row) => {
@@ -658,55 +662,84 @@ export function ClientCheckinPage() {
     clearLocalEditState();
   }, [
     currentCheckin?.id,
+    answersQuery.isLoading,
+    photosQuery.isLoading,
     answersQuery.data,
     photosQuery.data,
     hydratedCheckinId,
     clearLocalEditState,
   ]);
 
+  const checkinDraft = useRecordDraft<{
+    answers: Record<string, QuestionValue>;
+    photos: Record<PhotoType, PhotoState>;
+  }>({
+    account: user?.id,
+    kind: "checkin",
+    record: currentCheckin?.id,
+    version: JSON.stringify(questions),
+    enabled:
+      !!currentCheckin &&
+      hydratedCheckinId === currentCheckin.id &&
+      !answersQuery.isLoading &&
+      !photosQuery.isLoading &&
+      !isSubmitted,
+    onRestore: (draft) => {
+      setAnswers(draft.answers);
+      setPhotos(
+        Object.fromEntries(
+          Object.entries(draft.photos).map(([type, photo]) => [
+            type,
+            {
+              ...photo,
+              previewUrl: photo.file
+                ? URL.createObjectURL(photo.file)
+                : photo.existingUrl,
+            },
+          ]),
+        ) as Record<PhotoType, PhotoState>,
+      );
+      markFormDirty();
+    },
+  });
   const handleAnswerChange = (questionId: string, value: QuestionValue) => {
     markFormDirty();
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    const next = { ...answers, [questionId]: value };
+    setAnswers(next);
+    checkinDraft.save({ answers: next, photos });
   };
-
   const handleFileChange = (type: PhotoType, file: File | null) => {
     markFormDirty();
-    setPhotos((prev) => {
-      const current = prev[type];
-      if (current.previewUrl && current.previewUrl.startsWith("blob:")) {
-        URL.revokeObjectURL(current.previewUrl);
-      }
-      return {
-        ...prev,
-        [type]: {
-          file,
-          previewUrl: file
-            ? URL.createObjectURL(file)
-            : (current.existingUrl ?? null),
-          existingUrl: current.existingUrl ?? null,
-          existingStoragePath: current.existingStoragePath ?? null,
-        },
-      };
-    });
+    const current = photos[type];
+    if (current.previewUrl?.startsWith("blob:"))
+      URL.revokeObjectURL(current.previewUrl);
+    const next = {
+      ...photos,
+      [type]: {
+        file,
+        previewUrl: file ? URL.createObjectURL(file) : current.existingUrl,
+        existingUrl: current.existingUrl,
+        existingStoragePath: current.existingStoragePath,
+      },
+    };
+    setPhotos(next);
+    checkinDraft.save({ answers, photos: next });
   };
-
   const handleRemovePhoto = (type: PhotoType) => {
     markFormDirty();
-    setPhotos((prev) => {
-      const current = prev[type];
-      if (current.previewUrl && current.previewUrl.startsWith("blob:")) {
-        URL.revokeObjectURL(current.previewUrl);
-      }
-      return {
-        ...prev,
-        [type]: {
-          file: null,
-          previewUrl: null,
-          existingUrl: null,
-          existingStoragePath: null,
-        },
-      };
-    });
+    if (photos[type].previewUrl?.startsWith("blob:"))
+      URL.revokeObjectURL(photos[type].previewUrl!);
+    const next = {
+      ...photos,
+      [type]: {
+        file: null,
+        previewUrl: null,
+        existingUrl: null,
+        existingStoragePath: null,
+      },
+    };
+    setPhotos(next);
+    checkinDraft.save({ answers, photos: next });
   };
 
   const handleSubmit = async () => {
@@ -729,29 +762,29 @@ export function ClientCheckinPage() {
     try {
       const { data: checkinRow, error: checkinError } = await supabase
         .from("checkins")
-        .upsert(
-          {
-            client_id: clientProfile.id,
-            week_ending_saturday: dueDate,
-            template_id: templateQuery.data.id,
-          },
-          { onConflict: "client_id,week_ending_saturday" },
-        )
         .select("*")
+        .eq("id", currentCheckin?.id ?? "")
+        .eq("client_id", clientProfile.id)
         .maybeSingle();
 
       if (checkinError || !checkinRow?.id) {
         throw checkinError ?? new Error("Unable to save check-in.");
       }
 
+      if (checkinRow.submitted_at || checkinRow.reviewed_at) {
+        await checkinQuery.refetch();
+        throw new Error(
+          "This check-in was already submitted. Your saved submission is shown.",
+        );
+      }
+
       const payload = questions
         .map((question) => {
           const value = answers[question.id] ?? {};
           const hasValue =
-            typeof value.text === "string"
-              ? value.text.trim().length > 0
-              : typeof value.number === "number" ||
-                typeof value.boolean === "boolean";
+            (typeof value.text === "string" && value.text.trim().length > 0) ||
+            typeof value.number === "number" ||
+            typeof value.boolean === "boolean";
           if (!hasValue) return null;
           return {
             checkin_id: checkinRow.id,
@@ -843,12 +876,17 @@ export function ClientCheckinPage() {
         .eq("id", checkinRow.id);
       if (submitError) throw submitError;
 
+      setSelectedCheckinId(checkinRow.id);
+      navigate(`/app/checkins?checkin=${checkinRow.id}`, { replace: true });
+      setStep(2);
+      await checkinDraft.clear();
       setToastVariant("success");
       setToastMessage("Check-in submitted.");
       clearLocalEditState();
       await checkinQuery.refetch();
       await answersQuery.refetch();
       await photosQuery.refetch();
+      setHydratedCheckinId(null);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to submit check-in.";
@@ -1174,6 +1212,31 @@ export function ClientCheckinPage() {
 
   return (
     <div className="portal-shell client-checkin-page">
+      {notificationTargetCheckinId &&
+        checkinQuery.isSuccess &&
+        !checkinRows.some((row) => row.id === notificationTargetCheckinId) && (
+          <div role="status" className="rounded-xl border p-4 text-sm">
+            That check-in is unavailable or you no longer have access to it.
+            Choose one of your available check-ins below.
+          </div>
+        )}
+      {checkinDraft.status && !isSubmitted && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-2 text-sm"
+        >
+          {checkinDraft.status}
+          <Button
+            variant="ghost"
+            onClick={async () => {
+              await checkinDraft.clear();
+              setHydratedCheckinId(null);
+            }}
+          >
+            Discard draft
+          </Button>
+        </div>
+      )}
       {toastMessage ? (
         <div className="fixed right-6 top-6 z-50 w-[260px]">
           <Alert tone={toastVariant === "error" ? "danger" : "success"}>
@@ -1655,6 +1718,7 @@ export function ClientCheckinPage() {
                               <Input
                                 className={compactInputClass}
                                 type="number"
+                                aria-label={getCheckinQuestionLabel(question)}
                                 value={
                                   typeof value.number === "number"
                                     ? value.number
@@ -1667,13 +1731,18 @@ export function ClientCheckinPage() {
                                       : null,
                                   })
                                 }
-                                disabled={isSubmitted}
+                                disabled={
+                                  isSubmitted ||
+                                  submitting ||
+                                  !checkinDraft.ready
+                                }
                               />
                             </div>
                           ) : type === "yes_no" ? (
                             <div className="grid gap-2 sm:grid-cols-2">
                               <Button
                                 type="button"
+                                aria-pressed={value.boolean === true}
                                 variant={
                                   value.boolean === true
                                     ? "default"
@@ -1684,12 +1753,17 @@ export function ClientCheckinPage() {
                                     boolean: true,
                                   })
                                 }
-                                disabled={isSubmitted}
+                                disabled={
+                                  isSubmitted ||
+                                  submitting ||
+                                  !checkinDraft.ready
+                                }
                               >
                                 Yes
                               </Button>
                               <Button
                                 type="button"
+                                aria-pressed={value.boolean === false}
                                 variant={
                                   value.boolean === false
                                     ? "default"
@@ -1700,7 +1774,11 @@ export function ClientCheckinPage() {
                                     boolean: false,
                                   })
                                 }
-                                disabled={isSubmitted}
+                                disabled={
+                                  isSubmitted ||
+                                  submitting ||
+                                  !checkinDraft.ready
+                                }
                               >
                                 No
                               </Button>
@@ -1711,6 +1789,7 @@ export function ClientCheckinPage() {
                                 {choiceOptions.map((option) => (
                                   <Button
                                     key={option}
+                                    aria-pressed={value.text === option}
                                     type="button"
                                     variant={
                                       value.text === option
@@ -1722,7 +1801,11 @@ export function ClientCheckinPage() {
                                         text: option,
                                       })
                                     }
-                                    disabled={isSubmitted}
+                                    disabled={
+                                      isSubmitted ||
+                                      submitting ||
+                                      !checkinDraft.ready
+                                    }
                                   >
                                     {option}
                                   </Button>
@@ -1741,36 +1824,46 @@ export function ClientCheckinPage() {
                                 Choose a score from {CHECKIN_SCALE_MIN} to{" "}
                                 {CHECKIN_SCALE_MAX}.
                               </div>
-                              <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-5 sm:grid-cols-10">
+                              <div
+                                role="radiogroup"
+                                aria-label={getCheckinQuestionLabel(question)}
+                                className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-5 sm:grid-cols-10"
+                              >
                                 {Array.from({
                                   length:
                                     CHECKIN_SCALE_MAX - CHECKIN_SCALE_MIN + 1,
                                 })
                                   .map((_, idx) => CHECKIN_SCALE_MIN + idx)
                                   .map((score) => (
-                                    <Button
+                                    <label
                                       key={score}
-                                      type="button"
-                                      size="sm"
-                                      variant={
-                                        value.number === score
-                                          ? "default"
-                                          : "secondary"
-                                      }
-                                      onClick={() =>
-                                        handleAnswerChange(question.id, {
-                                          number: score,
-                                        })
-                                      }
-                                      disabled={isSubmitted}
+                                      className="relative flex min-h-11 items-center justify-center rounded-lg border border-border has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring cursor-pointer"
                                     >
-                                      {score}
-                                    </Button>
+                                      <input
+                                        type="radio"
+                                        name={`score-${question.id}`}
+                                        aria-label={`${score}`}
+                                        checked={value.number === score}
+                                        disabled={
+                                          isSubmitted ||
+                                          submitting ||
+                                          !checkinDraft.ready
+                                        }
+                                        onChange={() =>
+                                          handleAnswerChange(question.id, {
+                                            number: score,
+                                          })
+                                        }
+                                        className="absolute inset-0 h-full w-full opacity-0 cursor-pointer"
+                                      />
+                                      <span aria-hidden="true">{score}</span>
+                                    </label>
                                   ))}
                               </div>
                             </div>
                           ) : (
                             <textarea
+                              aria-label={getCheckinQuestionLabel(question)}
                               className={`${compactInputClass} w-full`}
                               placeholder="Share details..."
                               value={value.text ?? ""}
@@ -1779,7 +1872,9 @@ export function ClientCheckinPage() {
                                   text: event.target.value,
                                 })
                               }
-                              disabled={isSubmitted}
+                              disabled={
+                                isSubmitted || submitting || !checkinDraft.ready
+                              }
                             />
                           )}
                         </div>
@@ -1906,7 +2001,9 @@ export function ClientCheckinPage() {
                               type="file"
                               accept="image/*"
                               className="hidden"
-                              disabled={isSubmitted}
+                              disabled={
+                                isSubmitted || submitting || !checkinDraft.ready
+                              }
                               onChange={(event) =>
                                 handleFileChange(
                                   slot.type,
@@ -1918,7 +2015,9 @@ export function ClientCheckinPage() {
                               asChild
                               variant="secondary"
                               size="sm"
-                              disabled={isSubmitted}
+                              disabled={
+                                isSubmitted || submitting || !checkinDraft.ready
+                              }
                             >
                               <span>
                                 {state.previewUrl ? "Replace" : "Upload"}
@@ -1930,7 +2029,9 @@ export function ClientCheckinPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRemovePhoto(slot.type)}
-                              disabled={isSubmitted}
+                              disabled={
+                                isSubmitted || submitting || !checkinDraft.ready
+                              }
                             >
                               Remove
                             </Button>

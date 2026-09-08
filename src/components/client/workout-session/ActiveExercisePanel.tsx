@@ -19,6 +19,12 @@ export type ActiveExercise = {
   videoUrl: string | null;
   previousLabel: string | null;
   weightUnit: string | null;
+  targets?: {
+    reps: string | number | null;
+    rpe: number | null;
+    tempo: string | null;
+    restSeconds: number | null;
+  };
   sets: SetState[];
 };
 
@@ -72,11 +78,44 @@ export function ActiveExercisePanel({
         ) : null
       }
     >
-      <div className="space-y-3">
+      <div className="space-y-4">
+        <dl
+          className="flex flex-wrap gap-x-5 gap-y-2 text-sm"
+          aria-label="Exercise targets"
+        >
+          <div>
+            <dt className="text-muted-foreground">Sets</dt>
+            <dd>{exercise.sets.length}</dd>
+          </div>
+          {exercise.targets?.reps != null && (
+            <div>
+              <dt className="text-muted-foreground">Target reps / duration</dt>
+              <dd>{exercise.targets.reps}</dd>
+            </div>
+          )}
+          {exercise.targets?.rpe != null && (
+            <div>
+              <dt className="text-muted-foreground">Target RPE</dt>
+              <dd>{exercise.targets.rpe}</dd>
+            </div>
+          )}
+          {exercise.targets?.tempo && (
+            <div>
+              <dt className="text-muted-foreground">Tempo</dt>
+              <dd>{exercise.targets.tempo}</dd>
+            </div>
+          )}
+          {exercise.targets?.restSeconds != null && (
+            <div>
+              <dt className="text-muted-foreground">Rest</dt>
+              <dd>{exercise.targets.restSeconds} seconds</dd>
+            </div>
+          )}
+        </dl>
         <ExerciseSetTable
           exercise={exercise}
           exerciseIndex={exerciseIndex}
-          canEdit={canEdit}
+          canEdit={canEdit && !isSaving}
           onSetChange={onSetChange}
           previousBySet={previousBySet}
         />
@@ -113,100 +152,75 @@ function ExerciseSetTable({
 }) {
   const unitLabel = exercise.weightUnit ?? "kg";
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <div className="grid grid-cols-[60px_1fr_120px_90px_90px_80px] gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground">
-        <span>Set</span>
-        <span>Previous</span>
-        <span>Weight</span>
-        <span>Reps</span>
-        <span>RPE</span>
-        <span>Done</span>
-      </div>
+    <div className="space-y-3">
       {exercise.sets.map((setItem, setIndex) => {
-        const isDone = setItem.is_completed;
         const previous = previousBySet.get(setIndex + 1);
-        const previousLabel =
-          previous &&
-          typeof previous.weight === "number" &&
-          typeof previous.reps === "number"
-            ? `${previous.weight}${unitLabel ? ` ${unitLabel}` : ""} x ${previous.reps}`
-            : "--";
+        const prefix = `${exercise.name}, set ${setIndex + 1}`;
         return (
-          <div
-            key={`${exercise.exerciseId}-${setIndex}`}
-            className={`grid grid-cols-[60px_1fr_120px_90px_90px_80px] items-center gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0 ${
-              isDone ? "opacity-60" : ""
-            }`}
+          <fieldset
+            key={`${exercise.id}-${setIndex}`}
+            className="min-w-0 rounded-xl border border-border p-3"
           >
-            <span className="text-xs font-semibold text-muted-foreground">
-              {setIndex + 1}
-            </span>
-            <span
-              className={`text-xs text-muted-foreground ${isDone ? "line-through" : ""}`}
-            >
-              {previousLabel}
-            </span>
-            <div className="flex items-center gap-2">
-              <input
-                className="h-8 w-full app-field px-2 text-sm"
-                type="number"
-                inputMode="decimal"
-                placeholder="0"
-                value={setItem.weight}
-                onChange={(event) =>
-                  onSetChange(
-                    exerciseIndex,
-                    setIndex,
-                    "weight",
-                    event.target.value,
-                  )
-                }
-                disabled={!canEdit}
-              />
-              <span className="text-xs text-muted-foreground">{unitLabel}</span>
+            <legend className="px-1 text-sm font-semibold">
+              Set {setIndex + 1}
+            </legend>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Previous:{" "}
+              {previous?.weight != null && previous.reps != null
+                ? `${previous.weight} ${unitLabel} × ${previous.reps}`
+                : "No previous set"}
+            </p>
+            <div className="grid min-w-0 grid-cols-2 gap-3">
+              {(
+                [
+                  ["weight", `Weight (${unitLabel})`],
+                  ["reps", "Reps"],
+                  ["rpe", "RPE (1–10)"],
+                ] as const
+              ).map(([field, label]) => (
+                <label key={field} className="grid min-w-0 gap-1 text-sm">
+                  {label}
+                  <input
+                    className="app-field min-h-11 w-full min-w-0 px-3 text-base"
+                    type="number"
+                    inputMode={field === "reps" ? "numeric" : "decimal"}
+                    aria-label={`${prefix}, ${label}`}
+                    min={field === "rpe" ? 1 : 0}
+                    max={field === "rpe" ? 10 : undefined}
+                    step={field === "reps" ? 1 : field === "rpe" ? 0.5 : "any"}
+                    value={setItem[field]}
+                    disabled={!canEdit}
+                    onChange={(event) =>
+                      onSetChange(
+                        exerciseIndex,
+                        setIndex,
+                        field,
+                        event.target.value,
+                      )
+                    }
+                  />
+                </label>
+              ))}
+              <label className="flex min-h-11 items-center gap-3 self-end text-sm">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5"
+                  aria-label={`${prefix}, Done`}
+                  checked={setItem.is_completed}
+                  disabled={!canEdit}
+                  onChange={(event) =>
+                    onSetChange(
+                      exerciseIndex,
+                      setIndex,
+                      "is_completed",
+                      event.target.checked,
+                    )
+                  }
+                />
+                Done
+              </label>
             </div>
-            <input
-              className="h-8 app-field px-2 text-sm"
-              type="number"
-              inputMode="numeric"
-              placeholder="0"
-              value={setItem.reps}
-              onChange={(event) =>
-                onSetChange(exerciseIndex, setIndex, "reps", event.target.value)
-              }
-              disabled={!canEdit}
-            />
-            <input
-              className="h-8 app-field px-2 text-sm"
-              type="number"
-              inputMode="decimal"
-              min={1}
-              max={10}
-              step="0.5"
-              placeholder="--"
-              value={setItem.rpe}
-              onChange={(event) =>
-                onSetChange(exerciseIndex, setIndex, "rpe", event.target.value)
-              }
-              disabled={!canEdit}
-            />
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={setItem.is_completed}
-                onChange={(event) =>
-                  onSetChange(
-                    exerciseIndex,
-                    setIndex,
-                    "is_completed",
-                    event.target.checked,
-                  )
-                }
-                disabled={!canEdit}
-              />
-              Done
-            </label>
-          </div>
+          </fieldset>
         );
       })}
     </div>

@@ -1,0 +1,49 @@
+{
+  "engine": "WebKit mobile emulation; reduced viewport is not a real on-screen keyboard",
+  "results": [
+    {
+      "route": "home",
+      "url": "/app/home",
+      "viewport": 375,
+      "scrollWidth": 375,
+      "body": "Message coach\nToday's workout\n\nLower Strength + Push\nCoach note\nFilm set 3 deadlifts from the side.\nScheduled\nStart workout\nToday's nutrition\n\nYour coach has not assigned a nutrition plan yet.\nCALORIES\n0 kcal\nPROTEIN\n0g\nCARBS\n0g\nFATS\n0g\nNo plan assigned\nOpen nutrition\nYour week\nSep 8 – Sep 14, 2026\n\n\n\nTue\n8\nLower Strength + Push\nScheduled\n\nWed\n9\nNo workout scheduled\nUnscheduled\n\nThu\n10\nNo workout scheduled\nUnscheduled\n\nFri\n11\nNo workout scheduled\nUnscheduled\n\nSat\n12\nNo workout scheduled\nUnscheduled\n\nSun\n13\nNo workout scheduled\nUnscheduled\n\nMon\n14\nNo workout scheduled\nUnscheduled\nDaily log\nRecord your nutrition, recovery, and activity.\n10/10 logged\nNutrition\n\nCalories\nProtein\nCarbs\nFats\nRecovery\n\nSleep\nEnergy\nHunger\nStress\nBody + activity\n\nWeight\nUnit\nkg\nlb\nSteps\nSave daily log\nOpen full log\nComplete your profile\n8/14 fields complete. Filling in the rest helps your coach tailor the plan.\nFinish profile\n"
+    },
+    {
+      "route": "checkins",
+      "url": "/app/checkins",
+      "viewport": 375,
+      "scrollWidth": 375,
+      "body": "Choose a check-in\nCheck-in form\nSat, Aug 29 • Overdue\n\n1\nQuestions\n\n2\nPhotos\n\n3\nReview\nWeekly questions\nShare the latest updates for this check-in period.\nHow would you rate recovery this week?\nRequired\nChoose a score from 1 to 10.\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\nBiggest win or blocker?\nRequired\n\n0/2 responses ready\nBack\nContinue\n"
+    },
+    {
+      "route": "settings?tab=profile",
+      "url": "/app/settings",
+      "viewport": 375,
+      "scrollWidth": 375,
+      "body": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nIdentity\nAvatar\nR\n\nFull name\n\nEmail\n\nPhone number\n\nPersonal details\nDate of birth\n\nGender\n\nFemale\nHeight\n\ncm\nWeight\n\nkg\nTimezone\n\n"
+    },
+    {
+      "route": "messages",
+      "url": "/app/messages",
+      "viewport": 375,
+      "scrollWidth": 375,
+      "body": "Inbox\n\n\nPortal Experience Review\nCalf is a little tight after the bike intervals.\ntoday\nPortal Experience Review\nCoach Portal Experience Review\nReview Coach · Coach\n09:11 AM\nGreat work on the first full week. Keep the easy run truly easy tomorrow.\nYou\n10:26 AM\nCalf is a little tight after the bike intervals. I logged notes.\nSend\n"
+    },
+    {
+      "test": "reduced viewport focused composer",
+      "inputRect": {
+        "top": 436,
+        "bottom": 480
+      },
+      "viewportHeight": 480,
+      "centerUncovered": false
+    },
+    {
+      "route": "workout-run/a9082026-a001-4000-8000-000000000901",
+      "url": "/app/workout-run/a9082026-a001-4000-8000-000000000901",
+      "viewport": 375,
+      "scrollWidth": 375,
+      "body": "In progress\nCOACH NOTE\nFilm set 3 deadlifts from the side.\nTotal sets logged: 1\nExercise / Superset\nTrap Bar Deadlift\nAdd 2.5 kg if bar speed stays clean.\nSet\nPrevious\nWeight\nReps\nRPE\nDone\n1\n--\n\nkg\n\nDone\n2\n--\n\nkg\n\nDone\n3\n--\n\nkg\n\nDone\n4\n--\n\nkg\n\nDone\nSave sets\nFinish workout\nSkip workout\nCoach notes\nMain lift, upper push, and trunk finisher.\nSession progress\n0/14 sets completed\n0%\nTrack progress as you go.\nRest timer\nStay on pace between sets.\n1:30\n90s default\nStart\nReset\n+30s\n-30s\nAuto-start on completed set\n"
+    }
+  ]
+}

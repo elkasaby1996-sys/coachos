@@ -110,7 +110,11 @@ export function NotificationItem({
         {!compact && showActionLabel ? (
           <span className="block text-xs text-muted-foreground">
             {hasAction
-              ? (notification.action_label ?? "Open update")
+              ? notification.entity_type === "assigned_workout"
+                ? notification.metadata?.day_type === "rest"
+                  ? "View rest day"
+                  : "View assignment"
+                : (notification.action_label ?? "Open update")
               : "For reference"}
           </span>
         ) : null}

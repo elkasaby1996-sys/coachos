@@ -1957,17 +1957,15 @@ export function PtClientDetailPage({
         )
         .eq("client_id", clientId ?? "")
         .order("week_ending_saturday", { ascending: false });
-      if (active !== "checkins") {
-        const { data, error } = await base.limit(6);
+      // Fetch every eligible record before filtering and counting the review queue.
+      const all: CheckinRow[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await base.range(offset, offset + 499);
         if (error) throw error;
-        return (data ?? []) as CheckinRow[];
+        all.push(...((data ?? []) as CheckinRow[]));
+        if ((data?.length ?? 0) < 500) break;
       }
-      const { data, error } = await base.range(
-        checkinsPage * checkinsPageSize,
-        checkinsPage * checkinsPageSize + checkinsPageSize - 1,
-      );
-      if (error) throw error;
-      return (data ?? []) as CheckinRow[];
+      return all;
     },
   });
 
@@ -1997,9 +1995,7 @@ export function PtClientDetailPage({
     () => (active === "checkins" ? checkinsList : (checkinsQuery.data ?? [])),
     [active, checkinsList, checkinsQuery.data],
   );
-  const checkinsCanLoadMore =
-    active === "checkins" &&
-    (checkinsQuery.data?.length ?? 0) === checkinsPageSize;
+  const checkinsCanLoadMore = false;
 
   const habitsQuery = useQuery({
     queryKey: ["pt-client-habits", clientId, habitsStart, habitsToday],
@@ -8318,6 +8314,8 @@ function PtClientCheckinsTab({
   onLoadMore: () => void;
   onReview: (checkin: CheckinRow) => void;
 }) {
+  const [view, setView] = useState("review");
+  const [visibleCount, setVisibleCount] = useState(12);
   const orderedRows = useMemo(() => {
     const priority = new Map([
       ["submitted", 0],
@@ -8358,6 +8356,14 @@ function PtClientCheckinsTab({
     [orderedRows, todayKey],
   );
 
+  const filteredRows = orderedRows.filter((row) =>
+    view === "review"
+      ? !!row.submitted_at && !row.reviewed_at
+      : view === "upcoming"
+        ? !row.submitted_at && String(row.week_ending_saturday) >= todayKey
+        : !!row.reviewed_at ||
+          (!row.submitted_at && String(row.week_ending_saturday) < todayKey),
+  );
   return (
     <Card className="border-border/70 bg-card/80 xl:col-start-1">
       <CardHeader>
@@ -8404,7 +8410,29 @@ function PtClientCheckinsTab({
             </div>
 
             <div className="space-y-3">
-              {orderedRows.map((checkin) => {
+              <div className="flex flex-wrap gap-2" aria-label="Check-in views">
+                {[
+                  ["review", "Needs review"],
+                  ["upcoming", "Upcoming"],
+                  ["history", "History"],
+                ].map(([value, label]) => (
+                  <Button
+                    key={value}
+                    variant={view === value ? "default" : "secondary"}
+                    aria-pressed={view === value}
+                    onClick={() => {
+                      setView(value ?? "review");
+                      setVisibleCount(12);
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              {!filteredRows.length && (
+                <p className="p-3 text-sm">No check-ins in this view.</p>
+              )}
+              {filteredRows.slice(0, visibleCount).map((checkin) => {
                 const status = getCheckinReviewState(checkin, todayKey);
                 const canReview =
                   status === "submitted" || status === "reviewed";
@@ -8493,6 +8521,14 @@ function PtClientCheckinsTab({
               })}
             </div>
 
+            {filteredRows.length > visibleCount && (
+              <Button
+                variant="secondary"
+                onClick={() => setVisibleCount((count) => count + 12)}
+              >
+                Load more
+              </Button>
+            )}
             {canLoadMore ? (
               <div className="flex justify-center pt-1">
                 <Button variant="secondary" size="sm" onClick={onLoadMore}>

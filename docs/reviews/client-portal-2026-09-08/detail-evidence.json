@@ -1,0 +1,294 @@
+[
+  {
+    "route": "nutrition/a9082026-a001-4000-8000-000000001301",
+    "width": 375,
+    "text": "Personal\nPlanned\nMeals\n\nMark meals as completed.\n\nReview lunch\n\nPending\nMeal details\n\nUpdate actual intake\n\nReview lunch\n\n600 cals / 40p / 65c / 20f\n\nMEAL COMPONENTS\n\nNo foods have been added to this meal yet.\n\nMark complete\nSave meal log\nSummary\n\nPlanned vs actual\n\nCompletion\n\n0/1 meals (0%)\n\nPlanned totals\n\n600 cals\n\n40p / 65c / 20f\n\nActual totals\n\n600 cals\n\n40p / 65c / 20f",
+    "inputs": [
+      {
+        "id": "",
+        "type": "checkbox",
+        "value": "on",
+        "labels": [
+          "Mark complete"
+        ],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "600",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "40",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "65",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "16px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "20",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "16px"
+      }
+    ]
+  },
+  {
+    "route": "progress",
+    "width": 375,
+    "text": "Last 4 weeks\nLast 8 weeks\nBody weight\n\nChanges since your submitted baseline and recent habit logs.\n\n67.9 lb\nAug 21\nSep 4\nSep 6\nSep 7\nSep 8\n0\n40\n80\n120\n160\nTraining volume\n\nWeight multiplied by reps, added across your logged sets.\n\n500 volume\n\nNot enough training-load data yet\n\nLog a couple of sessions with working sets and this chart will start to show useful changes.\nStart workout\nRecovery and activity\n\nYour logged sleep and daily steps.\n\nSleep hours\n\nSteps\n\nExercise changes\n\nExercises with the largest changes in logged performance.\n\nTrap Bar Deadlift\n\nCompare your first and most recent logged sets.\n\nWeight\n\n0.0 (0.0%)\n\nVolume\n\n0 (0.0%)\n\nProgress summary\n\nChanges over the selected period.\n\nBody weight change: -82.9 lb. Sleep change: -0.4 hrs. Steps changed by -1680. Latest logged training volume is 500.\n\nBased on your initial assessment, daily logs, and completed sets.\n\nWeight trend\n\n-82.9 lb\n\nSleep trend\n\n-0.4 hrs\n\nStep trend\n\n-1680",
+    "inputs": []
+  },
+  {
+    "route": "settings?tab=billing",
+    "width": 375,
+    "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nCurrent service\n\nProvider\n\nCoaching team\n\nService\n\nActive coaching relationship\n\nPrice\n\nNot yet connected\n\nNext billing date\n\nNot available\n\nBilling status\n\nStatus\n\nNot connected\nBilling is not connected. Payment details are not available here yet.\nInvoice history\n\nInvoice history will appear here once billing sync is connected.\n\nInvoice details are not available yet.\n\nPending\nPayment method\n\nSaved card\n\nNo payment method is connected.",
+    "inputs": []
+  },
+  {
+    "route": "settings?tab=notifications",
+    "width": 375,
+    "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nNotification delivery\n\nChannel defaults\n\nIn-app\n\nShow notifications in your app inbox.\n\nEmail\n\nSend a copy of important updates by email.\n\nPush\n\nMobile push support when enabled on your device.\n\nMessages\n\nCoach messages and lead replies\n\nGet notified when any conversation in your inbox receives a reply.\n\nTraining and Nutrition\n\nWorkout due today\n\nAlerts when new workout tasks are assigned to your account.\n\nPlan updates\n\nUpdates when your training or nutrition plan details change.\n\nWorkout, meal, and day reminders\n\nReminders for scheduled workouts, nutrition logging, and missed actions.\n\nProgress and check-ins\n\nCheck-in reminders\n\nReminders to complete a check-in for your coach.\n\nCheck-in confirmations\n\nUpdates when you submit a check-in or its status changes.\n\nActivity reminders\n\nReminders when you have been less active.\n\nProgress milestones\n\nGet updates about streaks and milestones.\n\nService\n\nCoach/service updates and billing reminders\n\nUpdates about your account and coaching service.",
+    "inputs": []
+  },
+  {
+    "route": "workouts",
+    "width": 375,
+    "text": "Create workout\nIn progress\n\nContinue a workout you have started.\n\nLower Strength + Push\n\nstrength\n\nIn progress\nCoach\nToday\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nResume workout\nToday\n\nWorkouts scheduled for today.\n\nNo workouts scheduled for today.\n\nUpcoming\n\nYour scheduled workouts and rest days.\n\nRest day\n\nPlanned\nCoach\nWed, Sep 9\n\nCoach note\n\nTake an easy walk if comfortable.\n\nReview personal workout\n\nWorkout\n\nPlanned\nPersonal\nThu, Sep 10\nStart workout\nEdit\nDelete\nRecently completed\n\nReview recent sessions and summaries.\n\nZone 4 Bike Intervals\n\nLogged 2 days ago\n\nCompleted\nCoach\nSun, Sep 6\n\nCoach note\n\nGreat pacing last week. Repeat before progressing.\n\nView summary\n\nShowing 1 of 1 completed workouts\n\nPrevious\nPage 1 of 1\nNext",
+    "inputs": []
+  },
+  {
+    "route": "nutrition/a9082026-a001-4000-8000-000000001301",
+    "width": 768,
+    "text": "Personal\nPlanned\nMeals\n\nMark meals as completed.\n\nReview lunch\n\nPending\nMeal details\n\nUpdate actual intake\n\nReview lunch\n\n600 cals / 40p / 65c / 20f\n\nMEAL COMPONENTS\n\nNo foods have been added to this meal yet.\n\nMark complete\nSave meal log\nSummary\n\nPlanned vs actual\n\nCompletion\n\n0/1 meals (0%)\n\nPlanned totals\n\n600 cals\n\n40p / 65c / 20f\n\nActual totals\n\n600 cals\n\n40p / 65c / 20f",
+    "inputs": [
+      {
+        "id": "",
+        "type": "checkbox",
+        "value": "on",
+        "labels": [
+          "Mark complete"
+        ],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "600",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "40",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "65",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "20",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      }
+    ]
+  },
+  {
+    "route": "progress",
+    "width": 768,
+    "text": "Last 4 weeks\nLast 8 weeks\nBody weight\n\nChanges since your submitted baseline and recent habit logs.\n\n67.9 lb\nAug 21\nSep 4\nSep 6\nSep 7\nSep 8\n0\n40\n80\n120\n160\nTraining volume\n\nWeight multiplied by reps, added across your logged sets.\n\n500 volume\n\nNot enough training-load data yet\n\nLog a couple of sessions with working sets and this chart will start to show useful changes.\nStart workout\nRecovery and activity\n\nYour logged sleep and daily steps.\n\nSleep hours\n\nSteps\n\nExercise changes\n\nExercises with the largest changes in logged performance.\n\nTrap Bar Deadlift\n\nCompare your first and most recent logged sets.\n\nWeight\n\n0.0 (0.0%)\n\nVolume\n\n0 (0.0%)\n\nProgress summary\n\nChanges over the selected period.\n\nBody weight change: -82.9 lb. Sleep change: -0.4 hrs. Steps changed by -1680. Latest logged training volume is 500.\n\nBased on your initial assessment, daily logs, and completed sets.\n\nWeight trend\n\n-82.9 lb\n\nSleep trend\n\n-0.4 hrs\n\nStep trend\n\n-1680",
+    "inputs": []
+  },
+  {
+    "route": "settings?tab=billing",
+    "width": 768,
+    "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nCurrent service\n\nProvider\n\nCoaching team\n\nService\n\nActive coaching relationship\n\nPrice\n\nNot yet connected\n\nNext billing date\n\nNot available\n\nBilling status\n\nStatus\n\nNot connected\nBilling is not connected. Payment details are not available here yet.\nInvoice history\n\nInvoice history will appear here once billing sync is connected.\n\nInvoice details are not available yet.\n\nPending\nPayment method\n\nSaved card\n\nNo payment method is connected.",
+    "inputs": []
+  },
+  {
+    "route": "settings?tab=notifications",
+    "width": 768,
+    "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nNotification delivery\n\nChannel defaults\n\nIn-app\n\nShow notifications in your app inbox.\n\nEmail\n\nSend a copy of important updates by email.\n\nPush\n\nMobile push support when enabled on your device.\n\nMessages\n\nCoach messages and lead replies\n\nGet notified when any conversation in your inbox receives a reply.\n\nTraining and Nutrition\n\nWorkout due today\n\nAlerts when new workout tasks are assigned to your account.\n\nPlan updates\n\nUpdates when your training or nutrition plan details change.\n\nWorkout, meal, and day reminders\n\nReminders for scheduled workouts, nutrition logging, and missed actions.\n\nProgress and check-ins\n\nCheck-in reminders\n\nReminders to complete a check-in for your coach.\n\nCheck-in confirmations\n\nUpdates when you submit a check-in or its status changes.\n\nActivity reminders\n\nReminders when you have been less active.\n\nProgress milestones\n\nGet updates about streaks and milestones.\n\nService\n\nCoach/service updates and billing reminders\n\nUpdates about your account and coaching service.",
+    "inputs": []
+  },
+  {
+    "route": "workouts",
+    "width": 768,
+    "text": "Create workout\nIn progress\n\nContinue a workout you have started.\n\nLower Strength + Push\n\nstrength\n\nIn progress\nCoach\nToday\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nResume workout\nToday\n\nWorkouts scheduled for today.\n\nNo workouts scheduled for today.\n\nUpcoming\n\nYour scheduled workouts and rest days.\n\nRest day\n\nPlanned\nCoach\nWed, Sep 9\n\nCoach note\n\nTake an easy walk if comfortable.\n\nReview personal workout\n\nWorkout\n\nPlanned\nPersonal\nThu, Sep 10\nStart workout\nEdit\nDelete\nRecently completed\n\nReview recent sessions and summaries.\n\nZone 4 Bike Intervals\n\nLogged 2 days ago\n\nCompleted\nCoach\nSun, Sep 6\n\nCoach note\n\nGreat pacing last week. Repeat before progressing.\n\nView summary\n\nShowing 1 of 1 completed workouts\n\nPrevious\nPage 1 of 1\nNext",
+    "inputs": []
+  },
+  {
+    "route": "nutrition/a9082026-a001-4000-8000-000000001301",
+    "width": 1024,
+    "text": "Personal\nPlanned\nMeals\n\nMark meals as completed.\n\nReview lunch\n\nPending\nMeal details\n\nUpdate actual intake\n\nReview lunch\n\n600 cals / 40p / 65c / 20f\n\nMEAL COMPONENTS\n\nNo foods have been added to this meal yet.\n\nMark complete\nSave meal log\nSummary\n\nPlanned vs actual\n\nCompletion\n\n0/1 meals (0%)\n\nPlanned totals\n\n600 cals\n\n40p / 65c / 20f\n\nActual totals\n\n600 cals\n\n40p / 65c / 20f",
+    "inputs": [
+      {
+        "id": "",
+        "type": "checkbox",
+        "value": "on",
+        "labels": [
+          "Mark complete"
+        ],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "600",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "40",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "65",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "20",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      }
+    ]
+  },
+  {
+    "route": "progress",
+    "width": 1024,
+    "text": "Last 4 weeks\nLast 8 weeks\nBody weight\n\nChanges since your submitted baseline and recent habit logs.\n\n67.9 lb\nAug 21\nSep 4\nSep 6\nSep 7\nSep 8\n0\n40\n80\n120\n160\nTraining volume\n\nWeight multiplied by reps, added across your logged sets.\n\n500 volume\n\nNot enough training-load data yet\n\nLog a couple of sessions with working sets and this chart will start to show useful changes.\nStart workout\nRecovery and activity\n\nYour logged sleep and daily steps.\n\nSleep hours\n\nSteps\n\nExercise changes\n\nExercises with the largest changes in logged performance.\n\nTrap Bar Deadlift\n\nCompare your first and most recent logged sets.\n\nWeight\n\n0.0 (0.0%)\n\nVolume\n\n0 (0.0%)\n\nProgress summary\n\nChanges over the selected period.\n\nBody weight change: -82.9 lb. Sleep change: -0.4 hrs. Steps changed by -1680. Latest logged training volume is 500.\n\nBased on your initial assessment, daily logs, and completed sets.\n\nWeight trend\n\n-82.9 lb\n\nSleep trend\n\n-0.4 hrs\n\nStep trend\n\n-1680",
+    "inputs": []
+  },
+  {
+    "route": "settings?tab=billing",
+    "width": 1024,
+    "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nCurrent service\n\nProvider\n\nCoaching team\n\nService\n\nActive coaching relationship\n\nPrice\n\nNot yet connected\n\nNext billing date\n\nNot available\n\nBilling status\n\nStatus\n\nNot connected\nBilling is not connected. Payment details are not available here yet.\nInvoice history\n\nInvoice history will appear here once billing sync is connected.\n\nInvoice details are not available yet.\n\nPending\nPayment method\n\nSaved card\n\nNo payment method is connected.",
+    "inputs": []
+  },
+  {
+    "route": "settings?tab=notifications",
+    "width": 1024,
+    "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nNotification delivery\n\nChannel defaults\n\nIn-app\n\nShow notifications in your app inbox.\n\nEmail\n\nSend a copy of important updates by email.\n\nPush\n\nMobile push support when enabled on your device.\n\nMessages\n\nCoach messages and lead replies\n\nGet notified when any conversation in your inbox receives a reply.\n\nTraining and Nutrition\n\nWorkout due today\n\nAlerts when new workout tasks are assigned to your account.\n\nPlan updates\n\nUpdates when your training or nutrition plan details change.\n\nWorkout, meal, and day reminders\n\nReminders for scheduled workouts, nutrition logging, and missed actions.\n\nProgress and check-ins\n\nCheck-in reminders\n\nReminders to complete a check-in for your coach.\n\nCheck-in confirmations\n\nUpdates when you submit a check-in or its status changes.\n\nActivity reminders\n\nReminders when you have been less active.\n\nProgress milestones\n\nGet updates about streaks and milestones.\n\nService\n\nCoach/service updates and billing reminders\n\nUpdates about your account and coaching service.",
+    "inputs": []
+  },
+  {
+    "route": "workouts",
+    "width": 1024,
+    "text": "Create workout\nIn progress\n\nContinue a workout you have started.\n\nLower Strength + Push\n\nstrength\n\nIn progress\nCoach\nToday\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nResume workout\nToday\n\nWorkouts scheduled for today.\n\nNo workouts scheduled for today.\n\nUpcoming\n\nYour scheduled workouts and rest days.\n\nRest day\n\nPlanned\nCoach\nWed, Sep 9\n\nCoach note\n\nTake an easy walk if comfortable.\n\nReview personal workout\n\nWorkout\n\nPlanned\nPersonal\nThu, Sep 10\nStart workout\nEdit\nDelete\nRecently completed\n\nReview recent sessions and summaries.\n\nZone 4 Bike Intervals\n\nLogged 2 days ago\n\nCompleted\nCoach\nSun, Sep 6\n\nCoach note\n\nGreat pacing last week. Repeat before progressing.\n\nView summary\n\nShowing 1 of 1 completed workouts\n\nPrevious\nPage 1 of 1\nNext",
+    "inputs": []
+  },
+  {
+    "route": "nutrition/a9082026-a001-4000-8000-000000001301",
+    "width": 1440,
+    "text": "Personal\nPlanned\nMeals\n\nMark meals as completed.\n\nReview lunch\n\nPending\nMeal details\n\nUpdate actual intake\n\nReview lunch\n\n600 cals / 40p / 65c / 20f\n\nMEAL COMPONENTS\n\nNo foods have been added to this meal yet.\n\nMark complete\nSave meal log\nSummary\n\nPlanned vs actual\n\nCompletion\n\n0/1 meals (0%)\n\nPlanned totals\n\n600 cals\n\n40p / 65c / 20f\n\nActual totals\n\n600 cals\n\n40p / 65c / 20f",
+    "inputs": [
+      {
+        "id": "",
+        "type": "checkbox",
+        "value": "on",
+        "labels": [
+          "Mark complete"
+        ],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "600",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "40",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "65",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      },
+      {
+        "id": "",
+        "type": "text",
+        "value": "20",
+        "labels": [],
+        "ariaLabel": null,
+        "font": "14px"
+      }
+    ]
+  },
+  {
+    "route": "progress",
+    "width": 1440,
+    "text": "Last 4 weeks\nLast 8 weeks\nBody weight\n\nChanges since your submitted baseline and recent habit logs.\n\n67.9 lb\nAug 21\nSep 4\nSep 6\nSep 7\nSep 8\n0\n40\n80\n120\n160\nTraining volume\n\nWeight multiplied by reps, added across your logged sets.\n\n500 volume\n\nNot enough training-load data yet\n\nLog a couple of sessions with working sets and this chart will start to show useful changes.\nStart workout\nRecovery and activity\n\nYour logged sleep and daily steps.\n\nSleep hours\n\nSteps\n\nExercise changes\n\nExercises with the largest changes in logged performance.\n\nTrap Bar Deadlift\n\nCompare your first and most recent logged sets.\n\nWeight\n\n0.0 (0.0%)\n\nVolume\n\n0 (0.0%)\n\nProgress summary\n\nChanges over the selected period.\n\nBody weight change: -82.9 lb. Sleep change: -0.4 hrs. Steps changed by -1680. Latest logged training volume is 500.\n\nBased on your initial assessment, daily logs, and completed sets.\n\nWeight trend\n\n-82.9 lb\n\nSleep trend\n\n-0.4 hrs\n\nStep trend\n\n-1680",
+    "inputs": []
+  },
+  {
+    "route": "settings?tab=billing",
+    "width": 1440,
+    "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nCurrent service\n\nProvider\n\nCoaching team\n\nService\n\nActive coaching relationship\n\nPrice\n\nNot yet connected\n\nNext billing date\n\nNot available\n\nBilling status\n\nStatus\n\nNot connected\nBilling is not connected. Payment details are not available here yet.\nInvoice history\n\nInvoice history will appear here once billing sync is connected.\n\nInvoice details are not available yet.\n\nPending\nPayment method\n\nSaved card\n\nNo payment method is connected.",
+    "inputs": []
+  },
+  {
+    "route": "settings?tab=notifications",
+    "width": 1440,
+    "text": "Profile\nPreferences\nNotifications\nPrivacy & Security\nBilling\nNotification delivery\n\nChannel defaults\n\nIn-app\n\nShow notifications in your app inbox.\n\nEmail\n\nSend a copy of important updates by email.\n\nPush\n\nMobile push support when enabled on your device.\n\nMessages\n\nCoach messages and lead replies\n\nGet notified when any conversation in your inbox receives a reply.\n\nTraining and Nutrition\n\nWorkout due today\n\nAlerts when new workout tasks are assigned to your account.\n\nPlan updates\n\nUpdates when your training or nutrition plan details change.\n\nWorkout, meal, and day reminders\n\nReminders for scheduled workouts, nutrition logging, and missed actions.\n\nProgress and check-ins\n\nCheck-in reminders\n\nReminders to complete a check-in for your coach.\n\nCheck-in confirmations\n\nUpdates when you submit a check-in or its status changes.\n\nActivity reminders\n\nReminders when you have been less active.\n\nProgress milestones\n\nGet updates about streaks and milestones.\n\nService\n\nCoach/service updates and billing reminders\n\nUpdates about your account and coaching service.",
+    "inputs": []
+  },
+  {
+    "route": "workouts",
+    "width": 1440,
+    "text": "Create workout\nIn progress\n\nContinue a workout you have started.\n\nLower Strength + Push\n\nstrength\n\nIn progress\nCoach\nToday\n\nCoach note\n\nFilm set 3 deadlifts from the side.\n\nResume workout\nToday\n\nWorkouts scheduled for today.\n\nNo workouts scheduled for today.\n\nUpcoming\n\nYour scheduled workouts and rest days.\n\nRest day\n\nPlanned\nCoach\nWed, Sep 9\n\nCoach note\n\nTake an easy walk if comfortable.\n\nReview personal workout\n\nWorkout\n\nPlanned\nPersonal\nThu, Sep 10\nStart workout\nEdit\nDelete\nRecently completed\n\nReview recent sessions and summaries.\n\nZone 4 Bike Intervals\n\nLogged 2 days ago\n\nCompleted\nCoach\nSun, Sep 6\n\nCoach note\n\nGreat pacing last week. Repeat before progressing.\n\nView summary\n\nShowing 1 of 1 completed workouts\n\nPrevious\nPage 1 of 1\nNext",
+    "inputs": []
+  }
+]

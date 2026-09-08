@@ -1,0 +1,173 @@
+[
+  {
+    "test": "unsaved workout navigation",
+    "valueAfterReturn": "",
+    "navigationWarnings": []
+  },
+  {
+    "test": "failed workout save",
+    "draft": "112",
+    "error": [
+      "ErrorTypeError: Failed to fetch (127.0.0.1:54321)"
+    ]
+  },
+  {
+    "test": "failed workout save then refresh",
+    "value": ""
+  },
+  {
+    "test": "saved workout refresh",
+    "weight": "100",
+    "reps": "5"
+  },
+  {
+    "test": "workout fields visible",
+    "width": 375,
+    "fields": [
+      {
+        "value": "100",
+        "x": 134.234375,
+        "right": 233.96875,
+        "width": 99.734375,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": false
+      },
+      {
+        "value": "5",
+        "x": 262.234375,
+        "right": 352.234375,
+        "width": 90,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": true
+      },
+      {
+        "value": "",
+        "x": 360.234375,
+        "right": 450.234375,
+        "width": 90,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": true
+      }
+    ]
+  },
+  {
+    "test": "workout fields visible",
+    "width": 768,
+    "fields": [
+      {
+        "value": "100",
+        "x": 302,
+        "right": 401.734375,
+        "width": 99.734375,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": false
+      },
+      {
+        "value": "5",
+        "x": 430,
+        "right": 520,
+        "width": 90,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": false
+      },
+      {
+        "value": "",
+        "x": 528,
+        "right": 618,
+        "width": 90,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": false
+      }
+    ]
+  },
+  {
+    "test": "workout fields visible",
+    "width": 1024,
+    "fields": [
+      {
+        "value": "100",
+        "x": 558,
+        "right": 657.734375,
+        "width": 99.734375,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": false
+      },
+      {
+        "value": "5",
+        "x": 686,
+        "right": 776,
+        "width": 90,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": false
+      },
+      {
+        "value": "",
+        "x": 784,
+        "right": 874,
+        "width": 90,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": false
+      }
+    ]
+  },
+  {
+    "test": "workout fields visible",
+    "width": 1440,
+    "fields": [
+      {
+        "value": "100",
+        "x": 620,
+        "right": 719.734375,
+        "width": 99.734375,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": false
+      },
+      {
+        "value": "5",
+        "x": 748,
+        "right": 838,
+        "width": 90,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": false
+      },
+      {
+        "value": "",
+        "x": 846,
+        "right": 936,
+        "width": 90,
+        "font": "14px",
+        "accessibleName": null,
+        "clipped": false
+      }
+    ]
+  },
+  {
+    "test": "unsaved checkin navigation",
+    "answer": "",
+    "warnings": []
+  },
+  {
+    "test": "unsaved checkin refresh",
+    "answer": "",
+    "warnings": []
+  },
+  {
+    "test": "unsent message navigation",
+    "draft": ""
+  },
+  {
+    "test": "unsent message refresh",
+    "draft": ""
+  }
+]

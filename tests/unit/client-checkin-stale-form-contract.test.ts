@@ -49,9 +49,7 @@ describe("client check-in stale form contract", () => {
     );
     expect(clientCheckinPage).toContain("fetchDirectFormDefinitionSignature");
     expect(clientCheckinPage).toContain('.from("checkin_templates")');
-    expect(clientCheckinPage).toContain(
-      "id, name, checkin_questions(id, question_text, prompt, question_type, response_type, type, input_type, options, is_required, sort_order, position)",
-    );
+    expect(clientCheckinPage).toContain("id, name, checkin_questions(*)");
     expect(clientCheckinPage).toContain(
       'queryKey: ["client-checkin-form-definition-signature", templateId]',
     );

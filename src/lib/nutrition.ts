@@ -1,3 +1,4 @@
+import { hydrateNutritionAssignmentContext } from "./nutrition-assignment-context";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "./supabase";
@@ -376,6 +377,7 @@ export function useAssignedNutritionDay(assignedDayId: string | null) {
         .eq("id", assignedDayId ?? "")
         .maybeSingle();
       if (error) throw error;
+      await hydrateNutritionAssignmentContext(data?.plan);
       return (data ?? null) as AssignedNutritionDay | null;
     },
   });

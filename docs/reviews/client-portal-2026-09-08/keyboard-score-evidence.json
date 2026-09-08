@@ -1,0 +1,7 @@
+{
+  "text": "8",
+  "ariaPressed": null,
+  "ariaChecked": null,
+  "role": null,
+  "className": "inline-flex min-h-[2.75rem] select-none items-center justify-center gap-2 whitespace-nowrap rounded-2xl border font-medium tracking-tight transition-[background-color,border-color,color,box-shadow,transform] duration-200 will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:hover:-translate-y-[1px] active:scale-[0.99] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 disabled:transform-none ring-offset-background border-primary/40 bg-primary text-primary-foreground shadow-[0_10px_30px_-18px_oklch(var(--accent)/0.6)] hover:border-primary/50 hover:bg-[oklch(var(--accent-hover))] focus-visible:shadow-[0_0_0_1px_oklch(var(--ring)/0.4),0_0_0_4px_oklch(var(--ring)/0.18)] h-9 px-3.5 text-[13px]"
+}

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { useRecordDraft } from "../../lib/record-drafts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { gsap } from "gsap";
@@ -247,7 +248,7 @@ export function ClientWorkoutRunPage() {
       const { data: assignedWorkout, error: assignedError } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, coach_note, workout_template:workout_templates(id, name, workout_type_tag, description)",
+          "id, status, day_type, scheduled_date, coach_note, workout_template:workout_templates(id, name, workout_type_tag, description)",
         )
         .eq("client_id", clientId)
         .eq("id", workoutId)
@@ -463,6 +464,16 @@ export function ClientWorkoutRunPage() {
     },
   });
 
+  const workoutDirty = useRef(false);
+  const dirtyExerciseIds = useRef(new Set<string>());
+  const [setsSavedMessage, setSetsSavedMessage] = useState("");
+  useEffect(() => {
+    workoutDirty.current = false;
+    dirtyExerciseIds.current.clear();
+  }, [workoutId]);
+  const [draftHydratedWorkout, setDraftHydratedWorkout] = useState<
+    string | null
+  >(null);
   const [exercises, setExercises] = useState<ExerciseState[]>([]);
 
   const exerciseById = useMemo(() => {
@@ -545,11 +556,18 @@ export function ClientWorkoutRunPage() {
         notes: row.notes ?? null,
         videoUrl: row.video_url ?? exerciseRelation?.video_url ?? null,
         previousLabel,
+        targets: {
+          reps: row.reps ?? null,
+          rpe: row.rpe ?? null,
+          tempo: row.tempo ?? null,
+          restSeconds: row.rest_seconds ?? null,
+        },
         weightUnit: unit,
         sets,
       };
     });
-    setExercises(next);
+    if (!workoutDirty.current) setExercises(next);
+    setDraftHydratedWorkout(workoutId);
   }, [
     assignedExercisesQuery.data,
     setLogsQuery.data,
@@ -605,23 +623,75 @@ export function ClientWorkoutRunPage() {
     historicalLogsQuery.error,
   ].filter(Boolean);
 
+  const workoutDraft = useRecordDraft<{
+    exercises: ActiveExercise[];
+    finishNotes: string;
+  }>({
+    account: session?.user.id,
+    kind: "workout",
+    record: workoutSession?.id,
+    version: JSON.stringify(
+      exercises.map((item) => [item.id, item.sets.length]),
+    ),
+    enabled:
+      draftHydratedWorkout === workoutId &&
+      !!workoutSession &&
+      !workoutSession.id.startsWith("pending:") &&
+      !workoutSession.completed_at &&
+      !assignedExercisesQuery.isLoading &&
+      !setLogsQuery.isLoading &&
+      !exercisesQuery.isLoading,
+    onRestore: (draft) => {
+      workoutDirty.current = true;
+      dirtyExerciseIds.current = new Set(
+        draft.exercises.map((item) => item.id),
+      );
+      setExercises((current) =>
+        current.map((item) =>
+          draft.exercises.find((saved) => saved.id === item.id)
+            ? {
+                ...item,
+                sets: draft.exercises.find((saved) => saved.id === item.id)!
+                  .sets,
+              }
+            : item,
+        ),
+      );
+      setFinishNotes(draft.finishNotes);
+    },
+  });
+  const discardWorkoutDraft = async () => {
+    await workoutDraft.clear();
+    workoutDirty.current = false;
+    dirtyExerciseIds.current.clear();
+    setFinishNotes("");
+    await setLogsQuery.refetch();
+  };
+
   const handleSetChange = (
     exerciseIndex: number,
     setIndex: number,
     field: keyof SetState,
     value: string | boolean,
   ) => {
-    setExercises((prev) =>
-      prev.map((exercise, exIdx) => {
-        if (exIdx !== exerciseIndex) return exercise;
-        return {
-          ...exercise,
-          sets: exercise.sets.map((setItem, setIdx) =>
-            setIdx === setIndex ? { ...setItem, [field]: value } : setItem,
-          ),
-        };
-      }),
+    workoutDirty.current = true;
+    const next = exercises.map((exercise, exIdx) =>
+      exIdx !== exerciseIndex
+        ? exercise
+        : {
+            ...exercise,
+            sets: exercise.sets.map((item, index) =>
+              index === setIndex ? { ...item, [field]: value } : item,
+            ),
+          },
     );
+    dirtyExerciseIds.current.add(exercises[exerciseIndex].id);
+    setSetsSavedMessage("");
+    setExercises(next);
+    workoutDraft.save({
+      exercises: next.filter((item) => dirtyExerciseIds.current.has(item.id)),
+      finishNotes,
+    });
   };
 
   const handleStartWorkout = async () => {
@@ -733,6 +803,17 @@ export function ClientWorkoutRunPage() {
     }
   };
 
+  const acknowledgeSavedExercises = async (ids: string[]) => {
+    ids.forEach((id) => dirtyExerciseIds.current.delete(id));
+    const remaining = exercises.filter((item) =>
+      dirtyExerciseIds.current.has(item.id),
+    );
+    if (remaining.length || finishNotes.trim())
+      workoutDraft.save({ exercises: remaining, finishNotes });
+    else await workoutDraft.clear();
+    setSetsSavedMessage("Sets saved. Your coach can see these entries.");
+  };
+
   const handleSaveExercise = async (exerciseIndex: number) => {
     if (!workoutSession?.id) return;
     const exercise = exercises[exerciseIndex];
@@ -741,7 +822,8 @@ export function ClientWorkoutRunPage() {
 
     try {
       await saveExerciseSets(exercise, workoutSession.id);
-      syncWorkoutLogsCache(workoutSession.id, exercises);
+      await acknowledgeSavedExercises([exercise.id]);
+      await setLogsQuery.refetch();
     } catch (error) {
       setSaveError(getErrorMessage(error));
     } finally {
@@ -757,7 +839,10 @@ export function ClientWorkoutRunPage() {
       for (const exerciseIndex of exerciseIndexes) {
         await saveExerciseSets(exercises[exerciseIndex], workoutSession.id);
       }
-      syncWorkoutLogsCache(workoutSession.id, exercises);
+      await acknowledgeSavedExercises(
+        exerciseIndexes.map((index) => exercises[index].id),
+      );
+      await setLogsQuery.refetch();
     } catch (error) {
       setSaveError(getErrorMessage(error));
     } finally {
@@ -811,6 +896,7 @@ export function ClientWorkoutRunPage() {
         },
       );
 
+      await workoutDraft.clear();
       setFinishStatus("success");
       setFinishOpen(false);
       setCompletionCelebrationOpen(true);
@@ -1181,6 +1267,20 @@ export function ClientWorkoutRunPage() {
             </Card>
           ) : null}
 
+          {setsSavedMessage && (
+            <p role="status" className="text-sm">
+              {setsSavedMessage}
+            </p>
+          )}
+          {workoutDraft.status && (
+            <div role="status" className="text-sm p-3">
+              {workoutDraft.status}
+              <Button variant="ghost" onClick={discardWorkoutDraft}>
+                Discard draft
+              </Button>
+            </div>
+          )}
+
           {exercises.length > 0 ? (
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
               <div className="xl:col-span-3">
@@ -1215,7 +1315,7 @@ export function ClientWorkoutRunPage() {
                   <ActiveExercisePanel
                     exercise={activeSingle.exercise}
                     exerciseIndex={activeSingle.exerciseIndex}
-                    canEdit={Boolean(workoutSession)}
+                    canEdit={Boolean(workoutSession) && workoutDraft.ready}
                     isSaving={saveIndex === activeSingle.exerciseIndex}
                     onSave={() =>
                       handleSaveExercise(activeSingle.exerciseIndex)
@@ -1228,7 +1328,7 @@ export function ClientWorkoutRunPage() {
                   />
                 ) : activeBlock && activeBlock.items.length > 1 ? (
                   <Card className="rounded-xl border-[var(--module-checkins-border)] bg-[var(--module-checkins-bg-soft)]">
-                    <CardHeader className="flex flex-row items-center justify-between">
+                    <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
                       <CardTitle>
                         Superset {activeBlock.supersetGroup}:{" "}
                         {activeBlock.items
@@ -1250,120 +1350,21 @@ export function ClientWorkoutRunPage() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       {activeBlock.items.map((item) => (
-                        <div
-                          key={`${activeBlock.blockId}-${item.exercise.exerciseId}`}
-                          className="space-y-2 rounded-lg border border-border/70 bg-background/50 p-3"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold">
-                              {item.exercise.name}
-                            </p>
-                            {item.exercise.videoUrl ? (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() =>
-                                  window.open(
-                                    item.exercise.videoUrl ?? "",
-                                    "_blank",
-                                  )
-                                }
-                              >
-                                Watch demo
-                              </Button>
-                            ) : null}
-                          </div>
-                          <div className="space-y-2">
-                            {item.exercise.sets.map((setItem, setIndex) => {
-                              const previous = previousMap
-                                .get(item.exercise.exerciseId)
-                                ?.get(setIndex + 1);
-                              const previousLabel =
-                                previous &&
-                                typeof previous.weight === "number" &&
-                                typeof previous.reps === "number"
-                                  ? `${previous.weight}${item.exercise.weightUnit ? ` ${item.exercise.weightUnit}` : ""} x ${previous.reps}`
-                                  : "--";
-                              return (
-                                <div
-                                  key={`${item.exercise.exerciseId}-${setIndex}`}
-                                  className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-[70px_1fr_110px_90px_90px_80px]"
-                                >
-                                  <div className="text-xs font-semibold text-muted-foreground">
-                                    Set {setIndex + 1}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {previousLabel}
-                                  </div>
-                                  <input
-                                    className="h-9 app-field px-2 text-sm"
-                                    type="number"
-                                    inputMode="decimal"
-                                    placeholder="Weight"
-                                    value={setItem.weight}
-                                    onChange={(event) =>
-                                      handleSetChange(
-                                        item.exerciseIndex,
-                                        setIndex,
-                                        "weight",
-                                        event.target.value,
-                                      )
-                                    }
-                                    disabled={!workoutSession}
-                                  />
-                                  <input
-                                    className="h-9 app-field px-2 text-sm"
-                                    type="number"
-                                    inputMode="numeric"
-                                    placeholder="Reps"
-                                    value={setItem.reps}
-                                    onChange={(event) =>
-                                      handleSetChange(
-                                        item.exerciseIndex,
-                                        setIndex,
-                                        "reps",
-                                        event.target.value,
-                                      )
-                                    }
-                                    disabled={!workoutSession}
-                                  />
-                                  <input
-                                    className="h-9 app-field px-2 text-sm"
-                                    type="number"
-                                    inputMode="decimal"
-                                    placeholder="RPE"
-                                    value={setItem.rpe}
-                                    onChange={(event) =>
-                                      handleSetChange(
-                                        item.exerciseIndex,
-                                        setIndex,
-                                        "rpe",
-                                        event.target.value,
-                                      )
-                                    }
-                                    disabled={!workoutSession}
-                                  />
-                                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <input
-                                      type="checkbox"
-                                      checked={setItem.is_completed}
-                                      onChange={(event) =>
-                                        handleSetChange(
-                                          item.exerciseIndex,
-                                          setIndex,
-                                          "is_completed",
-                                          event.target.checked,
-                                        )
-                                      }
-                                      disabled={!workoutSession}
-                                    />
-                                    Done
-                                  </label>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
+                        <ActiveExercisePanel
+                          key={item.exercise.id}
+                          exercise={item.exercise}
+                          exerciseIndex={item.exerciseIndex}
+                          canEdit={
+                            Boolean(workoutSession) && workoutDraft.ready
+                          }
+                          isSaving={activeBlockIsSaving}
+                          onSave={() => handleSaveExercise(item.exerciseIndex)}
+                          onSetChange={handleSetChange}
+                          previousBySet={
+                            previousMap.get(item.exercise.exerciseId) ??
+                            new Map()
+                          }
+                        />
                       ))}
                     </CardContent>
                   </Card>
@@ -1445,6 +1446,46 @@ export function ClientWorkoutRunPage() {
                       row.newWeightPr ? "weight PR" : null,
                       row.newVolumePr ? "volume PR" : null,
                     ].filter(Boolean);
+                    if (assignedWorkoutQuery.data?.day_type === "rest")
+                      return (
+                        <div className="space-y-4">
+                          <Card>
+                            <CardHeader>
+                              <CardTitle>Rest day</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <p>{assignedWorkoutQuery.data.scheduled_date}</p>
+                              <p className="mt-3 whitespace-pre-wrap">
+                                {assignedWorkoutQuery.data.coach_note ||
+                                  "No coach notes for this rest day."}
+                              </p>
+                            </CardContent>
+                          </Card>
+                          <Button
+                            variant="secondary"
+                            onClick={() => navigate("/app/workouts")}
+                          >
+                            Back to workouts
+                          </Button>
+                        </div>
+                      );
+                    if (
+                      !assignedWorkoutQuery.isLoading &&
+                      clientId &&
+                      !assignedWorkoutQuery.data
+                    )
+                      return (
+                        <div role="status" className="space-y-3">
+                          <p>
+                            This workout is unavailable or you no longer have
+                            access to it.
+                          </p>
+                          <Button onClick={() => navigate("/app/workouts")}>
+                            Open workouts
+                          </Button>
+                        </div>
+                      );
+
                     return (
                       <p key={row.exerciseId} className="text-foreground">
                         {row.exerciseName}: {labels.join(" + ")}
@@ -1466,7 +1507,15 @@ export function ClientWorkoutRunPage() {
                 className="min-h-[120px] w-full app-field px-3 py-2 text-sm"
                 placeholder="Optional notes for your coach..."
                 value={finishNotes}
-                onChange={(event) => setFinishNotes(event.target.value)}
+                onChange={(event) => {
+                  setFinishNotes(event.target.value);
+                  workoutDraft.save({
+                    exercises: exercises.filter((item) =>
+                      dirtyExerciseIds.current.has(item.id),
+                    ),
+                    finishNotes: event.target.value,
+                  });
+                }}
               />
             </div>
             {finishError ? (

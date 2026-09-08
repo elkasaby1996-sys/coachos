@@ -124,3 +124,22 @@ describe("notification route resolver", () => {
     ).toBe(getNotificationFallbackRoute("pt"));
   });
 });
+
+describe("legacy generic client destinations", () => {
+  it.each([
+    ["assigned_workout", "/app/home", "/app/workouts/record-a"],
+    ["checkin", "/app/checkin", "/app/checkins?checkin=record-a"],
+    [
+      "conversation",
+      "/app/messages",
+      "/app/messages?thread=workspace%3Arecord-a",
+    ],
+  ])("uses the %s record", (entity_type, action_url, expected) => {
+    expect(
+      resolveNotificationActionUrl(
+        createNotification({ entity_type, entity_id: "record-a", action_url }),
+        "client",
+      ),
+    ).toBe(expected);
+  });
+});
