@@ -1,3 +1,4 @@
+import "../../styles/coach-pages.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -819,8 +820,8 @@ export function PtHubLayout() {
                 ref={mainScrollRef}
                 className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1"
               >
-                <div className="pt-content-zoom">
-                  <WorkspaceHeaderModeProvider value="shell">
+                <div className="pt-content-zoom coach-ui">
+                  <WorkspaceHeaderModeProvider value="default">
                     <RouteTransition routeKey={routeTransitionKey}>
                       <Outlet />
                     </RouteTransition>

@@ -21,18 +21,15 @@ const migrationSource = readFileSync(
 describe("workspace team settings page contract", () => {
   it("renders the required workspace team settings surface", () => {
     expect(pageSource).toContain("WorkspaceTeamSettingsPage");
-    expect(pageSource).toContain("Team & Permissions");
-    expect(pageSource).toContain(
-      "Invite coaches and assistants to help manage clients in this workspace.",
-    );
+    expect(layoutSource).toContain('title="Workspace settings"');
     expect(pageSource).toContain("Invite member");
     expect(pageSource).toContain("Active members");
     expect(pageSource).toContain("Pending invites");
   });
 
   it("keeps the team page header clean and places invite action with members", () => {
-    expect(pageSource).toContain("showKicker={false}");
-    expect(pageSource).toContain("showScope={false}");
+    expect(pageSource).not.toContain("Team & Permissions");
+    expect(pageSource).not.toContain("<SettingsHeader");
     expect(pageSource).toContain('title="Active members"');
     expect(pageSource).toContain("setInviteOpen(true)");
     expect(layoutSource).not.toContain("Workspace Scope");

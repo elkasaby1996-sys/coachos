@@ -1,3 +1,4 @@
+import { NotificationToast } from "../../components/common/notification-toast";
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -55,13 +56,9 @@ export function PtHubWorkspacesPage() {
   useEffect(() => {
     if (!acceptedWorkspaceId) return;
     setAcceptedNotice(true);
-    const clearTimer = window.setTimeout(() => {
-      setAcceptedNotice(false);
-      const nextParams = new URLSearchParams(searchParams);
-      nextParams.delete("acceptedWorkspace");
-      setSearchParams(nextParams, { replace: true });
-    }, 5000);
-    return () => window.clearTimeout(clearTimer);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("acceptedWorkspace");
+    setSearchParams(nextParams, { replace: true });
   }, [acceptedWorkspaceId, searchParams, setSearchParams]);
 
   const handleCreateWorkspace = async () => {
@@ -100,7 +97,7 @@ export function PtHubWorkspacesPage() {
     <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="Coaching Spaces"
-        title="Manage your coaching spaces"
+        title="Coaching spaces"
         description="Open, create, and organize the spaces where you coach clients."
         className="justify-end"
         actions={
@@ -111,14 +108,15 @@ export function PtHubWorkspacesPage() {
         }
       />
 
-      {acceptedNotice ? (
-        <Alert tone="success">
-          <AlertTitle>Workspace added to your PT Hub</AlertTitle>
-          <AlertDescription>
-            The shared workspace is ready to open with your assigned role.
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      <NotificationToast
+        title="Workspace added to your PT Hub"
+        message={
+          acceptedNotice
+            ? "The shared workspace is ready to open with your assigned role."
+            : null
+        }
+        onDismiss={() => setAcceptedNotice(false)}
+      />
 
       {workspaces.length === 0 ? (
         <EmptyState

@@ -98,7 +98,6 @@ function Metric({
   label,
   value,
   detail,
-  icon,
 }: {
   label: string;
   value: string | number;
@@ -107,10 +106,7 @@ function Metric({
 }) {
   return (
     <div className="analytics-metric">
-      <div className="analytics-metric-label">
-        {label}
-        {icon}
-      </div>
+      <div className="analytics-metric-label">{label}</div>
       <strong>{value}</strong>
       <p>{detail}</p>
     </div>
@@ -298,12 +294,7 @@ export function PtHubAnalyticsPage() {
     <main className="analytics-page">
       <header className="analytics-heading">
         <div>
-          <p className="analytics-eyebrow">
-            <Activity size={14} /> YOUR BUSINESS, IN FOCUS
-          </p>
-          <h1>
-            Analytics<span>.</span>
-          </h1>
+          <h1>Analytics</h1>
           <p>Growth, coaching, and the spaces that connect them.</p>
         </div>
         <div className="analytics-live">

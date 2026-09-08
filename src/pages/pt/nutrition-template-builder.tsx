@@ -1,5 +1,6 @@
+import { NotificationToast } from "../../components/common/notification-toast";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -16,7 +17,6 @@ import {
   EmptyState,
   Skeleton,
 } from "../../components/ui/coachos";
-import { ActionStatusMessage } from "../../components/common/action-feedback";
 import { PageContainer } from "../../components/common/page-container";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import {
@@ -69,7 +69,6 @@ function AssignmentSnapshotCallout() {
 export function PtNutritionTemplateBuilderPage() {
   const { id } = useParams();
   const templateId: string | null = isUuid(id) ? (id as string) : null;
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const templateQuery = useNutritionTemplate(templateId);
@@ -484,14 +483,8 @@ export function PtNutritionTemplateBuilderPage() {
       <WorkspacePageHeader
         title={template.name}
         description="Nutrition program builder: slots and meal components with macro details."
-        actions={
-          <Button
-            variant="secondary"
-            onClick={() => navigate("/pt/nutrition-programs")}
-          >
-            Back
-          </Button>
-        }
+        backTo="/pt/nutrition-programs"
+        backLabel="Back to nutrition programs"
       />
 
       {errorMessage ? (
@@ -499,11 +492,10 @@ export function PtNutritionTemplateBuilderPage() {
           {errorMessage}
         </div>
       ) : null}
-      {successMessage ? (
-        <ActionStatusMessage tone="success">
-          {successMessage}
-        </ActionStatusMessage>
-      ) : null}
+      <NotificationToast
+        message={successMessage}
+        onDismiss={() => setSuccessMessage(null)}
+      />
 
       <DashboardCard
         title="Program Meta"

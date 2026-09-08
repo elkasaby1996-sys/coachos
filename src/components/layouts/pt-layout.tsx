@@ -1,3 +1,4 @@
+import "../../styles/coach-pages.css";
 import {
   useEffect,
   useMemo,
@@ -1500,13 +1501,15 @@ export function PtLayout() {
                   ref={mainScrollRef}
                   className="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1"
                 >
-                  <div className="pt-content-zoom">
-                    <RouteTransition
-                      className="grid gap-6"
-                      routeKey={routeTransitionKey}
-                    >
-                      <Outlet />
-                    </RouteTransition>
+                  <div className="pt-content-zoom coach-ui">
+                    <WorkspaceHeaderModeProvider value="default">
+                      <RouteTransition
+                        className="grid gap-6"
+                        routeKey={routeTransitionKey}
+                      >
+                        <Outlet />
+                      </RouteTransition>
+                    </WorkspaceHeaderModeProvider>
                   </div>
                 </main>
               </div>

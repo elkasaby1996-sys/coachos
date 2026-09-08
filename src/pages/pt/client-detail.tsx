@@ -1,3 +1,4 @@
+import { NotificationToast } from "../../components/common/notification-toast";
 // @ts-nocheck
 import "../../styles/pt-hub-analytics.css";
 import "../../styles/pt-hub-clients.css";
@@ -901,12 +902,6 @@ export function PtClientDetailPage({
       { replace: true },
     );
   }, [active, location.pathname, location.search, navigate]);
-
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timeout = setTimeout(() => setToastMessage(null), 2400);
-    return () => clearTimeout(timeout);
-  }, [toastMessage]);
 
   useEffect(() => {
     if (active !== "checkins") {
@@ -4622,22 +4617,12 @@ export function PtClientDetailPage({
 
   return (
     <DashboardShell>
-      {toastMessage ? (
-        <div className="fixed right-6 top-6 z-50 w-[260px]">
-          <Alert
-            className={
-              toastVariant === "error"
-                ? "border-danger/30"
-                : "border-emerald-200"
-            }
-          >
-            <AlertTitle>
-              {toastVariant === "error" ? "Error" : "Success"}
-            </AlertTitle>
-            <AlertDescription>{toastMessage}</AlertDescription>
-          </Alert>
-        </div>
-      ) : null}
+      <NotificationToast
+        message={toastMessage}
+        tone={toastVariant}
+        title={toastVariant === "error" ? "Action failed" : "Saved"}
+        onDismiss={() => setToastMessage(null)}
+      />
 
       <Dialog
         open={Boolean(confirmDialogConfig)}

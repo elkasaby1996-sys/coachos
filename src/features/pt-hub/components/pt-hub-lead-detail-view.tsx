@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   CheckCircle2,
   MessageSquarePlus,
   ArrowUpRight,
@@ -18,6 +17,7 @@ import {
 } from "../../../components/ui/alert-dialog";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import { PageBackLink } from "../../../components/pt/page-back-link";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
 import { Textarea } from "../../../components/ui/textarea";
@@ -221,10 +221,6 @@ export function PtHubLeadDetailView({
 
   return (
     <main className="analytics-page lead-profile-page">
-      <Link to="/pt-hub/leads" className="lead-back-link">
-        <ArrowLeft size={15} />
-        Back to leads
-      </Link>
       <header className="analytics-heading lead-profile-heading">
         <div className="lead-identity">
           <span className="lead-avatar lead-avatar-large" aria-hidden="true">
@@ -236,11 +232,10 @@ export function PtHubLeadDetailView({
               .join("")}
           </span>
           <div>
-            <p className="analytics-eyebrow">LEAD PROFILE</p>
-            <h1>
-              {lead.fullName}
-              <span>.</span>
-            </h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <PageBackLink to="/pt-hub/leads" label="Back to leads" />
+              <h1>{lead.fullName}</h1>
+            </div>
             <p>Submitted {formatRelativeTime(lead.submittedAt)}</p>
           </div>
         </div>

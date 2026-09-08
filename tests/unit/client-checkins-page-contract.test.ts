@@ -19,7 +19,7 @@ describe("client check-ins page contract", () => {
   });
 
   it("keeps the check-in form stepper and review details in one card", () => {
-    const selectedCycleStart = clientCheckinsPage.indexOf("Check-in Form");
+    const selectedCycleStart = clientCheckinsPage.indexOf("Check-in form");
     const reviewStart = clientCheckinsPage.indexOf("Review and submit");
     const selectedCycleClose = clientCheckinsPage.indexOf(
       "{checkinIsUpcoming ?",

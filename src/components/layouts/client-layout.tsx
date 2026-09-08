@@ -1,3 +1,4 @@
+import "../../styles/client-portal.css";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   ClipboardCheck,
@@ -9,13 +10,13 @@ import {
   LogOut,
   MessageCircle,
   Moon,
+  MoreHorizontal,
   Settings,
   UtensilsCrossed,
   UserCircle,
   Watch,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useState } from "react";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
@@ -43,7 +44,6 @@ import { LoadingScreen } from "../common/bootstrap-gate";
 import { useClientOnboarding } from "../../features/client-onboarding/hooks/use-client-onboarding";
 import { ClientOnboardingSoftGate } from "../../features/client-onboarding/components/client-onboarding-soft-gate";
 import {
-  getModuleToneClasses,
   getModuleToneForPath,
   getModuleToneStyle,
   type ModuleTone,
@@ -107,28 +107,6 @@ const navItems = [
   },
 ];
 
-const getRouteLabel = (pathname: string) => {
-  if (pathname.startsWith("/app/home")) return "Home";
-  if (pathname.startsWith("/app/workouts")) return "Workouts";
-  if (pathname.startsWith("/app/workout")) return "Workouts";
-  if (pathname.startsWith("/app/nutrition")) return "Nutrition";
-  if (pathname.startsWith("/app/habits")) return "Habits";
-  if (pathname.startsWith("/app/wearables")) return "Wearables";
-  if (pathname.startsWith("/app/messages")) return "Messages";
-  if (pathname.startsWith("/app/find-coach")) return "Coach Marketplace";
-  if (pathname.startsWith("/app/notifications")) return "Notifications";
-  if (pathname.startsWith("/app/settings")) return "Settings";
-  if (pathname.startsWith("/app/profile")) return "Profile";
-  if (pathname.startsWith("/app/checkins")) return "Check-ins";
-  if (pathname.startsWith("/app/checkin")) return "Check-ins";
-  if (pathname.startsWith("/app/baseline")) return "Baseline";
-  if (pathname.startsWith("/app/workout-today")) return "Workout today";
-  if (pathname.startsWith("/app/workout-run")) return "Workout session";
-  if (pathname.startsWith("/app/workouts/")) return "Workout details";
-  if (pathname.startsWith("/app/onboarding")) return "Onboarding";
-  return "RepsyncME";
-};
-
 const shouldShowOnboardingBanner = (pathname: string) => {
   return (
     pathname.startsWith("/app/home") ||
@@ -186,11 +164,6 @@ export function ClientLayout() {
     );
   const isOnboardingRoute = location.pathname.startsWith("/app/onboarding");
   const currentModule = getModuleToneForPath(location.pathname);
-  const currentModuleClasses = getModuleToneClasses(currentModule);
-  const routeLabel = useMemo(
-    () => getRouteLabel(location.pathname),
-    [location.pathname],
-  );
   const [isOnboardingBannerDismissed, setIsOnboardingBannerDismissed] =
     useState(() => {
       if (typeof window === "undefined") return false;
@@ -216,13 +189,10 @@ export function ClientLayout() {
     "Client profile";
   const profileInitial = (profileDisplayName.charAt(0) || "C").toUpperCase();
   const isLightMode = resolvedTheme === "light";
-  const reduceMotion = useReducedMotion();
   const visibleNavItems = navItems;
-  const mobileNavGridClassName = useMemo(() => {
-    if (visibleNavItems.length <= 4) return "grid-cols-4";
-    if (visibleNavItems.length === 5) return "grid-cols-5";
-    return "grid-cols-6";
-  }, [visibleNavItems.length]);
+  const isWorkoutDetail = /^\/app\/workout-(run|summary)\//.test(
+    location.pathname,
+  );
 
   if (loading) {
     return <LoadingScreen message="Loading..." />;
@@ -231,7 +201,7 @@ export function ClientLayout() {
   if (errorMessage && !preWorkspaceMode) {
     return (
       <div
-        className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]"
+        className="client-portal theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]"
         style={getModuleToneStyle(currentModule)}
       >
         <AppShellBackgroundLayer />
@@ -277,7 +247,7 @@ export function ClientLayout() {
 
   return (
     <div
-      className="theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]"
+      className="client-portal theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]"
       style={getModuleToneStyle(currentModule)}
     >
       <AppShellBackgroundLayer />
@@ -289,35 +259,16 @@ export function ClientLayout() {
               align="left"
               className="flex flex-wrap items-center justify-between gap-3"
             >
-              <div
-                className={cn(
-                  "surface-panel-strong relative w-full overflow-hidden rounded-[var(--ui-radius-card)] border-border/70 px-4 py-3 sm:px-5 lg:px-6",
-                  isLightMode
-                    ? "shadow-[0_28px_76px_-56px_oklch(0.28_0.02_190/0.14)]"
-                    : "shadow-[0_32px_90px_-58px_rgba(0,0,0,0.98)]",
-                )}
-              >
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.16),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.12),transparent_30%),linear-gradient(135deg,transparent,oklch(var(--chart-2)/0.06))]" />
-                <div
-                  className={cn(
-                    "pointer-events-none absolute inset-x-6 top-0 h-px",
-                    isLightMode
-                      ? "bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.32),transparent)]"
-                      : "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.24),transparent)]",
-                  )}
-                />
+              <div className="client-portal-header">
                 <div className="relative space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <p
-                        className={cn(
-                          "truncate text-[1.58rem] font-semibold uppercase leading-none tracking-[0.06em] text-foreground sm:text-[1.86rem]",
-                          currentModuleClasses.title,
-                        )}
-                      >
-                        {routeLabel}
-                      </p>
-                    </div>
+                    <NavLink
+                      to="/app/home"
+                      className="client-portal-brand"
+                      aria-label="RepSync home"
+                    >
+                      REPSYNC
+                    </NavLink>
                     <div className="flex items-center gap-2 self-start sm:self-auto">
                       <NotificationBell viewAllHref="/app/notifications" />
                       <DropdownMenu>
@@ -337,9 +288,6 @@ export function ClientLayout() {
                               {profileInitial}
                             </div>
                             <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/80">
-                                Profile
-                              </p>
                               <div className="flex min-w-0 items-center gap-2">
                                 <p className="min-w-0 flex-1 truncate text-[0.92rem] font-medium text-foreground">
                                   {profileDisplayName}
@@ -413,99 +361,32 @@ export function ClientLayout() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        className="rounded-full border border-border/70 bg-card/72 md:hidden"
-                        onClick={handleSignOut}
-                        disabled={isSigningOut}
-                        aria-label="Log out"
-                        title="Log out"
-                      >
-                        <LogOut className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
                   <nav
-                    className="hidden min-w-0 items-center overflow-x-auto border-t border-border/60 pt-3 md:flex"
+                    className="client-portal-nav"
                     aria-label="Primary navigation"
                   >
-                    <div className="flex w-full min-w-max items-center justify-center gap-1">
-                      {visibleNavItems.map((item) => (
-                        <NavLink
-                          key={item.to}
-                          to={item.to}
-                          aria-label={item.label}
-                          title={item.label}
-                          className={({ isActive }) =>
-                            cn(
-                              "group relative inline-flex min-h-10 min-w-max flex-1 items-center justify-center gap-2 overflow-hidden rounded-[18px] border border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-border/60 hover:bg-card/42 hover:text-foreground",
-                              isActive && "text-foreground",
-                            )
-                          }
-                        >
-                          {({ isActive }) => (
-                            <>
-                              {isActive ? (
-                                <motion.span
-                                  layoutId={
-                                    reduceMotion
-                                      ? undefined
-                                      : "client-horizontal-nav-active-pill"
-                                  }
-                                  className={cn(
-                                    "absolute inset-0 rounded-[18px] border",
-                                    getModuleToneClasses(item.module).navActive,
-                                  )}
-                                  style={getModuleToneStyle(item.module)}
-                                  transition={{
-                                    type: "spring",
-                                    stiffness: 250,
-                                    damping: 28,
-                                    mass: 0.9,
-                                  }}
-                                />
-                              ) : null}
-                              <span
-                                style={getModuleToneStyle(item.module)}
-                                className={cn(
-                                  "relative z-10 flex h-8 w-8 items-center justify-center transition-colors",
-                                  isActive
-                                    ? "section-accent-nav-icon-active"
-                                    : "text-muted-foreground group-hover:text-foreground",
-                                  getModuleToneClasses(item.module).navIcon,
-                                )}
-                              >
-                                <item.icon className="h-4 w-4" />
-                              </span>
-                              <motion.span
-                                className="relative z-10 whitespace-nowrap"
-                                animate={
-                                  reduceMotion
-                                    ? undefined
-                                    : {
-                                        y: isActive ? -1 : 0,
-                                        opacity: isActive ? 1 : 0.82,
-                                      }
-                                }
-                                transition={{
-                                  duration: 0.22,
-                                  ease: [0.22, 1, 0.36, 1],
-                                }}
-                              >
-                                {item.label}
-                              </motion.span>
-                            </>
-                          )}
-                        </NavLink>
-                      ))}
-                    </div>
+                    {visibleNavItems.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        title={item.label}
+                        className="client-portal-nav-link"
+                        data-active={
+                          item.label === "Workouts" && isWorkoutDetail
+                        }
+                      >
+                        <item.icon className="h-4 w-4" aria-hidden="true" />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    ))}
                   </nav>
                 </div>
               </div>
             </PageContainer>
           </header>
-          <main className="min-w-0 flex-1 py-4 sm:py-5 lg:py-6">
+          <main className="client-portal-main min-w-0 flex-1 py-4 sm:py-5 lg:py-6">
             <PageContainer size="client-shell" align="left">
               {shouldRenderOnboardingBanner && onboardingSummary ? (
                 <div className="mb-6">
@@ -554,7 +435,7 @@ export function ClientLayout() {
                 </div>
               ) : (
                 <WorkspaceHeaderModeProvider value="shell">
-                  <RouteTransition>
+                  <RouteTransition className="client-portal-content">
                     <Outlet />
                   </RouteTransition>
                 </WorkspaceHeaderModeProvider>
@@ -564,41 +445,67 @@ export function ClientLayout() {
           <div>
             <AppFooter className="z-40 md:relative" />
           </div>
-          <nav className="fixed bottom-0 left-0 right-0 border-t border-border/60 [background-color:var(--sticky-bar-bg)] py-2 backdrop-blur-xl md:hidden">
-            <PageContainer
-              size="portal"
-              className={cn("grid gap-1", mobileNavGridClassName)}
-            >
-              {visibleNavItems.map((item) => (
+          <nav
+            className="client-portal-mobile-nav"
+            aria-label="Mobile navigation"
+          >
+            {visibleNavItems
+              .filter((item) =>
+                ["Home", "Workouts", "Nutrition", "Messages"].includes(
+                  item.label,
+                ),
+              )
+              .map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  aria-label={item.label}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-[20px] border border-transparent px-1 text-center text-[11px] font-medium text-muted-foreground transition",
-                      isActive &&
-                        "border-border/70 bg-card/82 text-foreground shadow-[0_16px_36px_-30px_oklch(0_0_0/0.72)]",
-                    )
-                  }
+                  className="client-portal-mobile-link"
+                  data-active={item.label === "Workouts" && isWorkoutDetail}
                 >
-                  {({ isActive }) => (
-                    <>
-                      <item.icon
-                        style={getModuleToneStyle(item.module)}
-                        className={cn(
-                          "h-5 w-5",
-                          isActive
-                            ? getModuleToneClasses(item.module).navIcon
-                            : "text-current",
-                        )}
-                      />
-                      {item.label}
-                    </>
-                  )}
+                  <item.icon className="h-5 w-5" aria-hidden="true" />
+                  <span>{item.label}</span>
                 </NavLink>
               ))}
-            </PageContainer>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="client-portal-mobile-link"
+                  aria-label="More pages"
+                  data-active={visibleNavItems.some(
+                    (item) =>
+                      !["Home", "Workouts", "Nutrition", "Messages"].includes(
+                        item.label,
+                      ) && location.pathname.startsWith(item.to),
+                  )}
+                >
+                  <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+                  <span>More</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                side="top"
+                sideOffset={12}
+                className="w-56"
+              >
+                {visibleNavItems
+                  .filter(
+                    (item) =>
+                      !["Home", "Workouts", "Nutrition", "Messages"].includes(
+                        item.label,
+                      ),
+                  )
+                  .map((item) => (
+                    <DropdownMenuItem key={item.to} asChild>
+                      <NavLink to={item.to}>
+                        <item.icon className="h-4 w-4" aria-hidden="true" />
+                        {item.label}
+                      </NavLink>
+                    </DropdownMenuItem>
+                  ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
         </div>
       </div>

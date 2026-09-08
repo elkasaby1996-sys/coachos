@@ -28,10 +28,12 @@ describe("PT programs surface", () => {
   });
 
   it("combines the empty program guidance into one card", () => {
-    expect(programsSource).toContain("Build your first reusable program");
+    expect(programsSource).toContain("Build your first program");
     expect(programsSource).toContain("md:grid-cols-2 xl:grid-cols-4");
-    expect(programsSource).toContain("Recommended first step");
-    expect(programsSource).toContain("Create the first block");
+    expect(programsSource).toContain("Set the goal and duration");
+    expect(programsSource).toContain("Schedule workouts and rest");
+    expect(programsSource).toContain("Assign it to a client");
+    expect(programsSource).toContain("Update or reuse the program");
     expect(programsSource).not.toContain('title="Create flow"');
     expect(programsSource).not.toContain(
       "Start deliberately so the first program already fits the long-term library.",

@@ -1,3 +1,4 @@
+import { NotificationToast } from "../../components/common/notification-toast";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   Activity,
@@ -140,12 +141,6 @@ export function PtClientsPage() {
   }, [initialLifecycleFilter, initialSegmentFilter]);
 
   useEffect(() => {
-    if (!toastMessage) return;
-    const timeout = setTimeout(() => setToastMessage(null), 3000);
-    return () => clearTimeout(timeout);
-  }, [toastMessage]);
-
-  useEffect(() => {
     if (!initialToastMessage) return;
     navigate(
       { pathname: location.pathname, search: location.search },
@@ -174,12 +169,10 @@ export function PtClientsPage() {
 
   return (
     <section className="workspace-clients space-y-6">
-      {toastMessage ? (
-        <Alert tone="success" className="border-success/30">
-          <AlertTitle>Success</AlertTitle>
-          <AlertDescription>{toastMessage}</AlertDescription>
-        </Alert>
-      ) : null}
+      <NotificationToast
+        message={toastMessage}
+        onDismiss={() => setToastMessage(null)}
+      />
 
       {errorMessage ? (
         <Alert tone="danger" className="border-destructive/30">

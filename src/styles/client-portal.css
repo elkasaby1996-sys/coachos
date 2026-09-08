@@ -1,0 +1,438 @@
+/* Client-only presentation. Portaled dialogs and coaching workspaces retain
+   their own layout and interaction rules. */
+.client-portal {
+  --client-line: var(--ui-border);
+  --client-surface: var(--ui-surface);
+}
+.client-portal-header {
+  width: 100%;
+  padding: 16px 22px 0;
+  border: 1px solid var(--client-line);
+  border-radius: 18px;
+  background: var(--client-surface);
+}
+.client-portal-brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: oklch(var(--foreground));
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+}
+.client-portal-header [aria-label="Profile menu"] {
+  display: flex;
+  min-width: 0;
+  width: auto;
+  height: 44px;
+  gap: 10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  transform: none;
+}
+.client-portal-header [aria-label="Profile menu"] > div:first-child {
+  border: 1px solid var(--client-line);
+  border-radius: 10px;
+  background: oklch(var(--primary) / 0.05);
+}
+.client-portal-header [aria-label="Profile menu"] > div:nth-child(2) {
+  max-width: 180px;
+}
+.client-portal-header [aria-label="Profile menu"] > span {
+  border: 0;
+  background: transparent;
+}
+.client-portal-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--client-line);
+}
+.client-portal-nav-link {
+  display: inline-flex;
+  flex: 1 0 auto;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  white-space: nowrap;
+  color: oklch(var(--muted-foreground));
+  transition:
+    color 150ms,
+    background-color 150ms;
+}
+.client-portal-nav-link:hover,
+.client-portal-mobile-link:hover {
+  background: oklch(var(--primary) / 0.04);
+  color: oklch(var(--foreground));
+}
+.client-portal-nav-link[aria-current="page"],
+.client-portal-nav-link[data-active="true"],
+.client-portal-mobile-link[aria-current="page"],
+.client-portal-mobile-link[data-active="true"] {
+  background: oklch(var(--primary) / 0.09);
+  color: oklch(var(--primary));
+  font-weight: 600;
+}
+.client-portal-nav-link:focus-visible,
+.client-portal-mobile-link:focus-visible,
+.client-portal-brand:focus-visible {
+  outline: 2px solid oklch(var(--ring));
+  outline-offset: 3px;
+}
+.client-portal-content {
+  min-width: 0;
+  padding: 8px 0 24px;
+}
+.client-portal-content > div {
+  min-width: 0;
+}
+.client-portal-content .portal-shell {
+  --tw-space-y-reverse: 0;
+}
+.client-portal-content .portal-page-heading {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding: 0 0 8px;
+  border-bottom: 0;
+}
+.client-portal-content .portal-page-heading h1,
+.client-portal-content h1:not(.portal-page-heading h1) {
+  color: oklch(var(--foreground));
+  font-size: clamp(36px, 3vw, 48px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -1.3px;
+  overflow-wrap: anywhere;
+}
+.client-portal-content .portal-page-heading-context {
+  gap: 8px 16px;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.client-portal-content .portal-page-heading-context > span {
+  font-size: 12px;
+  color: oklch(var(--muted-foreground));
+}
+.client-portal-content .portal-page-heading-context > span > span:first-child {
+  display: none;
+}
+.client-portal-content .portal-page-heading > div:last-child:not(:first-child) {
+  width: auto;
+}
+.client-portal-content .ui-card:not([data-tone]):not(.client-home-agenda-card) {
+  border: 1px solid var(--client-line);
+  border-radius: 20px;
+  background: var(--client-surface);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.client-portal-content
+  .ui-card
+  > .ui-card-header[data-ui]:not(.kpi-card-content) {
+  padding: 24px 24px 20px;
+  border-bottom: 0;
+  background: transparent;
+}
+.client-portal-content .ui-card-title[data-ui]:not(.kpi-value) {
+  color: oklch(var(--foreground));
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.3px;
+  overflow-wrap: anywhere;
+}
+.client-portal-content .ui-card > .ui-card-content {
+  padding: 0 24px 24px;
+}
+.client-portal-content .ui-card > .ui-card-content:first-child {
+  padding-top: 24px;
+}
+.client-portal-content .ui-card-header p:not(.kpi-value) {
+  color: oklch(var(--muted-foreground));
+  font-size: 13px;
+  line-height: 1.6;
+}
+.client-portal-content .surface-section.ui-card:not(.client-home-agenda-card) {
+  border-radius: 14px;
+  padding: 20px;
+  background: oklch(var(--background) / 0.35);
+}
+.client-portal-content .ui-inset {
+  box-shadow: none;
+  border-radius: 12px;
+}
+.client-portal-content .ui-empty-state.text-center > .max-w-xl {
+  margin-inline: auto;
+}
+.client-portal-content .kpi-card {
+  border: 1px solid var(--client-line);
+  border-radius: 14px;
+  padding: 20px;
+  background: var(--client-surface);
+  box-shadow: none;
+}
+.client-portal-content .kpi-label {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.client-portal-content .kpi-value {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: oklch(var(--foreground));
+}
+.client-portal-content .app-field {
+  min-width: 0;
+  border-color: var(--client-line);
+  background: oklch(var(--background) / 0.45);
+  box-shadow: none;
+}
+.client-portal-content [data-ui="button"] {
+  box-shadow: none;
+}
+.client-portal-content [data-ui="button"]:hover {
+  transform: none;
+}
+.client-portal-content [role="tablist"] {
+  max-width: 100%;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.client-portal-content [role="tab"][data-state="active"] {
+  color: oklch(var(--primary));
+  background: var(--client-surface);
+  box-shadow: none;
+}
+.client-portal-mobile-nav {
+  display: none;
+}
+.client-portal-content .client-checkin-page {
+  max-width: none;
+  width: 100%;
+}
+/* Let the document scroll; no fixed-height panes around questions or history. */
+.client-checkin-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  min-width: 0;
+}
+.client-checkin-list,
+.client-checkin-form {
+  min-width: 0;
+}
+.client-checkin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.client-checkin-form {
+  scroll-margin-top: 20px;
+  border-radius: 20px;
+}
+.client-checkin-form:focus-visible {
+  outline: 2px solid oklch(var(--ring));
+  outline-offset: 3px;
+}
+.client-portal-content
+  .client-checkin-list
+  .ui-card
+  > .ui-card-header[data-ui] {
+  padding: 22px 20px 16px;
+}
+.client-portal-content .client-checkin-list .ui-card > .ui-card-content {
+  padding: 0 20px 20px;
+}
+.client-portal-content .client-checkin-list .ui-card-title[data-ui] {
+  font-size: 23px;
+}
+.client-checkin-row[data-selected="true"] {
+  border-color: oklch(var(--primary) / 0.65);
+  background: oklch(var(--primary) / 0.06);
+  box-shadow: none;
+}
+.client-checkin-form > .sticky {
+  position: static;
+}
+.client-checkin-form > .sticky > div {
+  background: var(--client-surface) !important;
+  backdrop-filter: none;
+}
+.client-portal-content .client-checkin-overview > .ui-card-header[data-ui] {
+  padding-bottom: 12px;
+}
+.client-checkin-form .field-label {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.client-portal-content .client-checkin-form .form-control-compact {
+  font-size: 16px;
+}
+.client-checkin-form textarea.form-control-compact {
+  min-height: 132px;
+  height: auto;
+}
+.client-checkin-question p.font-semibold {
+  font-size: 16px;
+}
+.client-checkin-question .text-xs {
+  font-size: 13px;
+}
+@media (min-width: 1024px) {
+  .client-checkin-workspace {
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 28px;
+  }
+  .client-checkin-list {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    padding-right: 4px;
+  }
+  .client-checkin-list > .ui-card {
+    flex-shrink: 0;
+  }
+  .client-checkin-form > .sticky > div {
+    padding-inline-end: 80px;
+  }
+  .client-checkin-chooser {
+    display: none;
+  }
+}
+@media (max-width: 767px) {
+  .client-checkin-progress {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .client-checkin-progress .surface-section {
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 4px;
+    text-align: center;
+  }
+  .client-checkin-progress .surface-section p:first-child {
+    display: none;
+  }
+}
+@media (max-width: 1023px) {
+  .client-checkin-list:not([data-open="true"]) {
+    display: none;
+  }
+  .client-checkin-chooser {
+    width: 100%;
+    min-height: 48px;
+  }
+}
+.client-portal-content [aria-label="Settings tabs"] {
+  justify-content: flex-start;
+  overflow-x: auto;
+  scroll-padding-inline: 8px;
+}
+.client-message-thread {
+  height: max(24rem, calc(100dvh - 27rem));
+}
+@media (max-width: 767px) {
+  .client-portal {
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+  .client-portal-header {
+    padding: 8px 12px;
+  }
+  .client-portal-header > div {
+    margin: 0;
+  }
+  .client-portal-header [aria-label="Profile menu"] > div:nth-child(2),
+  .client-portal-header [aria-label="Profile menu"] > span {
+    display: none;
+  }
+  .client-portal-header [aria-label="Profile menu"] {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .client-portal-nav {
+    display: none;
+  }
+  .client-portal-mobile-nav {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    position: fixed;
+    z-index: 80;
+    inset: auto 0 0;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--client-line);
+    background: var(--client-surface);
+  }
+  .client-portal-mobile-link {
+    display: flex;
+    min-height: 52px;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border-radius: 10px;
+    font-size: 11px;
+    color: oklch(var(--muted-foreground));
+    cursor: pointer;
+  }
+  .client-portal-content {
+    padding-top: 4px;
+  }
+  .client-portal-content .portal-page-heading {
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .client-portal-content .portal-page-heading-context {
+    font-size: 13px;
+  }
+  .client-portal-content
+    .ui-card
+    > .ui-card-header[data-ui]:not(.kpi-card-content) {
+    padding: 20px 20px 16px;
+  }
+  .client-portal-content .ui-card > .ui-card-content {
+    padding: 0 20px 20px;
+  }
+  .client-portal-content .ui-card > .ui-card-content:first-child {
+    padding-top: 20px;
+  }
+  .client-portal-content .ui-card-title[data-ui]:not(.kpi-value) {
+    font-size: 21px;
+  }
+  .client-portal-content
+    .surface-section.ui-card:not(.client-home-agenda-card) {
+    padding: 16px;
+  }
+  .client-message-thread {
+    height: max(26rem, calc(100dvh - 14rem));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .client-portal-nav-link {
+    transition: none;
+  }
+}

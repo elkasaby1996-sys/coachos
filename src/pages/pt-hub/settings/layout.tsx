@@ -1,3 +1,4 @@
+import { WorkspacePageHeader } from "../../../components/pt/workspace-page-header";
 import { Outlet } from "react-router-dom";
 import {
   SettingsPageShell,
@@ -18,7 +19,15 @@ export function PtHubSettingsLayoutPage() {
   }));
 
   return (
-    <SettingsPageShell tabs={<SettingsTabs tabs={tabs} />}>
+    <SettingsPageShell
+      header={
+        <WorkspacePageHeader
+          title="Account settings"
+          description="Manage your account, preferences, and billing."
+        />
+      }
+      tabs={<SettingsTabs tabs={tabs} />}
+    >
       <Outlet />
     </SettingsPageShell>
   );

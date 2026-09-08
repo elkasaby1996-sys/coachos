@@ -22,7 +22,7 @@ export function PtHubProfilePreviewPage() {
     <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="Profile Preview"
-        title="Preview your public profile"
+        title="Profile preview"
         description="See how your public trainer page will look before you share it."
       />
 

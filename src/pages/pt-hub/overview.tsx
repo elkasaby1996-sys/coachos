@@ -1,3 +1,4 @@
+import { PtHubPageHeader } from "../../features/pt-hub/components/pt-hub-page-header";
 import {
   ChevronDown,
   ChevronUp,
@@ -192,6 +193,10 @@ export function PtHubOverviewPage() {
       data-density="roomy"
       data-testid="pt-hub-page"
     >
+      <PtHubPageHeader
+        title="Overview"
+        description="Your business, coaching spaces, and the next steps that need your attention."
+      />
       <div
         className={cn("pt-hub-kpi-ledger pt-hub-kpi-grid", metricGridClassName)}
         data-columns={dashboardModel.metrics.length === 4 ? "4" : undefined}

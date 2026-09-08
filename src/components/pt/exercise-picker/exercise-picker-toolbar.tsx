@@ -37,7 +37,7 @@ export function ExercisePickerToolbar({
         onClick={onClearFilters}
       >
         <RotateCcw className="h-4 w-4" aria-hidden="true" />
-        Clear filters
+        Clear
       </Button>
       <Button type="button" variant="secondary" onClick={onCreateExercise}>
         <Plus className="h-4 w-4" aria-hidden="true" />

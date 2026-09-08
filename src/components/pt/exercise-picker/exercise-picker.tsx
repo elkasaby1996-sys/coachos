@@ -253,27 +253,18 @@ export function ExercisePicker({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="space-y-3 border-b border-border/70 px-3 pb-3 sm:px-5">
-        <ExercisePickerToolbar
-          query={query}
-          hasActiveFilters={Boolean(
-            query.trim() ||
-            muscleKey ||
-            anatomyState.providerBodyPart ||
-            anatomyState.providerTargetMuscle,
-          )}
-          onQueryChange={setQuery}
-          onClearFilters={clearFilters}
-          onCreateExercise={onCreateExercise}
-        />
-
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center">
           <Tabs
+            className="shrink-0"
             value={view}
             onValueChange={(value) =>
               setView(value === "provider" ? "provider" : "library")
             }
           >
-            <TabsList className="grid w-full grid-cols-2 sm:w-auto">
+            <TabsList
+              aria-label="Exercise source"
+              className="grid w-full grid-cols-2 sm:w-auto"
+            >
               <TabsTrigger value="library" className="gap-2">
                 <Library className="h-4 w-4" aria-hidden="true" />
                 My Library
@@ -284,6 +275,23 @@ export function ExercisePicker({
               </TabsTrigger>
             </TabsList>
           </Tabs>
+          <div className="min-w-0 flex-1">
+            <ExercisePickerToolbar
+              query={query}
+              hasActiveFilters={Boolean(
+                query.trim() ||
+                muscleKey ||
+                anatomyState.providerBodyPart ||
+                anatomyState.providerTargetMuscle,
+              )}
+              onQueryChange={setQuery}
+              onClearFilters={clearFilters}
+              onCreateExercise={onCreateExercise}
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end">
           <div className="flex flex-wrap items-center gap-2" aria-live="polite">
             <Badge variant="muted">
               {resultCount} result{resultCount === 1 ? "" : "s"}

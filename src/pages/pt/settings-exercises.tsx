@@ -691,7 +691,7 @@ export function PtExerciseLibraryPage() {
       <WorkspacePageHeader
         eyebrow="Coaching library"
         title="Exercise Library"
-        description="Browse your shared owner library or save movements from the connected provider using one canonical muscle filter."
+        description="Find movements by muscle and equipment, build your library, and create your own exercises."
       />
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,0.88fr)] xl:items-start">
@@ -738,7 +738,7 @@ export function PtExerciseLibraryPage() {
         </aside>
 
         <section
-          className="ui-panel order-2 min-w-0 border border-border/70 p-3 sm:p-4 xl:order-1"
+          className="exercise-library-results ui-panel order-2 min-w-0 xl:order-1"
           aria-label={
             view === "library"
               ? "My Library results"

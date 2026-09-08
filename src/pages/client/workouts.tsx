@@ -965,7 +965,7 @@ export function ClientWorkoutsPage() {
     <div className="portal-shell">
       <PortalPageHeader
         title="Workouts"
-        subtitle="One unified workouts hub across personal and coach-assigned sessions."
+        subtitle="Follow your training plan, revisit sessions, or create a workout."
         stateText={`${workouts.length} workouts`}
         className="justify-end"
         actions={
@@ -1833,7 +1833,7 @@ export function ClientWorkoutsPage() {
                 </SurfaceCard>
               ) : null}
 
-              <div className="grid gap-6 xl:grid-cols-2">
+              <div className="grid items-start gap-6 xl:grid-cols-2">
                 <SurfaceCard>
                   <SurfaceCardHeader>
                     <SurfaceCardTitle>Today</SurfaceCardTitle>

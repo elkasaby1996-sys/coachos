@@ -1,3 +1,4 @@
+import { NotificationToast } from "../../components/common/notification-toast";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -142,12 +143,6 @@ export function PtCheckinTemplatesPage() {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "duplicating">(
     "idle",
   );
-
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timeout = setTimeout(() => setToastMessage(null), 2400);
-    return () => clearTimeout(timeout);
-  }, [toastMessage]);
 
   const workspaceDetailsQuery = useQuery({
     queryKey: ["pt-checkin-template-workspace", workspaceId],
@@ -669,26 +664,16 @@ export function PtCheckinTemplatesPage() {
   return (
     <div className="space-y-8">
       {guardDialog}
-      {toastMessage ? (
-        <div className="fixed right-6 top-6 z-50 w-[320px]">
-          <Alert
-            className={
-              toastVariant === "error"
-                ? "border-danger/30"
-                : "border-emerald-200"
-            }
-          >
-            <AlertTitle>
-              {toastVariant === "error" ? "Error" : "Success"}
-            </AlertTitle>
-            <AlertDescription>{toastMessage}</AlertDescription>
-          </Alert>
-        </div>
-      ) : null}
+      <NotificationToast
+        message={toastMessage}
+        tone={toastVariant}
+        title={toastVariant === "error" ? "Action failed" : "Saved"}
+        onDismiss={() => setToastMessage(null)}
+      />
 
       <WorkspacePageHeader
         title="Check-in Templates"
-        description="Build question sets that feel coach-ready, stay aligned with the client renderer, and stay safe once clients start submitting."
+        description="Create reusable questions for client check-ins and manage your templates."
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">

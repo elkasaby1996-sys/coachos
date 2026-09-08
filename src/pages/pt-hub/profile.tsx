@@ -49,7 +49,7 @@ export function PtHubProfilePage() {
     <section className="pt-hub-page-stack">
       <PtHubPageHeader
         eyebrow="Coach Profile"
-        title="Edit your coach profile"
+        title="Coach profile"
         description="Update the public trainer page clients will see."
       />
 

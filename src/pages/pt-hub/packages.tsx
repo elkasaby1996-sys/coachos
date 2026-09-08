@@ -6,8 +6,8 @@ export function PtHubPackagesPage() {
     <section className="pt-hub-page-stack" data-testid="pt-hub-packages-page">
       <PtHubPageHeader
         eyebrow="Packages"
-        title="Manage your packages"
-        description=""
+        title="Packages"
+        description="Your coaching offers, pricing, and public availability."
       />
 
       <PtHubPackageManager />

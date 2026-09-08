@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { PortalPageHeader } from "../../components/client/portal/portal-ui";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
@@ -40,7 +41,6 @@ const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null =>
 export function ClientNutritionDayPage() {
   const { assigned_nutrition_day_id } = useParams();
   const assignedDayId = assigned_nutrition_day_id ?? null;
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const dayQuery = useAssignedNutritionDay(assignedDayId);
@@ -231,34 +231,25 @@ export function ClientNutritionDayPage() {
 
   return (
     <PageContainer className="max-w-screen-2xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            Client Portal
+      <PortalPageHeader
+        title="Nutrition day"
+        backTo="/app/nutrition"
+        backLabel="Back to nutrition"
+        subtitle={dayQuery.data.date}
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant="muted">{sourceLabel}</Badge>
+            <StatusPill
+              status={
+                mealsQuery.completion.percent === 100 &&
+                mealsQuery.completion.total > 0
+                  ? "completed"
+                  : "planned"
+              }
+            />
           </div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Nutrition Day
-          </h2>
-          <p className="text-sm text-muted-foreground">{dayQuery.data.date}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="muted">{sourceLabel}</Badge>
-          <StatusPill
-            status={
-              mealsQuery.completion.percent === 100 &&
-              mealsQuery.completion.total > 0
-                ? "completed"
-                : "planned"
-            }
-          />
-          <Button
-            variant="secondary"
-            onClick={() => navigate("/app/nutrition")}
-          >
-            Back
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {meals.length === 0 ? (
         <EmptyState

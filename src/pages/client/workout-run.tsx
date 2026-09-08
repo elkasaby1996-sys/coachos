@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { gsap } from "gsap";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { PortalPageHeader } from "../../components/client/portal/portal-ui";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -1070,21 +1071,12 @@ export function ClientWorkoutRunPage() {
 
   return (
     <div className="w-full space-y-6">
-      <section className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {workoutTitle}
-            </h1>
-            <Badge variant="muted">In progress</Badge>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => navigate("/app/home")}>
-            Back to home
-          </Button>
-        </div>
-      </section>
+      <PortalPageHeader
+        title={workoutTitle}
+        backTo="/app/workouts"
+        backLabel="Back to workouts"
+        actions={<Badge variant="muted">In progress</Badge>}
+      />
 
       {errors.length > 0 ? (
         <div className="space-y-2">
@@ -1199,32 +1191,6 @@ export function ClientWorkoutRunPage() {
                 />
               </div>
               <div className="xl:col-span-6 space-y-4">
-                {!workoutSession ? (
-                  <Card className="rounded-xl border-border/70 bg-card/80">
-                    <CardHeader>
-                      <CardTitle>Start workout</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm text-muted-foreground">
-                      <p>Start the session to begin logging sets.</p>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          onClick={handleStartWorkout}
-                          disabled={isExerciseStructureLoading}
-                        >
-                          {isExerciseStructureLoading
-                            ? "Loading exercises..."
-                            : "Start workout"}
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          onClick={() => navigate("/app/home")}
-                        >
-                          Return home
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : null}
                 <div className="xl:hidden">
                   <label className="text-xs font-semibold text-muted-foreground">
                     Exercise / Superset

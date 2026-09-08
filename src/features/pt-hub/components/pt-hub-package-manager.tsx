@@ -775,7 +775,7 @@ export function PtHubPackageManager() {
       ) : null}
 
       <PtHubSectionCard
-        title="Packages"
+        title="Package library"
         description="Control package visibility and order."
         contentClassName="space-y-5"
         actions={

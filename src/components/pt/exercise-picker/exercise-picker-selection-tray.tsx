@@ -23,8 +23,8 @@ export function ExercisePickerSelectionTray({
   const entries = Array.from(selection.values());
 
   return (
-    <footer className="border-t border-border/70 bg-card/95 px-3 py-3 backdrop-blur sm:px-5">
-      <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+    <footer className="shrink-0 border-t border-border/70 bg-card/95 px-3 py-3 backdrop-blur sm:px-5">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-3">
             <p
@@ -75,7 +75,7 @@ export function ExercisePickerSelectionTray({
             </p>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-2 xl:flex xl:shrink-0">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Cancel
           </Button>

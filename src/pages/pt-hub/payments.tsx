@@ -3,7 +3,6 @@ import {
   ArrowUpRight,
   CalendarClock,
   Check,
-  CircleDollarSign,
   CreditCard,
   Download,
   Landmark,
@@ -169,12 +168,7 @@ export function PtHubPaymentsPage() {
     <main className="analytics-page payments-page">
       <header className="analytics-heading">
         <div>
-          <p className="analytics-eyebrow">
-            <CircleDollarSign size={14} /> YOUR BUSINESS, BALANCED
-          </p>
-          <h1>
-            Payments<span>.</span>
-          </h1>
+          <h1>Payments</h1>
           <p>Client revenue, your subscription, and every invoice.</p>
         </div>
         <Link to="/pt-hub/settings/billing" className="payments-settings-link">
@@ -219,12 +213,9 @@ export function PtHubPaymentsPage() {
             </span>
           </div>
           <div className="analytics-metrics" aria-label="Payments summary">
-            {metrics.map(({ label, value, detail, icon: Icon }) => (
+            {metrics.map(({ label, value, detail }) => (
               <div className="analytics-metric" key={label}>
-                <div className="analytics-metric-label">
-                  {label}
-                  <Icon aria-hidden="true" />
-                </div>
+                <div className="analytics-metric-label">{label}</div>
                 <strong>{value}</strong>
                 <p>{detail}</p>
               </div>

@@ -639,7 +639,7 @@ export function ClientWearablesPage() {
     <div className="portal-shell">
       <PortalPageHeader
         title="Wearables"
-        subtitle="Connect a wearable and share normalized health metrics with your coach."
+        subtitle="Connect your device to track activity, sleep, and recovery."
       />
 
       {loadError ? (
@@ -744,8 +744,8 @@ export function ClientWearablesPage() {
                     </Badge>
                   </div>
                   <SurfaceCardDescription className="max-w-2xl text-sm leading-6">
-                    Source labels stay attached to every imported metric, so
-                    your coach can tell what came from WHOOP versus manual data.
+                    Review your latest synced activity, sleep, and recovery
+                    alongside the data you log yourself.
                   </SurfaceCardDescription>
                 </div>
               </div>

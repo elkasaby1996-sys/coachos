@@ -165,7 +165,7 @@ export function SettingsPageShell({
   rightRail?: React.ReactNode;
 }) {
   return (
-    <section className="space-y-5">
+    <section className="min-w-0 space-y-5">
       {header ?? null}
       <div className="sticky top-0 z-30 py-2">
         <div className="mx-auto flex w-full max-w-full items-center gap-3">
@@ -184,7 +184,7 @@ export function SettingsPageShell({
           </aside>
         </div>
       ) : (
-        <div className="space-y-4">{children}</div>
+        <div className="min-w-0 space-y-4">{children}</div>
       )}
     </section>
   );

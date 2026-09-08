@@ -13,7 +13,7 @@ const agendaSource = homeSource.slice(agendaStart, agendaEnd);
 
 describe("client home agenda cleanup", () => {
   it("does not render source or workout type tags in today's agenda", () => {
-    expect(agendaSource).toContain("Today&apos;s agenda");
+    expect(agendaSource).toContain('aria-label="Today\'s agenda"');
     expect(agendaSource).toContain("Today&apos;s workout");
     expect(agendaSource).toContain("{summaryTrainingTitle}");
     expect(agendaSource).not.toContain("todaySourceLabel");

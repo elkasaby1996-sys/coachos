@@ -26,7 +26,11 @@ import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Switch } from "../../components/ui/switch";
-import { EmptyStateBlock, StatusBanner } from "../../components/client/portal";
+import {
+  EmptyStateBlock,
+  StatusBanner,
+  PortalPageHeader,
+} from "../../components/client/portal";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { safeSelect } from "../../lib/supabase-safe";
 import { supabase } from "../../lib/supabase";
@@ -908,6 +912,10 @@ export function ClientSettingsPage() {
 
   return (
     <div className="space-y-5">
+      <PortalPageHeader
+        title="Settings"
+        subtitle="Manage your profile, preferences, and account."
+      />
       <SettingsPageShell tabs={<SettingsTabs tabs={settingsTabLinks} />}>
         {banner ? (
           <StatusBanner

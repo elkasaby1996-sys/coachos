@@ -1052,7 +1052,7 @@ export function ClientMessagesPage() {
     <div className="portal-shell">
       <PortalPageHeader
         title="Messages"
-        subtitle="One inbox for lead and active coaching conversations."
+        subtitle="Keep in touch with your coaches and follow your conversations."
         stateText={typingUsers.length > 0 ? "Coach is typing" : undefined}
       />
 
@@ -1252,7 +1252,7 @@ export function ClientMessagesPage() {
               />
             </SurfaceCardContent>
           ) : (
-            <div className="flex h-[calc(100dvh-12rem)] min-h-[30rem] flex-col">
+            <div className="client-message-thread flex flex-col">
               <SurfaceCardContent
                 ref={messageListRef}
                 className="min-h-0 flex-1 overflow-y-auto bg-background/10 overscroll-contain"

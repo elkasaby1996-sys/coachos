@@ -336,7 +336,7 @@ export function PtNutritionPage() {
 
       <WorkspacePageHeader
         title="Nutrition Programs"
-        description="Build reusable multi-week nutrition systems and keep edits close to the list."
+        description="Create reusable nutrition plans for your clients."
       />
 
       <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_13rem_12rem_auto] xl:items-center">

@@ -591,8 +591,10 @@ export function ClientNutritionCreatePlanPage() {
   return (
     <div className="space-y-6 pb-6">
       <PortalPageHeader
-        title="Create Personal Plan"
-        subtitle="1-week builder using the same nutrition runtime and day-detail flow."
+        title="Create nutrition plan"
+        subtitle="Plan a week of meals, portions, and nutrition targets."
+        backTo="/app/nutrition"
+        backLabel="Back to nutrition"
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">

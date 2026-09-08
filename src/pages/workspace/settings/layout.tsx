@@ -1,3 +1,4 @@
+import { WorkspacePageHeader } from "../../../components/pt/workspace-page-header";
 import { Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet, useParams } from "react-router-dom";
@@ -116,7 +117,15 @@ export function WorkspaceSettingsLayoutPage() {
   }));
 
   return (
-    <SettingsPageShell tabs={<SettingsTabs tabs={tabs} />}>
+    <SettingsPageShell
+      header={
+        <WorkspacePageHeader
+          title="Workspace settings"
+          description="Manage your coaching space, team, and client experience."
+        />
+      }
+      tabs={<SettingsTabs tabs={tabs} />}
+    >
       <Suspense
         fallback={
           <div

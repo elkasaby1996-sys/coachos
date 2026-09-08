@@ -321,7 +321,7 @@ export function PtWorkoutTemplatesPage() {
     <div className="space-y-6 pt-1.5">
       <WorkspacePageHeader
         title="Workout Templates"
-        description="Manage the workout template library in the same operational layout as nutrition programs."
+        description="Create, organize, and reuse workouts across your clients."
       />
 
       <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_13rem_12rem_auto] xl:items-center">
@@ -449,7 +449,7 @@ export function PtWorkoutTemplatesPage() {
               key={template.id}
               title={template.name ?? "Workout template"}
               subtitle={template.description ?? "No description"}
-              className="flex h-full flex-col bg-card/90 [&>.ui-card-header]:flex-1 [&>.ui-card-header]:items-start [&>.ui-card-header>div:first-child]:min-w-0"
+              className="coach-library-card flex h-full flex-col bg-card/90 [&>.ui-card-header]:flex-1 [&>.ui-card-header]:items-start [&>.ui-card-header>div:first-child]:min-w-0"
               action={
                 <div className="flex shrink-0 items-center gap-1 self-start">
                   <Button

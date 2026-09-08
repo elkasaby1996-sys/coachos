@@ -7,7 +7,6 @@ import { Button } from "../../components/ui/button";
 import {
   EmptyStateBlock,
   PortalPageHeader,
-  SectionCard,
   StatusBanner,
   SurfaceCard,
   SurfaceCardContent,
@@ -504,7 +503,7 @@ export function ClientNutritionPage() {
       <div className="space-y-6">
         <PortalPageHeader
           title="Nutrition"
-          subtitle="Unified nutrition for personal and coach-assigned plans."
+          subtitle="Your meals, targets, and nutrition plans."
         />
         <EmptyStateBlock
           title="Client profile not found"
@@ -523,7 +522,7 @@ export function ClientNutritionPage() {
     <div className="space-y-6">
       <PortalPageHeader
         title="Nutrition"
-        subtitle="One nutrition experience across personal and coach-assigned plans."
+        subtitle="See your meals, review your targets, and manage your nutrition plans."
         stateText={`${unifiedDayRows.length} day${unifiedDayRows.length === 1 ? "" : "s"} in view`}
         className="w-full justify-end"
         actions={
@@ -542,114 +541,110 @@ export function ClientNutritionPage() {
         />
       ) : null}
 
-      <SectionCard className="space-y-4">
-        <div className="grid grid-cols-1 gap-4">
-          <SurfaceCard className="border-border/70 bg-card/55">
-            <SurfaceCardHeader>
-              <SurfaceCardTitle>Today</SurfaceCardTitle>
-              <SurfaceCardDescription>
-                Highest priority nutrition tasks for today.
-              </SurfaceCardDescription>
-            </SurfaceCardHeader>
-            <SurfaceCardContent className="space-y-3">
-              {groupedRows.today.length === 0 ? (
-                <EmptyStateBlock
-                  title="No nutrition tasks today"
-                  description="Create a personal plan or check upcoming days."
-                  centered
-                />
-              ) : (
-                groupedRows.today.map((row) => (
-                  <NutritionDayCard
-                    key={row.id}
-                    row={row}
-                    onOpen={(dayId) => navigate(`/app/nutrition/${dayId}`)}
-                  />
-                ))
-              )}
-            </SurfaceCardContent>
-          </SurfaceCard>
-        </div>
-      </SectionCard>
+      <SurfaceCard className="border-border/70 bg-card/55">
+        <SurfaceCardHeader>
+          <SurfaceCardTitle>Today</SurfaceCardTitle>
+          <SurfaceCardDescription>
+            Your meals and nutrition plan for today.
+          </SurfaceCardDescription>
+        </SurfaceCardHeader>
+        <SurfaceCardContent className="space-y-3">
+          {groupedRows.today.length === 0 ? (
+            <EmptyStateBlock
+              title="No nutrition tasks today"
+              description="Create a personal plan or check upcoming days."
+              centered
+            />
+          ) : (
+            groupedRows.today.map((row) => (
+              <NutritionDayCard
+                key={row.id}
+                row={row}
+                onOpen={(dayId) => navigate(`/app/nutrition/${dayId}`)}
+              />
+            ))
+          )}
+        </SurfaceCardContent>
+      </SurfaceCard>
 
-      <SectionCard className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            Personal Templates
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Used templates are history-safe and archive-only. Unused templates
-            can be deleted.
-          </p>
-        </div>
-        {(personalTemplatesQuery.data ?? []).length === 0 ? (
-          <EmptyStateBlock
-            title="No personal templates yet"
-            description="Create your first personal plan to get started."
-            centered
-          />
-        ) : (
-          <div className="space-y-3">
-            {(personalTemplatesQuery.data ?? []).map((template) => {
-              const isUsed = usedPersonalTemplateIds.has(template.id);
-              return (
-                <SurfaceCard
-                  key={template.id}
-                  className="border-border/70 bg-card/55"
-                >
-                  <SurfaceCardHeader className="gap-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <SurfaceCardTitle className="text-base">
-                        {template.name ?? "Personal template"}
-                      </SurfaceCardTitle>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="muted">Personal</Badge>
-                        {!template.is_active ? (
-                          <Badge variant="neutral">Archived</Badge>
-                        ) : null}
+      <SurfaceCard>
+        <SurfaceCardHeader>
+          <SurfaceCardTitle>Personal templates</SurfaceCardTitle>
+          <SurfaceCardDescription>
+            Keep meal plans to use again. Archive plans you have used to
+            preserve your history, or delete unused plans.
+          </SurfaceCardDescription>
+        </SurfaceCardHeader>
+        <SurfaceCardContent className="space-y-4">
+          {(personalTemplatesQuery.data ?? []).length === 0 ? (
+            <EmptyStateBlock
+              title="No personal templates yet"
+              description="Create your first personal plan to get started."
+              centered
+            />
+          ) : (
+            <div className="space-y-3">
+              {(personalTemplatesQuery.data ?? []).map((template) => {
+                const isUsed = usedPersonalTemplateIds.has(template.id);
+                return (
+                  <SurfaceCard
+                    key={template.id}
+                    className="border-border/70 bg-card/55"
+                  >
+                    <SurfaceCardHeader className="gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <SurfaceCardTitle className="text-base">
+                          {template.name ?? "Personal template"}
+                        </SurfaceCardTitle>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="muted">Personal</Badge>
+                          {!template.is_active ? (
+                            <Badge variant="neutral">Archived</Badge>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                    <SurfaceCardDescription>
-                      {template.description?.trim() || "No description"}
-                    </SurfaceCardDescription>
-                  </SurfaceCardHeader>
-                  <SurfaceCardContent className="flex flex-wrap items-center gap-2">
-                    {isUsed ? (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={
-                          archiveTemplateMutation.isPending ||
-                          !template.is_active
-                        }
-                        onClick={() =>
-                          archiveTemplateMutation.mutate(template.id)
-                        }
-                      >
-                        Archive
-                      </Button>
-                    ) : (
-                      <Button
-                        tone="danger"
-                        size="sm"
-                        variant="secondary"
-                        className="text-destructive hover:text-destructive"
-                        disabled={deleteTemplateMutation.isPending}
-                        onClick={() =>
-                          deleteTemplateMutation.mutate(template.id)
-                        }
-                      >
-                        <Trash2 className="mr-1 h-3.5 w-3.5" />
-                        Delete
-                      </Button>
-                    )}
-                  </SurfaceCardContent>
-                </SurfaceCard>
-              );
-            })}
-          </div>
-        )}
-      </SectionCard>
+                      <SurfaceCardDescription>
+                        {template.description?.trim() || "No description"}
+                      </SurfaceCardDescription>
+                    </SurfaceCardHeader>
+                    <SurfaceCardContent className="flex flex-wrap items-center gap-2">
+                      {isUsed ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={
+                            archiveTemplateMutation.isPending ||
+                            !template.is_active
+                          }
+                          onClick={() =>
+                            archiveTemplateMutation.mutate(template.id)
+                          }
+                        >
+                          Archive
+                        </Button>
+                      ) : (
+                        <Button
+                          tone="danger"
+                          size="sm"
+                          variant="secondary"
+                          className="text-destructive hover:text-destructive"
+                          disabled={deleteTemplateMutation.isPending}
+                          onClick={() =>
+                            deleteTemplateMutation.mutate(template.id)
+                          }
+                        >
+                          <Trash2 className="mr-1 h-3.5 w-3.5" />
+                          Delete
+                        </Button>
+                      )}
+                    </SurfaceCardContent>
+                  </SurfaceCard>
+                );
+              })}
+            </div>
+          )}
+        </SurfaceCardContent>
+      </SurfaceCard>
 
       {manageError ? (
         <ActionStatusMessage tone="error">{manageError}</ActionStatusMessage>

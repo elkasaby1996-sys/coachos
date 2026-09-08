@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Dumbbell, Gauge, Scale, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { PortalPageHeader } from "../../components/client/portal/portal-ui";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -220,24 +221,15 @@ export function ClientWorkoutSummaryPage() {
 
   return (
     <div className="space-y-6 pb-16 md:pb-0">
-      <section className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Workout summary
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {workoutTemplate?.name ?? "Workout summary"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {workoutTemplate?.description ?? "Summary details below."}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => navigate("/app/home")}>
-            Back to home
-          </Button>
-        </div>
-      </section>
+      <PortalPageHeader
+        title={workoutTemplate?.name ?? "Workout summary"}
+        subtitle={
+          workoutTemplate?.description ??
+          "Review your session, completed sets, and training volume."
+        }
+        backTo="/app/workouts"
+        backLabel="Back to workouts"
+      />
 
       {errors.length > 0 ? (
         <div className="space-y-2">
@@ -294,7 +286,6 @@ export function ClientWorkoutSummaryPage() {
                   Sets logged
                 </p>
                 <div className="mt-2 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
                   <p className="text-xl font-semibold">{totalSets}</p>
                 </div>
               </div>
@@ -303,7 +294,6 @@ export function ClientWorkoutSummaryPage() {
                   Exercises
                 </p>
                 <div className="mt-2 flex items-center gap-2">
-                  <Dumbbell className="h-4 w-4 text-primary" />
                   <p className="text-xl font-semibold">
                     {sessionStats.exerciseCount}
                   </p>
@@ -314,7 +304,6 @@ export function ClientWorkoutSummaryPage() {
                   Total volume
                 </p>
                 <div className="mt-2 flex items-center gap-2">
-                  <Scale className="h-4 w-4 text-primary" />
                   <p className="text-xl font-semibold">
                     {sessionStats.totalVolume.toLocaleString()}
                   </p>
@@ -325,7 +314,6 @@ export function ClientWorkoutSummaryPage() {
                   Average RPE
                 </p>
                 <div className="mt-2 flex items-center gap-2">
-                  <Gauge className="h-4 w-4 text-primary" />
                   <p className="text-xl font-semibold">
                     {sessionStats.avgRpe ?? "--"}
                   </p>

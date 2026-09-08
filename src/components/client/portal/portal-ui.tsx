@@ -1,5 +1,7 @@
 import * as React from "react";
+import { Link } from "react-router-dom";
 import {
+  ArrowLeft,
   CheckCircle2,
   ClipboardCheck,
   Info,
@@ -29,6 +31,8 @@ type PortalPageHeaderProps = {
   actions?: React.ReactNode;
   className?: string;
   module?: ModuleTone;
+  backTo?: string;
+  backLabel?: string;
 };
 
 export function PortalPageHeader({
@@ -38,16 +42,25 @@ export function PortalPageHeader({
   actions,
   className,
   module,
+  backTo,
+  backLabel = "Back",
 }: PortalPageHeaderProps) {
   const headerMode = useWorkspaceHeaderMode();
   const moduleClasses = module ? getModuleToneClasses(module) : null;
 
   if (headerMode === "shell") {
-    if (!actions) return null;
+    if (!actions && !backTo) return null;
 
     return (
       <Reveal>
         <section className={cn("flex flex-wrap items-center gap-2", className)}>
+          {backTo ? (
+            <Button asChild variant="ghost" size="icon" aria-label={backLabel}>
+              <Link to={backTo}>
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+              </Link>
+            </Button>
+          ) : null}
           {actions}
         </section>
       </Reveal>
@@ -58,22 +71,37 @@ export function PortalPageHeader({
     <Reveal>
       <section
         className={cn(
-          "flex flex-col gap-5 border-b border-border/50 pb-5 lg:flex-row lg:items-end lg:justify-between",
+          "portal-page-heading flex flex-col gap-5 border-b border-border/50 pb-5 lg:flex-row lg:items-end lg:justify-between",
           className,
         )}
         style={getModuleToneStyle(module)}
       >
         <div className="min-w-0 space-y-2">
-          <h1
-            className={cn(
-              "text-[1.85rem] font-semibold tracking-[-0.035em] text-foreground sm:text-[2.15rem] lg:text-[2.35rem]",
-              moduleClasses?.title,
-            )}
-          >
-            {title}
-          </h1>
+          <div className="flex items-center gap-3">
+            {backTo ? (
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                aria-label={backLabel}
+              >
+                <Link to={backTo}>
+                  <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                </Link>
+              </Button>
+            ) : null}
+            <h1
+              className={cn(
+                "text-[1.85rem] font-semibold tracking-[-0.035em] text-foreground sm:text-[2.15rem] lg:text-[2.35rem]",
+                moduleClasses?.title,
+              )}
+            >
+              {title}
+            </h1>
+          </div>
           {subtitle || stateText ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-6 text-muted-foreground sm:text-[15px] sm:leading-7">
+            <div className="portal-page-heading-context flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-6 text-muted-foreground sm:text-[15px] sm:leading-7">
               {subtitle ? <p className="max-w-3xl">{subtitle}</p> : null}
               {stateText ? (
                 <span className="inline-flex max-w-full items-center gap-2 text-sm font-medium text-foreground/80">

@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, Copy, Pencil, Search, Trash2 } from "lucide-react";
+import {
+  Archive,
+  Copy,
+  Eye,
+  Loader2,
+  Pencil,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Card } from "../../components/ui/card";
@@ -351,7 +359,7 @@ export function PtProgramsPage() {
 
       <WorkspacePageHeader
         title="Programs"
-        description="Design reusable multi-week training systems and keep edit actions close to the list."
+        description="Build reusable training programs and plan your clients’ progression."
       />
 
       {actionError ? (
@@ -428,7 +436,7 @@ export function PtProgramsPage() {
           {getErrorDetails(programsQuery.error).message}
         </Card>
       ) : filteredPrograms.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredPrograms.map((program) => {
             const isBusy = actionId === program.id;
             return (
@@ -436,82 +444,98 @@ export function PtProgramsPage() {
                 key={program.id}
                 title={program.name}
                 subtitle={program.description ?? "Multi-week program"}
+                className="coach-library-card relative flex h-full flex-col bg-card/90 [&>.ui-card-header]:flex-1 [&>.ui-card-header]:items-start [&>.ui-card-header>div:first-child]:min-w-0 [&>.ui-card-header>div:first-child]:pr-20"
                 action={
-                  <StatusPill
-                    status={program.is_active ? "active" : "inactive"}
-                  />
-                }
-                className="bg-card/90"
-              >
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <Badge
-                      variant="secondary"
-                      className="text-[10px] uppercase"
-                    >
-                      {program.typeTagLabel}
-                    </Badge>
-                    <Badge variant="muted" className="text-[10px] uppercase">
-                      Updated {program.updatedLabel}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-1 self-start">
                     <Button
-                      size="sm"
-                      variant="secondary"
-                      className="flex-1"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                      aria-label={canManageDelivery ? "Edit" : "View"}
+                      title={
+                        canManageDelivery ? "Edit program" : "View program"
+                      }
                       onClick={() =>
                         navigate(`/pt/programs/${program.id}/edit`)
                       }
                     >
-                      <Pencil className="mr-1 h-3.5 w-3.5" />
-                      {canManageDelivery ? "Edit" : "View"}
+                      {canManageDelivery ? (
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
+                      ) : (
+                        <Eye className="h-4 w-4" aria-hidden="true" />
+                      )}
                     </Button>
                     {canManageDelivery ? (
                       <>
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
-                          className="flex-1"
+                          className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                          aria-label="Duplicate"
+                          title="Duplicate program"
                           disabled={isBusy && actionMode === "duplicate"}
+                          aria-busy={isBusy && actionMode === "duplicate"}
                           onClick={() => handleDuplicate(program)}
                         >
-                          <Copy className="mr-1 h-3.5 w-3.5" />
-                          {isBusy && actionMode === "duplicate"
-                            ? "Duplicating..."
-                            : "Duplicate"}
+                          {isBusy && actionMode === "duplicate" ? (
+                            <Loader2
+                              className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Copy className="h-4 w-4" aria-hidden="true" />
+                          )}
                         </Button>
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
-                          className="flex-1"
+                          className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                          aria-label="Archive"
+                          title="Archive program"
                           disabled={isBusy && actionMode === "archive"}
+                          aria-busy={isBusy && actionMode === "archive"}
                           onClick={() => handleArchive(program.id)}
                         >
-                          <Archive className="mr-1 h-3.5 w-3.5" />
-                          {isBusy && actionMode === "archive"
-                            ? "Archiving..."
-                            : "Archive"}
+                          {isBusy && actionMode === "archive" ? (
+                            <Loader2
+                              className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Archive className="h-4 w-4" aria-hidden="true" />
+                          )}
                         </Button>
                         <Button
-                          tone="danger"
-                          size="sm"
+                          size="icon"
                           variant="ghost"
-                          className="flex-1 text-destructive hover:text-destructive"
+                          className="h-8 w-8 !min-h-8 !min-w-8 hover:text-destructive [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                          aria-label="Delete"
+                          title="Delete program"
                           disabled={isBusy && actionMode === "delete"}
                           onClick={() => {
                             setActionError(null);
                             setDeleteTarget(program);
                           }}
                         >
-                          <Trash2 className="mr-1 h-3.5 w-3.5" />
-                          {isBusy && actionMode === "delete"
-                            ? "Deleting..."
-                            : "Delete"}
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </>
                     ) : null}
                   </div>
+                }
+              >
+                <div className="absolute right-6 top-6">
+                  <StatusPill
+                    status={program.is_active ? "active" : "inactive"}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant="secondary" className="text-[10px] uppercase">
+                    {program.typeTagLabel}
+                  </Badge>
+                  <Badge variant="muted" className="text-[10px] uppercase">
+                    Updated {program.updatedLabel}
+                  </Badge>
                 </div>
               </DashboardCard>
             );
@@ -528,73 +552,57 @@ export function PtProgramsPage() {
         </DashboardCard>
       ) : (
         <DashboardCard
-          title="Build your first reusable program"
-          subtitle="Programs become the repeatable training systems you assign, adapt, and archive over time."
+          title="Build your first program"
+          subtitle="A program is a weekly schedule made from workouts in your library. Save it here, then assign it to a client."
         >
           <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="ui-inset border border-border/70 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Reusable block
-                </div>
-                <div className="mt-2 text-sm font-semibold text-foreground">
-                  4-week Hypertrophy Base
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  Clear title, duration, and progression notes so the structure
-                  is reusable.
-                </div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Set the goal and duration
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Choose a name you can recognize later, such as &quot;4-week
+                  strength foundation&quot;. Set the number of weeks and
+                  describe who the program is for.
+                </p>
               </div>
               <div className="ui-inset border border-border/70 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Assignment behavior
-                </div>
-                <div className="mt-2 text-sm font-semibold text-foreground">
-                  Build once, assign many
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  Use the template as the planning source, then assign the right
-                  block to each client.
-                </div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Schedule workouts and rest
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Add a workout from your library to each training day and mark
+                  rest days. Use day notes to explain changes in reps, load, or
+                  effort. Create any missing workouts in Workouts first.
+                </p>
               </div>
               <div className="ui-inset border border-border/70 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Lifecycle
-                </div>
-                <div className="mt-2 text-sm font-semibold text-foreground">
-                  Active or archived
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  Keep current systems ready to assign and move old ones out of
-                  the active planning lane.
-                </div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Assign it to a client
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Save the program, then open the Workout tab on a client's
+                  profile. Select the program and a start date. Assignment adds
+                  the next 14 days to their schedule.
+                </p>
               </div>
               <div className="ui-inset border border-border/70 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Recommended first step
-                </div>
-                <div className="mt-2 text-sm font-semibold text-foreground">
-                  Create the first block
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  Create one repeatable training block with a clear purpose,
-                  then duplicate it when you need a variation.
-                </div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Update or reuse the program
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Duplicate a program to make a variation. Edits to the saved
+                  program apply to future assignments; reassign it to update a
+                  client already using it.
+                </p>
               </div>
             </div>
-
-            <div className="grid gap-4">
-              <EmptyState
-                title="No programs yet"
-                description="Create your first multi-week program to start assigning structured training blocks."
-                actionLabel={canManageDelivery ? "New Program" : undefined}
-                onAction={
-                  canManageDelivery
-                    ? () => navigate("/pt/programs/new")
-                    : undefined
-                }
-              />
-            </div>
+            {canManageDelivery ? (
+              <Button onClick={() => navigate("/pt/programs/new")}>
+                New Program
+              </Button>
+            ) : null}
           </div>
         </DashboardCard>
       )}
