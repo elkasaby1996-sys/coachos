@@ -570,6 +570,9 @@ export function PtHubAnimatedBackground({
           stencil: false,
           premultipliedAlpha: false,
           preserveDrawingBuffer: false,
+          // Keep the existing ambient fallback when rendering would rely on
+          // software graphics and compete with interactive account loading.
+          failIfMajorPerformanceCaveat: true,
           powerPreference: "high-performance",
         };
         gl =

@@ -91,11 +91,17 @@ export function BloomField({
     let animationFrame = 0;
     let elapsedSeconds = 0;
     let previousTime = performance.now();
+    let lastPaintTime = previousTime;
 
     const animate = (now: number) => {
       if (document.visibilityState === "visible") {
         elapsedSeconds += (now - previousTime) / 1000;
-        renderMesh(elapsedSeconds);
+        // This slow decorative mesh does not need a full-screen gradient
+        // repaint on every display frame, especially during authentication.
+        if (now - lastPaintTime >= 1000 / 24) {
+          renderMesh(elapsedSeconds);
+          lastPaintTime = now;
+        }
       }
       previousTime = now;
       animationFrame = window.requestAnimationFrame(animate);

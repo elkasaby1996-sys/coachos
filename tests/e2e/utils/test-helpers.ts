@@ -64,26 +64,11 @@ async function isRouteStable(page: Page, targetPath: string) {
 }
 
 export async function clickVisibleEnabledSignInButton(page: Page) {
-  const signInButtons = page
+  await page
     .locator("form")
-    .getByRole("button", { name: /^sign in$/i });
-
-  for (let index = (await signInButtons.count()) - 1; index >= 0; index -= 1) {
-    const button = signInButtons.nth(index);
-    const box = await button.boundingBox().catch(() => null);
-    if (
-      (await button.isVisible().catch(() => false)) &&
-      (await button.isEnabled().catch(() => false)) &&
-      box &&
-      box.width > 1 &&
-      box.height > 1
-    ) {
-      await button.click({ timeout: 2_000 });
-      return;
-    }
-  }
-
-  throw new Error("No visible enabled sign-in button found.");
+    .getByRole("button", { name: /^sign in$/i })
+    .filter({ hasText: "Sign in" })
+    .click();
 }
 
 export async function waitForAuthSessionReady(page: Page, timeoutMs = 15_000) {
@@ -124,162 +109,20 @@ export async function signInWithEmail(
   email: string,
   password: string,
 ) {
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    await page.goto("/login", { waitUntil: "domcontentloaded" });
-    if (!isLoginPath(page.url())) {
-      return;
-    }
-    const emailByLabel = page.getByLabel(/email/i);
-    const emailByPlaceholder = page.getByPlaceholder("you@repsync.com");
-    const passwordByLabel = page.getByLabel(/password/i);
-    const passwordByPlaceholder = page.getByPlaceholder("Enter password");
-    const emailByRole = page.getByRole("textbox", { name: /email/i }).first();
-    const passwordByRole = page
-      .getByRole("textbox", { name: /password/i })
-      .first();
-    const emailByInput = page
-      .locator(
-        'input[type="email"], input[name="email"], input[autocomplete="email"]',
-      )
-      .first();
-    const passwordByInput = page
-      .locator(
-        'input[type="password"], input[name="password"], input[autocomplete="current-password"]',
-      )
-      .first();
-    const genericInputs = page.locator('input:not([type="hidden"])');
-
-    let loginFormReady = false;
-    const formWaitStart = Date.now();
-    while (Date.now() - formWaitStart < 10_000) {
-      if (!isLoginPath(page.url())) return;
-      const emailVisible =
-        (await emailByLabel.isVisible().catch(() => false)) ||
-        (await emailByPlaceholder.isVisible().catch(() => false)) ||
-        (await emailByRole.isVisible().catch(() => false)) ||
-        (await emailByInput.isVisible().catch(() => false));
-      const passwordVisible =
-        (await passwordByLabel.isVisible().catch(() => false)) ||
-        (await passwordByPlaceholder.isVisible().catch(() => false)) ||
-        (await passwordByRole.isVisible().catch(() => false)) ||
-        (await passwordByInput.isVisible().catch(() => false));
-      const genericInputsVisible =
-        (await genericInputs
-          .first()
-          .isVisible()
-          .catch(() => false)) &&
-        (await genericInputs
-          .nth(1)
-          .isVisible()
-          .catch(() => false));
-      if (emailVisible && passwordVisible) {
-        loginFormReady = true;
-        break;
-      }
-      if (genericInputsVisible) {
-        loginFormReady = true;
-        break;
-      }
-      const bootstrapLoading = await page
-        .getByText(/^Loading\.\.\.$/)
-        .first()
-        .isVisible()
-        .catch(() => false);
-      if (bootstrapLoading) {
-        if (Date.now() - formWaitStart > 4_000) {
-          return;
-        }
-        await page.waitForTimeout(300);
-        continue;
-      }
-      await page.waitForTimeout(200);
-    }
-
-    if (!loginFormReady) {
-      const stillBootstrappingOnLogin = await page
-        .getByText(/^Loading\.\.\.$/)
-        .first()
-        .isVisible()
-        .catch(() => false);
-      if (stillBootstrappingOnLogin) {
-        // Let caller retry navigation instead of timing out inside form fill.
-        return;
-      }
-      if (!isLoginPath(page.url())) return;
-      if (attempt === 0) {
-        await page.waitForTimeout(1_000);
-        continue;
-      }
-      throw new Error(
-        `Login form did not become ready on /login (url: ${page.url()}).`,
-      );
-    }
-
-    if (await emailByLabel.isVisible().catch(() => false)) {
-      await emailByLabel.fill(email);
-    } else if (await emailByPlaceholder.isVisible().catch(() => false)) {
-      await emailByPlaceholder.fill(email);
-    } else if (await emailByRole.isVisible().catch(() => false)) {
-      await emailByRole.fill(email);
-    } else if (await emailByInput.isVisible().catch(() => false)) {
-      await emailByInput.fill(email);
-    } else if (
-      await genericInputs
-        .first()
-        .isVisible()
-        .catch(() => false)
-    ) {
-      await genericInputs.first().fill(email);
-    } else {
-      throw new Error("Email input not visible on /login.");
-    }
-
-    if (await passwordByLabel.isVisible().catch(() => false)) {
-      await passwordByLabel.fill(password);
-    } else if (await passwordByPlaceholder.isVisible().catch(() => false)) {
-      await passwordByPlaceholder.fill(password);
-    } else if (await passwordByRole.isVisible().catch(() => false)) {
-      await passwordByRole.fill(password);
-    } else if (await passwordByInput.isVisible().catch(() => false)) {
-      await passwordByInput.fill(password);
-    } else if (
-      await genericInputs
-        .nth(1)
-        .isVisible()
-        .catch(() => false)
-    ) {
-      await genericInputs.nth(1).fill(password);
-    } else {
-      throw new Error("Password input not visible on /login.");
-    }
-
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
+  // Locator actions await the real form, including lazy loading and animation.
+  // Reloading on a short polling deadline can cancel an in-flight sign-in.
+  const emailInput = page.getByLabel("Email", { exact: true });
+  const sessionReady = page.getByTestId("auth-session-ready");
+  await emailInput.or(sessionReady).first().waitFor({ state: "attached" });
+  if ((await sessionReady.count()) === 0) {
+    await emailInput.fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(password);
     await clickVisibleEnabledSignInButton(page);
-
-    try {
-      await page.waitForFunction(
-        () =>
-          window.location.pathname !== "/login" &&
-          window.location.pathname !== "/login/",
-        undefined,
-        { timeout: 5_000 },
-      );
-      await page.waitForTimeout(400);
-      if (isLoginPath(page.url()) || (await isLoginUiVisible(page))) {
-        if (attempt === 0) {
-          await page.waitForTimeout(1_500);
-          continue;
-        }
-        throw new Error("Sign-in appeared to succeed but returned to login.");
-      }
-      return;
-    } catch {
-      if (attempt === 0) {
-        await page.waitForTimeout(1_500);
-        continue;
-      }
-      throw new Error("Sign-in did not leave login page.");
-    }
   }
+  await waitForAuthSessionReady(page);
+  await waitForBootstrapResolved(page);
+  await expect(page).not.toHaveURL(/\/login\/?(?:\?.*)?$/);
 }
 
 export async function ensureAuthenticatedNavigation(
