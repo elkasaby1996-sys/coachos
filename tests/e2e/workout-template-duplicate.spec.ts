@@ -75,11 +75,9 @@ test("Duplicate copies the workout and prescriptions, and cleans up a failed cop
         });
   });
   await page.goto("/pt/templates/workouts");
-  const cards = page
-    .locator(".ui-card")
-    .filter({
-      has: page.getByRole("button", { name: "Duplicate", exact: true }),
-    });
+  const cards = page.locator(".ui-card").filter({
+    has: page.getByRole("button", { name: "Duplicate", exact: true }),
+  });
   const original = cards.filter({
     has: page.getByRole("heading", { name: source.name, exact: true }),
   });

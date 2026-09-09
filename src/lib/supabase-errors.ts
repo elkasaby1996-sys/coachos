@@ -1,4 +1,9 @@
-type SupabaseErrorLike = { code?: string | null; message?: string | null };
+type SupabaseErrorLike = {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+  hint?: string | null;
+};
 
 export const getSupabaseErrorMessage = (
   error: unknown,
@@ -22,5 +27,7 @@ export const getSupabaseErrorDetails = (error: unknown) => {
   return {
     code: err?.code ?? null,
     message: getSupabaseErrorMessage(error),
+    details: err?.details ?? null,
+    hint: err?.hint ?? null,
   };
 };

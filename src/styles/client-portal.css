@@ -43,7 +43,11 @@
 .client-notification-panel {
   display: flex;
   flex-direction: column;
-  max-height: min(620px, calc(100dvh - 120px), var(--radix-dropdown-menu-content-available-height, 620px));
+  max-height: min(
+    620px,
+    calc(100dvh - 120px),
+    var(--radix-dropdown-menu-content-available-height, 620px)
+  );
   overflow: hidden;
 }
 .client-notification-panel .notification-panel-heading {
@@ -235,17 +239,25 @@
   height: 30px;
   border-radius: 9px;
   color: currentColor;
-  transition: background-color 160ms, color 160ms, box-shadow 160ms;
+  transition:
+    background-color 160ms,
+    color 160ms,
+    box-shadow 160ms;
 }
 .client-nav-icon svg {
   width: 20px;
   height: 20px;
 }
-:is(.client-portal-nav-link, .client-portal-mobile-link):hover .client-nav-icon {
+:is(.client-portal-nav-link, .client-portal-mobile-link):hover
+  .client-nav-icon {
   color: var(--ui-action);
   background: color-mix(in oklch, var(--ui-action) 8%, var(--ui-surface));
 }
-:is(.client-portal-nav-link, .client-portal-mobile-link):is([aria-current="page"], [data-active="true"]) .client-nav-icon {
+:is(.client-portal-nav-link, .client-portal-mobile-link):is(
+    [aria-current="page"],
+    [data-active="true"]
+  )
+  .client-nav-icon {
   background: transparent;
   color: var(--ui-action);
 }

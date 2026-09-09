@@ -8,9 +8,7 @@
         "id": "",
         "type": "checkbox",
         "value": "on",
-        "labels": [
-          "Mark complete"
-        ],
+        "labels": ["Mark complete"],
         "ariaLabel": null,
         "font": "14px"
       },
@@ -81,9 +79,7 @@
         "id": "",
         "type": "checkbox",
         "value": "on",
-        "labels": [
-          "Mark complete"
-        ],
+        "labels": ["Mark complete"],
         "ariaLabel": null,
         "font": "14px"
       },
@@ -154,9 +150,7 @@
         "id": "",
         "type": "checkbox",
         "value": "on",
-        "labels": [
-          "Mark complete"
-        ],
+        "labels": ["Mark complete"],
         "ariaLabel": null,
         "font": "14px"
       },
@@ -227,9 +221,7 @@
         "id": "",
         "type": "checkbox",
         "value": "on",
-        "labels": [
-          "Mark complete"
-        ],
+        "labels": ["Mark complete"],
         "ariaLabel": null,
         "font": "14px"
       },

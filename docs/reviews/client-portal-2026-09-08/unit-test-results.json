@@ -1,1 +1,783 @@
-{"numTotalTestSuites":29,"numPassedTestSuites":29,"numFailedTestSuites":0,"numPendingTestSuites":0,"numTotalTests":68,"numPassedTests":68,"numFailedTests":0,"numPendingTests":0,"numTodoTests":0,"snapshot":{"added":0,"failure":false,"filesAdded":0,"filesRemoved":0,"filesRemovedList":[],"filesUnmatched":0,"filesUpdated":0,"matched":0,"total":0,"unchecked":0,"uncheckedKeysByFile":[],"unmatched":0,"updated":0,"didUpdate":false},"startTime":1788856144839,"success":true,"testResults":[{"assertionResults":[{"ancestorTitles":["client check-in stale detection"],"fullName":"client check-in stale detection captures the rendered signature after an initial null baseline","status":"passed","title":"captures the rendered signature after an initial null baseline","duration":3.074600000000032,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client check-in stale detection"],"fullName":"client check-in stale detection keeps a changed fetched signature from becoming the baseline when a rendered baseline exists","status":"passed","title":"keeps a changed fetched signature from becoming the baseline when a rendered baseline exists","duration":0.40300000000002,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client check-in stale detection"],"fullName":"client check-in stale detection does not capture a baseline from a null loading signature","status":"passed","title":"does not capture a baseline from a null loading signature","duration":0.3240000000000123,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client check-in stale detection"],"fullName":"client check-in stale detection warns both clean and dirty forms when the direct-polled signature changes","status":"passed","title":"warns both clean and dirty forms when the direct-polled signature changes","duration":0.591199999999958,"failureMessages":[],"meta":{},"tags":[]}],"startTime":1788856146973,"endTime":1788856146977.5913,"status":"passed","message":"","name":"C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-checkin-stale-detection.test.ts"},{"assertionResults":[{"ancestorTitles":["client check-in page state"],"fullName":"client check-in page state returns no-assignment only when no effective template applies","status":"passed","title":"returns no-assignment only when no effective template applies","duration":3.099199999999996,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client check-in page state"],"fullName":"client check-in page state treats an assigned template with a future date and no row as assigned but not open","status":"passed","title":"treats an assigned template with a future date and no row as assigned but not open","duration":0.8945999999999685,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client check-in page state"],"fullName":"client check-in page state prevents false no-assignment when a template exists but no start date has materialized rows","status":"passed","title":"prevents false no-assignment when a template exists but no start date has materialized rows","duration":0.3691000000000031,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client check-in page state"],"fullName":"client check-in page state maps due check-ins to the open state","status":"passed","title":"maps due check-ins to the open state","duration":0.40370000000007167,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client check-in page state"],"fullName":"client check-in page state preserves submitted state","status":"passed","title":"preserves submitted state","duration":1.0213000000001102,"failureMessages":[],"meta":{},"tags":[]}],"startTime":1788856146671,"endTime":1788856146677.0212,"status":"passed","message":"","name":"C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-checkin-state.test.ts"},{"assertionResults":[{"ancestorTitles":["client check-ins page contract"],"fullName":"client check-ins page contract surfaces assigned and previous check-ins on the same page","status":"passed","title":"surfaces assigned and previous check-ins on the same page","duration":2.3443000000000893,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client check-ins page contract"],"fullName":"client check-ins page contract allows selecting a check-in cycle from assigned/history rows","status":"passed","title":"allows selecting a check-in cycle from assigned/history rows","duration":0.44489999999996144,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client check-ins page contract"],"fullName":"client check-ins page contract keeps the check-in form stepper and review details in one card","status":"passed","title":"keeps the check-in form stepper and review details in one card","duration":0.8194999999999482,"failureMessages":[],"meta":{},"tags":[]}],"startTime":1788856146551,"endTime":1788856146553.8196,"status":"passed","message":"","name":"C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-checkins-page-contract.test.ts"},{"assertionResults":[{"ancestorTitles":["resolveUnifiedClientHomeState"],"fullName":"resolveUnifiedClientHomeState returns lead_only for pre-workspace lead state","status":"passed","title":"returns lead_only for pre-workspace lead state","duration":2.193300000000022,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveUnifiedClientHomeState"],"fullName":"resolveUnifiedClientHomeState returns personal_only when only personal source exists","status":"passed","title":"returns personal_only when only personal source exists","duration":1.1990999999999303,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveUnifiedClientHomeState"],"fullName":"resolveUnifiedClientHomeState returns one_pt for a single coach source","status":"passed","title":"returns one_pt for a single coach source","duration":0.27099999999995816,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveUnifiedClientHomeState"],"fullName":"resolveUnifiedClientHomeState returns multi_pt for multiple coach sources","status":"passed","title":"returns multi_pt for multiple coach sources","duration":0.29290000000003147,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveUnifiedClientHomeState"],"fullName":"resolveUnifiedClientHomeState returns mixed for personal + coach sources","status":"passed","title":"returns mixed for personal + coach sources","duration":0.21829999999999927,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveUnifiedClientHomeState"],"fullName":"resolveUnifiedClientHomeState avoids hard binary split by considering content sources","status":"passed","title":"avoids hard binary split by considering content sources","duration":0.19479999999998654,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["sortWorkoutsByUrgency"],"fullName":"sortWorkoutsByUrgency prioritizes pending/planned workouts over completed/skipped and keeps mixed sources together","status":"passed","title":"prioritizes pending/planned workouts over completed/skipped and keeps mixed sources together","duration":1.1445999999999685,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["source labels"],"fullName":"source labels renders Personal for workspace-less items","status":"passed","title":"renders Personal for workspace-less items","duration":0.4675999999999476,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["source labels"],"fullName":"source labels renders coach labels with workspace names","status":"passed","title":"renders coach labels with workspace names","duration":1.1299999999999955,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["navigation helpers"],"fullName":"navigation helpers keeps workout start path on the existing runner route","status":"passed","title":"keeps workout start path on the existing runner route","duration":0.5865999999999758,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["find-coach visibility"],"fullName":"find-coach visibility shows find-coach for lead/pre-workspace users","status":"passed","title":"shows find-coach for lead/pre-workspace users","duration":0.3406999999999698,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["find-coach visibility"],"fullName":"find-coach visibility shows find-coach when discovery states are present","status":"passed","title":"shows find-coach when discovery states are present","duration":0.14210000000002765,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["find-coach visibility"],"fullName":"find-coach visibility hides find-coach when no discovery context is relevant","status":"passed","title":"hides find-coach when no discovery context is relevant","duration":0.13029999999992015,"failureMessages":[],"meta":{},"tags":[]}],"startTime":1788856146623,"endTime":1788856146632.3408,"status":"passed","message":"","name":"C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-home-unified.test.ts"},{"assertionResults":[{"ancestorTitles":["nutrition source helper"],"fullName":"nutrition source helper classifies personal vs assigned source from workspace ownership","status":"passed","title":"classifies personal vs assigned source from workspace ownership","duration":2.1786999999999352,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["nutrition source helper"],"fullName":"nutrition source helper builds compact source labels","status":"passed","title":"builds compact source labels","duration":0.5336999999999534,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["groupUnifiedNutritionByDate"],"fullName":"groupUnifiedNutritionByDate keeps nutrition merged by function and date relevance","status":"passed","title":"keeps nutrition merged by function and date relevance","duration":15.435199999999895,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["applyUnifiedNutritionFilter"],"fullName":"applyUnifiedNutritionFilter supports All, Assigned, Personal, Today, Upcoming","status":"passed","title":"supports All, Assigned, Personal, Today, Upcoming","duration":1.719600000000014,"failureMessages":[],"meta":{},"tags":[]}],"startTime":1788856146621,"endTime":1788856146641.7195,"status":"passed","message":"","name":"C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-nutrition-unified.test.ts"},{"assertionResults":[{"ancestorTitles":["client settings page contract"],"fullName":"client settings page contract defines the exact tab model","status":"passed","title":"defines the exact tab model","duration":2.507099999999923,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client settings page contract"],"fullName":"client settings page contract renders required profile fields and excludes disallowed profile labels","status":"passed","title":"renders required profile fields and excludes disallowed profile labels","duration":1.0038999999999305,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client settings page contract"],"fullName":"client settings page contract renders required preferences fields","status":"passed","title":"renders required preferences fields","duration":0.36410000000000764,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client settings page contract"],"fullName":"client settings page contract keeps privacy/security scope without MFA or data export","status":"passed","title":"keeps privacy/security scope without MFA or data export","duration":0.36360000000001946,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client settings page contract"],"fullName":"client settings page contract keeps billing tab focused on active service and excludes invite/application copy","status":"passed","title":"keeps billing tab focused on active service and excludes invite/application copy","duration":0.5194999999999936,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["client settings page contract"],"fullName":"client settings page contract uses sticky save bars for editable tabs","status":"passed","title":"uses sticky save bars for editable tabs","duration":0.2857999999999947,"failureMessages":[],"meta":{},"tags":[]}],"startTime":1788856146551,"endTime":1788856146556.286,"status":"passed","message":"","name":"C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-settings-page-contract.test.ts"},{"assertionResults":[{"ancestorTitles":["groupUnifiedWorkoutsByState"],"fullName":"groupUnifiedWorkoutsByState renders one merged model by relevance instead of source containers","status":"passed","title":"renders one merged model by relevance instead of source containers","duration":3.685100000000034,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["groupUnifiedWorkoutsByState"],"fullName":"groupUnifiedWorkoutsByState keeps mixed personal + assigned workouts together inside the same section","status":"passed","title":"keeps mixed personal + assigned workouts together inside the same section","duration":0.6760999999999058,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["applyUnifiedWorkoutFilter"],"fullName":"applyUnifiedWorkoutFilter supports all required filters","status":"passed","title":"supports all required filters","duration":2.133699999999976,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["applyUnifiedWorkoutFilter"],"fullName":"applyUnifiedWorkoutFilter returns an empty list cleanly when the selected source is unavailable","status":"passed","title":"returns an empty list cleanly when the selected source is unavailable","duration":0.44839999999999236,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveWorkoutPrimaryAction"],"fullName":"resolveWorkoutPrimaryAction never offers a session action for a planned rest day","status":"passed","title":"never offers a session action for a planned rest day","duration":0.8376999999999271,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveWorkoutPrimaryAction"],"fullName":"resolveWorkoutPrimaryAction never offers a session action for a completed rest day","status":"passed","title":"never offers a session action for a completed rest day","duration":0.2137000000000171,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveWorkoutPrimaryAction"],"fullName":"resolveWorkoutPrimaryAction never offers a session action for a skipped rest day","status":"passed","title":"never offers a session action for a skipped rest day","duration":0.27729999999996835,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveWorkoutPrimaryAction"],"fullName":"resolveWorkoutPrimaryAction shows Resume for in-progress workouts","status":"passed","title":"shows Resume for in-progress workouts","duration":0.3108999999999469,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveWorkoutPrimaryAction"],"fullName":"resolveWorkoutPrimaryAction shows Start for scheduled workouts and keeps runner path shared","status":"passed","title":"shows Start for scheduled workouts and keeps runner path shared","duration":0.699799999999982,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveWorkoutPrimaryAction"],"fullName":"resolveWorkoutPrimaryAction keeps personal workouts on the same runner/session contract","status":"passed","title":"keeps personal workouts on the same runner/session contract","duration":0.32000000000005,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveWorkoutPrimaryAction"],"fullName":"resolveWorkoutPrimaryAction uses summary path for completed workouts","status":"passed","title":"uses summary path for completed workouts","duration":0.324100000000044,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveWorkoutPrimaryAction"],"fullName":"resolveWorkoutPrimaryAction keeps skipped workouts historical with view action","status":"passed","title":"keeps skipped workouts historical with view action","duration":0.3081000000000813,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["canManagePersonalWorkout"],"fullName":"canManagePersonalWorkout does not allow management of rest days even with a stale personal label","status":"passed","title":"does not allow management of rest days even with a stale personal label","duration":0.2962999999999738,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["canManagePersonalWorkout"],"fullName":"canManagePersonalWorkout allows management for personal workouts without active sessions","status":"passed","title":"allows management for personal workouts without active sessions","duration":0.24159999999994852,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["canManagePersonalWorkout"],"fullName":"canManagePersonalWorkout blocks management for active personal workouts and assigned workouts","status":"passed","title":"blocks management for active personal workouts and assigned workouts","duration":0.16380000000003747,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveWorkoutSourceKind"],"fullName":"resolveWorkoutSourceKind keeps client-created standalone workouts personal","status":"passed","title":"keeps client-created standalone workouts personal","duration":0.20139999999992142,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveWorkoutSourceKind"],"fullName":"resolveWorkoutSourceKind recognizes coach rest days without template metadata","status":"passed","title":"recognizes coach rest days without template metadata","duration":0.134900000000016,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["resolveWorkoutSourceKind"],"fullName":"resolveWorkoutSourceKind preserves assignment ownership when a linked template is unavailable","status":"passed","title":"preserves assignment ownership when a linked template is unavailable","duration":0.27500000000009095,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["path helpers"],"fullName":"path helpers builds workout summary paths on the existing route contract","status":"passed","title":"builds workout summary paths on the existing route contract","duration":0.15579999999999927,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["preparePersonalWorkoutDraft"],"fullName":"preparePersonalWorkoutDraft builds a runnable personal workout payload with exercises","status":"passed","title":"builds a runnable personal workout payload with exercises","duration":0.8222000000000662,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["preparePersonalWorkoutDraft"],"fullName":"preparePersonalWorkoutDraft clears invalid single-member supersets before saving","status":"passed","title":"clears invalid single-member supersets before saving","duration":0.26690000000007785,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["preparePersonalWorkoutDraft"],"fullName":"preparePersonalWorkoutDraft keeps standalone exercises without a superset group","status":"passed","title":"keeps standalone exercises without a superset group","duration":0.19629999999995107,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["preparePersonalWorkoutDraft"],"fullName":"preparePersonalWorkoutDraft rejects empty workout names","status":"passed","title":"rejects empty workout names","duration":1.0512999999999693,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["preparePersonalWorkoutDraft"],"fullName":"preparePersonalWorkoutDraft requires at least one exercise for runner compatibility","status":"passed","title":"requires at least one exercise for runner compatibility","duration":0.3207999999999629,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["superset drag helpers"],"fullName":"superset drag helpers creates a new superset group when dragging between standalone exercises","status":"passed","title":"creates a new superset group when dragging between standalone exercises","duration":0.35609999999996944,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["superset drag helpers"],"fullName":"superset drag helpers adds dragged exercise to target's existing superset group","status":"passed","title":"adds dragged exercise to target's existing superset group","duration":0.19429999999999836,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["superset drag helpers"],"fullName":"superset drag helpers removes an exercise from superset and cleans up orphaned groups","status":"passed","title":"removes an exercise from superset and cleans up orphaned groups","duration":1.3422999999999092,"failureMessages":[],"meta":{},"tags":[]}],"startTime":1788856146623,"endTime":1788856146641.3423,"status":"passed","message":"","name":"C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-workouts-unified.test.ts"},{"assertionResults":[{"ancestorTitles":["notification route resolver"],"fullName":"notification route resolver resolves client workout notifications to Client Portal routes","status":"passed","title":"resolves client workout notifications to Client Portal routes","duration":3.4174000000000433,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["notification route resolver"],"fullName":"notification route resolver resolves client file notifications to Client Portal resource fallback","status":"passed","title":"resolves client file notifications to Client Portal resource fallback","duration":0.5952000000000908,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["notification route resolver"],"fullName":"notification route resolver resolves client check-in review notifications to the targeted check-in","status":"passed","title":"resolves client check-in review notifications to the targeted check-in","duration":0.3369000000000142,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["notification route resolver"],"fullName":"notification route resolver prevents client notifications from opening PT routes","status":"passed","title":"prevents client notifications from opening PT routes","duration":0.3744000000000369,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["notification route resolver"],"fullName":"notification route resolver resolves PT join-request notifications to PT Hub review routes","status":"passed","title":"resolves PT join-request notifications to PT Hub review routes","duration":0.38400000000001455,"failureMessages":[],"meta":{},"tags":[]},{"ancestorTitles":["notification route resolver"],"fullName":"notification route resolver falls back safely for inaccessible or deleted targets","status":"passed","title":"falls back safely for inaccessible or deleted targets","duration":0.713799999999992,"failureMessages":[],"meta":{},"tags":[]}],"startTime":1788856146608,"endTime":1788856146613.7139,"status":"passed","message":"","name":"C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/notification-route-resolver.test.ts"}]}
+{
+  "numTotalTestSuites": 29,
+  "numPassedTestSuites": 29,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 68,
+  "numPassedTests": 68,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1788856144839,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["client check-in stale detection"],
+          "fullName": "client check-in stale detection captures the rendered signature after an initial null baseline",
+          "status": "passed",
+          "title": "captures the rendered signature after an initial null baseline",
+          "duration": 3.074600000000032,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client check-in stale detection"],
+          "fullName": "client check-in stale detection keeps a changed fetched signature from becoming the baseline when a rendered baseline exists",
+          "status": "passed",
+          "title": "keeps a changed fetched signature from becoming the baseline when a rendered baseline exists",
+          "duration": 0.40300000000002,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client check-in stale detection"],
+          "fullName": "client check-in stale detection does not capture a baseline from a null loading signature",
+          "status": "passed",
+          "title": "does not capture a baseline from a null loading signature",
+          "duration": 0.3240000000000123,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client check-in stale detection"],
+          "fullName": "client check-in stale detection warns both clean and dirty forms when the direct-polled signature changes",
+          "status": "passed",
+          "title": "warns both clean and dirty forms when the direct-polled signature changes",
+          "duration": 0.591199999999958,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1788856146973,
+      "endTime": 1788856146977.5913,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-checkin-stale-detection.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["client check-in page state"],
+          "fullName": "client check-in page state returns no-assignment only when no effective template applies",
+          "status": "passed",
+          "title": "returns no-assignment only when no effective template applies",
+          "duration": 3.099199999999996,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client check-in page state"],
+          "fullName": "client check-in page state treats an assigned template with a future date and no row as assigned but not open",
+          "status": "passed",
+          "title": "treats an assigned template with a future date and no row as assigned but not open",
+          "duration": 0.8945999999999685,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client check-in page state"],
+          "fullName": "client check-in page state prevents false no-assignment when a template exists but no start date has materialized rows",
+          "status": "passed",
+          "title": "prevents false no-assignment when a template exists but no start date has materialized rows",
+          "duration": 0.3691000000000031,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client check-in page state"],
+          "fullName": "client check-in page state maps due check-ins to the open state",
+          "status": "passed",
+          "title": "maps due check-ins to the open state",
+          "duration": 0.40370000000007167,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client check-in page state"],
+          "fullName": "client check-in page state preserves submitted state",
+          "status": "passed",
+          "title": "preserves submitted state",
+          "duration": 1.0213000000001102,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1788856146671,
+      "endTime": 1788856146677.0212,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-checkin-state.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["client check-ins page contract"],
+          "fullName": "client check-ins page contract surfaces assigned and previous check-ins on the same page",
+          "status": "passed",
+          "title": "surfaces assigned and previous check-ins on the same page",
+          "duration": 2.3443000000000893,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client check-ins page contract"],
+          "fullName": "client check-ins page contract allows selecting a check-in cycle from assigned/history rows",
+          "status": "passed",
+          "title": "allows selecting a check-in cycle from assigned/history rows",
+          "duration": 0.44489999999996144,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client check-ins page contract"],
+          "fullName": "client check-ins page contract keeps the check-in form stepper and review details in one card",
+          "status": "passed",
+          "title": "keeps the check-in form stepper and review details in one card",
+          "duration": 0.8194999999999482,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1788856146551,
+      "endTime": 1788856146553.8196,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-checkins-page-contract.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["resolveUnifiedClientHomeState"],
+          "fullName": "resolveUnifiedClientHomeState returns lead_only for pre-workspace lead state",
+          "status": "passed",
+          "title": "returns lead_only for pre-workspace lead state",
+          "duration": 2.193300000000022,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveUnifiedClientHomeState"],
+          "fullName": "resolveUnifiedClientHomeState returns personal_only when only personal source exists",
+          "status": "passed",
+          "title": "returns personal_only when only personal source exists",
+          "duration": 1.1990999999999303,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveUnifiedClientHomeState"],
+          "fullName": "resolveUnifiedClientHomeState returns one_pt for a single coach source",
+          "status": "passed",
+          "title": "returns one_pt for a single coach source",
+          "duration": 0.27099999999995816,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveUnifiedClientHomeState"],
+          "fullName": "resolveUnifiedClientHomeState returns multi_pt for multiple coach sources",
+          "status": "passed",
+          "title": "returns multi_pt for multiple coach sources",
+          "duration": 0.29290000000003147,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveUnifiedClientHomeState"],
+          "fullName": "resolveUnifiedClientHomeState returns mixed for personal + coach sources",
+          "status": "passed",
+          "title": "returns mixed for personal + coach sources",
+          "duration": 0.21829999999999927,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveUnifiedClientHomeState"],
+          "fullName": "resolveUnifiedClientHomeState avoids hard binary split by considering content sources",
+          "status": "passed",
+          "title": "avoids hard binary split by considering content sources",
+          "duration": 0.19479999999998654,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["sortWorkoutsByUrgency"],
+          "fullName": "sortWorkoutsByUrgency prioritizes pending/planned workouts over completed/skipped and keeps mixed sources together",
+          "status": "passed",
+          "title": "prioritizes pending/planned workouts over completed/skipped and keeps mixed sources together",
+          "duration": 1.1445999999999685,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["source labels"],
+          "fullName": "source labels renders Personal for workspace-less items",
+          "status": "passed",
+          "title": "renders Personal for workspace-less items",
+          "duration": 0.4675999999999476,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["source labels"],
+          "fullName": "source labels renders coach labels with workspace names",
+          "status": "passed",
+          "title": "renders coach labels with workspace names",
+          "duration": 1.1299999999999955,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["navigation helpers"],
+          "fullName": "navigation helpers keeps workout start path on the existing runner route",
+          "status": "passed",
+          "title": "keeps workout start path on the existing runner route",
+          "duration": 0.5865999999999758,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["find-coach visibility"],
+          "fullName": "find-coach visibility shows find-coach for lead/pre-workspace users",
+          "status": "passed",
+          "title": "shows find-coach for lead/pre-workspace users",
+          "duration": 0.3406999999999698,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["find-coach visibility"],
+          "fullName": "find-coach visibility shows find-coach when discovery states are present",
+          "status": "passed",
+          "title": "shows find-coach when discovery states are present",
+          "duration": 0.14210000000002765,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["find-coach visibility"],
+          "fullName": "find-coach visibility hides find-coach when no discovery context is relevant",
+          "status": "passed",
+          "title": "hides find-coach when no discovery context is relevant",
+          "duration": 0.13029999999992015,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1788856146623,
+      "endTime": 1788856146632.3408,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-home-unified.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["nutrition source helper"],
+          "fullName": "nutrition source helper classifies personal vs assigned source from workspace ownership",
+          "status": "passed",
+          "title": "classifies personal vs assigned source from workspace ownership",
+          "duration": 2.1786999999999352,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["nutrition source helper"],
+          "fullName": "nutrition source helper builds compact source labels",
+          "status": "passed",
+          "title": "builds compact source labels",
+          "duration": 0.5336999999999534,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["groupUnifiedNutritionByDate"],
+          "fullName": "groupUnifiedNutritionByDate keeps nutrition merged by function and date relevance",
+          "status": "passed",
+          "title": "keeps nutrition merged by function and date relevance",
+          "duration": 15.435199999999895,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["applyUnifiedNutritionFilter"],
+          "fullName": "applyUnifiedNutritionFilter supports All, Assigned, Personal, Today, Upcoming",
+          "status": "passed",
+          "title": "supports All, Assigned, Personal, Today, Upcoming",
+          "duration": 1.719600000000014,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1788856146621,
+      "endTime": 1788856146641.7195,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-nutrition-unified.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["client settings page contract"],
+          "fullName": "client settings page contract defines the exact tab model",
+          "status": "passed",
+          "title": "defines the exact tab model",
+          "duration": 2.507099999999923,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client settings page contract"],
+          "fullName": "client settings page contract renders required profile fields and excludes disallowed profile labels",
+          "status": "passed",
+          "title": "renders required profile fields and excludes disallowed profile labels",
+          "duration": 1.0038999999999305,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client settings page contract"],
+          "fullName": "client settings page contract renders required preferences fields",
+          "status": "passed",
+          "title": "renders required preferences fields",
+          "duration": 0.36410000000000764,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client settings page contract"],
+          "fullName": "client settings page contract keeps privacy/security scope without MFA or data export",
+          "status": "passed",
+          "title": "keeps privacy/security scope without MFA or data export",
+          "duration": 0.36360000000001946,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client settings page contract"],
+          "fullName": "client settings page contract keeps billing tab focused on active service and excludes invite/application copy",
+          "status": "passed",
+          "title": "keeps billing tab focused on active service and excludes invite/application copy",
+          "duration": 0.5194999999999936,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["client settings page contract"],
+          "fullName": "client settings page contract uses sticky save bars for editable tabs",
+          "status": "passed",
+          "title": "uses sticky save bars for editable tabs",
+          "duration": 0.2857999999999947,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1788856146551,
+      "endTime": 1788856146556.286,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-settings-page-contract.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["groupUnifiedWorkoutsByState"],
+          "fullName": "groupUnifiedWorkoutsByState renders one merged model by relevance instead of source containers",
+          "status": "passed",
+          "title": "renders one merged model by relevance instead of source containers",
+          "duration": 3.685100000000034,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["groupUnifiedWorkoutsByState"],
+          "fullName": "groupUnifiedWorkoutsByState keeps mixed personal + assigned workouts together inside the same section",
+          "status": "passed",
+          "title": "keeps mixed personal + assigned workouts together inside the same section",
+          "duration": 0.6760999999999058,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["applyUnifiedWorkoutFilter"],
+          "fullName": "applyUnifiedWorkoutFilter supports all required filters",
+          "status": "passed",
+          "title": "supports all required filters",
+          "duration": 2.133699999999976,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["applyUnifiedWorkoutFilter"],
+          "fullName": "applyUnifiedWorkoutFilter returns an empty list cleanly when the selected source is unavailable",
+          "status": "passed",
+          "title": "returns an empty list cleanly when the selected source is unavailable",
+          "duration": 0.44839999999999236,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveWorkoutPrimaryAction"],
+          "fullName": "resolveWorkoutPrimaryAction never offers a session action for a planned rest day",
+          "status": "passed",
+          "title": "never offers a session action for a planned rest day",
+          "duration": 0.8376999999999271,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveWorkoutPrimaryAction"],
+          "fullName": "resolveWorkoutPrimaryAction never offers a session action for a completed rest day",
+          "status": "passed",
+          "title": "never offers a session action for a completed rest day",
+          "duration": 0.2137000000000171,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveWorkoutPrimaryAction"],
+          "fullName": "resolveWorkoutPrimaryAction never offers a session action for a skipped rest day",
+          "status": "passed",
+          "title": "never offers a session action for a skipped rest day",
+          "duration": 0.27729999999996835,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveWorkoutPrimaryAction"],
+          "fullName": "resolveWorkoutPrimaryAction shows Resume for in-progress workouts",
+          "status": "passed",
+          "title": "shows Resume for in-progress workouts",
+          "duration": 0.3108999999999469,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveWorkoutPrimaryAction"],
+          "fullName": "resolveWorkoutPrimaryAction shows Start for scheduled workouts and keeps runner path shared",
+          "status": "passed",
+          "title": "shows Start for scheduled workouts and keeps runner path shared",
+          "duration": 0.699799999999982,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveWorkoutPrimaryAction"],
+          "fullName": "resolveWorkoutPrimaryAction keeps personal workouts on the same runner/session contract",
+          "status": "passed",
+          "title": "keeps personal workouts on the same runner/session contract",
+          "duration": 0.32000000000005,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveWorkoutPrimaryAction"],
+          "fullName": "resolveWorkoutPrimaryAction uses summary path for completed workouts",
+          "status": "passed",
+          "title": "uses summary path for completed workouts",
+          "duration": 0.324100000000044,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveWorkoutPrimaryAction"],
+          "fullName": "resolveWorkoutPrimaryAction keeps skipped workouts historical with view action",
+          "status": "passed",
+          "title": "keeps skipped workouts historical with view action",
+          "duration": 0.3081000000000813,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["canManagePersonalWorkout"],
+          "fullName": "canManagePersonalWorkout does not allow management of rest days even with a stale personal label",
+          "status": "passed",
+          "title": "does not allow management of rest days even with a stale personal label",
+          "duration": 0.2962999999999738,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["canManagePersonalWorkout"],
+          "fullName": "canManagePersonalWorkout allows management for personal workouts without active sessions",
+          "status": "passed",
+          "title": "allows management for personal workouts without active sessions",
+          "duration": 0.24159999999994852,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["canManagePersonalWorkout"],
+          "fullName": "canManagePersonalWorkout blocks management for active personal workouts and assigned workouts",
+          "status": "passed",
+          "title": "blocks management for active personal workouts and assigned workouts",
+          "duration": 0.16380000000003747,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveWorkoutSourceKind"],
+          "fullName": "resolveWorkoutSourceKind keeps client-created standalone workouts personal",
+          "status": "passed",
+          "title": "keeps client-created standalone workouts personal",
+          "duration": 0.20139999999992142,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveWorkoutSourceKind"],
+          "fullName": "resolveWorkoutSourceKind recognizes coach rest days without template metadata",
+          "status": "passed",
+          "title": "recognizes coach rest days without template metadata",
+          "duration": 0.134900000000016,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["resolveWorkoutSourceKind"],
+          "fullName": "resolveWorkoutSourceKind preserves assignment ownership when a linked template is unavailable",
+          "status": "passed",
+          "title": "preserves assignment ownership when a linked template is unavailable",
+          "duration": 0.27500000000009095,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["path helpers"],
+          "fullName": "path helpers builds workout summary paths on the existing route contract",
+          "status": "passed",
+          "title": "builds workout summary paths on the existing route contract",
+          "duration": 0.15579999999999927,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["preparePersonalWorkoutDraft"],
+          "fullName": "preparePersonalWorkoutDraft builds a runnable personal workout payload with exercises",
+          "status": "passed",
+          "title": "builds a runnable personal workout payload with exercises",
+          "duration": 0.8222000000000662,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["preparePersonalWorkoutDraft"],
+          "fullName": "preparePersonalWorkoutDraft clears invalid single-member supersets before saving",
+          "status": "passed",
+          "title": "clears invalid single-member supersets before saving",
+          "duration": 0.26690000000007785,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["preparePersonalWorkoutDraft"],
+          "fullName": "preparePersonalWorkoutDraft keeps standalone exercises without a superset group",
+          "status": "passed",
+          "title": "keeps standalone exercises without a superset group",
+          "duration": 0.19629999999995107,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["preparePersonalWorkoutDraft"],
+          "fullName": "preparePersonalWorkoutDraft rejects empty workout names",
+          "status": "passed",
+          "title": "rejects empty workout names",
+          "duration": 1.0512999999999693,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["preparePersonalWorkoutDraft"],
+          "fullName": "preparePersonalWorkoutDraft requires at least one exercise for runner compatibility",
+          "status": "passed",
+          "title": "requires at least one exercise for runner compatibility",
+          "duration": 0.3207999999999629,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["superset drag helpers"],
+          "fullName": "superset drag helpers creates a new superset group when dragging between standalone exercises",
+          "status": "passed",
+          "title": "creates a new superset group when dragging between standalone exercises",
+          "duration": 0.35609999999996944,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["superset drag helpers"],
+          "fullName": "superset drag helpers adds dragged exercise to target's existing superset group",
+          "status": "passed",
+          "title": "adds dragged exercise to target's existing superset group",
+          "duration": 0.19429999999999836,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["superset drag helpers"],
+          "fullName": "superset drag helpers removes an exercise from superset and cleans up orphaned groups",
+          "status": "passed",
+          "title": "removes an exercise from superset and cleans up orphaned groups",
+          "duration": 1.3422999999999092,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1788856146623,
+      "endTime": 1788856146641.3423,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/client-workouts-unified.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["notification route resolver"],
+          "fullName": "notification route resolver resolves client workout notifications to Client Portal routes",
+          "status": "passed",
+          "title": "resolves client workout notifications to Client Portal routes",
+          "duration": 3.4174000000000433,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["notification route resolver"],
+          "fullName": "notification route resolver resolves client file notifications to Client Portal resource fallback",
+          "status": "passed",
+          "title": "resolves client file notifications to Client Portal resource fallback",
+          "duration": 0.5952000000000908,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["notification route resolver"],
+          "fullName": "notification route resolver resolves client check-in review notifications to the targeted check-in",
+          "status": "passed",
+          "title": "resolves client check-in review notifications to the targeted check-in",
+          "duration": 0.3369000000000142,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["notification route resolver"],
+          "fullName": "notification route resolver prevents client notifications from opening PT routes",
+          "status": "passed",
+          "title": "prevents client notifications from opening PT routes",
+          "duration": 0.3744000000000369,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["notification route resolver"],
+          "fullName": "notification route resolver resolves PT join-request notifications to PT Hub review routes",
+          "status": "passed",
+          "title": "resolves PT join-request notifications to PT Hub review routes",
+          "duration": 0.38400000000001455,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["notification route resolver"],
+          "fullName": "notification route resolver falls back safely for inaccessible or deleted targets",
+          "status": "passed",
+          "title": "falls back safely for inaccessible or deleted targets",
+          "duration": 0.713799999999992,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1788856146608,
+      "endTime": 1788856146613.7139,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/ahmed/OneDrive/Documents/Syslab/Projects/COACHos/coachos/tests/unit/notification-route-resolver.test.ts"
+    }
+  ]
+}

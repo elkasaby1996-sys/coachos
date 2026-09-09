@@ -1,9 +1,7 @@
 {
   "capturedAt": "2026-09-08T08:13:47.672Z",
   "engine": "Chromium desktop resized; mobile engine checks separate",
-  "pageErrors": [
-    "Object"
-  ],
+  "pageErrors": ["Object"],
   "results": [
     {
       "route": "home",

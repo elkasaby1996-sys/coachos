@@ -7,9 +7,7 @@
   {
     "test": "failed workout save",
     "draft": "112",
-    "error": [
-      "ErrorTypeError: Failed to fetch (127.0.0.1:54321)"
-    ]
+    "error": ["ErrorTypeError: Failed to fetch (127.0.0.1:54321)"]
   },
   {
     "test": "failed workout save then refresh",

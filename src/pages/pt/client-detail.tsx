@@ -1,7 +1,6 @@
 import { NotificationToast } from "../../components/common/notification-toast";
 import { ProfileAvatar } from "../../components/common/profile-avatar";
 import { getClientRouteKeyFallback } from "../../lib/client-route-key";
-// @ts-nocheck
 import "../../styles/pt-hub-analytics.css";
 import "../../styles/pt-hub-clients.css";
 import {
@@ -140,6 +139,7 @@ import { PtClientOnboardingTab } from "../../features/pt-client-onboarding/compo
 import { PtClientWearablesPanel } from "./client-detail-tabs/pt-client-wearables-panel";
 import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { usePtMessageCompose } from "../../components/pt/pt-message-compose-context";
+import type { WorkspaceClientOnboardingRow } from "../../features/client-onboarding/types";
 import {
   buildPtOnboardingChecklist,
   getPtOnboardingStatusMeta,
@@ -801,6 +801,7 @@ type CheckinAnswerRow = {
 
 type UpcomingWorkoutRow = {
   id: string;
+  coach_note?: string | null;
   status: string | null;
   day_type?: string | null;
   scheduled_date: string | null;
@@ -828,6 +829,7 @@ type QueryResult<T> = {
   data?: T;
   isLoading: boolean;
   error: unknown;
+  refetch: () => Promise<unknown>;
 };
 
 const baselinePhotoTypes = ["front", "side", "back"] as const;
@@ -1306,8 +1308,7 @@ export function PtClientDetailPage({
         .select(ptOnboardingSelect)
         .eq("workspace_id", workspaceQuery.data ?? "")
         .eq("client_id", clientId ?? "")
-        .returns<WorkspaceClientOnboardingRow>()
-        .maybeSingle();
+        .maybeSingle<WorkspaceClientOnboardingRow>();
 
       if (error) throw error;
       return (data ?? null) as WorkspaceClientOnboardingRow | null;
@@ -1542,7 +1543,7 @@ export function PtClientDetailPage({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_templates")
-        .select("id, name, workout_type_tag")
+        .select("id, name, workout_type_tag, description")
         .eq("workspace_id", workspaceQuery.data ?? "")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -1659,7 +1660,7 @@ export function PtClientDetailPage({
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, day_type, scheduled_date, created_at, completed_at, program_id, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag)",
+          "id, status, day_type, scheduled_date, created_at, completed_at, program_id, workout_template_id, coach_note, workout_template:workout_templates(id, name, workout_type_tag)",
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", todayKey)
@@ -3032,8 +3033,8 @@ export function PtClientDetailPage({
       weightLogs.find((log) => log.weight_unit)?.weight_unit ?? null;
     const weightChange =
       weightLogs.length >= 2
-        ? (weightLogs[weightLogs.length - 1].weight_value ?? 0) -
-          (weightLogs[0].weight_value ?? 0)
+        ? (weightLogs[weightLogs.length - 1]?.weight_value ?? 0) -
+          (weightLogs[0]?.weight_value ?? 0)
         : null;
 
     return {
@@ -3156,7 +3157,7 @@ export function PtClientDetailPage({
 
   const lastWorkout = useMemo(() => {
     if (workoutSetLogsQuery.data && workoutSetLogsQuery.data.length > 0) {
-      return workoutSetLogsQuery.data[0].created_at ?? null;
+      return workoutSetLogsQuery.data[0]?.created_at ?? null;
     }
     const completed = (recentAssignedWorkoutsQuery.data ?? []).find(
       (row) => row.status === "completed" || !!row.completed_at,
@@ -4044,6 +4045,7 @@ export function PtClientDetailPage({
   const handleSaveCheckinTemplate = async () => {
     if (!(canManageDelivery && !isHistoricalClientRelationship)) return;
     if (!clientQuery.data?.id) return;
+    const targetClientId = clientQuery.data.id;
     setCheckinTemplateStatus("saving");
     setCheckinSettingsFeedback(null);
     const nextId = checkinTemplateId || null;
@@ -4061,7 +4063,7 @@ export function PtClientDetailPage({
         await supabase
           .from("checkins")
           .select("id, week_ending_saturday, submitted_at, reviewed_at")
-          .eq("client_id", clientQuery.data.id)
+          .eq("client_id", targetClientId)
           .eq("week_ending_saturday", todayKey)
           .maybeSingle();
 
@@ -6755,6 +6757,7 @@ function PtClientScheduleCard({
   onStatusChange,
   canEditClients,
 }: {
+  enabled: boolean;
   clientId: string | null;
   workspaceId: string | null;
   timezone: string | null;
@@ -6899,7 +6902,7 @@ function PtClientScheduleCard({
 
       const { data, error } = await supabase
         .from("checkins")
-        .select("id, week_ending_saturday, submitted_at")
+        .select("id, week_ending_saturday, submitted_at, reviewed_at")
         .eq("client_id", clientId ?? "")
         .gte("week_ending_saturday", scheduleStartKey)
         .lte("week_ending_saturday", scheduleEndKey)
@@ -7063,6 +7066,7 @@ function PtClientScheduleCard({
     let streaking = true;
     for (let i = weekRows.length - 1; i >= 0; i -= 1) {
       const row = weekRows[i];
+      if (!row) continue;
       if (row.key > todayKey) continue;
       const isWorkout = row.workout && row.workout.day_type !== "rest";
       const isCompleted = row.workout?.status === "completed";
@@ -7268,7 +7272,10 @@ function PtClientScheduleCard({
               const nutritionMeals =
                 (
                   nutrition as {
-                    meals?: Array<{ logs?: Array<{ is_completed?: boolean }> }>;
+                    meals?: Array<{
+                      calories?: number | null;
+                      logs?: Array<{ is_completed?: boolean }>;
+                    }>;
                   } | null
                 )?.meals ?? [];
               const nutritionCompleted = nutritionMeals.filter((meal) =>
@@ -7492,7 +7499,7 @@ function PtClientScheduleCard({
           <DialogHeader>
             <DialogTitle>Day details</DialogTitle>
             <DialogDescription>
-              {formatLabel(selectedRow.key)}
+              {formatLabel(selectedRow?.key ?? selectedKey)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
