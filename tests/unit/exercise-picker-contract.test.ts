@@ -182,9 +182,7 @@ describe("PR-EXLIB-06 shared picker contracts", () => {
     expect(libraryComponents).not.toContain("group-open:hidden");
     expect(libraryComponents).toContain("Selected: {selectedLabel}");
     expect(libraryPage).toContain('title="Exercise Library"');
-    expect(ptLayout).toContain(
-      'location.pathname === "/pt/settings/exercises"',
-    );
-    expect(ptLayout).toContain("whitespace-normal break-words");
+    expect(ptLayout).toContain('to: "/pt/settings/exercises"');
+    expect(ptLayout).toContain('<WorkspaceHeaderModeProvider value="shell">');
   });
 });

@@ -130,7 +130,7 @@ export function toDisplayText(value: unknown, fallback = "Not provided") {
 export function buildPtOnboardingChecklist(params: {
   onboarding: WorkspaceClientOnboardingRow | null | undefined;
   baselineSubmitted: boolean;
-}) {
+}): PtOnboardingChecklistItem[] {
   const onboarding = params.onboarding;
   const intakeSubmitted = Boolean(onboarding?.submitted_at);
   const intakeReviewed = Boolean(onboarding?.reviewed_at);

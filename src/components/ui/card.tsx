@@ -8,19 +8,24 @@ import {
 
 type CardToneProps = {
   module?: ModuleTone | null;
+  tone?: "danger" | "warning" | "success" | "info";
+  variant?: "default" | "inset";
 };
 
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & CardToneProps
->(({ className, module, style, ...props }, ref) => {
+>(({ className, module, tone, variant = "default", style, ...props }, ref) => {
   const moduleClasses = module ? getModuleToneClasses(module) : null;
 
   return (
     <div
       ref={ref}
+      data-ui="card"
+      data-surface={variant}
+      data-tone={tone}
       className={cn(
-        "surface-panel overflow-hidden text-card-foreground transition-[transform,border-color,box-shadow] duration-300 ease-out",
+        "ui-card surface-panel overflow-hidden text-card-foreground transition-colors duration-200",
         module && moduleClasses?.card,
         className,
       )}
@@ -43,8 +48,9 @@ const CardHeader = React.forwardRef<
   return (
     <div
       ref={ref}
+      data-ui="card-header"
       className={cn(
-        "flex flex-col gap-2 px-5 py-4 sm:px-6 sm:py-5",
+        "ui-card-header flex flex-col gap-2 px-5 py-4",
         module && moduleClasses?.panel,
         className,
       )}
@@ -67,8 +73,9 @@ const CardTitle = React.forwardRef<
   return (
     <h3
       ref={ref}
+      data-ui="card-title"
       className={cn(
-        "text-base font-semibold tracking-tight text-foreground",
+        "ui-card-title text-base font-semibold tracking-tight text-foreground",
         module && moduleClasses?.title,
         className,
       )}
@@ -88,7 +95,8 @@ const CardContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("px-5 pb-5 pt-0 sm:px-6 sm:pb-6", className)}
+    data-ui="card-content"
+    className={cn("ui-card-content p-5", className)}
     {...props}
   />
 ));

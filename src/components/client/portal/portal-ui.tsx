@@ -1,13 +1,16 @@
 import * as React from "react";
+import { Link } from "react-router-dom";
 import {
+  ArrowLeft,
   CheckCircle2,
   ClipboardCheck,
   Info,
   Lock,
   TriangleAlert,
   XCircle,
-} from "lucide-react";
+} from "../../../lib/icons";
 import { Button } from "../../ui/button";
+import { Card } from "../../ui/card";
 import { Reveal } from "../../common/motion-primitives";
 import { cn } from "../../../lib/utils";
 import {
@@ -28,6 +31,8 @@ type PortalPageHeaderProps = {
   actions?: React.ReactNode;
   className?: string;
   module?: ModuleTone;
+  backTo?: string;
+  backLabel?: string;
 };
 
 export function PortalPageHeader({
@@ -37,16 +42,25 @@ export function PortalPageHeader({
   actions,
   className,
   module,
+  backTo,
+  backLabel = "Back",
 }: PortalPageHeaderProps) {
   const headerMode = useWorkspaceHeaderMode();
   const moduleClasses = module ? getModuleToneClasses(module) : null;
 
   if (headerMode === "shell") {
-    if (!actions) return null;
+    if (!actions && !backTo) return null;
 
     return (
       <Reveal>
         <section className={cn("flex flex-wrap items-center gap-2", className)}>
+          {backTo ? (
+            <Button asChild variant="ghost" size="icon" aria-label={backLabel}>
+              <Link to={backTo}>
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+              </Link>
+            </Button>
+          ) : null}
           {actions}
         </section>
       </Reveal>
@@ -57,22 +71,37 @@ export function PortalPageHeader({
     <Reveal>
       <section
         className={cn(
-          "flex flex-col gap-5 border-b border-border/50 pb-5 lg:flex-row lg:items-end lg:justify-between",
+          "portal-page-heading flex flex-col gap-5 border-b border-border/50 pb-5 lg:flex-row lg:items-end lg:justify-between",
           className,
         )}
         style={getModuleToneStyle(module)}
       >
         <div className="min-w-0 space-y-2">
-          <h1
-            className={cn(
-              "text-[1.85rem] font-semibold tracking-[-0.035em] text-foreground sm:text-[2.15rem] lg:text-[2.35rem]",
-              moduleClasses?.title,
-            )}
-          >
-            {title}
-          </h1>
+          <div className="flex items-center gap-3">
+            {backTo ? (
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                aria-label={backLabel}
+              >
+                <Link to={backTo}>
+                  <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                </Link>
+              </Button>
+            ) : null}
+            <h1
+              className={cn(
+                "text-[1.85rem] font-semibold tracking-[-0.035em] text-foreground sm:text-[2.15rem] lg:text-[2.35rem]",
+                moduleClasses?.title,
+              )}
+            >
+              {title}
+            </h1>
+          </div>
           {subtitle || stateText ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-6 text-muted-foreground sm:text-[15px] sm:leading-7">
+            <div className="portal-page-heading-context flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-6 text-muted-foreground sm:text-[15px] sm:leading-7">
               {subtitle ? <p className="max-w-3xl">{subtitle}</p> : null}
               {stateText ? (
                 <span className="inline-flex max-w-full items-center gap-2 text-sm font-medium text-foreground/80">
@@ -98,54 +127,22 @@ export function PortalPageHeader({
   );
 }
 
-export const SurfaceCard = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { module?: ModuleTone | null }
->(({ className, module, style, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "surface-panel-portal overflow-hidden transition-[transform,border-color,box-shadow] duration-300 ease-out",
-      module && getModuleToneClasses(module).card,
-      className,
-    )}
-    style={{
-      ...getModuleToneStyle(module),
-      ...style,
-    }}
-    {...props}
-  />
-));
-SurfaceCard.displayName = "SurfaceCard";
-
-export const SurfaceCardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { module?: ModuleTone | null }
->(({ className, module, style, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "flex flex-col gap-2 px-5 py-5 sm:px-6 sm:py-6",
-      module && getModuleToneClasses(module).panel,
-      className,
-    )}
-    style={{
-      ...getModuleToneStyle(module),
-      ...style,
-    }}
-    {...props}
-  />
-));
-SurfaceCardHeader.displayName = "SurfaceCardHeader";
+// Compatibility exports keep every portal on the shared card primitives.
+export {
+  Card as SurfaceCard,
+  CardHeader as SurfaceCardHeader,
+  CardContent as SurfaceCardContent,
+} from "../../ui/card";
 
 export const SurfaceCardTitle = React.forwardRef<
   HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement> & { module?: ModuleTone | null }
 >(({ className, module, style, ...props }, ref) => (
   <h2
+    data-ui="card-title"
     ref={ref}
     className={cn(
-      "text-lg font-semibold tracking-tight text-foreground sm:text-[1.15rem]",
+      "ui-card-title text-base font-semibold tracking-tight text-foreground",
       module && getModuleToneClasses(module).title,
       className,
     )}
@@ -170,26 +167,16 @@ export const SurfaceCardDescription = React.forwardRef<
 ));
 SurfaceCardDescription.displayName = "SurfaceCardDescription";
 
-export const SurfaceCardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("px-5 pb-5 pt-0 sm:px-6 sm:pb-6", className)}
-    {...props}
-  />
-));
-SurfaceCardContent.displayName = "SurfaceCardContent";
-
 export const SectionCard = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & { module?: ModuleTone | null }
 >(({ className, module, style, ...props }, ref) => (
-  <div
+  <Card
+    variant="inset"
+    module={module}
     ref={ref}
     className={cn(
-      "surface-section p-4 shadow-none transition-[transform,border-color,box-shadow] duration-300 ease-out sm:p-5",
+      "surface-section p-4",
       module && getModuleToneClasses(module).card,
       className,
     )}
@@ -288,7 +275,7 @@ export function StatusBanner({
     <Reveal delay={0.04}>
       <div
         className={cn(
-          "flex flex-col gap-4 rounded-[22px] border px-4 py-4 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] sm:flex-row sm:items-start sm:justify-between",
+          "flex flex-col gap-4 rounded-[var(--ui-radius-card)] border px-4 py-4 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] sm:flex-row sm:items-start sm:justify-between",
           config.root,
           toneClasses.surface,
           className,
@@ -344,7 +331,7 @@ export function EmptyStateBlock({
     <Reveal delay={0.06}>
       <div
         className={cn(
-          "surface-dashed px-6 py-7 transition-[transform,border-color,box-shadow] duration-300",
+          "ui-empty-state surface-dashed px-6 py-7",
           centered && "text-center",
           className,
         )}

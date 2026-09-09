@@ -218,7 +218,7 @@ function ScreenWireframe({
       <div className={screenContainerClassName}>
         <div className="grid w-full gap-5 lg:grid-cols-[248px_minmax(0,1fr)]">
           <div
-            className="hidden rounded-[32px] p-5 md:block"
+            className="hidden rounded-[var(--ui-radius-card)] p-5 md:block"
             style={panelStyle}
           >
             <div className="space-y-5">
@@ -233,12 +233,15 @@ function ScreenWireframe({
                 <WireframeBlock className="h-12 w-full rounded-[20px]" />
                 <WireframeBlock className="h-12 w-4/5 rounded-[20px]" />
               </div>
-              <WireframeBlock className="mt-8 h-24 w-full rounded-[24px]" />
+              <WireframeBlock className="mt-8 h-24 w-full rounded-[var(--ui-radius-card)]" />
             </div>
           </div>
 
           <div className="space-y-5">
-            <div className="rounded-[32px] p-5" style={panelStyle}>
+            <div
+              className="rounded-[var(--ui-radius-card)] p-5"
+              style={panelStyle}
+            >
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="min-w-0 flex-1 space-y-3">
                   <WireframeBlock className="h-4 w-28 rounded-full" />
@@ -254,32 +257,41 @@ function ScreenWireframe({
 
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
               <div className="space-y-5">
-                <div className="rounded-[32px] p-5" style={panelStyle}>
+                <div
+                  className="rounded-[var(--ui-radius-card)] p-5"
+                  style={panelStyle}
+                >
                   <div className="grid gap-4 sm:grid-cols-3">
-                    <WireframeBlock className="h-28 rounded-[24px]" />
-                    <WireframeBlock className="h-28 rounded-[24px]" />
-                    <WireframeBlock className="h-28 rounded-[24px]" />
+                    <WireframeBlock className="h-28 rounded-[var(--ui-radius-card)]" />
+                    <WireframeBlock className="h-28 rounded-[var(--ui-radius-card)]" />
+                    <WireframeBlock className="h-28 rounded-[var(--ui-radius-card)]" />
                   </div>
                 </div>
 
-                <div className="rounded-[32px] p-5" style={panelStyle}>
+                <div
+                  className="rounded-[var(--ui-radius-card)] p-5"
+                  style={panelStyle}
+                >
                   <div className="space-y-4">
                     <WireframeBlock className="h-5 w-44 rounded-full" />
                     <WireframeBlock className="h-4 w-full rounded-full" />
                     <WireframeBlock className="h-4 w-11/12 rounded-full" />
                     <WireframeBlock className="h-4 w-4/5 rounded-full" />
                     <div className="grid gap-4 pt-2 md:grid-cols-2">
-                      <WireframeBlock className="h-40 rounded-[24px]" />
-                      <WireframeBlock className="h-40 rounded-[24px]" />
+                      <WireframeBlock className="h-40 rounded-[var(--ui-radius-card)]" />
+                      <WireframeBlock className="h-40 rounded-[var(--ui-radius-card)]" />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-[32px] p-5" style={panelStyle}>
+              <div
+                className="rounded-[var(--ui-radius-card)] p-5"
+                style={panelStyle}
+              >
                 <div className="space-y-4">
                   <WireframeBlock className="h-5 w-32 rounded-full" />
-                  <WireframeBlock className="h-24 w-full rounded-[24px]" />
+                  <WireframeBlock className="h-24 w-full rounded-[var(--ui-radius-card)]" />
                   <WireframeBlock className="h-16 w-full rounded-[20px]" />
                   <WireframeBlock className="h-16 w-full rounded-[20px]" />
                   <WireframeBlock className="h-16 w-5/6 rounded-[20px]" />
@@ -312,7 +324,10 @@ function AuthWireframe({
 
   return (
     <div
-      className={cn("w-full rounded-[28px] p-6 sm:p-7", authWidthClassName)}
+      className={cn(
+        "w-full rounded-[var(--ui-radius-card)] p-6 sm:p-7",
+        authWidthClassName,
+      )}
       style={panelStyle}
     >
       <div className="space-y-6">

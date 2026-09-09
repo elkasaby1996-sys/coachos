@@ -95,6 +95,7 @@ export function WorkspaceSettingsDangerTab() {
           hint="Remove your membership from this workspace."
         >
           <Button
+            tone="danger"
             type="button"
             variant="secondary"
             className="border-danger/40 text-danger hover:bg-danger/10"
@@ -147,6 +148,7 @@ export function WorkspaceSettingsDangerTab() {
               Cancel
             </Button>
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-danger/40 text-danger hover:bg-danger/10"

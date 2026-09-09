@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "../../lib/icons";
 
 export type ActionVisualState = "idle" | "saving" | "success" | "error";
 
@@ -151,7 +151,7 @@ export function LoadingPanel({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-[26px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.78),oklch(var(--bg-surface)/0.62))] px-5 py-5 shadow-[0_24px_56px_-40px_oklch(0_0_0/0.72)] ${className}`}
+      className={`relative overflow-hidden rounded-[var(--ui-radius-card)] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.78),oklch(var(--bg-surface)/0.62))] px-5 py-5 shadow-[0_24px_56px_-40px_oklch(0_0_0/0.72)] ${className}`}
     >
       {!reduceMotion ? (
         <motion.div

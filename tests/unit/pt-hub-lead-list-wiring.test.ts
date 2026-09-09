@@ -34,11 +34,9 @@ describe("pt hub lead list package wiring", () => {
   it("keeps the lead summary before the pipeline work surface", () => {
     const leadsPage = readSource("src/pages/pt-hub/leads.tsx");
 
-    expect(leadsPage).toContain("<PtHubPageHeader");
+    expect(leadsPage).toContain("<h1>");
     expect(leadsPage).toContain("leadKpiMetrics");
     expect(leadsPage).toContain('aria-label="Lead intake summary"');
-    expect(leadsPage).toContain("page-kpi-block pt-hub-kpi-grid");
-    expect(leadsPage).toContain("<StatCard");
     expect(leadsPage.indexOf('aria-label="Lead intake summary"')).toBeLessThan(
       leadsPage.indexOf('title="Lead Pipeline"'),
     );
@@ -98,9 +96,9 @@ describe("pt hub lead list package wiring", () => {
     const leadsPage = readSource("src/pages/pt-hub/leads.tsx");
 
     expect(leadsPage).toContain("leadPipelineGridClass");
-    expect(leadsPage).toContain("minmax(260px,auto)");
+    expect(leadsPage).toContain('data-no-button-motion="true"');
     expect(leadsPage).toContain("lead-triage-filter");
-    expect(leadsPage).toContain("pt-hub-leads-filter-toolbar");
+    expect(leadsPage).toContain("lead-filter-toolbar");
     expect(leadsPage).toContain('data-columns="4"');
     expect(leadsPage).toContain('aria-label="Reset lead filters"');
     expect(leadsPage).not.toContain(
@@ -119,8 +117,6 @@ describe("pt hub lead list package wiring", () => {
     expect(leadsPage).toContain("New leads");
     expect(leadsPage).toContain("Active pipeline");
     expect(leadsPage).toContain("Converted");
-    expect(leadsPage).toContain('surface="pt-hub"');
-    expect(leadsPage).toContain('module="leads"');
     expect(leadsPage).not.toContain("leadCommandMetrics");
     expect(leadsPage).not.toContain('aria-label="Power triage filters"');
     expect(leadsPage).not.toContain("border-l border-border/65 pl-3");
@@ -134,9 +130,9 @@ describe("pt hub lead list package wiring", () => {
   it("uses a flatter operational table instead of nested row cards", () => {
     const leadsPage = readSource("src/pages/pt-hub/leads.tsx");
 
-    expect(leadsPage).toContain("divide-y divide-border/45");
-    expect(leadsPage).toContain("rounded-[14px]");
-    expect(leadsPage).toContain("group-hover:bg-[var(--module-leads-bg-soft)]");
+    expect(leadsPage).toContain('className="lead-name-link"');
+    expect(leadsPage).toContain("to={`/pt-hub/leads/${lead.id}`}");
+    expect(leadsPage).toContain("event.stopPropagation()");
     expect(leadsPage).not.toContain(
       "bg-[linear-gradient(135deg,oklch(var(--background)/0.78)",
     );

@@ -1,0 +1,61 @@
+:root {
+  --kpi-card-radius: var(--ui-radius-card);
+  --kpi-card-padding: 1rem;
+  --kpi-card-min-height: 7rem;
+  --kpi-card-shadow: var(--ui-shadow-card);
+}
+
+.kpi-card,
+.pt-hub-theme .kpi-card {
+  min-width: 0;
+  border-radius: var(--kpi-card-radius);
+  box-shadow: var(--kpi-card-shadow);
+}
+
+.kpi-card-content {
+  min-height: var(--kpi-card-min-height);
+  gap: 0.5rem;
+  padding: var(--kpi-card-padding);
+}
+
+.kpi-label {
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.kpi-value {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.kpi-helper {
+  font-size: 0.75rem;
+  line-height: 1.15rem;
+}
+
+.kpi-card-reading > div {
+  flex-basis: 5rem;
+}
+
+.kpi-card-button {
+  border-radius: var(--kpi-card-radius);
+}
+
+/* Repeated metrics respond to the available canvas, including sidebars. */
+.page-kpi-block:has(.kpi-card),
+.pt-hub-theme .pt-hub-kpi-grid:has(.kpi-card):not(.pt-hub-kpi-ledger) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
+  gap: 1rem;
+}
+
+.page-kpi-block > * {
+  min-width: 0;
+}

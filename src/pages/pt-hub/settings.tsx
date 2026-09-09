@@ -36,7 +36,7 @@ export function PtHubSettingsPage() {
       />
 
       {message ? (
-        <div className="rounded-[24px] border border-success/20 bg-success/10 px-4 py-3 text-sm text-success">
+        <div className="rounded-[var(--ui-radius-card)] border border-success/20 bg-success/10 px-4 py-3 text-sm text-success">
           {message}
         </div>
       ) : null}

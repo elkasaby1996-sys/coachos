@@ -37,13 +37,8 @@ export function PtHubSectionCard({
   return (
     <Card
       module={resolvedModule}
-      className={cn(
-        "surface-panel pt-hub-surface-work relative overflow-hidden rounded-[28px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl",
-        className,
-      )}
+      className={cn("pt-hub-surface-work relative overflow-hidden", className)}
     >
-      <div className="pt-hub-section-card-overlay pointer-events-none absolute inset-0" />
-      <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,oklch(var(--border-strong)/0.32),transparent)]" />
       <CardHeader
         module={resolvedModule}
         className={cn(

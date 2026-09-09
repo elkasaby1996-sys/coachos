@@ -1,6 +1,6 @@
 import * as React from "react";
 import { type VariantProps } from "class-variance-authority";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "../../lib/icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -144,9 +144,10 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           <DropdownMenuContent
             align="start"
             sideOffset={8}
+            collisionPadding={8}
             size={size === "sm" ? "compact" : "default"}
             className={cn(
-              "w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem]",
+              "max-h-[min(20rem,var(--radix-dropdown-menu-content-available-height,20rem))] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem] overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-gutter:stable]",
               contentClassName,
             )}
           >

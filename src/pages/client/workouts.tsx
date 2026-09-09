@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { GripVertical } from "lucide-react";
+import { GripVertical } from "../../lib/icons";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
@@ -41,6 +41,7 @@ import {
   preparePersonalWorkoutDraft,
   removeExerciseFromSuperset,
   resolveWorkoutPrimaryAction,
+  resolveWorkoutSourceKind,
   type PreparedPersonalWorkoutDraft,
   type PersonalWorkoutExerciseDraft,
   type UnifiedWorkoutRow,
@@ -55,6 +56,8 @@ type ClientProfileRow = {
 
 type RawAssignedWorkoutRow = {
   id: string;
+  workout_template_id: string | null;
+  program_id: string | null;
   status: string | null;
   day_type: string | null;
   scheduled_date: string | null;
@@ -255,12 +258,12 @@ export function ClientWorkoutsPage() {
     enabled: !!clientId,
     queryFn: async () => {
       const baseSelect =
-        "id, status, day_type, scheduled_date, created_at, completed_at, coach_note, program_day_index, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, description, workout_type_tag, workspace_id), program_template:program_templates!assigned_workouts_program_id_fkey(id, name, workspace_id)";
+        "id, workout_template_id, program_id, status, day_type, scheduled_date, created_at, completed_at, coach_note, program_day_index, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, description, workout_type_tag, workspace_id), program_template:program_templates!assigned_workouts_program_id_fkey(id, name, workspace_id)";
 
       const withWorkoutName = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, day_type, scheduled_date, created_at, completed_at, coach_note, workout_name, program_day_index, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, description, workout_type_tag, workspace_id), program_template:program_templates!assigned_workouts_program_id_fkey(id, name, workspace_id)",
+          "id, workout_template_id, program_id, status, day_type, scheduled_date, created_at, completed_at, coach_note, workout_name, program_day_index, workout_template:workout_templates!assigned_workouts_workout_template_id_fkey(id, name, description, workout_type_tag, workspace_id), program_template:program_templates!assigned_workouts_program_id_fkey(id, name, workspace_id)",
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", workoutWindowStart)
@@ -361,12 +364,21 @@ export function ClientWorkoutsPage() {
       const sourceWorkspaceId =
         workoutTemplate?.workspace_id ?? programTemplate?.workspace_id ?? null;
 
-      const sourceLabel = buildSourceLabel({
-        workspaceId: sourceWorkspaceId,
-        workspaceName: sourceWorkspaceId
-          ? (workspaceNameById[sourceWorkspaceId] ?? null)
-          : null,
+      const sourceKind = resolveWorkoutSourceKind({
+        dayType: row.day_type,
+        workoutTemplateId: row.workout_template_id,
+        programId: row.program_id,
+        sourceWorkspaceId,
       });
+      const sourceLabel =
+        sourceKind === "assigned" && !sourceWorkspaceId
+          ? "Coach"
+          : buildSourceLabel({
+              workspaceId: sourceWorkspaceId,
+              workspaceName: sourceWorkspaceId
+                ? (workspaceNameById[sourceWorkspaceId] ?? null)
+                : null,
+            });
 
       return {
         id: row.id,
@@ -377,7 +389,7 @@ export function ClientWorkoutsPage() {
         completedAt: row.completed_at,
         sourceWorkspaceId,
         sourceLabel,
-        sourceKind: sourceWorkspaceId ? "assigned" : "personal",
+        sourceKind,
         workoutName:
           workoutTemplate?.name ??
           row.workout_name?.trim() ??
@@ -678,6 +690,9 @@ export function ClientWorkoutsPage() {
       if (!clientId || !session?.user?.id || !editingWorkoutId) {
         throw new Error("Personal workout is not ready to edit.");
       }
+      if (!editingWorkout || !canManagePersonalWorkout(editingWorkout)) {
+        throw new Error("Only personal workouts can be edited.");
+      }
 
       const preparedDraft = preparePersonalWorkoutDraft({
         workoutName: editingWorkoutName,
@@ -785,6 +800,10 @@ export function ClientWorkoutsPage() {
     mutationFn: async (workoutId: string) => {
       if (!clientId) {
         throw new Error("Client profile not ready.");
+      }
+      const workout = workouts.find((row) => row.id === workoutId);
+      if (!workout || !canManagePersonalWorkout(workout)) {
+        throw new Error("Only personal workouts can be deleted.");
       }
       const { data, error } = await supabase
         .from("assigned_workouts")
@@ -965,7 +984,7 @@ export function ClientWorkoutsPage() {
     <div className="portal-shell">
       <PortalPageHeader
         title="Workouts"
-        subtitle="One unified workouts hub across personal and coach-assigned sessions."
+        subtitle="Follow your training plan, revisit sessions, or create a workout."
         stateText={`${workouts.length} workouts`}
         className="justify-end"
         actions={
@@ -998,8 +1017,7 @@ export function ClientWorkoutsPage() {
           <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>Create personal workout</DialogTitle>
             <DialogDescription>
-              Build a personal session with a workout name and at least one
-              exercise, then run it with the same workout runner.
+              Name your workout and add at least one exercise.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex-1 min-h-0 space-y-6 overflow-y-auto pr-1 sm:pr-2">
@@ -1033,15 +1051,14 @@ export function ClientWorkoutsPage() {
               <SurfaceCardHeader>
                 <SurfaceCardTitle>Exercises</SurfaceCardTitle>
                 <SurfaceCardDescription>
-                  Add one or more exercises so the workout opens with a runnable
-                  structure. Drag one exercise onto another to create or extend
-                  a superset.
+                  Add your exercises, sets, and reps. To group exercises into a
+                  superset, drag one onto another.
                 </SurfaceCardDescription>
               </SurfaceCardHeader>
               <SurfaceCardContent className="space-y-1">
                 <p className="mb-3 text-xs text-muted-foreground">
-                  Tip: drag the grip handle onto a target exercise. Grouped
-                  exercises share a superset badge.
+                  Use the grip handle to drag an exercise. Matching letters
+                  identify a superset.
                 </p>
                 {exerciseDrafts.map((exercise, index) => {
                   const prev = exerciseDrafts[index - 1];
@@ -1279,8 +1296,7 @@ export function ClientWorkoutsPage() {
           <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>Edit personal workout</DialogTitle>
             <DialogDescription>
-              Update your personal workout details while keeping the same shared
-              runner/session flow.
+              Change the workout name, date, or exercises.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex-1 min-h-0 space-y-6 overflow-y-auto pr-1 sm:pr-2">
@@ -1349,9 +1365,8 @@ export function ClientWorkoutsPage() {
                   <SurfaceCardHeader>
                     <SurfaceCardTitle>Exercises</SurfaceCardTitle>
                     <SurfaceCardDescription>
-                      Keep at least one exercise so the workout remains
-                      runnable. Drag one exercise onto another to create or
-                      extend a superset.
+                      Keep at least one exercise in the workout. Drag exercises
+                      together to create a superset.
                     </SurfaceCardDescription>
                   </SurfaceCardHeader>
                   <SurfaceCardContent className="space-y-1">
@@ -1666,7 +1681,7 @@ export function ClientWorkoutsPage() {
             <StatusBanner
               variant="warning"
               title="Some workout details are delayed"
-              description="Core workouts are visible, but session/source metadata is still loading."
+              description="Your workouts have loaded, but some session and coach details are unavailable."
               actions={
                 <Button
                   variant="secondary"
@@ -1685,7 +1700,7 @@ export function ClientWorkoutsPage() {
             <StatusBanner
               variant="success"
               title="Personal workout created"
-              description="Your workout is now in the list. Open it anytime to start the shared runner flow."
+              description="Your workout has been added to the list. Select Start workout when you are ready."
               actions={
                 <Button
                   size="sm"
@@ -1740,7 +1755,7 @@ export function ClientWorkoutsPage() {
               <SurfaceCardContent className="space-y-3 pt-6">
                 <LoadingPanel
                   title="Loading workouts"
-                  description="Merging personal and assigned sessions for this account."
+                  description="Loading your personal and coach-assigned workouts."
                 />
                 {Array.from({ length: 4 }).map((_, index) => (
                   <Skeleton key={index} className="h-24 w-full rounded-2xl" />
@@ -1750,7 +1765,7 @@ export function ClientWorkoutsPage() {
           ) : !hasAnyWorkouts ? (
             <EmptyStateBlock
               title="No workouts yet"
-              description="This is your unified workouts hub for personal and coach-assigned sessions."
+              description="Create a personal workout or wait for your coach to assign one."
               actions={
                 <>
                   <Button
@@ -1780,9 +1795,9 @@ export function ClientWorkoutsPage() {
               {sections.inProgress.length > 0 ? (
                 <SurfaceCard>
                   <SurfaceCardHeader>
-                    <SurfaceCardTitle>In Progress</SurfaceCardTitle>
+                    <SurfaceCardTitle>In progress</SurfaceCardTitle>
                     <SurfaceCardDescription>
-                      Active sessions ready to resume.
+                      Continue a workout you have started.
                     </SurfaceCardDescription>
                   </SurfaceCardHeader>
                   <SurfaceCardContent className="space-y-3">
@@ -1795,9 +1810,11 @@ export function ClientWorkoutsPage() {
                               <p className="text-sm font-semibold text-foreground">
                                 {workout.workoutName}
                               </p>
-                              <p className="text-sm text-muted-foreground">
-                                {workout.workoutTypeTag ?? "Workout"}
-                              </p>
+                              {workout.dayType !== "rest" ? (
+                                <p className="text-sm text-muted-foreground">
+                                  {workout.workoutTypeTag ?? "Workout"}
+                                </p>
+                              ) : null}
                             </div>
                             <StatusPill status="in_progress" />
                           </div>
@@ -1817,13 +1834,25 @@ export function ClientWorkoutsPage() {
                               )}
                             </span>
                           </div>
+                          {workout.coachNote?.trim() ? (
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Coach note
+                              </p>
+                              <p className="whitespace-pre-line text-sm leading-6 text-foreground">
+                                {workout.coachNote}
+                              </p>
+                            </div>
+                          ) : null}
                           <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => navigate(action.href)}
-                            >
-                              {action.label}
-                            </Button>
+                            {action ? (
+                              <Button
+                                size="sm"
+                                onClick={() => navigate(action.href)}
+                              >
+                                {action.label}
+                              </Button>
+                            ) : null}
                             {renderPersonalManagementActions(workout)}
                           </div>
                         </SectionCard>
@@ -1833,7 +1862,7 @@ export function ClientWorkoutsPage() {
                 </SurfaceCard>
               ) : null}
 
-              <div className="grid gap-6 xl:grid-cols-2">
+              <div className="grid items-start gap-6 xl:grid-cols-2">
                 <SurfaceCard>
                   <SurfaceCardHeader>
                     <SurfaceCardTitle>Today</SurfaceCardTitle>
@@ -1852,9 +1881,11 @@ export function ClientWorkoutsPage() {
                                 <p className="text-sm font-semibold text-foreground">
                                   {workout.workoutName}
                                 </p>
-                                <p className="text-sm text-muted-foreground">
-                                  {workout.workoutTypeTag ?? "Workout"}
-                                </p>
+                                {workout.dayType !== "rest" ? (
+                                  <p className="text-sm text-muted-foreground">
+                                    {workout.workoutTypeTag ?? "Workout"}
+                                  </p>
+                                ) : null}
                               </div>
                               <StatusPill status={workout.status} />
                             </div>
@@ -1876,18 +1907,26 @@ export function ClientWorkoutsPage() {
                                 )}
                               </span>
                             </div>
-                            {workout.coachNote ? (
-                              <p className="text-sm leading-6 text-muted-foreground">
-                                {workout.coachNote}
-                              </p>
+
+                            {workout.coachNote?.trim() ? (
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground">
+                                  Coach note
+                                </p>
+                                <p className="whitespace-pre-line text-sm leading-6 text-foreground">
+                                  {workout.coachNote}
+                                </p>
+                              </div>
                             ) : null}
                             <div className="flex flex-wrap items-center gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => navigate(action.href)}
-                              >
-                                {action.label}
-                              </Button>
+                              {action ? (
+                                <Button
+                                  size="sm"
+                                  onClick={() => navigate(action.href)}
+                                >
+                                  {action.label}
+                                </Button>
+                              ) : null}
                               {renderPersonalManagementActions(workout)}
                             </div>
                           </SectionCard>
@@ -1907,7 +1946,7 @@ export function ClientWorkoutsPage() {
                   <SurfaceCardHeader>
                     <SurfaceCardTitle>Upcoming</SurfaceCardTitle>
                     <SurfaceCardDescription>
-                      Planned sessions scheduled ahead.
+                      Your scheduled workouts and rest days.
                     </SurfaceCardDescription>
                   </SurfaceCardHeader>
                   <SurfaceCardContent className="space-y-3">
@@ -1921,9 +1960,11 @@ export function ClientWorkoutsPage() {
                                 <p className="text-sm font-semibold text-foreground">
                                   {workout.workoutName}
                                 </p>
-                                <p className="text-sm text-muted-foreground">
-                                  {workout.workoutTypeTag ?? "Workout"}
-                                </p>
+                                {workout.dayType !== "rest" ? (
+                                  <p className="text-sm text-muted-foreground">
+                                    {workout.workoutTypeTag ?? "Workout"}
+                                  </p>
+                                ) : null}
                               </div>
                               <StatusPill status={workout.status} />
                             </div>
@@ -1945,14 +1986,26 @@ export function ClientWorkoutsPage() {
                                 )}
                               </span>
                             </div>
+                            {workout.coachNote?.trim() ? (
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground">
+                                  Coach note
+                                </p>
+                                <p className="whitespace-pre-line text-sm leading-6 text-foreground">
+                                  {workout.coachNote}
+                                </p>
+                              </div>
+                            ) : null}
                             <div className="flex flex-wrap items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => navigate(action.href)}
-                              >
-                                {action.label}
-                              </Button>
+                              {action ? (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => navigate(action.href)}
+                                >
+                                  {action.label}
+                                </Button>
+                              ) : null}
                               {renderPersonalManagementActions(workout)}
                             </div>
                           </SectionCard>
@@ -1971,7 +2024,7 @@ export function ClientWorkoutsPage() {
 
               <SurfaceCard>
                 <SurfaceCardHeader>
-                  <SurfaceCardTitle>Recently Completed</SurfaceCardTitle>
+                  <SurfaceCardTitle>Recently completed</SurfaceCardTitle>
                   <SurfaceCardDescription>
                     Review recent sessions and summaries.
                   </SurfaceCardDescription>
@@ -2011,14 +2064,26 @@ export function ClientWorkoutsPage() {
                               )}
                             </span>
                           </div>
+                          {workout.coachNote?.trim() ? (
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Coach note
+                              </p>
+                              <p className="whitespace-pre-line text-sm leading-6 text-foreground">
+                                {workout.coachNote}
+                              </p>
+                            </div>
+                          ) : null}
                           <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => navigate(action.href)}
-                            >
-                              {action.label}
-                            </Button>
+                            {action ? (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => navigate(action.href)}
+                              >
+                                {action.label}
+                              </Button>
+                            ) : null}
                             {renderPersonalManagementActions(workout)}
                           </div>
                         </SectionCard>

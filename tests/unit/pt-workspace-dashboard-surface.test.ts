@@ -6,6 +6,10 @@ const dashboardSource = readFileSync(
   resolve(process.cwd(), "src/pages/pt/dashboard.tsx"),
   "utf8",
 );
+const dashboardCardSource = readFileSync(
+  resolve(process.cwd(), "src/components/ui/coachos/dashboard-card.tsx"),
+  "utf8",
+);
 
 describe("PT workspace dashboard surface", () => {
   it("omits the recent messages card from the overview dashboard", () => {
@@ -31,5 +35,10 @@ describe("PT workspace dashboard surface", () => {
     expect(dashboardSource).toContain("leading-none");
     expect(dashboardSource).toContain("Open clients");
     expect(dashboardSource).toContain("Open check-ins");
+  });
+
+  it("gives dashboard title bars enough vertical breathing room", () => {
+    expect(dashboardCardSource).toContain("py-2.5 sm:py-3");
+    expect(dashboardCardSource).not.toContain("py-1 sm:py-1");
   });
 });

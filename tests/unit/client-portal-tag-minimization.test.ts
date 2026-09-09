@@ -39,7 +39,7 @@ const combinedClientSurfaceSource =
 describe("client portal tag minimization", () => {
   it("keeps removed-only client home copy safe and relationship-neutral", () => {
     expect(clientSurfaceSources.home).toContain(
-      "You do not currently have an active coaching workspace.",
+      "You are not currently linked to a coach.",
     );
     expect(clientSurfaceSources.home).not.toContain("Removed");
     expect(clientSurfaceSources.home).not.toContain("Transferred out");
@@ -102,7 +102,7 @@ describe("client portal tag minimization", () => {
     expect(clientSurfaceSources.home).toContain("Rest day");
   });
 
-  it("keeps client home focused on workout preview, nutrition, and the promoted calendar", () => {
+  it("keeps today's actions ahead of the weekly calendar and daily log", () => {
     const agendaStart = clientSurfaceSources.home.indexOf(
       'id="home-section-next-up"',
     );
@@ -114,11 +114,14 @@ describe("client portal tag minimization", () => {
       agendaEnd,
     );
 
-    expect(agendaSource).toContain("Today&apos;s agenda");
+    expect(agendaSource).toContain('aria-label="Today\'s agenda"');
     expect(clientSurfaceSources.home).toContain("Today&apos;s workout");
     expect(clientSurfaceSources.home).toContain("Today&apos;s nutrition");
-    expect(clientSurfaceSources.home.indexOf("Calendar")).toBeLessThan(
-      clientSurfaceSources.home.indexOf("home-section-next-up"),
+    expect(
+      clientSurfaceSources.home.indexOf("{calendarSection}"),
+    ).toBeGreaterThan(agendaStart);
+    expect(clientSurfaceSources.home.indexOf("{calendarSection}")).toBeLessThan(
+      agendaEnd,
     );
 
     expect(clientSurfaceSources.home).not.toContain("Today&apos;s focus");
@@ -129,10 +132,9 @@ describe("client portal tag minimization", () => {
       "Steps + nutrition still count.",
     );
     expect(clientSurfaceSources.home).not.toContain("weeklyStats");
-    expect(clientSurfaceSources.home).toContain("Quick habit log");
-    expect(clientSurfaceSources.home).toContain("Save quick log");
+    expect(clientSurfaceSources.home).toContain("Daily log");
+    expect(clientSurfaceSources.home).toContain("Save daily log");
     expect(clientSurfaceSources.home).toContain("home-habit-steps");
-    expect(clientSurfaceSources.home).toContain("Habits");
     expect(clientSurfaceSources.home).not.toContain(
       "Tap each daily basic as it is done.",
     );
@@ -144,8 +146,8 @@ describe("client portal tag minimization", () => {
     expect(clientSurfaceSources.home).not.toContain(
       "Discovery and application status in one place.",
     );
-    expect(agendaSource).not.toContain("summaryTrainingBadgeLabel");
-    expect(agendaSource).not.toContain("primaryAction");
+    expect(agendaSource).toContain("summaryTrainingBadgeLabel");
+    expect(agendaSource).toContain("primaryAction.onClick");
     expect(agendaSource).not.toContain("Message your coach");
     expect(clientSurfaceSources.home).toContain("client-habit-logs");
     expect(clientSurfaceSources.home).toContain("quickHabitCompletedCount");

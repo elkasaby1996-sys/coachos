@@ -1,7 +1,8 @@
+import { NotificationToast } from "../../components/common/notification-toast";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from "../../lib/icons";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -16,7 +17,6 @@ import {
   EmptyState,
   Skeleton,
 } from "../../components/ui/coachos";
-import { ActionStatusMessage } from "../../components/common/action-feedback";
 import { PageContainer } from "../../components/common/page-container";
 import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import {
@@ -69,7 +69,6 @@ function AssignmentSnapshotCallout() {
 export function PtNutritionTemplateBuilderPage() {
   const { id } = useParams();
   const templateId: string | null = isUuid(id) ? (id as string) : null;
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const templateQuery = useNutritionTemplate(templateId);
@@ -484,14 +483,8 @@ export function PtNutritionTemplateBuilderPage() {
       <WorkspacePageHeader
         title={template.name}
         description="Nutrition program builder: slots and meal components with macro details."
-        actions={
-          <Button
-            variant="secondary"
-            onClick={() => navigate("/pt/nutrition-programs")}
-          >
-            Back
-          </Button>
-        }
+        backTo="/pt/nutrition-programs"
+        backLabel="Back to nutrition programs"
       />
 
       {errorMessage ? (
@@ -499,11 +492,10 @@ export function PtNutritionTemplateBuilderPage() {
           {errorMessage}
         </div>
       ) : null}
-      {successMessage ? (
-        <ActionStatusMessage tone="success">
-          {successMessage}
-        </ActionStatusMessage>
-      ) : null}
+      <NotificationToast
+        message={successMessage}
+        onDismiss={() => setSuccessMessage(null)}
+      />
 
       <DashboardCard
         title="Program Meta"
@@ -561,7 +553,8 @@ export function PtNutritionTemplateBuilderPage() {
               Description
             </label>
             <textarea
-              className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              data-ui="field"
+              className="app-field app-field-textarea min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={metaForm.description}
               onChange={(event) =>
                 setMetaForm((prev) => ({

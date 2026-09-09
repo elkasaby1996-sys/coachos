@@ -2,6 +2,10 @@ import { describe, expect, test } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+const componentCss = readFileSync(
+  resolve("src/styles/component-system.css"),
+  "utf8",
+).replace(/\r\n/g, "\n");
 const styleCss = readFileSync(resolve("src/styles/style.css"), "utf8").replace(
   /\r\n/g,
   "\n",
@@ -176,41 +180,22 @@ describe("light mode theme CSS contract", () => {
     expect(lightScrolledShell).toContain("saturate(68%)");
   });
 
-  test("keeps light-mode panel highlights from reintroducing cyan ambience", () => {
-    const appLightPanelHighlight = selectorBlock(
-      styleCss,
-      ".light .surface-panel::before,\n.light .surface-panel-strong::before,\n.light .surface-panel-portal::before",
+  test("uses neutral shared card surfaces without decorative panel highlights", () => {
+    expect(componentCss).toContain("--ui-surface: oklch(0.995 0.002 240)");
+    expect(componentCss).toMatch(
+      /\.ui-card\[data-ui="card"\]::after,[\s\S]*?display: none/,
     );
-    const ptHubLightPanelHighlight = selectorBlock(
-      ptHubShellCss,
-      ".pt-hub-theme.pt-hub-theme-light .surface-panel::before,\n.pt-hub-theme.pt-hub-theme-light .surface-panel-strong::before,\n.pt-hub-theme.pt-hub-theme-light .surface-panel-portal::before",
+    expect(ptHubShellCss).not.toContain(
+      ".pt-hub-theme.pt-hub-theme-light .surface-panel::before",
     );
-
-    expect(appLightPanelHighlight).not.toContain("var(--accent)");
-    expect(ptHubLightPanelHighlight).not.toContain("var(--accent)");
-    expect(appLightPanelHighlight).toContain("var(--chart-4)");
-    expect(ptHubLightPanelHighlight).toContain("var(--chart-4)");
   });
 
-  test("uses light-mode-specific warm overlays for PT Hub content panels", () => {
-    expect(ptHubOverviewSectionsTsx).toContain("pt-hub-action-center-overlay");
-    expect(ptHubSectionCardTsx).toContain("pt-hub-section-card-overlay");
-
-    const actionOverlay = selectorBlock(
-      ptHubShellCss,
-      ".pt-hub-theme.pt-hub-theme-light .pt-hub-action-center-overlay",
+  test("PT Hub section cards use the shared surface without an extra overlay", () => {
+    expect(ptHubSectionCardTsx).toContain("<Card");
+    expect(ptHubSectionCardTsx).not.toContain("pt-hub-section-card-overlay");
+    expect(ptHubOverviewSectionsTsx).not.toContain(
+      "pt-hub-action-center-overlay",
     );
-    const sectionOverlay = selectorBlock(
-      ptHubShellCss,
-      ".pt-hub-theme.pt-hub-theme-light .pt-hub-section-card-overlay",
-    );
-
-    expect(actionOverlay).not.toContain("var(--accent)");
-    expect(actionOverlay).not.toContain("var(--chart-3)");
-    expect(sectionOverlay).not.toContain("var(--accent)");
-    expect(sectionOverlay).not.toContain("var(--chart-3)");
-    expect(actionOverlay).toContain("var(--bg-muted)");
-    expect(sectionOverlay).toContain("var(--bg-muted)");
   });
 
   test("keeps light-mode inputs and dropdown menus opaque and warm", () => {
@@ -374,9 +359,12 @@ describe("light mode theme CSS contract", () => {
     expect(portalUtilityRow).toContain("color: oklch(var(--text-primary));");
   });
 
-  test("keeps public support and legal pages on a white light surface", () => {
+  test("keeps public support and legal pages on the shared light theme", () => {
     expect(publicInfoLayoutTsx).toContain("public-info-shell");
-    expect(publicInfoLayoutTsx).toContain("bg-white text-slate-950");
+    expect(publicInfoLayoutTsx).toContain("light public-info-shell");
+    expect(publicInfoLayoutTsx).toContain(
+      'document.body.classList.add("public-info-portal-light")',
+    );
     expect(publicInfoLayoutTsx).not.toContain("AuthBackdrop");
     expect(publicInfoLayoutTsx).not.toContain("pt-hub-theme-dark");
 

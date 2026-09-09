@@ -18,6 +18,22 @@ python .codex/skills/ui-ux-pro-max/scripts/search.py "repsync <page> <ui task>" 
 
 This rule applies to layout changes, spacing, typography, color/theme updates, interaction states, and component visual refactors.
 
+## Analytics-style UI preferences
+
+When reusing the light, teal-accented Analytics/Payments/Leads style, follow these user preferences:
+
+- Do not add an eyebrow, tagline, or decorative text line above the page title.
+- Do not add a decorative full stop to page or profile titles.
+- Keep KPI/metric summaries text-only; do not add decorative metric icons.
+- Keep useful descriptions beneath titles. Functional icons in search, navigation, and actions are still appropriate.
+
+## Shared icon system
+
+- Import interface icons from `src/lib/icons.tsx`, the shared Phosphor catalog.
+- Reuse the same symbols for equivalent client and coach features. Navigation uses regular icons when inactive and duotone when active, at 20 px on desktop and 22 px in mobile navigation.
+- Add new Phosphor symbols to that catalog using direct per-icon imports. Do not introduce another UI icon library or import Phosphor separately in pages.
+- Preserve brand logos, charts, and anatomical illustrations as purpose-built graphics. Keep accessible labels on icon-only controls.
+
 ## Supabase Remote Safety (Mandatory)
 
 Do not run remote Supabase commands unless the user explicitly asks to change a named remote project in the current turn.

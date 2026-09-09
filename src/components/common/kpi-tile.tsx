@@ -24,16 +24,14 @@ export function KpiTile({
   return (
     <Card
       module={module}
-      className="group relative overflow-hidden border-border/70 bg-card/80 p-4 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card"
+      className="kpi-card kpi-card-content group relative overflow-hidden border-border/70 bg-card/80 p-4 transition-colors"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {label}
-          </div>
+          <div className="kpi-label text-xs text-muted-foreground">{label}</div>
           <div
             className={cn(
-              "mt-2 text-2xl font-semibold tracking-tight",
+              "kpi-value mt-2 text-2xl font-semibold tracking-tight",
               accent && "text-accent",
             )}
           >

@@ -149,6 +149,8 @@ export function PtWorkoutTemplatePreviewPage() {
     <div className="space-y-6">
       <WorkspacePageHeader
         title={template?.name ?? "Workout template"}
+        backTo="/pt/templates/workouts"
+        backLabel="Back to templates"
         description="Preview structure, exercise sequencing, and assignment readiness before opening the builder."
         actions={
           <>
@@ -179,7 +181,7 @@ export function PtWorkoutTemplatePreviewPage() {
           </CardContent>
         </Card>
       ) : templateQuery.error ? (
-        <Card className="border-destructive/40">
+        <Card tone="danger" className="border-destructive/40">
           <CardHeader>
             <CardTitle>Template error</CardTitle>
           </CardHeader>

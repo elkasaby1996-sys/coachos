@@ -79,6 +79,7 @@ const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
     return (
       <div
         ref={ref}
+        data-ui="badge"
         className={cn(
           badgeVariants({ variant }),
           resolvedModule && moduleClasses?.badge,

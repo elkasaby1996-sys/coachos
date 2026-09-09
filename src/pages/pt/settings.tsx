@@ -407,7 +407,7 @@ export function PtSettingsPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground">Theme</p>
-            <div className="inline-flex items-center rounded-2xl border border-border/70 bg-secondary/35 p-1">
+            <div className="ui-inset inline-flex items-center border border-border/70 p-1">
               {AVAILABLE_THEME_PREFERENCES.map((theme) => (
                 <Button
                   key={theme}
@@ -499,7 +499,7 @@ export function PtSettingsPage() {
                   set, Repsync falls back to the latest active template.
                 </p>
                 <select
-                  className="w-full"
+                  className="app-select w-full"
                   value={defaultTemplateId}
                   onChange={(event) => setDefaultTemplateId(event.target.value)}
                 >

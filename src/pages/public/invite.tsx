@@ -8,7 +8,7 @@ import {
   Loader2,
   Mail,
   Smartphone,
-} from "lucide-react";
+} from "../../lib/icons";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
@@ -51,6 +51,16 @@ import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 import { getCharacterLimitState } from "../../lib/character-limits";
+import {
+  getInviteSenderName,
+  getWorkspaceBrandingStyle,
+  type WorkspaceBranding,
+} from "../../features/workspace-branding/branding";
+import {
+  WorkspaceLogo,
+  WorkspaceWelcome,
+} from "../../features/workspace-branding/components";
+import { useTheme } from "../../components/common/theme-provider";
 
 type VerifyInviteRow = {
   is_valid: boolean;
@@ -119,6 +129,8 @@ export function InvitePage() {
   const [activeTab, setActiveTab] = useState<InviteTab>("social");
   const [inviteLoading, setInviteLoading] = useState(true);
   const [invite, setInvite] = useState<VerifyInviteRow | null>(null);
+  const [branding, setBranding] = useState<WorkspaceBranding | null>(null);
+  const { resolvedTheme } = useTheme();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -172,6 +184,7 @@ export function InvitePage() {
         return;
       }
       setInviteLoading(true);
+      setBranding(null);
       setError(null);
       setNotice(null);
       try {
@@ -194,6 +207,11 @@ export function InvitePage() {
         }
         if (!active) return;
         setInvite(row);
+        const { data: brandingData } = await supabase.rpc(
+          "workspace_invite_branding",
+          { p_token: tokenValue },
+        );
+        if (active) setBranding(brandingData as WorkspaceBranding | null);
       } catch (err) {
         if (!active) return;
         setError(
@@ -466,8 +484,22 @@ export function InvitePage() {
 
   return (
     <AuthBackdrop contentClassName="max-w-lg">
-      <div className="relative w-full max-w-lg">
+      <div
+        className="relative w-full max-w-lg"
+        style={getWorkspaceBrandingStyle(
+          branding?.accent_color,
+          resolvedTheme === "dark",
+        )}
+      >
         <div className="mb-4 px-1">
+          {invite?.is_valid &&
+          (branding?.logo_url || invite.workspace_logo_url) ? (
+            <WorkspaceLogo
+              name={invite.workspace_name || "Workspace"}
+              url={branding?.logo_url || invite.workspace_logo_url}
+              className="mb-4 h-16 w-16"
+            />
+          ) : null}
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Accept invite
           </h1>
@@ -478,7 +510,13 @@ export function InvitePage() {
             </span>{" "}
             as a client.
           </p>
+          {branding ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Invited by {getInviteSenderName(branding)}
+            </p>
+          ) : null}
         </div>
+        <WorkspaceWelcome branding={branding} />
 
         <Card className="rounded-2xl border-border/70 bg-card/90 shadow-card backdrop-blur-sm">
           <CardHeader className="pb-4">
@@ -501,7 +539,7 @@ export function InvitePage() {
             ) : null}
 
             {error ? (
-              <Alert className="border-danger/40 bg-danger/10">
+              <Alert tone="danger" className="border-danger/40 bg-danger/10">
                 <AlertTitle className="flex items-center gap-2 text-danger">
                   <AlertCircle className="h-4 w-4" />
                   Notice
@@ -514,7 +552,7 @@ export function InvitePage() {
             ) : null}
 
             {notice ? (
-              <Alert className="border-primary/30 bg-primary/10">
+              <Alert tone="info" className="border-primary/30 bg-primary/10">
                 <AlertTitle className="text-primary">Status</AlertTitle>
                 <AlertDescription className="text-primary/90">
                   {notice}

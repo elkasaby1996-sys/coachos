@@ -20,6 +20,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import {
   Card,
@@ -40,6 +46,7 @@ import { EmptyState } from "../../components/ui/coachos";
 import { Skeleton } from "../../components/ui/skeleton";
 import { ExerciseMuscleClassificationFields } from "../../components/pt/exercise-muscle-classification-fields";
 import { ExercisePicker } from "../../components/pt/exercise-picker";
+import { WorkspacePageHeader } from "../../components/pt/workspace-page-header";
 import {
   buildWorkoutTemplateExerciseInsertRows,
   partitionNewExerciseSelections,
@@ -80,7 +87,7 @@ import {
 } from "../../lib/assignment-semantics";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
-import { GripVertical } from "lucide-react";
+import { GripVertical, MoreHorizontal, Trash2 } from "../../lib/icons";
 
 const getErrorDetails = (error: unknown) => {
   if (!error) return { code: "unknown", message: "Unknown error" };
@@ -1100,30 +1107,35 @@ export function PtWorkoutTemplateBuilderPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">
-            Template builder
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Configure structured exercises.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="muted">
-            {formatWorkoutTypeTag(template?.workout_type_tag)}
-          </Badge>
-          <Button
-            variant="secondary"
-            onClick={() => navigate("/pt/templates/workouts")}
-          >
-            Back to templates
-          </Button>
-          <Button variant="ghost" onClick={() => setDeleteTemplateOpen(true)}>
-            Delete template
-          </Button>
-        </div>
-      </div>
+      <WorkspacePageHeader
+        title="Template builder"
+        description="Configure structured exercises."
+        backTo="/pt/templates/workouts"
+        backLabel="Back to templates"
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Template actions"
+                title="Template actions"
+              >
+                <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => setDeleteTemplateOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                Delete template
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
 
       <AssignmentSnapshotCallout />
 
@@ -1138,7 +1150,7 @@ export function PtWorkoutTemplateBuilderPage() {
           </CardContent>
         </Card>
       ) : templateQuery.error ? (
-        <Card className="border-destructive/40">
+        <Card tone="danger" className="border-destructive/40">
           <CardHeader>
             <CardTitle>Template error</CardTitle>
           </CardHeader>
@@ -1484,13 +1496,12 @@ export function PtWorkoutTemplateBuilderPage() {
           }
         }}
       >
-        <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none flex-col overflow-hidden rounded-[24px] p-0 sm:w-[calc(100vw-2rem)] lg:h-[min(92dvh,58rem)] lg:max-w-[1120px]">
+        <DialogContent
+          aria-describedby={undefined}
+          className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none flex-col overflow-hidden rounded-[var(--ui-radius-card)] !p-0 sm:h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] lg:max-w-[1280px]"
+        >
           <DialogHeader className="shrink-0 px-4 pb-3 pt-4 pr-14 sm:px-6 sm:pt-5">
             <DialogTitle>Add exercises</DialogTitle>
-            <DialogDescription>
-              Select from your owner library or the connected provider. Sets,
-              reps, and prescription details are configured after adding.
-            </DialogDescription>
           </DialogHeader>
           <ExercisePicker
             open={addOpen}
@@ -1747,7 +1758,8 @@ export function PtWorkoutTemplateBuilderPage() {
                 Notes
               </label>
               <textarea
-                className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.notes}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, notes: event.target.value }))

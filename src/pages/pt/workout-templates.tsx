@@ -1,7 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Trash2 } from "lucide-react";
+import {
+  Copy,
+  Eye,
+  Loader2,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from "../../lib/icons";
+import { duplicateWorkoutTemplate } from "../../lib/duplicate-workout-template";
+import { WorkoutTemplatePreviewDialog } from "../../components/pt/workout-template-preview-dialog";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -85,6 +95,11 @@ export function PtWorkoutTemplatesPage() {
   const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting">("idle");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TemplateRow | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<TemplateRow | null>(null);
+  const duplicateLock = useRef(false);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     workout_type_tag: "",
@@ -159,6 +174,26 @@ export function PtWorkoutTemplatesPage() {
     });
     if (data?.id) {
       navigate(`/pt/templates/workouts/${data.id}`);
+    }
+  };
+
+  const handleDuplicate = async (template: TemplateRow) => {
+    if (!workspaceId || !canManageDelivery || duplicateLock.current) return;
+    duplicateLock.current = true;
+    setDuplicatingId(template.id);
+    setDuplicateError(null);
+    setDuplicateNotice(null);
+    try {
+      const copy = await duplicateWorkoutTemplate(template.id, workspaceId);
+      setDuplicateNotice(`Created ${copy.name}.`);
+    } catch (error) {
+      setDuplicateError(getErrorDetails(error).message);
+    } finally {
+      await queryClient.invalidateQueries({
+        queryKey: ["workout-templates", workspaceId],
+      });
+      duplicateLock.current = false;
+      setDuplicatingId(null);
     }
   };
 
@@ -291,10 +326,10 @@ export function PtWorkoutTemplatesPage() {
   }, [formattedTemplates, searchQuery, typeFilter, sortBy]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-1.5">
       <WorkspacePageHeader
         title="Workout Templates"
-        description="Manage the workout template library in the same operational layout as nutrition programs."
+        description="Create, organize, and reuse workouts across your clients."
       />
 
       <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_13rem_12rem_auto] xl:items-center">
@@ -355,6 +390,17 @@ export function PtWorkoutTemplatesPage() {
         ) : null}
       </div>
 
+      {duplicateError ? (
+        <Alert tone="danger">
+          <AlertTitle>Unable to duplicate workout</AlertTitle>
+          <AlertDescription>{duplicateError}</AlertDescription>
+        </Alert>
+      ) : duplicateNotice ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          {duplicateNotice}
+        </p>
+      ) : null}
+
       {workspaceError ? (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {getErrorDetails(workspaceError).code}:{" "}
@@ -378,7 +424,7 @@ export function PtWorkoutTemplatesPage() {
       ) : filteredTemplates.length === 0 ? (
         templates.length === 0 ? (
           <DashboardCard title="No workout templates" className="bg-card/90">
-            <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
+            <div className="ui-inset border border-dashed border-border p-8 text-center">
               <p className="text-sm font-semibold">Create the first template</p>
               {canManageDelivery ? (
                 <Button
@@ -393,7 +439,7 @@ export function PtWorkoutTemplatesPage() {
           </DashboardCard>
         ) : (
           <DashboardCard title="No templates match" className="bg-card/90">
-            <div className="rounded-xl border border-dashed border-border bg-muted/40 p-8 text-center">
+            <div className="ui-inset border border-dashed border-border p-8 text-center">
               <p className="text-sm font-semibold">No templates match</p>
               <p className="mt-2 text-xs text-muted-foreground">
                 Clear the search or try another filter.
@@ -405,13 +451,79 @@ export function PtWorkoutTemplatesPage() {
           </DashboardCard>
         )
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredTemplates.map((template) => (
             <DashboardCard
               key={template.id}
               title={template.name ?? "Workout template"}
               subtitle={template.description ?? "No description"}
-              className="bg-card/90"
+              className="flex h-full flex-col bg-card/90 [&>.ui-card-header]:flex-1 [&>.ui-card-header]:items-start [&>.ui-card-header>div:first-child]:min-w-0"
+              action={
+                <div className="flex shrink-0 items-center gap-1 self-start">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                    aria-label="View"
+                    title="View workout"
+                    onClick={() => setPreviewTarget(template)}
+                  >
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                  {canManageDelivery ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                      aria-label="Edit"
+                      title="Edit workout"
+                      onClick={() =>
+                        navigate(`/pt/templates/workouts/${template.id}`)
+                      }
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  ) : null}
+                  {canManageDelivery ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 !min-h-8 !min-w-8 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                      aria-label="Duplicate"
+                      title="Duplicate workout"
+                      disabled={duplicatingId !== null}
+                      aria-busy={duplicatingId === template.id}
+                      onClick={() => void handleDuplicate(template)}
+                    >
+                      {duplicatingId === template.id ? (
+                        <Loader2
+                          className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Copy className="h-4 w-4" aria-hidden="true" />
+                      )}
+                    </Button>
+                  ) : null}
+                  {canManageDelivery ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 !min-h-8 !min-w-8 hover:text-destructive [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
+                      aria-label="Delete"
+                      title="Delete workout"
+                      disabled={duplicatingId === template.id}
+                      onClick={() => {
+                        setDeleteTarget(template);
+                        setDeleteError(null);
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  ) : null}
+                </div>
+              }
             >
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -422,38 +534,16 @@ export function PtWorkoutTemplatesPage() {
                     Updated {template.updated}
                   </Badge>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() =>
-                      navigate(`/pt/templates/workouts/${template.id}`)
-                    }
-                  >
-                    {canManageDelivery ? "Edit" : "View"}
-                  </Button>
-                  {canManageDelivery ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="flex-1 text-destructive hover:text-destructive"
-                      onClick={() => {
-                        setDeleteTarget(template);
-                        setDeleteError(null);
-                        setDeleteOpen(true);
-                      }}
-                    >
-                      <Trash2 className="mr-1 h-3.5 w-3.5" />
-                      Delete
-                    </Button>
-                  ) : null}
-                </div>
               </div>
             </DashboardCard>
           ))}
         </div>
       )}
+
+      <WorkoutTemplatePreviewDialog
+        template={previewTarget}
+        onClose={() => setPreviewTarget(null)}
+      />
 
       <Dialog
         open={createOpen}
@@ -502,7 +592,8 @@ export function PtWorkoutTemplatesPage() {
                 Description
               </label>
               <textarea
-                className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.description}
                 onChange={(event) =>
                   setForm((prev) => ({

@@ -23,19 +23,21 @@ describe("client settings page contract", () => {
   });
 
   it("renders required profile fields and excludes disallowed profile labels", () => {
-    expect(settingsPageSource).toContain('SettingsFieldRow label="Avatar"');
-    expect(settingsPageSource).toContain('SettingsFieldRow label="Full name"');
-    expect(settingsPageSource).toContain('SettingsFieldRow label="Email"');
-    expect(settingsPageSource).toContain(
-      'SettingsFieldRow label="Phone number"',
+    expect(settingsPageSource).toMatch(
+      /SettingsFieldRow\s+label="Profile photo"/,
     );
-    expect(settingsPageSource).toContain(
-      'SettingsFieldRow label="Date of birth"',
+    expect(settingsPageSource).toMatch(/SettingsFieldRow\s+label="Full name"/);
+    expect(settingsPageSource).toMatch(/SettingsFieldRow\s+label="Email"/);
+    expect(settingsPageSource).toMatch(
+      /SettingsFieldRow\s+label="Phone number"/,
     );
-    expect(settingsPageSource).toContain('SettingsFieldRow label="Gender"');
-    expect(settingsPageSource).toContain('SettingsFieldRow label="Height"');
-    expect(settingsPageSource).toContain('SettingsFieldRow label="Weight"');
-    expect(settingsPageSource).toContain('SettingsFieldRow label="Timezone"');
+    expect(settingsPageSource).toMatch(
+      /SettingsFieldRow\s+label="Date of birth"/,
+    );
+    expect(settingsPageSource).toMatch(/SettingsFieldRow\s+label="Gender"/);
+    expect(settingsPageSource).toMatch(/SettingsFieldRow\s+label="Height"/);
+    expect(settingsPageSource).toMatch(/SettingsFieldRow\s+label="Weight"/);
+    expect(settingsPageSource).toMatch(/SettingsFieldRow\s+label="Timezone"/);
 
     expect(settingsPageSource).not.toContain("Display name");
     expect(settingsPageSource).not.toContain("Primary goals");
@@ -43,17 +45,17 @@ describe("client settings page contract", () => {
   });
 
   it("renders required preferences fields", () => {
-    expect(settingsPageSource).toContain('SettingsFieldRow label="Units"');
-    expect(settingsPageSource).toContain(
-      'SettingsFieldRow label="Date format"',
+    expect(settingsPageSource).toMatch(/SettingsFieldRow\s+label="Units"/);
+    expect(settingsPageSource).toMatch(
+      /SettingsFieldRow\s+label="Date format"/,
     );
-    expect(settingsPageSource).toContain('SettingsFieldRow label="Language"');
-    expect(settingsPageSource).toContain('SettingsFieldRow label="Theme"');
+    expect(settingsPageSource).toMatch(/SettingsFieldRow\s+label="Language"/);
+    expect(settingsPageSource).toMatch(/SettingsFieldRow\s+label="Theme"/);
   });
 
   it("keeps privacy/security scope without MFA or data export", () => {
     expect(settingsPageSource).toContain(
-      'SettingsSectionCard title="Sign-in Security"',
+      'SettingsSectionCard title="Sign-in security"',
     );
     expect(settingsPageSource).toContain(
       'SettingsSectionCard title="Sessions"',
@@ -67,20 +69,18 @@ describe("client settings page contract", () => {
 
   it("keeps billing tab focused on active service and excludes invite/application copy", () => {
     expect(settingsPageSource).toContain(
-      'SettingsSectionCard title="Current Service"',
+      'SettingsSectionCard title="Current service"',
     );
     expect(settingsPageSource).toContain(
-      'SettingsSectionCard title="Billing Status"',
+      'SettingsSectionCard title="Billing status"',
     );
     expect(settingsPageSource).toContain(
-      'SettingsSectionCard title="Invoice History"',
+      'SettingsSectionCard title="Invoice history"',
     );
     expect(settingsPageSource).toContain(
-      'SettingsSectionCard title="Payment Method"',
+      'SettingsSectionCard title="Payment method"',
     );
-    expect(settingsPageSource).toContain(
-      'title="No active billing relationship"',
-    );
+    expect(settingsPageSource).toContain('title="No paid coaching service"');
 
     expect(settingsPageSource).not.toContain("Pending applications");
     expect(settingsPageSource).not.toContain("Invites");

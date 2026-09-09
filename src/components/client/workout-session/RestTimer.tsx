@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pause, Play, TimerReset } from "lucide-react";
+import { Pause, Play, TimerReset } from "../../../lib/icons";
 import { Button } from "../../ui/button";
 
 const formatTime = (seconds: number) => {

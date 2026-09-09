@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, Search, SlidersHorizontal, UserRound } from "lucide-react";
+import { MapPin, Search, SlidersHorizontal, UserRound } from "../../lib/icons";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -232,7 +232,7 @@ export function ClientCoachMarketplacePage() {
           <SurfaceCardContent className="py-8">
             <EmptyStateBlock
               title="Unable to load Coach Marketplace"
-              description="Retry in a moment. Published coach profiles will appear here once the marketplace data is available."
+              description="The coach list could not load. Please try again."
             />
           </SurfaceCardContent>
         </SurfaceCard>
@@ -241,7 +241,7 @@ export function ClientCoachMarketplacePage() {
           <SurfaceCardContent className="py-8">
             <EmptyStateBlock
               title="No coaches are listed yet"
-              description="Published RepSync coach profiles will appear here when coaches make themselves visible in the marketplace."
+              description="Coaches will appear here when they publish their profiles."
               icon={<UserRound className="h-5 w-5" />}
             />
           </SurfaceCardContent>

@@ -8,6 +8,7 @@ import {
   preparePersonalWorkoutDraft,
   removeExerciseFromSuperset,
   resolveWorkoutPrimaryAction,
+  resolveWorkoutSourceKind,
   type UnifiedWorkoutRow,
 } from "../../src/pages/client/workouts-unified";
 
@@ -182,6 +183,18 @@ describe("applyUnifiedWorkoutFilter", () => {
 });
 
 describe("resolveWorkoutPrimaryAction", () => {
+  it.each(["planned", "completed", "skipped"])(
+    "never offers a session action for a %s rest day",
+    (status) => {
+      expect(
+        resolveWorkoutPrimaryAction({
+          ...baseRows[0],
+          dayType: "rest",
+          status,
+        }),
+      ).toBeNull();
+    },
+  );
   it("shows Resume for in-progress workouts", () => {
     expect(resolveWorkoutPrimaryAction(baseRows[0])).toEqual({
       label: "Resume workout",
@@ -227,6 +240,11 @@ describe("resolveWorkoutPrimaryAction", () => {
 });
 
 describe("canManagePersonalWorkout", () => {
+  it("does not allow management of rest days even with a stale personal label", () => {
+    expect(canManagePersonalWorkout({ ...baseRows[3], dayType: "rest" })).toBe(
+      false,
+    );
+  });
   it("allows management for personal workouts without active sessions", () => {
     expect(canManagePersonalWorkout(baseRows[3])).toBe(true);
   });
@@ -234,6 +252,34 @@ describe("canManagePersonalWorkout", () => {
   it("blocks management for active personal workouts and assigned workouts", () => {
     expect(canManagePersonalWorkout(baseRows[0])).toBe(false);
     expect(canManagePersonalWorkout(baseRows[1])).toBe(false);
+  });
+});
+
+describe("resolveWorkoutSourceKind", () => {
+  const standalone = {
+    dayType: "workout",
+    workoutTemplateId: null,
+    programId: null,
+    sourceWorkspaceId: null,
+  };
+  it("keeps client-created standalone workouts personal", () => {
+    expect(resolveWorkoutSourceKind(standalone)).toBe("personal");
+  });
+  it("recognizes coach rest days without template metadata", () => {
+    expect(resolveWorkoutSourceKind({ ...standalone, dayType: "rest" })).toBe(
+      "assigned",
+    );
+  });
+  it("preserves assignment ownership when a linked template is unavailable", () => {
+    expect(
+      resolveWorkoutSourceKind({ ...standalone, programId: "program-1" }),
+    ).toBe("assigned");
+    expect(
+      resolveWorkoutSourceKind({
+        ...standalone,
+        workoutTemplateId: "template-1",
+      }),
+    ).toBe("assigned");
   });
 });
 

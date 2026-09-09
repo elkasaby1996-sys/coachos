@@ -1,6 +1,12 @@
+import {
+  parseOptionalAmount,
+  sumRecorded,
+  formatRecorded,
+} from "../../lib/client-measurements";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { PortalPageHeader } from "../../components/client/portal/portal-ui";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
@@ -40,7 +46,6 @@ const getSingleRelation = <T,>(value: T | T[] | null | undefined): T | null =>
 export function ClientNutritionDayPage() {
   const { assigned_nutrition_day_id } = useParams();
   const assignedDayId = assigned_nutrition_day_id ?? null;
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const dayQuery = useAssignedNutritionDay(assignedDayId);
@@ -75,10 +80,12 @@ export function ClientNutritionDayPage() {
     },
   });
 
-  const sourceLabel = buildUnifiedSourceLabel({
-    workspaceId: sourceWorkspaceId,
-    workspaceName: sourceWorkspaceQuery.data?.name ?? null,
-  });
+  const sourceLabel = !dayTemplate
+    ? "Assigned"
+    : buildUnifiedSourceLabel({
+        workspaceId: sourceWorkspaceId,
+        workspaceName: sourceWorkspaceQuery.data?.name ?? null,
+      });
 
   useEffect(() => {
     const firstMeal = meals[0];
@@ -102,33 +109,13 @@ export function ClientNutritionDayPage() {
       return;
     }
     setActualCalories(
-      (
-        selectedMeal.latest_log?.actual_calories ??
-        selectedMeal.calories ??
-        ""
-      ).toString(),
+      (selectedMeal.latest_log?.actual_calories ?? "").toString(),
     );
     setActualProtein(
-      (
-        selectedMeal.latest_log?.actual_protein_g ??
-        selectedMeal.protein_g ??
-        ""
-      ).toString(),
+      (selectedMeal.latest_log?.actual_protein_g ?? "").toString(),
     );
-    setActualCarbs(
-      (
-        selectedMeal.latest_log?.actual_carbs_g ??
-        selectedMeal.carbs_g ??
-        ""
-      ).toString(),
-    );
-    setActualFat(
-      (
-        selectedMeal.latest_log?.actual_fat_g ??
-        selectedMeal.fat_g ??
-        ""
-      ).toString(),
-    );
+    setActualCarbs((selectedMeal.latest_log?.actual_carbs_g ?? "").toString());
+    setActualFat((selectedMeal.latest_log?.actual_fat_g ?? "").toString());
     setCompleted(Boolean(selectedMeal.latest_log?.is_completed));
   }, [selectedMeal]);
 
@@ -144,33 +131,35 @@ export function ClientNutritionDayPage() {
       { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
     );
 
-    const actual = meals.reduce(
-      (acc, meal) => {
-        acc.calories += n(meal.latest_log?.actual_calories ?? meal.calories);
-        acc.protein_g += n(meal.latest_log?.actual_protein_g ?? meal.protein_g);
-        acc.carbs_g += n(meal.latest_log?.actual_carbs_g ?? meal.carbs_g);
-        acc.fat_g += n(meal.latest_log?.actual_fat_g ?? meal.fat_g);
-        return acc;
-      },
-      { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
-    );
+    const actual = {
+      calories: sumRecorded(meals.map((m) => m.latest_log?.actual_calories)),
+      protein_g: sumRecorded(meals.map((m) => m.latest_log?.actual_protein_g)),
+      carbs_g: sumRecorded(meals.map((m) => m.latest_log?.actual_carbs_g)),
+      fat_g: sumRecorded(meals.map((m) => m.latest_log?.actual_fat_g)),
+    };
 
     return { planned, actual };
   }, [meals]);
 
   const toIntOrNull = (value: string) => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? Math.round(parsed) : null;
+    const n = parseOptionalAmount(value);
+    return n === null ? null : Math.round(n);
   };
-
-  const toNumOrNull = (value: string) => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  };
+  const toNumOrNull = parseOptionalAmount;
 
   const saveMealLog = async () => {
     if (!selectedMeal) return;
 
+    if (
+      [actualCalories, actualProtein, actualCarbs, actualFat].some(
+        (value) => value.trim() && parseOptionalAmount(value) === null,
+      )
+    ) {
+      setSaveError(
+        "Enter zero or a positive number, or leave the field blank if it was not recorded.",
+      );
+      return;
+    }
     setSaving(true);
     setSaveError(null);
 
@@ -231,34 +220,25 @@ export function ClientNutritionDayPage() {
 
   return (
     <PageContainer className="max-w-screen-2xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            Client Portal
+      <PortalPageHeader
+        title="Nutrition day"
+        backTo="/app/nutrition"
+        backLabel="Back to nutrition"
+        subtitle={dayQuery.data.date}
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant="muted">{sourceLabel}</Badge>
+            <StatusPill
+              status={
+                mealsQuery.completion.percent === 100 &&
+                mealsQuery.completion.total > 0
+                  ? "completed"
+                  : "planned"
+              }
+            />
           </div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Nutrition Day
-          </h2>
-          <p className="text-sm text-muted-foreground">{dayQuery.data.date}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="muted">{sourceLabel}</Badge>
-          <StatusPill
-            status={
-              mealsQuery.completion.percent === 100 &&
-              mealsQuery.completion.total > 0
-                ? "completed"
-                : "planned"
-            }
-          />
-          <Button
-            variant="secondary"
-            onClick={() => navigate("/app/nutrition")}
-          >
-            Back
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {meals.length === 0 ? (
         <EmptyState
@@ -267,7 +247,7 @@ export function ClientNutritionDayPage() {
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <DashboardCard title="Meals" subtitle="Tap to edit completion">
+          <DashboardCard title="Meals" subtitle="Mark meals as completed.">
             <div className="space-y-2">
               {meals.map((meal) => {
                 const isSelected = meal.id === selectedMealId;
@@ -291,11 +271,11 @@ export function ClientNutritionDayPage() {
             </div>
           </DashboardCard>
 
-          <DashboardCard title="Meal Detail" subtitle="Update actual intake">
+          <DashboardCard title="Meal details" subtitle="Update actual intake">
             {!selectedMeal ? (
               <EmptyState
                 title="Select a meal"
-                description="Choose a meal from the left rail."
+                description="Select a meal to view its details."
               />
             ) : (
               <div className="space-y-3">
@@ -393,7 +373,7 @@ export function ClientNutritionDayPage() {
                     </div>
                   ) : (
                     <p className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm text-muted-foreground">
-                      No meal components have been added yet.
+                      No foods have been added to this meal yet.
                     </p>
                   )}
                 </div>
@@ -407,27 +387,39 @@ export function ClientNutritionDayPage() {
                   Mark complete
                 </label>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    placeholder="Actual calories"
-                    value={actualCalories}
-                    onChange={(e) => setActualCalories(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Actual protein"
-                    value={actualProtein}
-                    onChange={(e) => setActualProtein(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Actual carbs"
-                    value={actualCarbs}
-                    onChange={(e) => setActualCarbs(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Actual fat"
-                    value={actualFat}
-                    onChange={(e) => setActualFat(e.target.value)}
-                  />
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setActualCalories(selectedMeal.calories?.toString() ?? "");
+                    setActualProtein(selectedMeal.protein_g?.toString() ?? "");
+                    setActualCarbs(selectedMeal.carbs_g?.toString() ?? "");
+                    setActualFat(selectedMeal.fat_g?.toString() ?? "");
+                  }}
+                >
+                  Use planned amounts
+                </Button>
+                <div className="grid grid-cols-2 gap-3">
+                  {(
+                    [
+                      ["Calories (kcal)", actualCalories, setActualCalories],
+                      ["Protein (g)", actualProtein, setActualProtein],
+                      ["Carbs (g)", actualCarbs, setActualCarbs],
+                      ["Fat (g)", actualFat, setActualFat],
+                    ] as const
+                  ).map(([label, value, setter]) => (
+                    <label key={label} className="grid gap-1 text-sm">
+                      {label}
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        inputMode="decimal"
+                        className="text-base"
+                        value={value}
+                        onChange={(e) => setter(e.target.value)}
+                      />
+                    </label>
+                  ))}
                 </div>
 
                 {saveError ? (
@@ -470,11 +462,21 @@ export function ClientNutritionDayPage() {
                 <p className="mb-2 text-xs text-muted-foreground">
                   Actual totals
                 </p>
-                <p>{Math.round(totals.actual.calories)} cals</p>
                 <p>
-                  {Math.round(totals.actual.protein_g)}p /{" "}
-                  {Math.round(totals.actual.carbs_g)}c /{" "}
-                  {Math.round(totals.actual.fat_g)}f
+                  Calories: {formatRecorded(totals.actual.calories)}
+                  {totals.actual.calories !== null ? " kcal" : ""}
+                </p>
+                <p>
+                  Protein: {formatRecorded(totals.actual.protein_g)}
+                  {totals.actual.protein_g !== null ? " g" : ""}
+                </p>
+                <p>
+                  Carbs: {formatRecorded(totals.actual.carbs_g)}
+                  {totals.actual.carbs_g !== null ? " g" : ""}
+                </p>
+                <p>
+                  Fat: {formatRecorded(totals.actual.fat_g)}
+                  {totals.actual.fat_g !== null ? " g" : ""}
                 </p>
               </div>
             </div>

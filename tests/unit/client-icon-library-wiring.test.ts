@@ -1,39 +1,32 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
+import { resolve, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const files = [
-  "src/components/layouts/client-layout.tsx",
-  "src/components/client/portal/portal-ui.tsx",
-  "src/features/notifications/components/notification-bell.tsx",
-  "src/pages/client/home.tsx",
-  "src/pages/client/messages.tsx",
-  "src/pages/client/workouts.tsx",
-  "src/pages/client/workout-today.tsx",
-  "src/pages/client/workout-summary.tsx",
-  "src/pages/client/nutrition.tsx",
-  "src/pages/client/nutrition-create-plan.tsx",
-  "src/pages/client/profile.tsx",
-  "src/pages/client/medical.tsx",
-  "src/pages/client/progress.tsx",
-] as const;
+function sourceFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    return entry.isDirectory()
+      ? sourceFiles(path)
+      : /\.tsx?$/.test(entry.name)
+        ? [path]
+        : [];
+  });
+}
 
-const bannedIconLibPatterns = [
-  /from\s+["']@radix-ui\/react-icons["']/,
-  /from\s+["']react-icons(?:\/[^"']+)?["']/,
-  /from\s+["']@heroicons\/react(?:\/[^"']+)?["']/,
-  /from\s+["']@tabler\/icons-react["']/,
-  /from\s+["']phosphor-react["']/,
-  /from\s+["']@fortawesome\//,
-];
-
-describe("client-side icon library consistency", () => {
-  it("keeps app-side icon imports on lucide-react", () => {
-    for (const relativePath of files) {
-      const source = readFileSync(resolve(process.cwd(), relativePath), "utf8");
-      for (const pattern of bannedIconLibPatterns) {
-        expect(source).not.toMatch(pattern);
+describe("shared client and coach icon library", () => {
+  it("uses the shared Phosphor catalog instead of mixing libraries", () => {
+    const catalog = resolve(process.cwd(), "src/lib/icons.tsx");
+    for (const path of sourceFiles(resolve(process.cwd(), "src"))) {
+      const source = readFileSync(path, "utf8");
+      expect(source, path).not.toMatch(
+        /from\s+["'](?:lucide-react|@radix-ui\/react-icons|react-icons|@heroicons\/react|@tabler\/icons-react|phosphor-react|@fortawesome)(?:["'/])/,
+      );
+      if (path !== catalog) {
+        expect(source, path).not.toMatch(/from\s+["']@phosphor-icons\/react/);
       }
     }
+    expect(readFileSync(catalog, "utf8")).toContain(
+      "@phosphor-icons/react/dist/csr/",
+    );
   });
 });

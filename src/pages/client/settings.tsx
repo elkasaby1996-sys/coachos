@@ -1,4 +1,10 @@
+import {
+  ProfilePhotoPicker,
+  TimezonePicker,
+  isValidTimezone,
+} from "../../components/client/profile-inputs";
 import { useEffect, useMemo, useState } from "react";
+import { NotificationToast } from "../../components/common/notification-toast";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -10,7 +16,7 @@ import {
   Shield,
   Trash2,
   User,
-} from "lucide-react";
+} from "../../lib/icons";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -26,7 +32,11 @@ import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { Switch } from "../../components/ui/switch";
-import { EmptyStateBlock, StatusBanner } from "../../components/client/portal";
+import {
+  EmptyStateBlock,
+  StatusBanner,
+  PortalPageHeader,
+} from "../../components/client/portal";
 import { useBootstrapAuth, useSessionAuth } from "../../lib/auth";
 import { safeSelect } from "../../lib/supabase-safe";
 import { supabase } from "../../lib/supabase";
@@ -237,28 +247,28 @@ const notificationGroups: Array<{
     ],
   },
   {
-    title: "Progress and Check-ins",
+    title: "Progress and check-ins",
     items: [
       {
         key: "checkin_requested",
         label: "Check-in reminders",
-        description: "Prompt when coach review check-ins are requested.",
+        description: "Reminders to complete a check-in for your coach.",
       },
       {
         key: "checkin_submitted",
         label: "Check-in confirmations",
-        description: "Confirmation when check-ins are submitted or processed.",
+        description:
+          "Updates when you submit a check-in or its status changes.",
       },
       {
         key: "inactivity_alerts",
-        label: "Habit and consistency nudges",
-        description: "Nudges when activity drops so you can get back on track.",
+        label: "Activity reminders",
+        description: "Reminders when you have been less active.",
       },
       {
         key: "milestone_events",
         label: "Progress milestones",
-        description:
-          "Celebrate streaks and milestone events in your coaching journey.",
+        description: "Get updates about streaks and milestones.",
       },
     ],
   },
@@ -268,7 +278,7 @@ const notificationGroups: Array<{
       {
         key: "system_events",
         label: "Coach/service updates and billing reminders",
-        description: "Important account, service, and system-level updates.",
+        description: "Updates about your account and coaching service.",
       },
     ],
   },
@@ -359,11 +369,13 @@ function NotificationToggleField({
   label,
   description,
   checked,
+  disabled = false,
   onCheckedChange,
 }: {
   label: string;
   description: string;
   checked: boolean;
+  disabled?: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
@@ -375,7 +387,12 @@ function NotificationToggleField({
             {description}
           </p>
         </div>
-        <Switch checked={checked} onCheckedChange={onCheckedChange} />
+        <Switch
+          aria-label={label}
+          disabled={disabled}
+          checked={checked}
+          onCheckedChange={onCheckedChange}
+        />
       </div>
     </Card>
   );
@@ -387,7 +404,7 @@ export function ClientSettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = parseActiveTab(searchParams.get("tab"));
   const { session, user } = useSessionAuth();
-  const { activeClientId } = useBootstrapAuth();
+  const { activeClientId, refreshBootstrap } = useBootstrapAuth();
   const { themePreference, updateAppearance } = useThemePreference();
 
   const [banner, setBanner] = useState<{
@@ -399,6 +416,7 @@ export function ClientSettingsPage() {
   const [profileForm, setProfileForm] = useState<ProfileFormState>(
     defaultProfileFormState,
   );
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
 
   const [preferencesForm, setPreferencesForm] = useState<PreferencesFormState>(
@@ -612,28 +630,22 @@ export function ClientSettingsPage() {
     [notificationForm, notificationsInitial],
   );
 
-  const avatarPreview = normalizeText(profileForm.avatarUrl);
-  const profileTitleInitial = (
-    profileForm.fullName.trim().charAt(0) || "C"
-  ).toUpperCase();
   const passwordTooShort = newPassword.length > 0 && newPassword.length < 8;
   const passwordMismatch =
     confirmPassword.length > 0 && newPassword !== confirmPassword;
 
-  const invoices =
-    billingQuery.data?.billingStatus === "active"
-      ? [
-          {
-            id: "placeholder-invoice",
-            label:
-              "Invoice history will appear here once billing sync is connected.",
-            amount: "Pending",
-          },
-        ]
-      : [];
+  const invoices: Array<{ id: string; label: string; amount: string }> = [];
 
   const handleProfileSave = async () => {
     if (!clientProfileQuery.data?.id) return;
+    if (!isValidTimezone(profileForm.timezone)) {
+      setBanner({
+        tone: "error",
+        title: "Choose a timezone",
+        description: "Select a valid timezone before saving your profile.",
+      });
+      return;
+    }
     setProfileSaving(true);
     setBanner(null);
 
@@ -709,8 +721,17 @@ export function ClientSettingsPage() {
           activeClientId,
         ],
       }),
-      queryClient.invalidateQueries({ queryKey: ["bootstrap-auth"] }),
+      refreshBootstrap(),
+      queryClient.invalidateQueries({ queryKey: ["client-message-profiles"] }),
+      queryClient.invalidateQueries({ queryKey: ["client-avatars"] }),
     ]);
+
+    const savedProfile = queryClient.getQueryData<ClientProfileRow>([
+      "client-settings-profile",
+      session?.user?.id,
+      activeClientId,
+    ]);
+    if (savedProfile) setProfileForm(buildInitialProfileForm(savedProfile));
 
     setBanner({
       tone: "success",
@@ -908,8 +929,17 @@ export function ClientSettingsPage() {
 
   return (
     <div className="space-y-5">
+      <PortalPageHeader
+        title="Settings"
+        subtitle="Manage your profile, preferences, and account."
+      />
       <SettingsPageShell tabs={<SettingsTabs tabs={settingsTabLinks} />}>
-        {banner ? (
+        <NotificationToast
+          title={banner?.title}
+          message={banner?.tone === "success" ? banner.description : null}
+          onDismiss={() => setBanner(null)}
+        />
+        {banner && banner.tone !== "success" ? (
           <StatusBanner
             variant={
               banner.tone === "error"
@@ -929,7 +959,7 @@ export function ClientSettingsPage() {
               <StatusBanner
                 variant="info"
                 title="Loading profile"
-                description="Fetching your current account details."
+                description="Loading your account details."
               />
             ) : clientProfileQuery.isError ? (
               <StatusBanner
@@ -944,34 +974,21 @@ export function ClientSettingsPage() {
             ) : clientProfileQuery.data ? (
               <>
                 <SettingsSectionCard title="Identity">
-                  <SettingsFieldRow label="Avatar">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-background/45 text-base font-semibold text-muted-foreground">
-                        {avatarPreview ? (
-                          <img
-                            src={avatarPreview}
-                            alt={profileForm.fullName || "Client avatar"}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          profileTitleInitial
-                        )}
-                      </div>
-                      <Input
-                        id="client-settings-avatar-url"
-                        value={profileForm.avatarUrl}
-                        onChange={(event) =>
-                          setProfileForm((prev) => ({
-                            ...prev,
-                            avatarUrl: event.target.value,
-                          }))
-                        }
-                        placeholder="Paste avatar URL"
-                      />
-                    </div>
+                  <SettingsFieldRow label="Profile photo">
+                    <ProfilePhotoPicker
+                      onBusyChange={setPhotoUploading}
+                      value={profileForm.avatarUrl}
+                      onChange={(avatarUrl) =>
+                        setProfileForm((prev) => ({ ...prev, avatarUrl }))
+                      }
+                      disabled={profileSaving}
+                    />
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Full name">
+                  <SettingsFieldRow
+                    label="Full name"
+                    htmlFor="client-settings-full-name"
+                  >
                     <Input
                       id="client-settings-full-name"
                       value={profileForm.fullName}
@@ -989,7 +1006,10 @@ export function ClientSettingsPage() {
                     <DisabledSettingField value={profileEmail} />
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Phone number">
+                  <SettingsFieldRow
+                    label="Phone number"
+                    htmlFor="client-settings-phone"
+                  >
                     <Input
                       id="client-settings-phone"
                       value={profileForm.phone}
@@ -1004,8 +1024,11 @@ export function ClientSettingsPage() {
                   </SettingsFieldRow>
                 </SettingsSectionCard>
 
-                <SettingsSectionCard title="Personal Details">
-                  <SettingsFieldRow label="Date of birth">
+                <SettingsSectionCard title="Personal details">
+                  <SettingsFieldRow
+                    label="Date of birth"
+                    htmlFor="client-settings-dob"
+                  >
                     <Input
                       id="client-settings-dob"
                       type="date"
@@ -1019,7 +1042,10 @@ export function ClientSettingsPage() {
                     />
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Gender">
+                  <SettingsFieldRow
+                    label="Gender"
+                    htmlFor="client-settings-gender"
+                  >
                     <Select
                       id="client-settings-gender"
                       value={profileForm.gender}
@@ -1040,7 +1066,10 @@ export function ClientSettingsPage() {
                     </Select>
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Height">
+                  <SettingsFieldRow
+                    label="Height"
+                    htmlFor="client-settings-height"
+                  >
                     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
                       <Input
                         id="client-settings-height"
@@ -1057,6 +1086,7 @@ export function ClientSettingsPage() {
                       />
                       <Select
                         id="client-settings-height-unit"
+                        aria-label="Height unit"
                         value={profileForm.heightUnit}
                         onChange={(event) =>
                           setProfileForm((prev) => ({
@@ -1074,7 +1104,10 @@ export function ClientSettingsPage() {
                     </div>
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Weight">
+                  <SettingsFieldRow
+                    label="Weight"
+                    htmlFor="client-settings-weight"
+                  >
                     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
                       <Input
                         id="client-settings-weight"
@@ -1091,6 +1124,7 @@ export function ClientSettingsPage() {
                       />
                       <Select
                         id="client-settings-weight-unit"
+                        aria-label="Weight unit"
                         value={profileForm.weightUnit}
                         onChange={(event) =>
                           setProfileForm((prev) => ({
@@ -1108,24 +1142,23 @@ export function ClientSettingsPage() {
                     </div>
                   </SettingsFieldRow>
 
-                  <SettingsFieldRow label="Timezone">
-                    <Input
+                  <SettingsFieldRow
+                    label="Timezone"
+                    htmlFor="client-settings-timezone"
+                  >
+                    <TimezonePicker
                       id="client-settings-timezone"
                       value={profileForm.timezone}
-                      onChange={(event) =>
-                        setProfileForm((prev) => ({
-                          ...prev,
-                          timezone: event.target.value,
-                        }))
+                      onChange={(timezone) =>
+                        setProfileForm((prev) => ({ ...prev, timezone }))
                       }
-                      placeholder="Asia/Riyadh"
                     />
                   </SettingsFieldRow>
                 </SettingsSectionCard>
 
                 <StickySaveBar
                   isDirty={profileDirty}
-                  isSaving={profileSaving}
+                  isSaving={profileSaving || photoUploading}
                   statusText="Unsaved profile changes"
                   onDiscard={() => setProfileForm(profileInitial)}
                   onSave={handleProfileSave}
@@ -1150,7 +1183,7 @@ export function ClientSettingsPage() {
 
         {activeTab === "preferences" ? (
           <div className="space-y-4">
-            <SettingsSectionCard title="App Preferences">
+            <SettingsSectionCard title="App preferences">
               <SettingsFieldRow label="Units">
                 <Select
                   id="client-settings-units"
@@ -1244,7 +1277,7 @@ export function ClientSettingsPage() {
 
         {activeTab === "notifications" ? (
           <div className="space-y-4">
-            <SettingsSectionCard title="Delivery Channels">
+            <SettingsSectionCard title="Notification delivery">
               <SettingsFieldRow label="Channel defaults">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <NotificationToggleField
@@ -1271,8 +1304,9 @@ export function ClientSettingsPage() {
                   />
                   <NotificationToggleField
                     label="Push"
-                    description="Mobile push support when enabled on your device."
-                    checked={notificationForm.push_enabled}
+                    description="Push notifications are not available yet. This device has not been registered."
+                    disabled
+                    checked={false}
                     onCheckedChange={(checked) =>
                       setNotificationForm((prev) => ({
                         ...prev,
@@ -1317,14 +1351,17 @@ export function ClientSettingsPage() {
 
         {activeTab === "privacy-security" ? (
           <div className="space-y-4">
-            <SettingsSectionCard title="Sign-in Security">
+            <SettingsSectionCard title="Sign-in security">
               <SettingsFieldRow label="Authentication">
                 <DisabledSettingField
                   value={session?.user?.email ? "Email + password" : "Unknown"}
                 />
               </SettingsFieldRow>
 
-              <SettingsFieldRow label="Current password">
+              <SettingsFieldRow
+                label="Current password"
+                htmlFor="client-settings-current-password"
+              >
                 <Input
                   id="client-settings-current-password"
                   type="password"
@@ -1334,7 +1371,10 @@ export function ClientSettingsPage() {
                 />
               </SettingsFieldRow>
 
-              <SettingsFieldRow label="New password">
+              <SettingsFieldRow
+                label="New password"
+                htmlFor="client-settings-new-password"
+              >
                 <Input
                   id="client-settings-new-password"
                   type="password"
@@ -1349,7 +1389,10 @@ export function ClientSettingsPage() {
                 ) : null}
               </SettingsFieldRow>
 
-              <SettingsFieldRow label="Confirm password">
+              <SettingsFieldRow
+                label="Confirm password"
+                htmlFor="client-settings-confirm-password"
+              >
                 <Input
                   id="client-settings-confirm-password"
                   type="password"
@@ -1375,8 +1418,7 @@ export function ClientSettingsPage() {
             <SettingsSectionCard title="Sessions">
               <SettingsFieldRow label="Active sessions">
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Session management is account-wide. Use this action to sign
-                  out of other devices.
+                  This signs you out on all devices, including this one.
                 </p>
                 <div className="flex justify-end">
                   <Button
@@ -1396,11 +1438,11 @@ export function ClientSettingsPage() {
             <SettingsSectionCard title="Account deletion">
               <SettingsFieldRow label="Request account deletion">
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Deletion and deactivation requests are handled through support
-                  to protect historical coaching records.
+                  Contact support to request account deletion or deactivation.
                 </p>
                 <div className="flex justify-end">
                   <Button
+                    tone="danger"
                     variant="secondary"
                     className="border-danger/45 text-danger hover:bg-danger/12 hover:text-danger"
                     onClick={() => setDeleteDialogOpen(true)}
@@ -1420,13 +1462,13 @@ export function ClientSettingsPage() {
               <StatusBanner
                 variant="info"
                 title="Loading billing"
-                description="Fetching your active service and billing summary."
+                description="Loading your coaching service and billing details."
               />
             ) : billingQuery.data?.billingStatus === "none" ? (
               <EmptyStateBlock
                 icon={<CreditCard className="h-5 w-5" />}
-                title="No active billing relationship"
-                description="You do not have an active paid coaching service attached to this account yet."
+                title="No paid coaching service"
+                description="No paid coaching service is linked to your account."
                 actions={
                   <Button onClick={() => navigate("/app/find-coach")}>
                     Find a Coach
@@ -1435,7 +1477,7 @@ export function ClientSettingsPage() {
               />
             ) : (
               <>
-                <SettingsSectionCard title="Current Service">
+                <SettingsSectionCard title="Current service">
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <Card className="space-y-1 rounded-[18px] border border-border/70 bg-background/50 p-4">
                       <p className="field-label">Provider</p>
@@ -1467,19 +1509,19 @@ export function ClientSettingsPage() {
                   </div>
                 </SettingsSectionCard>
 
-                <SettingsSectionCard title="Billing Status">
+                <SettingsSectionCard title="Billing status">
                   <SettingsFieldRow label="Status">
                     <div className="flex items-center gap-2">
-                      <Badge variant="success">Active</Badge>
+                      <Badge variant="muted">Not connected</Badge>
                       <span className="text-sm text-muted-foreground">
-                        Billing details remain in placeholder mode until payment
-                        integration is connected.
+                        Billing is not connected. Payment details are not
+                        available here yet.
                       </span>
                     </div>
                   </SettingsFieldRow>
                 </SettingsSectionCard>
 
-                <SettingsSectionCard title="Invoice History">
+                <SettingsSectionCard title="Invoice history">
                   {invoices.length > 0 ? (
                     <div className="space-y-2">
                       {invoices.map((invoice) => (
@@ -1492,7 +1534,7 @@ export function ClientSettingsPage() {
                               {invoice.label}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Invoice sync placeholder
+                              Invoice details are not available yet.
                             </p>
                           </div>
                           <Badge variant="muted">{invoice.amount}</Badge>
@@ -1503,16 +1545,16 @@ export function ClientSettingsPage() {
                     <EmptyStateBlock
                       centered
                       icon={<CalendarClock className="h-4 w-4" />}
-                      title="No invoices yet"
-                      description="Your invoice history will appear here once billing sync is connected."
+                      title="Billing is not connected"
+                      description="Invoices will appear here when billing is connected."
                     />
                   )}
                 </SettingsSectionCard>
 
-                <SettingsSectionCard title="Payment Method">
+                <SettingsSectionCard title="Payment method">
                   <SettingsFieldRow label="Saved card">
                     <p className="text-sm text-muted-foreground">
-                      No payment method wired yet.
+                      No payment method is connected.
                     </p>
                   </SettingsFieldRow>
                 </SettingsSectionCard>
@@ -1527,13 +1569,14 @@ export function ClientSettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Request account deletion?</AlertDialogTitle>
             <AlertDialogDescription>
-              This opens a support request so we can safely process account
-              deletion without damaging historical logs.
+              Send a deletion request to support. This does not delete your
+              account immediately.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <Button
+              tone="danger"
               variant="secondary"
               className="border-danger/45 text-danger hover:bg-danger/12 hover:text-danger"
               onClick={handleRequestAccountDeletion}

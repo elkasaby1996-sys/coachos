@@ -371,12 +371,33 @@ export function buildWorkoutDetailPath(assignedWorkoutId: string) {
 }
 
 export function canManagePersonalWorkout(row: UnifiedWorkoutRow) {
-  return row.sourceKind === "personal" && !row.hasActiveSession;
+  return (
+    row.sourceKind === "personal" &&
+    row.dayType !== "rest" &&
+    !row.hasActiveSession
+  );
+}
+
+export function resolveWorkoutSourceKind(input: {
+  dayType: string | null;
+  workoutTemplateId: string | null;
+  programId: string | null;
+  sourceWorkspaceId: string | null;
+}): UnifiedWorkoutSourceKind {
+  // Coach rest days can have no template relation. Personal sessions created by
+  // the client have neither a workout template nor a program assignment.
+  return input.dayType === "rest" ||
+    input.workoutTemplateId ||
+    input.programId ||
+    input.sourceWorkspaceId
+    ? "assigned"
+    : "personal";
 }
 
 export function resolveWorkoutPrimaryAction(
   row: UnifiedWorkoutRow,
-): WorkoutPrimaryAction {
+): WorkoutPrimaryAction | null {
+  if (row.dayType === "rest") return null;
   const normalizedStatus = normalizeWorkoutStatus(row.status);
 
   if (row.hasActiveSession && !isTerminalWorkoutStatus(normalizedStatus)) {

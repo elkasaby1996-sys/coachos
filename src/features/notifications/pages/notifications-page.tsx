@@ -1,15 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, BellRing } from "lucide-react";
+import { Bell, Trash2 } from "../../../lib/icons";
 import { Button } from "../../../components/ui/button";
 import { Skeleton } from "../../../components/ui/skeleton";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../components/ui/tabs";
 import { useBootstrapAuth, useSessionAuth } from "../../../lib/auth";
 import { useWindowedRows } from "../../../hooks/use-windowed-rows";
 import { WorkspacePageHeader } from "../../../components/pt/workspace-page-header";
@@ -24,22 +18,17 @@ import {
   SurfaceCardTitle,
 } from "../../../components/client/portal";
 import {
-  StaggerGroup,
-  StaggerItem,
-} from "../../../components/common/motion-primitives";
-import {
   useInfiniteNotifications,
-  useArchiveNotification,
+  useDeleteNotification,
   useMarkAllNotificationsRead,
   useMarkNotificationClicked,
   useMarkNotificationRead,
   useMarkNotificationUnread,
-  useUnarchiveNotification,
   useUnreadNotificationCount,
   notificationsKeys,
 } from "../hooks/use-notifications";
 import { resolveNotificationActionUrl } from "../lib/notification-route-resolver";
-import type { NotificationFilter, NotificationRecord } from "../lib/types";
+import type { NotificationRecord } from "../lib/types";
 import { declineWorkspaceTeamInvite } from "../../workspace-team/invite-api";
 import { cn } from "../../../lib/utils";
 
@@ -92,7 +81,6 @@ export function NotificationsPage() {
   const { user } = useSessionAuth();
   const { role } = useBootstrapAuth();
   const isClientPortal = role === "client";
-  const [activeTab, setActiveTab] = useState<NotificationFilter>("all");
   const [inviteActionMessage, setInviteActionMessage] = useState<string | null>(
     null,
   );
@@ -100,24 +88,11 @@ export function NotificationsPage() {
     userId: user?.id ?? null,
     filter: "all",
   });
-  const unreadQuery = useInfiniteNotifications({
-    userId: user?.id ?? null,
-    filter: "unread",
-  });
-  const actionRequiredQuery = useInfiniteNotifications({
-    userId: user?.id ?? null,
-    filter: "action-required",
-  });
-  const archivedQuery = useInfiniteNotifications({
-    userId: user?.id ?? null,
-    filter: "archived",
-  });
   const unreadCountQuery = useUnreadNotificationCount(user?.id ?? null);
   const markReadMutation = useMarkNotificationRead(user?.id ?? null);
   const markUnreadMutation = useMarkNotificationUnread(user?.id ?? null);
   const markClickedMutation = useMarkNotificationClicked(user?.id ?? null);
-  const archiveMutation = useArchiveNotification(user?.id ?? null);
-  const unarchiveMutation = useUnarchiveNotification(user?.id ?? null);
+  const deleteMutation = useDeleteNotification(user?.id ?? null);
   const markAllReadMutation = useMarkAllNotificationsRead(user?.id ?? null);
   const declineInviteMutation = useMutation({
     mutationFn: declineWorkspaceTeamInvite,
@@ -144,46 +119,19 @@ export function NotificationsPage() {
   }, [allQuery.data?.pages]);
 
   const unreadCount = unreadCountQuery.data ?? 0;
-  const unreadNotifications = useMemo(() => {
-    return unreadQuery.data?.pages.flat() ?? [];
-  }, [unreadQuery.data?.pages]);
-  const actionRequiredNotifications = useMemo(() => {
-    return actionRequiredQuery.data?.pages.flat() ?? [];
-  }, [actionRequiredQuery.data?.pages]);
-  const archivedNotifications = useMemo(() => {
-    return archivedQuery.data?.pages.flat() ?? [];
-  }, [archivedQuery.data?.pages]);
-  const notificationsError =
-    allQuery.error ??
-    unreadQuery.error ??
-    actionRequiredQuery.error ??
-    archivedQuery.error ??
-    unreadCountQuery.error;
+  const notificationsError = allQuery.error ?? unreadCountQuery.error;
+  const actionError =
+    deleteMutation.error ??
+    markReadMutation.error ??
+    markUnreadMutation.error ??
+    markAllReadMutation.error ??
+    markClickedMutation.error;
   const allWindow = useWindowedRows({
     rows: allNotifications,
     initialCount: 18,
     step: 18,
     resetKey: `all:${allNotifications.length}`,
   });
-  const unreadWindow = useWindowedRows({
-    rows: unreadNotifications,
-    initialCount: 18,
-    step: 18,
-    resetKey: `unread:${unreadNotifications.length}`,
-  });
-  const actionRequiredWindow = useWindowedRows({
-    rows: actionRequiredNotifications,
-    initialCount: 18,
-    step: 18,
-    resetKey: `action-required:${actionRequiredNotifications.length}`,
-  });
-  const archivedWindow = useWindowedRows({
-    rows: archivedNotifications,
-    initialCount: 18,
-    step: 18,
-    resetKey: `archived:${archivedNotifications.length}`,
-  });
-
   const handleOpenNotification = async (notification: NotificationRecord) => {
     const audience = isClientPortal ? "client" : "pt";
     const target = resolveNotificationActionUrl(notification, audience);
@@ -205,17 +153,11 @@ export function NotificationsPage() {
     notification: NotificationRecord,
     audience: "client" | "pt",
   ) => {
-    const isArchived = Boolean(notification.archived_at);
     const isTeamInvite =
       audience === "pt" && isWorkspaceTeamInviteNotification(notification);
     const inviteId = notification.entity_id ?? "";
     return (
-      <div
-        className={cn(
-          "flex shrink-0 flex-wrap items-center gap-2",
-          audience === "pt" ? "justify-end px-2 pb-2 sm:p-0" : "px-1 sm:px-0",
-        )}
-      >
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 px-2 pb-2 sm:p-0">
         {isTeamInvite ? (
           <>
             <Button
@@ -243,7 +185,8 @@ export function NotificationsPage() {
         ) : null}
         <Button
           size="sm"
-          variant="secondary"
+          variant={audience === "client" ? "ghost" : "secondary"}
+          className="w-28"
           onClick={() =>
             notification.is_read
               ? markUnreadMutation.mutate(notification.id)
@@ -254,16 +197,19 @@ export function NotificationsPage() {
           {notification.is_read ? "Mark unread" : "Mark read"}
         </Button>
         <Button
-          size="sm"
+          size={audience === "client" ? "icon" : "sm"}
           variant="ghost"
-          onClick={() =>
-            isArchived
-              ? unarchiveMutation.mutate(notification.id)
-              : archiveMutation.mutate(notification.id)
-          }
-          disabled={archiveMutation.isPending || unarchiveMutation.isPending}
+          onClick={() => deleteMutation.mutate(notification.id)}
+          disabled={deleteMutation.isPending}
+          aria-label="Delete notification"
+          title="Delete notification"
+          className="text-muted-foreground hover:text-danger"
         >
-          {isArchived ? "Unarchive" : "Archive"}
+          {audience === "client" ? (
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            "Delete"
+          )}
         </Button>
       </div>
     );
@@ -273,26 +219,24 @@ export function NotificationsPage() {
     notification: NotificationRecord,
     audience: "client" | "pt",
   ) => {
-    const isPtAudience = audience === "pt";
-
     return (
       <div
+        data-notification-id={notification.id}
+        data-unread={!notification.is_read}
         className={cn(
-          "flex flex-col gap-2 sm:flex-row sm:items-start",
-          isPtAudience &&
-            "rounded-2xl border border-border/70 bg-background/55 p-2 transition hover:border-border hover:bg-secondary/16 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3",
-          isPtAudience &&
-            !notification.is_read &&
+          "flex flex-col gap-2 rounded-2xl border border-border/70 bg-background/55 p-2 transition hover:border-border hover:bg-secondary/16 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3",
+          !notification.is_read &&
             "border-[var(--state-info-border)] bg-[var(--state-info-bg-soft)]",
+          audience === "client" && "client-notification-row",
         )}
       >
         <NotificationItem
           notification={notification}
           audience={audience}
           showActionLabel={audience !== "pt"}
-          showTitle={audience !== "pt"}
-          showTypeLabel={audience !== "pt"}
-          surface={audience === "pt" ? "embedded" : "card"}
+          showTitle
+          showTypeLabel
+          surface="embedded"
           onClick={() => handleOpenNotification(notification)}
         />
         {renderNotificationActions(notification, audience)}
@@ -331,7 +275,7 @@ export function NotificationsPage() {
         />
       ) : null}
 
-      {isClientPortal && notificationsError ? (
+      {notificationsError ? (
         <StatusBanner
           variant="warning"
           title="Notifications are partially unavailable"
@@ -345,7 +289,7 @@ export function NotificationsPage() {
 
       <SurfaceCard
         module="settings"
-        className={isClientPortal ? "" : "rounded-[24px]"}
+        className={isClientPortal ? "" : "rounded-[var(--ui-radius-card)]"}
       >
         {isClientPortal ? (
           <SurfaceCardHeader className="items-end pb-2">
@@ -377,269 +321,70 @@ export function NotificationsPage() {
         )}
 
         <SurfaceCardContent className="space-y-5">
-          {isClientPortal ? (
-            allQuery.isLoading ? (
-              <StaggerGroup className="space-y-3" stagger={0.05}>
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <StaggerItem key={index}>
-                    <Skeleton className="h-28 rounded-[var(--radius-lg)] border border-border/60" />
-                  </StaggerItem>
-                ))}
-              </StaggerGroup>
-            ) : allNotifications.length === 0 ? (
-              <EmptyStateBlock
-                centered
-                icon={<Bell className="h-5 w-5" />}
-                title="No recent updates"
-              />
-            ) : (
-              <StaggerGroup className="space-y-3" stagger={0.04}>
-                {allWindow.visibleRows.map((notification) => (
-                  <StaggerItem key={notification.id}>
-                    {renderNotificationRow(notification, "client")}
-                  </StaggerItem>
-                ))}
-                {allWindow.hasHiddenRows ? (
-                  <StaggerItem className="flex justify-center pt-1">
-                    <Button variant="secondary" onClick={allWindow.showMore}>
-                      Show {Math.min(allWindow.hiddenCount, 18)} more
-                    </Button>
-                  </StaggerItem>
-                ) : null}
-                {allQuery.hasNextPage ? (
-                  <StaggerItem className="flex justify-center pt-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => allQuery.fetchNextPage()}
-                      disabled={allQuery.isFetchingNextPage}
-                    >
-                      {allQuery.isFetchingNextPage ? "Loading..." : "Load more"}
-                    </Button>
-                  </StaggerItem>
-                ) : null}
-              </StaggerGroup>
-            )
+          {actionError ? (
+            <StatusBanner
+              variant="warning"
+              title="Unable to update notification"
+              description={actionError.message || "Please try again."}
+            />
+          ) : null}
+          {allQuery.isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-24 rounded-2xl" />
+              ))}
+            </div>
+          ) : !allNotifications.length ? (
+            <EmptyStateBlock
+              centered
+              icon={<Bell className="h-5 w-5" />}
+              title="No recent updates"
+            />
           ) : (
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) =>
-                setActiveTab(value as NotificationFilter)
-              }
-            >
-              <TabsList className="grid h-auto w-full max-w-3xl grid-cols-1 gap-2 rounded-[var(--radius-lg)] bg-transparent p-0 sm:grid-cols-4">
-                <TabsTrigger
-                  value="all"
-                  module="settings"
-                  className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
+            <div className="space-y-5">
+              {(isClientPortal
+                ? [{ label: "Recent updates", rows: allWindow.visibleRows }]
+                : groupPtNotifications(allWindow.visibleRows)
+              ).map((group) => (
+                <section
+                  key={group.label}
+                  className="space-y-3"
+                  aria-label={group.label}
                 >
-                  <span>All</span>
-                  <span className="text-xs text-muted-foreground">
-                    {allNotifications.length}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="unread"
-                  module="settings"
-                  className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
-                >
-                  <span>New</span>
-                  <span className="text-xs text-muted-foreground">
-                    {unreadCount}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="action-required"
-                  module="settings"
-                  className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
-                >
-                  <span>Action Required</span>
-                  <span className="text-xs text-muted-foreground">
-                    {actionRequiredNotifications.length}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="archived"
-                  module="settings"
-                  className="justify-between rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-4 py-3"
-                >
-                  <span>Archived</span>
-                  <span className="text-xs text-muted-foreground">
-                    {archivedNotifications.length}
-                  </span>
-                </TabsTrigger>
-              </TabsList>
-
-              {(
-                [
-                  "all",
-                  "unread",
-                  "action-required",
-                  "archived",
-                ] as NotificationFilter[]
-              ).map((filter) => {
-                const isUnreadFilter = filter === "unread";
-                const isActionRequiredFilter = filter === "action-required";
-                const isArchivedFilter = filter === "archived";
-                const query = isUnreadFilter
-                  ? unreadQuery
-                  : isActionRequiredFilter
-                    ? actionRequiredQuery
-                    : isArchivedFilter
-                      ? archivedQuery
-                      : allQuery;
-                const rows = isUnreadFilter
-                  ? unreadNotifications
-                  : isActionRequiredFilter
-                    ? actionRequiredNotifications
-                    : isArchivedFilter
-                      ? archivedNotifications
-                      : allNotifications;
-                const windowed = isUnreadFilter
-                  ? unreadWindow
-                  : isActionRequiredFilter
-                    ? actionRequiredWindow
-                    : isArchivedFilter
-                      ? archivedWindow
-                      : allWindow;
-                const visibleRows = windowed.visibleRows;
-                const emptyTitle =
-                  filter === "unread"
-                    ? "No new notifications"
-                    : filter === "action-required"
-                      ? "No action required"
-                      : filter === "archived"
-                        ? "No archived notifications"
-                        : "No recent updates";
-                const emptyDescription =
-                  filter === "unread"
-                    ? "Everything has been reviewed."
-                    : filter === "action-required"
-                      ? "High-priority or action-required updates will appear here."
-                      : filter === "archived"
-                        ? "Archived notifications will appear here after you file them away."
-                        : "New activity will show up here.";
-
-                return (
-                  <TabsContent key={filter} value={filter} className="mt-0">
-                    {query.isLoading ? (
-                      <StaggerGroup className="space-y-3" stagger={0.05}>
-                        {Array.from({ length: 6 }).map((_, index) => (
-                          <StaggerItem key={index}>
-                            <Skeleton className="h-28 rounded-[var(--radius-lg)] border border-border/60" />
-                          </StaggerItem>
-                        ))}
-                      </StaggerGroup>
-                    ) : rows.length === 0 ? (
-                      <EmptyStateBlock
-                        centered
-                        icon={
-                          filter === "unread" ||
-                          filter === "action-required" ? (
-                            <BellRing className="h-5 w-5" />
-                          ) : (
-                            <Bell className="h-5 w-5" />
-                          )
-                        }
-                        title={emptyTitle}
-                        description={emptyDescription}
-                        actions={
-                          filter === "unread" &&
-                          isClientPortal &&
-                          allNotifications.length > 0 ? (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => setActiveTab("all")}
-                            >
-                              View all updates
-                            </Button>
-                          ) : undefined
-                        }
-                      />
-                    ) : isClientPortal ? (
-                      <StaggerGroup className="space-y-3" stagger={0.04}>
-                        {visibleRows.map((notification) => (
-                          <StaggerItem key={notification.id}>
-                            {renderNotificationRow(notification, "client")}
-                          </StaggerItem>
-                        ))}
-                        {windowed.hasHiddenRows ? (
-                          <StaggerItem className="flex justify-center pt-1">
-                            <Button
-                              variant="secondary"
-                              onClick={windowed.showMore}
-                            >
-                              Show {Math.min(windowed.hiddenCount, 18)} more
-                            </Button>
-                          </StaggerItem>
-                        ) : null}
-                        {query.hasNextPage ? (
-                          <StaggerItem className="flex justify-center pt-2">
-                            <Button
-                              variant="secondary"
-                              onClick={() => query.fetchNextPage()}
-                              disabled={query.isFetchingNextPage}
-                            >
-                              {query.isFetchingNextPage
-                                ? "Loading..."
-                                : "Load more"}
-                            </Button>
-                          </StaggerItem>
-                        ) : null}
-                      </StaggerGroup>
-                    ) : (
-                      <StaggerGroup className="space-y-5" stagger={0.06}>
-                        {groupPtNotifications(visibleRows).map((group) => (
-                          <StaggerItem key={group.label} className="space-y-3">
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <div className="text-sm font-semibold text-foreground">
-                                  {group.label}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {group.rows.length} update
-                                  {group.rows.length > 1 ? "s" : ""}
-                                </div>
-                              </div>
-                            </div>
-                            <StaggerGroup className="space-y-3" stagger={0.04}>
-                              {group.rows.map((notification) => (
-                                <StaggerItem key={notification.id}>
-                                  {renderNotificationRow(notification, "pt")}
-                                </StaggerItem>
-                              ))}
-                            </StaggerGroup>
-                          </StaggerItem>
-                        ))}
-                        {windowed.hasHiddenRows ? (
-                          <StaggerItem className="flex justify-center pt-1">
-                            <Button
-                              variant="secondary"
-                              onClick={windowed.showMore}
-                            >
-                              Show {Math.min(windowed.hiddenCount, 18)} more
-                            </Button>
-                          </StaggerItem>
-                        ) : null}
-                        {query.hasNextPage ? (
-                          <StaggerItem className="flex justify-center pt-2">
-                            <Button
-                              variant="secondary"
-                              onClick={() => query.fetchNextPage()}
-                              disabled={query.isFetchingNextPage}
-                            >
-                              {query.isFetchingNextPage
-                                ? "Loading..."
-                                : "Load more"}
-                            </Button>
-                          </StaggerItem>
-                        ) : null}
-                      </StaggerGroup>
-                    )}
-                  </TabsContent>
-                );
-              })}
-            </Tabs>
+                  <h2 className="text-sm font-semibold text-foreground">
+                    {group.label}
+                  </h2>
+                  <div className="space-y-3">
+                    {group.rows.map((notification) => (
+                      <div key={notification.id}>
+                        {renderNotificationRow(
+                          notification,
+                          isClientPortal ? "client" : "pt",
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))}
+              {allWindow.hasHiddenRows ? (
+                <div className="flex justify-center">
+                  <Button variant="secondary" onClick={allWindow.showMore}>
+                    Show {Math.min(allWindow.hiddenCount, 18)} more
+                  </Button>
+                </div>
+              ) : null}
+              {allQuery.hasNextPage ? (
+                <div className="flex justify-center">
+                  <Button
+                    variant="secondary"
+                    onClick={() => allQuery.fetchNextPage()}
+                    disabled={allQuery.isFetchingNextPage}
+                  >
+                    {allQuery.isFetchingNextPage ? "Loading..." : "Load more"}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           )}
         </SurfaceCardContent>
       </SurfaceCard>

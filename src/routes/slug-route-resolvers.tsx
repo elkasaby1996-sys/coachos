@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { ArrowLeft, Home } from "lucide-react";
+import { ArrowLeft, Home } from "../lib/icons";
 import {
   Navigate,
   Outlet,
@@ -17,6 +17,10 @@ import { supabase } from "../lib/supabase";
 import { useWorkspace } from "../lib/use-workspace";
 import { traceAsync, traceEnd, traceStart } from "../lib/perf-trace";
 import { getClientRouteGuardDecision } from "../lib/client-route-guard";
+import {
+  getClientRouteCandidates,
+  getClientRouteKeyFallback,
+} from "../lib/client-route-key";
 import { getWorkspaceRouteGuardDecision } from "../lib/workspace-route-guard";
 import {
   buildLegacyWorkspaceEntryRedirectPath,
@@ -43,7 +47,7 @@ function RouteNotFound({ title }: { title: string }) {
         <EmptyState
           title={title}
           centered
-          className="w-full rounded-[32px] border border-border/70 bg-card/82 px-8 py-9 shadow-[0_30px_90px_-64px_oklch(var(--primary)/0.45)] backdrop-blur-2xl"
+          className="w-full rounded-[var(--ui-radius-card)] border border-border/70 bg-card/82 px-8 py-9 shadow-[0_30px_90px_-64px_oklch(var(--primary)/0.45)] backdrop-blur-2xl"
           description="The link may be outdated, or you may not have access to this workspace yet."
           action={
             <>
@@ -149,11 +153,6 @@ type ClientRouteRow = {
   relationship_status: string | null;
 };
 
-const getClientRouteKeyFallback = (clientId: string | null | undefined) =>
-  clientId
-    ? `c-${clientId.split("-").join("").slice(0, 8).toLowerCase()}`
-    : null;
-
 function getClientRouteRelationshipRank(status: string | null | undefined) {
   const relationshipStatus = status ?? "active";
   if (relationshipStatus === "active") return 0;
@@ -182,20 +181,14 @@ export function WorkspaceClientDetailRoute() {
         .or(`url_key.eq.${clientUrlKey},url_key.is.null`)
         .returns<ClientRouteRow[]>();
       if (error) throw error;
-      const candidates = (data ?? [])
-        .filter((client) => {
-          const persistedUrlKey = client.url_key?.trim() || null;
-          return (
-            persistedUrlKey === clientUrlKey ||
-            (!persistedUrlKey &&
-              getClientRouteKeyFallback(client.id) === clientUrlKey)
-          );
-        })
-        .sort(
-          (left, right) =>
-            getClientRouteRelationshipRank(left.relationship_status) -
-            getClientRouteRelationshipRank(right.relationship_status),
-        );
+      const candidates = getClientRouteCandidates(
+        data ?? [],
+        clientUrlKey ?? "",
+      ).sort(
+        (left, right) =>
+          getClientRouteRelationshipRank(left.relationship_status) -
+          getClientRouteRelationshipRank(right.relationship_status),
+      );
 
       for (const client of candidates) {
         // Mirrors public.can_access_client(client.id, 'clients.view') for historical route access.
@@ -335,7 +328,9 @@ export function LegacyClientRedirect() {
 
   if (clientQuery.isLoading) return <RouteLoading />;
   const workspaceSlug = clientQuery.data?.workspaces?.slug;
-  const clientUrlKey = clientQuery.data?.url_key;
+  const clientUrlKey =
+    clientQuery.data?.url_key?.trim() ||
+    getClientRouteKeyFallback(clientQuery.data?.id);
   if (clientQuery.error || !workspaceSlug || !clientUrlKey) {
     return <RouteNotFound title="Client not found" />;
   }

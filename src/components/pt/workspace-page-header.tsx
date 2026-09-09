@@ -1,87 +1,50 @@
 import { type ReactNode, useContext } from "react";
-import { useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
-import {
-  getModuleToneClasses,
-  getModuleToneForPath,
-  getModuleToneStyle,
-  type ModuleTone,
-} from "../../lib/module-tone";
+import type { ModuleTone } from "../../lib/module-tone";
 import { WorkspaceHeaderModeContext } from "./workspace-header-mode";
+import { PageBackLink } from "./page-back-link";
 
-export function WorkspacePageHeader({
-  eyebrow,
-  title,
-  description,
-  actions,
-  className,
-  module,
-}: {
+export type WorkspacePageHeaderProps = {
+  /** Retained for callers; page headings intentionally have no eyebrow. */
   eyebrow?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
   className?: string;
   module?: ModuleTone;
-}) {
+  backTo?: string;
+  backLabel?: string;
+};
+
+export function WorkspacePageHeader({
+  title,
+  description,
+  actions,
+  className,
+  backTo,
+  backLabel = "Back",
+}: WorkspacePageHeaderProps) {
   const mode = useContext(WorkspaceHeaderModeContext);
-  const location = useLocation();
-  const resolvedModule = module ?? getModuleToneForPath(location.pathname);
-  const toneClasses = getModuleToneClasses(resolvedModule);
-  const toneStyle = getModuleToneStyle(resolvedModule);
-
   if (mode === "shell") {
-    if (!actions) return null;
-
-    return (
+    return actions || backTo ? (
       <div className={cn("flex flex-wrap items-center gap-2", className)}>
+        {backTo ? <PageBackLink to={backTo} label={backLabel} /> : null}
         {actions}
       </div>
-    );
+    ) : null;
   }
-
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between",
-        className,
-      )}
-      style={toneStyle}
-    >
-      <div className="space-y-2">
-        {eyebrow ? (
-          <p
-            className={cn(
-              "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]",
-              toneClasses.text,
-            )}
-          >
-            <span
-              aria-hidden
-              className={cn("h-1.5 w-1.5 rounded-full", toneClasses.dot)}
-            />
-            {eyebrow}
-          </p>
-        ) : null}
-        <div className="space-y-1">
-          <h1
-            className={cn(
-              "text-[1.58rem] font-semibold leading-none tracking-tight text-foreground sm:text-[1.86rem]",
-              toneClasses.title,
-            )}
-          >
-            {title}
-          </h1>
-          {description ? (
-            <p className="max-w-3xl text-[12px] leading-4 text-muted-foreground opacity-80">
-              {description}
-            </p>
-          ) : null}
+    <header className={cn("coach-page-heading", className)}>
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          {backTo ? <PageBackLink to={backTo} label={backLabel} /> : null}
+          <h1>{title}</h1>
         </div>
+        {description ? <p>{description}</p> : null}
       </div>
       {actions ? (
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        <div className="coach-page-heading-actions">{actions}</div>
       ) : null}
-    </div>
+    </header>
   );
 }

@@ -29,7 +29,7 @@ import {
   PartyPopper,
   Phone,
   X,
-} from "lucide-react";
+} from "../../lib/icons";
 import {
   AnimatePresence,
   motion,

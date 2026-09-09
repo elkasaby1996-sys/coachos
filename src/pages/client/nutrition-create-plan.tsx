@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronDown, Copy, Plus, X } from "lucide-react";
+import { ChevronDown, Copy, Plus, X } from "../../lib/icons";
 import { ActionStatusMessage } from "../../components/common/action-feedback";
 import {
   EmptyStateBlock,
@@ -572,8 +572,8 @@ export function ClientNutritionCreatePlanPage() {
     return (
       <div className="space-y-6">
         <PortalPageHeader
-          title="Create Personal Plan"
-          subtitle="Set up a 1-week nutrition plan using the shared nutrition system."
+          title="Create nutrition plan"
+          subtitle="Plan your meals for one week."
         />
         <EmptyStateBlock
           title="Client profile not found"
@@ -591,8 +591,10 @@ export function ClientNutritionCreatePlanPage() {
   return (
     <div className="space-y-6 pb-6">
       <PortalPageHeader
-        title="Create Personal Plan"
-        subtitle="1-week builder using the same nutrition runtime and day-detail flow."
+        title="Create nutrition plan"
+        subtitle="Plan a week of meals, portions, and nutrition targets."
+        backTo="/app/nutrition"
+        backLabel="Back to nutrition"
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
@@ -845,6 +847,7 @@ export function ClientNutritionCreatePlanPage() {
 
                             <div className="flex shrink-0 items-center gap-1.5">
                               <Button
+                                tone="danger"
                                 type="button"
                                 variant="ghost"
                                 size="sm"
@@ -937,7 +940,7 @@ export function ClientNutritionCreatePlanPage() {
                             </div>
 
                             <div className="overflow-x-auto rounded-md border border-border/60 bg-muted/10">
-                              <table className="w-full min-w-[980px] table-fixed">
+                              <table className="ui-table w-full min-w-[980px] table-fixed">
                                 <colgroup>
                                   <col className="w-[48%]" />
                                   <col className="w-[16%]" />
@@ -1108,6 +1111,7 @@ export function ClientNutritionCreatePlanPage() {
                                         </td>
                                         <td className="px-2 py-1.5 align-middle">
                                           <Button
+                                            tone="danger"
                                             type="button"
                                             variant="ghost"
                                             size="sm"

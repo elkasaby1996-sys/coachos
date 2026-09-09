@@ -1,4 +1,4 @@
-import { ArrowUpRight, Clock3, UsersRound } from "lucide-react";
+import { ArrowUpRight } from "../../../lib/icons";
 import { Button } from "../../../components/ui/button";
 import { formatRelativeTime } from "../../../lib/relative-time";
 import { cn } from "../../../lib/utils";
@@ -57,22 +57,18 @@ export function PtHubWorkspaceCard({
           </span>
         </p>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-[22px] border border-border/70 bg-background/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            Access
-          </p>
+      <div className="coach-workspace-summary">
+        <div className="p-4">
+          <p className="text-xs font-normal text-muted-foreground">Access</p>
           <div className="mt-3 flex items-center gap-2 text-lg font-semibold">
-            <UsersRound className="h-4 w-4 text-primary [stroke-width:1.7]" />
             <span>{getAccessSummary(workspace)}</span>
           </div>
         </div>
-        <div className="rounded-[22px] border border-border/70 bg-background/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+        <div className="p-4">
+          <p className="text-xs font-normal text-muted-foreground">
             Last update
           </p>
           <div className="mt-3 flex items-center gap-2 text-lg font-semibold">
-            <Clock3 className="h-4 w-4 text-primary [stroke-width:1.7]" />
             <span>{formatRelativeTime(workspace.lastUpdated)}</span>
           </div>
         </div>

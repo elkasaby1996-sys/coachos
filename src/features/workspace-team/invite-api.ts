@@ -27,6 +27,8 @@ export type WorkspaceTeamInviteEmailPayload = {
   to: string;
   subject: string;
   text: string;
+  senderName?: string;
+  senderMode?: "platform_no_reply";
 };
 
 export type CreateWorkspaceTeamInviteInput = {
@@ -153,16 +155,22 @@ export function buildWorkspaceTeamInviteEmail(params: {
   to: string;
   workspaceName: string;
   ownerName: string;
+  senderName?: string;
   role: InvitableWorkspaceRole;
   acceptUrl: string;
   expiresAt: string;
 }): WorkspaceTeamInviteEmailPayload {
   const normalizedEmail = normalizeInviteEmail(params.to);
+  const senderName = params.senderName?.trim() || params.ownerName;
+  if (/[\r\n<>]/.test(senderName))
+    throw new Error("Invalid invite sender name.");
   return {
     to: normalizedEmail,
-    subject: `${params.ownerName} invited you to join ${params.workspaceName}`,
+    senderName,
+    senderMode: "platform_no_reply",
+    subject: `${senderName} invited you to join ${params.workspaceName}`,
     text: [
-      `${params.ownerName} invited you to join ${params.workspaceName} on RepSync as ${params.role}.`,
+      `${senderName} invited you to join ${params.workspaceName} on RepSync as ${params.role}.`,
       `Accept invite: ${params.acceptUrl}`,
       `This invite expires on ${params.expiresAt}.`,
       `You must sign in or create a RepSync account with ${normalizedEmail} to accept.`,
@@ -190,7 +198,24 @@ export async function createWorkspaceTeamInvite(
     p_base_url: input.baseUrl,
   });
   if (error) throw error;
-  return parseRpcJson<WorkspaceTeamInviteCreated>(data);
+  const invite = parseRpcJson<WorkspaceTeamInviteCreated>(data);
+  const { data: branding } = await supabase
+    .from("workspaces")
+    .select("name, invite_sender_name")
+    .eq("id", input.workspaceId)
+    .maybeSingle();
+  if (branding) {
+    invite.email = buildWorkspaceTeamInviteEmail({
+      to: invite.invitedEmail,
+      workspaceName: invite.workspaceName || "your workspace",
+      ownerName: branding.name || "RepSync",
+      senderName: branding.invite_sender_name,
+      role: invite.role,
+      acceptUrl: invite.acceptUrl,
+      expiresAt: invite.expiresAt,
+    });
+  }
+  return invite;
 }
 
 export async function previewWorkspaceTeamInvite(token: string) {

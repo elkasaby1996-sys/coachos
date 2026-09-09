@@ -430,7 +430,7 @@ export function ClientHabitsPage() {
       ) : null}
 
       {queryErrorDetails ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Unable to load habit log</AlertTitle>
           <AlertDescription>
             <div className="space-y-1 text-xs text-muted-foreground">
@@ -442,7 +442,7 @@ export function ClientHabitsPage() {
       ) : null}
 
       {saveError ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Couldn't save this log</AlertTitle>
           <AlertDescription>
             <div className="space-y-1 text-xs text-muted-foreground">
@@ -454,14 +454,14 @@ export function ClientHabitsPage() {
       ) : null}
 
       {formError ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Update needed</AlertTitle>
           <AlertDescription>{formError}</AlertDescription>
         </Alert>
       ) : null}
 
       {clientQuery.error ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Unable to load habits</AlertTitle>
           <AlertDescription>
             {clientQuery.error instanceof Error
@@ -739,7 +739,7 @@ export function ClientHabitsPage() {
         <CardHeader>
           <CardTitle>7-day trends</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Quick snapshot of the last week.
+            Your daily entries from the past week.
           </p>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -756,7 +756,7 @@ export function ClientHabitsPage() {
               <StatusBanner
                 variant="info"
                 title="No habits logged yet"
-                description="Save your first daily log to unlock a weekly view of steps, sleep, protein, and body weight."
+                description="Save a daily log to see your entries here."
               />
             </div>
           ) : (

@@ -21,7 +21,7 @@ export function StatCard({
   surface = "default",
   className,
   headerClassName,
-  disableHoverMotion = false,
+  disableHoverMotion = true,
   module,
   onClick,
   ariaLabel,
@@ -49,47 +49,23 @@ export function StatCard({
   const isPtHub = surface === "pt-hub";
   const reduceMotion = useReducedMotion();
   const ptHubLabelClassName = "text-[oklch(var(--text-secondary)/0.88)]";
-  const ptHubHelperClassName = "text-muted-foreground";
   const moduleClasses = module ? getModuleToneClasses(module) : null;
   const toneStyle = getModuleToneStyle(module);
 
   const card = (
     <Card
       className={cn(
-        isPtHub
-          ? "surface-panel relative h-full min-h-[152px] overflow-hidden rounded-[26px] border-border/70 shadow-[var(--surface-shadow)] backdrop-blur-xl"
-          : "relative overflow-hidden rounded-[26px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.66))] shadow-[0_28px_70px_-50px_oklch(0_0_0/0.78)] backdrop-blur-xl",
+        "kpi-card relative h-full overflow-hidden border border-border/70 backdrop-blur-xl",
         module && moduleClasses?.card,
-        accent &&
-          (isPtHub
-            ? "border-primary/25"
-            : "border-primary/35 shadow-[0_26px_60px_-42px_oklch(var(--accent)/0.24)]"),
+        accent && (isPtHub ? "border-primary/25" : "border-primary/35"),
         onClick && "cursor-pointer",
         className,
       )}
       style={toneStyle}
     >
-      {isPtHub ? (
-        <div
-          className={cn(
-            "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.14),transparent_34%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.08),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.12),transparent_48%)]",
-            accent &&
-              "bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.18),transparent_32%),radial-gradient(circle_at_bottom_left,oklch(var(--chart-3)/0.1),transparent_28%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.14),transparent_48%)]",
-          )}
-        />
-      ) : (
-        <div
-          className={cn(
-            "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.1),transparent_30%),linear-gradient(180deg,oklch(1_0_0/0.05),transparent_44%)]",
-            accent &&
-              "bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.14),transparent_28%),linear-gradient(180deg,oklch(1_0_0/0.06),transparent_44%)]",
-          )}
-        />
-      )}
       <CardHeader
         className={cn(
-          "gap-6 space-y-0",
-          isPtHub && "relative flex h-full px-4 py-4 sm:px-5",
+          "kpi-card-content relative flex h-full gap-2 space-y-0 p-4 sm:p-4",
           headerClassName,
         )}
       >
@@ -99,38 +75,17 @@ export function StatCard({
             isPtHub && ptHubLabelClassName,
           )}
         >
-          <span
-            className={cn(
-              "font-semibold",
-              isPtHub
-                ? "normal-case tracking-normal"
-                : "uppercase tracking-[0.22em]",
-            )}
-          >
+          <span className="kpi-label font-semibold normal-case tracking-normal">
             {label}
           </span>
         </div>
-        <div className="flex items-end justify-between gap-3">
+        <div className="kpi-card-reading flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <CardTitle
-              className={cn(
-                "text-2xl font-semibold tracking-tight",
-                isPtHub && "text-[1.82rem] tracking-[-0.01em] tabular-nums",
-              )}
-            >
+            <CardTitle className="kpi-value text-2xl font-semibold tracking-tight tabular-nums">
               <AnimatedValue value={value} />
             </CardTitle>
             {helper ? (
-              <p
-                className={cn(
-                  "text-xs text-muted-foreground",
-                  isPtHub &&
-                    cn(
-                      "mt-1 text-[0.78rem] leading-[1.15rem]",
-                      ptHubHelperClassName,
-                    ),
-                )}
-              >
+              <p className="kpi-helper mt-1 text-xs leading-[1.15rem] text-muted-foreground">
                 {helper}
               </p>
             ) : null}
@@ -138,9 +93,8 @@ export function StatCard({
           {delta ? (
             <span
               className={cn(
-                "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold tracking-[0.08em]",
+                "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold tracking-normal",
                 getSemanticToneClasses(delta.tone).surface,
-                isPtHub && "tracking-normal",
                 !isPtHub &&
                   (!delta.tone || delta.tone === "neutral") &&
                   "bg-muted/28 text-muted-foreground",
@@ -166,7 +120,7 @@ export function StatCard({
       {onClick ? (
         <button
           type="button"
-          className="block h-full w-full rounded-[26px] text-left outline-none transition focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="kpi-card-button block h-full w-full rounded-[20px] text-left outline-none transition focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={onClick}
           aria-label={ariaLabel ?? label}
         >

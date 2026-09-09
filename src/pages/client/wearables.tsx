@@ -10,7 +10,7 @@ import {
   RefreshCw,
   Unlink,
   Watch,
-} from "lucide-react";
+} from "../../lib/icons";
 import {
   Line,
   LineChart,
@@ -141,30 +141,25 @@ function MetricTile({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border/70 bg-card/45 shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]",
+        "kpi-card kpi-card-content border border-border/70 bg-card/45",
         compact ? "p-3" : "p-4",
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 text-xs font-medium leading-5 text-muted-foreground">
+        <p className="kpi-label min-w-0 text-xs font-medium leading-5 text-muted-foreground">
           {label}
         </p>
         <StateChip state={state} />
       </div>
       <p
         className={cn(
-          "mt-2 font-semibold tracking-tight text-foreground",
+          "kpi-value mt-2 font-semibold tracking-tight text-foreground",
           compact ? "text-lg" : "text-2xl",
         )}
       >
         {value}
       </p>
-      <div
-        className={cn(
-          "flex flex-wrap items-center gap-2",
-          compact ? "mt-2" : "mt-4",
-        )}
-      >
+      <div className={cn("flex flex-wrap items-center gap-2", "mt-2")}>
         <ProviderBadge provider={provider} />
       </div>
     </div>
@@ -510,7 +505,7 @@ export function ClientWearablesPage() {
             <StatusBanner
               variant="info"
               title="No workouts yet"
-              description="Workouts imported from Open Wearables will appear here."
+              description="Workouts synced from your connected device will appear here."
             />
           ) : (
             (activitiesQuery.data ?? []).map((activity) => (
@@ -581,10 +576,10 @@ export function ClientWearablesPage() {
               <StatusBanner
                 variant="info"
                 title="No trend data yet"
-                description="Trend data will appear after the next Open Wearables import."
+                description="Your charts will update when new device data syncs."
               />
             ) : (
-              <div className="h-52 rounded-2xl border border-border/60 bg-card/35 p-3">
+              <div className="ui-inset h-52 border border-border/60 p-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chart.data}>
                     <XAxis
@@ -633,7 +628,7 @@ export function ClientWearablesPage() {
         />
         <EmptyStateBlock
           title="Wearables are not enabled"
-          description="Your coaching workspace has not enabled wearable data sharing yet."
+          description="Your coach has not enabled wearable data sharing yet."
           icon={<Watch className="h-5 w-5" />}
         />
       </div>
@@ -644,11 +639,11 @@ export function ClientWearablesPage() {
     <div className="portal-shell">
       <PortalPageHeader
         title="Wearables"
-        subtitle="Connect a wearable and share normalized health metrics with your coach."
+        subtitle="Connect your device to track activity, sleep, and recovery."
       />
 
       {loadError ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Unable to load wearable data</AlertTitle>
           <AlertDescription>
             {loadError instanceof Error ? loadError.message : "Request failed."}
@@ -657,7 +652,7 @@ export function ClientWearablesPage() {
       ) : null}
 
       {actionError ? (
-        <Alert className="border-danger/30">
+        <Alert tone="danger" className="border-danger/30">
           <AlertTitle>Wearable action failed</AlertTitle>
           <AlertDescription>{actionError}</AlertDescription>
         </Alert>
@@ -667,7 +662,7 @@ export function ClientWearablesPage() {
         <StatusBanner
           variant="info"
           title={`${lastInactiveConnection.provider.toUpperCase()} disconnected`}
-          description="This wearable is no longer connected. You can start a new Open Wearables connection below."
+          description="Your device is disconnected. Connect it again below."
         />
       ) : null}
 
@@ -683,8 +678,7 @@ export function ClientWearablesPage() {
           <SurfaceCardHeader>
             <SurfaceCardTitle>No wearable connected</SurfaceCardTitle>
             <SurfaceCardDescription>
-              Choose an allowed provider to start the Open Wearables connection
-              flow.
+              Choose your device provider, then select Connect.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent className="space-y-4">
@@ -705,7 +699,7 @@ export function ClientWearablesPage() {
                 disabled={!clientId || connectMutation.isPending}
               >
                 <LinkIcon className="mr-2 h-4 w-4" />
-                {connectMutation.isPending ? "Opening..." : "Connect provider"}
+                {connectMutation.isPending ? "Opening..." : "Connect"}
               </Button>
             </div>
             <StatusBanner
@@ -749,8 +743,8 @@ export function ClientWearablesPage() {
                     </Badge>
                   </div>
                   <SurfaceCardDescription className="max-w-2xl text-sm leading-6">
-                    Source labels stay attached to every imported metric, so
-                    your coach can tell what came from WHOOP versus manual data.
+                    Review your latest synced activity, sleep, and recovery
+                    alongside the data you log yourself.
                   </SurfaceCardDescription>
                 </div>
               </div>
@@ -887,7 +881,7 @@ export function ClientWearablesPage() {
                   <StatusBanner
                     variant="info"
                     title="No health scores yet"
-                    description="Open Wearables has not imported health scores for this window."
+                    description="No health scores have synced for these dates."
                   />
                 ) : (
                   latestScores.slice(0, 4).map((score) => (

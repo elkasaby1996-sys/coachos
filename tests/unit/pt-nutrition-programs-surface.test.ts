@@ -26,7 +26,7 @@ describe("PT nutrition programs surface", () => {
     expect(nutritionProgramsSource).toContain("All nutrition types");
     expect(nutritionProgramsSource).toContain("Sort by updated");
     expect(nutritionProgramsSource).toContain(
-      "xl:grid-cols-[minmax(0,1fr)_12rem_12rem_auto]",
+      "xl:grid-cols-[minmax(0,1fr)_13rem_12rem_auto]",
     );
     expect(nutritionProgramsSource).toContain("New template");
   });

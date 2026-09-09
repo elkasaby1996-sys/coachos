@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { Bell } from "lucide-react";
+import { Bell } from "../../../lib/icons";
 import { Button } from "../../../components/ui/button";
 import { Separator } from "../../../components/ui/separator";
 import { useWindowedRows } from "../../../hooks/use-windowed-rows";
@@ -37,7 +37,9 @@ export function NotificationPanel({
 
   return (
     <motion.div
-      className="overflow-hidden"
+      className={
+        audience === "client" ? "client-notification-panel" : "overflow-hidden"
+      }
       initial={reduceMotion ? undefined : "hidden"}
       animate={reduceMotion ? undefined : "visible"}
       variants={
@@ -54,12 +56,20 @@ export function NotificationPanel({
             }
       }
     >
-      <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
-        <div>
+      <div className="notification-panel-heading flex items-center justify-between border-b border-border/70 px-4 py-3">
+        <div
+          className={
+            audience === "client"
+              ? "flex min-w-0 flex-wrap items-center gap-x-2"
+              : undefined
+          }
+        >
           <p className="text-sm font-semibold text-foreground">Notifications</p>
-          <p className="text-xs text-muted-foreground">
-            {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
-          </p>
+          {unreadCount > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {unreadCount} unread
+            </p>
+          ) : null}
         </div>
         <Button
           variant="ghost"
@@ -72,18 +82,24 @@ export function NotificationPanel({
         </Button>
       </div>
 
-      <div className="max-h-[420px] space-y-2 overflow-y-auto px-3 py-3">
+      <div
+        className={
+          audience === "client"
+            ? "client-notification-preview-list max-h-[420px] overflow-y-auto p-2"
+            : "max-h-[420px] space-y-2 overflow-y-auto px-3 py-3"
+        }
+      >
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, index) => (
               <div
                 key={index}
-                className="h-20 rounded-2xl border border-border/60 bg-secondary/20"
+                className="ui-panel h-20 border border-border/60"
               />
             ))}
           </div>
         ) : notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-secondary/14 px-4 py-10 text-center">
+          <div className="ui-panel flex flex-col items-center justify-center border border-dashed border-border/70 px-4 py-10 text-center">
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-secondary/30 text-muted-foreground">
               <Bell className="h-5 w-5" />
             </div>
@@ -129,11 +145,17 @@ export function NotificationPanel({
       </div>
 
       <Separator className="bg-border/70" />
-      <div className="flex justify-end px-4 py-3">
-        <Button asChild variant="secondary" size="sm" className="h-9">
-          <Link to={viewAllHref}>View all</Link>
-        </Button>
-      </div>
+      {audience === "client" ? (
+        <Link className="client-notification-footer" to={viewAllHref}>
+          View all notifications
+        </Link>
+      ) : (
+        <div className="flex justify-end px-4 py-3">
+          <Button asChild variant="secondary" size="sm" className="h-9">
+            <Link to={viewAllHref}>View all</Link>
+          </Button>
+        </div>
+      )}
     </motion.div>
   );
 }

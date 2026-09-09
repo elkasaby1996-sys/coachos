@@ -1,5 +1,5 @@
 import type { KeyboardEvent, ReactNode } from "react";
-import { ChevronDown, Dumbbell, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, Dumbbell, RotateCcw, Search } from "../../../lib/icons";
 import { AnatomicalMuscleSelector } from "../anatomical-muscle-selector";
 import { ProviderAnatomyFilterFields } from "../provider-anatomy-filter-fields";
 import { Badge } from "../../ui/badge";
@@ -62,7 +62,7 @@ export function ExerciseLibraryToolbar({
   action: ReactNode;
 }) {
   return (
-    <div className="min-w-0 space-y-3 rounded-[24px] border border-border/70 bg-card/65 p-3 shadow-card">
+    <div className="ui-panel min-w-0 space-y-3 border border-border/70 p-3">
       <div className="min-w-0 space-y-3">
         <div className="min-w-0">
           <label
@@ -192,7 +192,7 @@ function MuscleSelectorContent({
   onMuscleChange: (value: MuscleKey | null) => void;
 }) {
   return (
-    <div className="min-w-0 max-w-full [&_.anatomy-view-tabs]:hidden">
+    <div className="min-w-0 max-w-full">
       <AnatomicalMuscleSelector
         value={muscleKey}
         onValueChange={onMuscleChange}
@@ -221,21 +221,11 @@ export function ExerciseLibraryFilterPanel(props: {
 
   return (
     <>
-      <section className="hidden min-w-0 rounded-[26px] border border-border/70 bg-card/58 p-4 shadow-card xl:block">
-        <div className="mb-4">
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              Filter by muscle
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Selected: {selectedLabel}
-            </p>
-          </div>
-        </div>
+      <section className="hidden min-w-0 xl:block">
         <MuscleSelectorContent {...props} />
       </section>
 
-      <details className="exercise-library-mobile-filters group rounded-[24px] border border-border/70 bg-card/58 shadow-card xl:hidden">
+      <details className="ui-panel exercise-library-mobile-filters group border border-border/70 xl:hidden">
         <summary
           className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
           onKeyDown={handleMobileFilterSummaryKeyDown}
@@ -299,7 +289,7 @@ export function ExerciseLibraryResultRow({
 }) {
   const muscles = getMuscleSummary(item);
   return (
-    <article className="grid min-w-0 gap-3 rounded-[22px] border border-border/65 bg-background/38 px-4 py-3 transition-colors hover:border-border hover:bg-muted/22 md:grid-cols-[minmax(13rem,1fr)_minmax(11rem,0.72fr)_minmax(8rem,0.42fr)_auto] md:items-center md:gap-4">
+    <article className="ui-panel grid min-w-0 gap-3 border border-border/65 px-4 py-3 transition-colors hover:border-border hover:bg-muted/22 md:grid-cols-[minmax(13rem,1fr)_minmax(11rem,0.72fr)_minmax(8rem,0.42fr)_auto] md:items-center md:gap-4">
       <div className="flex min-w-0 items-center gap-3">
         {item.imageUrl ? (
           <img
@@ -391,14 +381,17 @@ export function ExerciseLibraryResults({
     return (
       <div className="space-y-3" aria-label="Loading exercises">
         {Array.from({ length: 6 }).map((_, index) => (
-          <Skeleton key={index} className="h-24 w-full rounded-[22px]" />
+          <Skeleton
+            key={index}
+            className="h-24 w-full rounded-[var(--ui-radius-card)]"
+          />
         ))}
       </div>
     );
   }
 
   const renderEmpty = () => (
-    <div className="flex min-h-56 flex-col items-center justify-center rounded-[24px] border border-dashed border-border bg-muted/18 px-5 py-10 text-center">
+    <div className="ui-panel flex min-h-56 flex-col items-center justify-center border border-dashed border-border px-5 py-10 text-center">
       <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-card/70 text-muted-foreground">
         <Dumbbell className="h-5 w-5" aria-hidden="true" />
       </span>
@@ -467,7 +460,7 @@ export function ExerciseLibraryResults({
 
       {groups.relatedExercises.length ? (
         groups.directMatches.length ? (
-          <details className="group rounded-2xl border border-border/65 bg-muted/15">
+          <details className="ui-panel group border border-border/65">
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
               <span className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
                 Related exercises · {groups.relatedExercises.length}

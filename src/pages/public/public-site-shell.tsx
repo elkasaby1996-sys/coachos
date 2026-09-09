@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from "react";
-import { ArrowRight, BarChart3, ShieldCheck } from "lucide-react";
+import { ArrowRight, BarChart3, ShieldCheck } from "../../lib/icons";
 import { Link, useLocation } from "react-router-dom";
 import { AppFooter } from "../../components/common/app-footer";
 import {

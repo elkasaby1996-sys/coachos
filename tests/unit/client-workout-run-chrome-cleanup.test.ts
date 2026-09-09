@@ -21,9 +21,7 @@ const coachRailSource = readFileSync(
 
 describe("client workout runner chrome cleanup", () => {
   it("removes secondary header copy and sticky finish bar from the runner", () => {
-    expect(workoutRunSource).toContain(
-      'className="flex flex-wrap items-center gap-2"',
-    );
+    expect(workoutRunSource).toContain('backTo="/app/workouts"');
     expect(workoutRunSource).toContain(
       '<Badge variant="muted">In progress</Badge>',
     );

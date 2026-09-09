@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "../../../lib/icons";
 import { EmptyState } from "../../../components/ui/coachos";
 import { Skeleton } from "../../../components/ui/coachos/skeleton";
 import { Button } from "../../../components/ui/button";
@@ -281,6 +281,7 @@ export function PtClientNotesTab({
               Cancel
             </Button>
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
@@ -298,10 +299,6 @@ export function PtClientNotesTab({
       <Card className="border-border/70 bg-card/80">
         <CardHeader>
           <CardTitle>Add note</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Capture coaching context, handoff details, or anything you want
-            visible on this client over time.
-          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           <Textarea
@@ -344,9 +341,6 @@ export function PtClientNotesTab({
       <Card className="border-border/70 bg-card/80">
         <CardHeader>
           <CardTitle>Recent notes</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            A running PT-side note trail for future planning and handoff.
-          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           {noteActionMessage ? (
@@ -376,15 +370,43 @@ export function PtClientNotesTab({
               return (
                 <div
                   key={note.id}
-                  className="rounded-2xl border border-border/60 bg-background/35 p-4"
+                  className="ui-inset border border-border/60 p-4"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-foreground">
-                      {note.actor_user_id === user?.id ? "You" : "Coach note"}
-                    </p>
-                    <span className="text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between gap-3">
+                    <time
+                      dateTime={note.created_at}
+                      className="min-w-0 text-xs text-muted-foreground"
+                    >
                       {formatShortDateTime(note.created_at)}
-                    </span>
+                    </time>
+                    {canManageNote && !isEditing ? (
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Edit note"
+                          title="Edit note"
+                          onClick={() => handleEditNote(note)}
+                        >
+                          <Pencil className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          tone="danger"
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          aria-label="Delete note"
+                          title="Delete note"
+                          disabled={noteActionStatus === "saving"}
+                          onClick={() => {
+                            setNoteActionMessage(null);
+                            setDeleteNoteId(note.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                   {isEditing ? (
                     <div className="mt-3 space-y-2">
@@ -430,33 +452,6 @@ export function PtClientNotesTab({
                       {noteText}
                     </p>
                   )}
-                  {canManageNote && !isEditing ? (
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label="Edit note"
-                        onClick={() => handleEditNote(note)}
-                      >
-                        <Pencil className="mr-1 h-3.5 w-3.5" />
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        aria-label="Delete note"
-                        disabled={noteActionStatus === "saving"}
-                        onClick={() => {
-                          setNoteActionMessage(null);
-                          setDeleteNoteId(note.id);
-                        }}
-                      >
-                        <Trash2 className="mr-1 h-3.5 w-3.5" />
-                        Delete
-                      </Button>
-                    </div>
-                  ) : null}
                 </div>
               );
             })

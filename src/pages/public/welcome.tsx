@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import gsap from "gsap";
-import { ArrowRight, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { ArrowRight, ShieldCheck, Sparkles, UsersRound } from "../../lib/icons";
 import { Button } from "../../components/ui/button";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
 

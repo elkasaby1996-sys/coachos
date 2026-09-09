@@ -46,7 +46,7 @@ export function SettingsPageShell({
         </h2>
         <p className="text-sm text-muted-foreground">{description}</p>
       </header>
-      <div className="rounded-[24px] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.9))]">
+      <div className="rounded-[var(--ui-radius-card)] border border-border/70 bg-[linear-gradient(180deg,oklch(var(--card)/0.98),oklch(var(--card)/0.9))]">
         {children}
       </div>
     </section>

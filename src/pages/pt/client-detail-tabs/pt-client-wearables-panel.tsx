@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, BatteryMedium, Moon, Watch } from "lucide-react";
+import { Activity, BatteryMedium, Moon, Watch } from "../../../lib/icons";
 import { Badge } from "../../../components/ui/badge";
 import { Skeleton } from "../../../components/ui/skeleton";
 import {

@@ -1,5 +1,8 @@
+import { WorkspacePageHeader } from "../../../components/pt/workspace-page-header";
+import { Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet, useParams } from "react-router-dom";
+import { Skeleton } from "../../../components/ui/skeleton";
 import {
   SettingsPageShell,
   SettingsSectionCard,
@@ -47,7 +50,7 @@ export function WorkspaceSettingsLayoutPage() {
       const { data, error } = await supabase
         .from("workspaces")
         .select(
-          "id, name, slug, logo_url, owner_user_id, default_checkin_template_id, timezone, unit_preference, week_start_day, client_welcome_message, created_at, updated_at",
+          "id, name, slug, logo_url, accent_color, client_welcome_title, invite_sender_name, owner_user_id, default_checkin_template_id, timezone, unit_preference, week_start_day, client_welcome_message, created_at, updated_at",
         )
         .eq("id", resolvedRouteWorkspaceId ?? "")
         .maybeSingle();
@@ -114,18 +117,39 @@ export function WorkspaceSettingsLayoutPage() {
   }));
 
   return (
-    <SettingsPageShell tabs={<SettingsTabs tabs={tabs} />}>
-      <Outlet
-        context={
-          {
-            workspaceId: resolvedWorkspaceId,
-            canManage: access.canManage,
-            isOwner: access.isOwner,
-            role: access.role,
-            workspace: workspaceQuery.data ?? null,
-          } satisfies WorkspaceSettingsOutletContext
+    <SettingsPageShell
+      header={
+        <WorkspacePageHeader
+          title="Workspace settings"
+          description="Manage your coaching space, team, and client experience."
+        />
+      }
+      tabs={<SettingsTabs tabs={tabs} />}
+    >
+      <Suspense
+        fallback={
+          <div
+            role="status"
+            aria-label="Loading settings"
+            className="space-y-4"
+          >
+            <span className="sr-only">Loading settings…</span>
+            <Skeleton className="h-64 rounded-[var(--ui-radius-card)]" />
+          </div>
         }
-      />
+      >
+        <Outlet
+          context={
+            {
+              workspaceId: resolvedWorkspaceId,
+              canManage: access.canManage,
+              isOwner: access.isOwner,
+              role: access.role,
+              workspace: workspaceQuery.data ?? null,
+            } satisfies WorkspaceSettingsOutletContext
+          }
+        />
+      </Suspense>
     </SettingsPageShell>
   );
 }

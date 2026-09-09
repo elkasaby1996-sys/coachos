@@ -1,4 +1,8 @@
-﻿// @ts-nocheck
+import { NotificationToast } from "../../components/common/notification-toast";
+import { ProfileAvatar } from "../../components/common/profile-avatar";
+import { getClientRouteKeyFallback } from "../../lib/client-route-key";
+import "../../styles/pt-hub-analytics.css";
+import "../../styles/pt-hub-clients.css";
 import {
   Suspense,
   useCallback,
@@ -49,15 +53,18 @@ import {
   MessageCircle,
   Moon,
   MoreHorizontal,
+  Loader2,
   Pencil,
   Play,
+  Plus,
   Rocket,
   Sparkles,
   ArrowRightLeft,
   Upload,
+  Trash2,
   XCircle,
   Archive,
-} from "lucide-react";
+} from "../../lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -74,6 +81,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../../components/ui/dropdown-menu";
+import { HabitMetricTrend } from "../../components/pt/habit-metric-trend";
 import { DashboardShell } from "../../components/pt/dashboard/DashboardShell";
 import {
   DashboardCard,
@@ -131,6 +139,7 @@ import { PtClientOnboardingTab } from "../../features/pt-client-onboarding/compo
 import { PtClientWearablesPanel } from "./client-detail-tabs/pt-client-wearables-panel";
 import { useWindowedRows } from "../../hooks/use-windowed-rows";
 import { usePtMessageCompose } from "../../components/pt/pt-message-compose-context";
+import type { WorkspaceClientOnboardingRow } from "../../features/client-onboarding/types";
 import {
   buildPtOnboardingChecklist,
   getPtOnboardingStatusMeta,
@@ -282,11 +291,6 @@ function ClientDetailInlineStatusBadges({
   );
 }
 
-const getClientRouteKeyFallback = (clientId: string | null | undefined) =>
-  clientId
-    ? `c-${clientId.split("-").join("").slice(0, 8).toLowerCase()}`
-    : null;
-
 const getAssignmentActionErrorMessage = (error: unknown) => {
   const details = getErrorDetails(error);
   const message = details.message ?? getErrorMessage(error);
@@ -369,10 +373,7 @@ function AssignmentMetaRow({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {items.map((item) => (
-        <div
-          key={item.label}
-          className="rounded-xl border border-border/60 bg-muted/20 p-3"
-        >
+        <div key={item.label} className="ui-panel border border-border/60 p-3">
           <p className="text-xs text-muted-foreground">{item.label}</p>
           <div className="mt-1 text-sm font-semibold text-foreground">
             {item.value}
@@ -576,6 +577,7 @@ type PtClientProfile = {
   gym_name: string | null;
   tags: string[] | string | null;
   photo_url: string | null;
+  avatar_url: string | null;
   updated_at: string | null;
 };
 
@@ -799,6 +801,7 @@ type CheckinAnswerRow = {
 
 type UpcomingWorkoutRow = {
   id: string;
+  coach_note?: string | null;
   status: string | null;
   day_type?: string | null;
   scheduled_date: string | null;
@@ -826,6 +829,7 @@ type QueryResult<T> = {
   data?: T;
   isLoading: boolean;
   error: unknown;
+  refetch: () => Promise<unknown>;
 };
 
 const baselinePhotoTypes = ["front", "side", "back"] as const;
@@ -898,12 +902,6 @@ export function PtClientDetailPage({
       { replace: true },
     );
   }, [active, location.pathname, location.search, navigate]);
-
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timeout = setTimeout(() => setToastMessage(null), 2400);
-    return () => clearTimeout(timeout);
-  }, [toastMessage]);
 
   useEffect(() => {
     if (active !== "checkins") {
@@ -1137,6 +1135,10 @@ export function PtClientDetailPage({
   const [checkinsPage, setCheckinsPage] = useState(0);
   const checkinsPageSize = 12;
   const [checkinsList, setCheckinsList] = useState<CheckinRow[]>([]);
+  const requestedCheckinId = new URLSearchParams(location.search).get(
+    "checkin",
+  );
+  const openedCheckinLinkRef = useRef<string | null>(null);
 
   const today = useMemo(() => new Date(), []);
   const isDev = import.meta.env.DEV;
@@ -1245,7 +1247,7 @@ export function PtClientDetailPage({
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, relationship_status, removed_at, removed_by_user_id, lifecycle_state, manual_risk_flag, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
+          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, relationship_status, removed_at, removed_by_user_id, lifecycle_state, manual_risk_flag, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, avatar_url, updated_at",
         )
         .eq("id", clientId ?? "")
         .maybeSingle();
@@ -1306,8 +1308,7 @@ export function PtClientDetailPage({
         .select(ptOnboardingSelect)
         .eq("workspace_id", workspaceQuery.data ?? "")
         .eq("client_id", clientId ?? "")
-        .returns<WorkspaceClientOnboardingRow>()
-        .maybeSingle();
+        .maybeSingle<WorkspaceClientOnboardingRow>();
 
       if (error) throw error;
       return (data ?? null) as WorkspaceClientOnboardingRow | null;
@@ -1542,7 +1543,7 @@ export function PtClientDetailPage({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_templates")
-        .select("id, name, workout_type_tag")
+        .select("id, name, workout_type_tag, description")
         .eq("workspace_id", workspaceQuery.data ?? "")
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -1659,7 +1660,7 @@ export function PtClientDetailPage({
       const { data, error } = await supabase
         .from("assigned_workouts")
         .select(
-          "id, status, day_type, scheduled_date, created_at, completed_at, program_id, workout_template_id, workout_template:workout_templates(id, name, workout_type_tag)",
+          "id, status, day_type, scheduled_date, created_at, completed_at, program_id, workout_template_id, coach_note, workout_template:workout_templates(id, name, workout_type_tag)",
         )
         .eq("client_id", clientId ?? "")
         .gte("scheduled_date", todayKey)
@@ -1915,6 +1916,25 @@ export function PtClientDetailPage({
     return () => revokePrivateObjectUrls(rows);
   }, [baselinePhotosQuery.data]);
 
+  // Review links must resolve older submissions even when future scheduled
+  // check-ins fill the first page of the client's history.
+  const linkedCheckinQuery = useQuery({
+    queryKey: ["pt-client-checkins", clientId, "linked", requestedCheckinId],
+    enabled: !!clientId && active === "checkins" && !!requestedCheckinId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("checkins")
+        .select(
+          "id, week_ending_saturday, submitted_at, reviewed_at, reviewed_by_user_id, pt_feedback, created_at",
+        )
+        .eq("client_id", clientId ?? "")
+        .eq("id", requestedCheckinId ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      return data as CheckinRow | null;
+    },
+  });
+
   const checkinsQuery = useQuery({
     queryKey: ["pt-client-checkins", clientId, active, checkinsPage],
     enabled: !!clientId,
@@ -1936,17 +1956,15 @@ export function PtClientDetailPage({
         )
         .eq("client_id", clientId ?? "")
         .order("week_ending_saturday", { ascending: false });
-      if (active !== "checkins") {
-        const { data, error } = await base.limit(6);
+      // Fetch every eligible record before filtering and counting the review queue.
+      const all: CheckinRow[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await base.range(offset, offset + 499);
         if (error) throw error;
-        return (data ?? []) as CheckinRow[];
+        all.push(...((data ?? []) as CheckinRow[]));
+        if ((data?.length ?? 0) < 500) break;
       }
-      const { data, error } = await base.range(
-        checkinsPage * checkinsPageSize,
-        checkinsPage * checkinsPageSize + checkinsPageSize - 1,
-      );
-      if (error) throw error;
-      return (data ?? []) as CheckinRow[];
+      return all;
     },
   });
 
@@ -1976,9 +1994,7 @@ export function PtClientDetailPage({
     () => (active === "checkins" ? checkinsList : (checkinsQuery.data ?? [])),
     [active, checkinsList, checkinsQuery.data],
   );
-  const checkinsCanLoadMore =
-    active === "checkins" &&
-    (checkinsQuery.data?.length ?? 0) === checkinsPageSize;
+  const checkinsCanLoadMore = false;
 
   const habitsQuery = useQuery({
     queryKey: ["pt-client-habits", clientId, habitsStart, habitsToday],
@@ -3017,8 +3033,8 @@ export function PtClientDetailPage({
       weightLogs.find((log) => log.weight_unit)?.weight_unit ?? null;
     const weightChange =
       weightLogs.length >= 2
-        ? (weightLogs[weightLogs.length - 1].weight_value ?? 0) -
-          (weightLogs[0].weight_value ?? 0)
+        ? (weightLogs[weightLogs.length - 1]?.weight_value ?? 0) -
+          (weightLogs[0]?.weight_value ?? 0)
         : null;
 
     return {
@@ -3141,7 +3157,7 @@ export function PtClientDetailPage({
 
   const lastWorkout = useMemo(() => {
     if (workoutSetLogsQuery.data && workoutSetLogsQuery.data.length > 0) {
-      return workoutSetLogsQuery.data[0].created_at ?? null;
+      return workoutSetLogsQuery.data[0]?.created_at ?? null;
     }
     const completed = (recentAssignedWorkoutsQuery.data ?? []).find(
       (row) => row.status === "completed" || !!row.completed_at,
@@ -3508,11 +3524,6 @@ export function PtClientDetailPage({
     : null;
   const selectedCheckinNotesRequired =
     Boolean(selectedCheckin?.submitted_at) && feedbackText.trim().length === 0;
-  const selectedCheckinReviewerLabel = selectedCheckin?.reviewed_by_user_id
-    ? selectedCheckin.reviewed_by_user_id === user?.id
-      ? "You"
-      : "Another coach"
-    : null;
   const reviewClientLabel = clientQuery.data?.display_name?.trim()
     ? clientQuery.data.display_name
     : clientQuery.data?.email?.trim()
@@ -4034,6 +4045,7 @@ export function PtClientDetailPage({
   const handleSaveCheckinTemplate = async () => {
     if (!(canManageDelivery && !isHistoricalClientRelationship)) return;
     if (!clientQuery.data?.id) return;
+    const targetClientId = clientQuery.data.id;
     setCheckinTemplateStatus("saving");
     setCheckinSettingsFeedback(null);
     const nextId = checkinTemplateId || null;
@@ -4051,7 +4063,7 @@ export function PtClientDetailPage({
         await supabase
           .from("checkins")
           .select("id, week_ending_saturday, submitted_at, reviewed_at")
-          .eq("client_id", clientQuery.data.id)
+          .eq("client_id", targetClientId)
           .eq("week_ending_saturday", todayKey)
           .maybeSingle();
 
@@ -4340,21 +4352,43 @@ export function PtClientDetailPage({
     setReviewOpen(true);
   }, []);
 
-  useEffect(() => {
+  const closeCheckinReview = useCallback(() => {
+    setReviewOpen(false);
     const params = new URLSearchParams(location.search);
-    const targetCheckinId = params.get("checkin");
-    if (active !== "checkins" || !targetCheckinId) return;
-    const match = checkinsRows.find((row) => row.id === targetCheckinId);
+    if (params.has("checkin")) {
+      params.delete("checkin");
+      navigate(
+        { pathname: location.pathname, search: params.toString() },
+        { replace: true },
+      );
+    }
+    setSelectedCheckin(null);
+    setReviewTab("answers");
+    setFeedbackText("");
+    setFeedbackValidationMessage(null);
+    setFeedbackMessage(null);
+    setFeedbackStatus("idle");
+    setReviewPhotoLoadErrors({});
+    setReviewPhotoPreview(null);
+  }, [location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    if (active !== "checkins" || !requestedCheckinId) {
+      openedCheckinLinkRef.current = null;
+      return;
+    }
+    const linkKey = `${clientId}:${requestedCheckinId}`;
+    if (openedCheckinLinkRef.current === linkKey) return;
+    const match = linkedCheckinQuery.data;
     if (!match || (!match.submitted_at && !match.reviewed_at)) return;
-    if (reviewOpen && selectedCheckin?.id === targetCheckinId) return;
+    openedCheckinLinkRef.current = linkKey;
     openCheckinReview(match);
   }, [
     active,
-    checkinsRows,
-    location.search,
+    clientId,
+    linkedCheckinQuery.data,
+    requestedCheckinId,
     openCheckinReview,
-    reviewOpen,
-    selectedCheckin?.id,
   ]);
 
   const handleSaveCheckinReview = async (markReviewed: boolean) => {
@@ -4432,8 +4466,7 @@ export function PtClientDetailPage({
       queryKey: ["pt-checkins-queue"],
     });
     if (markReviewed) {
-      setReviewOpen(false);
-      setSelectedCheckin(null);
+      closeCheckinReview();
     }
   };
 
@@ -4478,7 +4511,8 @@ export function PtClientDetailPage({
 
   const addTask = async () => {
     const next = todoInput.trim();
-    if (!next || !workspaceQuery.data || !clientId || !user?.id) return;
+    if (!next || todoBusyId || !workspaceQuery.data || !clientId || !user?.id)
+      return;
     setTodoBusyId("new");
     const { data, error } = await supabase
       .from("client_coach_tasks")
@@ -4579,22 +4613,12 @@ export function PtClientDetailPage({
 
   return (
     <DashboardShell>
-      {toastMessage ? (
-        <div className="fixed right-6 top-6 z-50 w-[260px]">
-          <Alert
-            className={
-              toastVariant === "error"
-                ? "border-danger/30"
-                : "border-emerald-200"
-            }
-          >
-            <AlertTitle>
-              {toastVariant === "error" ? "Error" : "Success"}
-            </AlertTitle>
-            <AlertDescription>{toastMessage}</AlertDescription>
-          </Alert>
-        </div>
-      ) : null}
+      <NotificationToast
+        message={toastMessage}
+        tone={toastVariant}
+        title={toastVariant === "error" ? "Action failed" : "Saved"}
+        onDismiss={() => setToastMessage(null)}
+      />
 
       <Dialog
         open={Boolean(confirmDialogConfig)}
@@ -4621,6 +4645,7 @@ export function PtClientDetailPage({
               Cancel
             </Button>
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
@@ -4639,7 +4664,7 @@ export function PtClientDetailPage({
         </DialogContent>
       </Dialog>
 
-      <div className="w-full space-y-6">
+      <div className="analytics-page client-profile-page w-full">
         {identityLoading ? (
           <Card className="rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur">
             <CardContent className="space-y-4 p-5">
@@ -4654,18 +4679,24 @@ export function PtClientDetailPage({
             </CardContent>
           </Card>
         ) : (
-          <Card className="ops-surface-strong backdrop-blur">
+          <Card className="client-profile-heading">
             <CardContent className="space-y-5 p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex flex-wrap items-start gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-[18px] border border-border/70 bg-background/70 text-sm font-semibold text-foreground">
-                    {getInitials(clientSnapshot?.display_name)}
-                  </div>
+                  <ProfileAvatar
+                    className="client-profile-avatar"
+                    name={clientSnapshot?.display_name ?? "Client"}
+                    src={
+                      clientSnapshot?.avatar_url?.trim() ||
+                      clientSnapshot?.photo_url
+                    }
+                    fallback={getInitials(clientSnapshot?.display_name)}
+                  />
                   <div className="space-y-2">
                     <div className="client-detail-header-name-row flex flex-wrap items-center gap-2">
-                      <h2 className="text-xl font-semibold tracking-tight">
+                      <h1>
                         {clientSnapshot?.display_name ?? "Client profile"}
-                      </h2>
+                      </h1>
                       <ClientDetailInlineStatusBadges
                         statusDisplay={clientGlobalStatusDisplay}
                       />
@@ -4815,7 +4846,10 @@ export function PtClientDetailPage({
               </div>
 
               {isHistoricalClientRelationship ? (
-                <Alert className="border-warning/30 bg-warning/8">
+                <Alert
+                  tone="warning"
+                  className="border-warning/30 bg-warning/8"
+                >
                   <Archive className="h-4 w-4" />
                   <AlertTitle>Historical client relationship</AlertTitle>
                   <AlertDescription>
@@ -4900,45 +4934,22 @@ export function PtClientDetailPage({
                     </div>
                     <div className="ops-stat">
                       <span className="block text-xs text-muted-foreground">
-                        Last workout
-                      </span>
-                      <span className="mt-0.5 block font-medium">
-                        {lastWorkoutStatus ?? "--"}
-                      </span>
-                    </div>
-                    <div className="ops-stat">
-                      <span className="block text-xs text-muted-foreground">
                         Risk signals
                       </span>
-                      <div className="mt-1 flex flex-wrap gap-2">
+                      <div className="mt-0.5 space-y-1 font-medium">
                         {clientSnapshot?.manual_risk_flag ? (
-                          <TagInfoBadge
-                            label="Manual at-risk flag"
-                            variant="danger"
-                            title="Manual at-risk flag"
-                            description="A PT manually marked this client as at risk, independent of the automatic risk signals."
-                            className="text-[10px]"
-                          />
+                          <p>Manual at-risk flag</p>
                         ) : null}
                         {clientRiskFlags.length > 0 ? (
                           clientRiskFlags.map((flag) => {
                             const meta = getClientRiskFlagMeta(flag);
                             if (!meta) return null;
-                            return (
-                              <TagInfoBadge
-                                key={flag}
-                                label={meta.shortLabel}
-                                variant={meta.variant}
-                                title={meta.label}
-                                description={meta.description}
-                                className="text-[10px]"
-                              />
-                            );
+                            return <p key={flag}>{meta.shortLabel}</p>;
                           })
                         ) : !clientSnapshot?.manual_risk_flag ? (
-                          <span className="text-sm font-medium text-muted-foreground">
+                          <p className="text-muted-foreground">
                             No active risk flags
-                          </span>
+                          </p>
                         ) : null}
                       </div>
                     </div>
@@ -4957,29 +4968,76 @@ export function PtClientDetailPage({
           </Card>
         )}
 
-        <div className="grid gap-7 lg:grid-cols-3">
+        <div className="client-profile-summary grid items-stretch gap-5 lg:grid-cols-3">
           <DashboardCard
-            title="Coach Queue"
-            subtitle="Utility actions and follow-ups tied to this client."
-            className="lg:col-span-1"
-          >
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Input
-                  value={todoInput}
-                  onChange={(event) => setTodoInput(event.target.value)}
-                  placeholder="Add a new task"
-                />
-                <Button
-                  onClick={() => void addTask()}
-                  disabled={!todoInput.trim() || todoBusyId === "new"}
+            title="To-Do"
+            action={
+              !clientTodosQuery.isLoading && !clientTodosQuery.isError ? (
+                <span
+                  className="rounded-full bg-muted/60 px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground"
+                  aria-live="polite"
                 >
-                  Add
-                </Button>
-              </div>
-              <div className="space-y-2.5">
+                  {clientTodos.filter((task) => !task.is_done).length} open
+                </span>
+              ) : null
+            }
+            className="flex h-full min-w-0 flex-col lg:col-span-1"
+            contentClassName="flex flex-1 flex-col"
+          >
+            <div className="flex flex-1 flex-col gap-4">
+              <form
+                className="space-y-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void addTask();
+                }}
+              >
+                <label
+                  htmlFor="client-todo-input"
+                  className="block text-xs font-medium text-muted-foreground"
+                >
+                  New task
+                </label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="client-todo-input"
+                    value={todoInput}
+                    onChange={(event) => setTodoInput(event.target.value)}
+                    placeholder="Add a follow-up or reminder"
+                    disabled={todoBusyId === "new"}
+                    className="min-w-0 flex-1"
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    className="h-11 w-11 shrink-0 cursor-pointer rounded-xl motion-safe:hover:translate-y-0"
+                    disabled={!todoInput.trim() || !!todoBusyId}
+                    aria-label={
+                      todoBusyId === "new" ? "Adding task" : "Add task"
+                    }
+                    title="Add task"
+                  >
+                    {todoBusyId === "new" ? (
+                      <Loader2
+                        className="h-4 w-4 motion-safe:animate-spin"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </Button>
+                </div>
+              </form>
+              <div
+                className="flex flex-1 flex-col"
+                aria-busy={clientTodosQuery.isLoading}
+              >
                 {clientTodosQuery.isLoading ? (
-                  <div className="space-y-2.5">
+                  <div
+                    className="space-y-2.5"
+                    role="status"
+                    aria-label="Loading tasks"
+                  >
                     {Array.from({ length: 3 }).map((_, index) => (
                       <Skeleton
                         key={index}
@@ -4987,53 +5045,84 @@ export function PtClientDetailPage({
                       />
                     ))}
                   </div>
+                ) : clientTodosQuery.isError ? (
+                  <div
+                    className="flex flex-1 flex-col items-center justify-center gap-2 py-3 text-center"
+                    role="alert"
+                  >
+                    <p className="text-sm text-muted-foreground">
+                      Tasks couldn’t be loaded.
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void clientTodosQuery.refetch()}
+                    >
+                      Try again
+                    </Button>
+                  </div>
                 ) : clientTodos.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-                    No tasks yet.
+                  <div className="flex flex-1 items-center rounded-xl bg-muted/35 px-3.5 py-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        No tasks yet
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Keep your next steps for this client here.
+                      </p>
+                    </div>
                   </div>
                 ) : (
-                  clientTodos.map((task) => (
-                    <div
-                      key={task.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
-                    >
-                      <label className="flex flex-1 items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={task.is_done}
-                          onChange={() => void toggleTask(task)}
-                          disabled={todoBusyId === task.id}
-                          className="h-4 w-4 accent-primary"
-                        />
-                        <span
-                          className={cn(
-                            "font-medium",
-                            task.is_done
-                              ? "text-muted-foreground line-through"
-                              : "text-foreground",
-                          )}
-                        >
-                          {task.title}
-                        </span>
-                      </label>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => void removeTask(task.id)}
-                        disabled={todoBusyId === task.id}
+                  <ul className="divide-y divide-border/60">
+                    {clientTodos.map((task) => (
+                      <li
+                        key={task.id}
+                        className="flex items-center gap-2 py-1.5 text-sm"
                       >
-                        Remove
-                      </Button>
-                    </div>
-                  ))
+                        <label className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={task.is_done}
+                            onChange={() => void toggleTask(task)}
+                            disabled={!!todoBusyId}
+                            className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait"
+                          />
+                          <span
+                            className={cn(
+                              "min-w-0 break-words font-medium leading-relaxed",
+                              task.is_done
+                                ? "text-muted-foreground line-through"
+                                : "text-foreground",
+                            )}
+                          >
+                            {task.title}
+                          </span>
+                        </label>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-11 w-11 shrink-0 cursor-pointer rounded-xl hover:text-destructive motion-safe:hover:translate-y-0"
+                          onClick={() => void removeTask(task.id)}
+                          disabled={!!todoBusyId}
+                          aria-label={`Remove task: ${task.title}`}
+                          title="Remove task"
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </div>
           </DashboardCard>
 
-          <section className="lg:col-span-2 lg:h-full">
+          <section
+            className="client-profile-metrics lg:col-span-2 lg:h-full"
+            aria-label="Client activity summary"
+          >
             {statsLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:h-full lg:auto-rows-fr">
+              <div className="client-profile-metric-grid">
                 {Array.from({ length: 4 }).map((_, index) => (
                   <Card key={index} className="border-border/70 bg-card/80">
                     <CardHeader className="space-y-2">
@@ -5044,7 +5133,7 @@ export function PtClientDetailPage({
                 ))}
               </div>
             ) : clientSnapshot ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:h-full lg:auto-rows-fr">
+              <div className="client-profile-metric-grid">
                 <StatCard
                   label="Adherence"
                   value={adherenceStat !== null ? `${adherenceStat}%` : "--"}
@@ -5059,15 +5148,11 @@ export function PtClientDetailPage({
                 />
                 <StatCard
                   label="Consistency streak"
-                  value={`${habitStreak}d`}
+                  value={`${habitStreak} Days`}
                   helper="Habit streak"
                   module="analytics"
                   className="h-full min-h-[150px] lg:min-h-0"
                   disableHoverMotion
-                  delta={buildMetricDelta({
-                    delta: habitStreak - previousHabitStreak,
-                    suffix: "d",
-                  })}
                 />
                 <StatCard
                   label="Check-in status"
@@ -5165,7 +5250,7 @@ export function PtClientDetailPage({
             onboardingQuery.error ||
             checkinsQuery.error ||
             clientQuery.error) && (
-            <Alert className="border-destructive/30">
+            <Alert tone="danger" className="border-destructive/30">
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>
                 {getFriendlyErrorMessage()}
@@ -5214,6 +5299,7 @@ export function PtClientDetailPage({
           <DashboardCard
             title="Coaching Workspace"
             className="ops-surface-strong"
+            contentClassName={isWorkbenchCollapsed ? "hidden" : undefined}
             action={
               <Button
                 variant="ghost"
@@ -5241,8 +5327,8 @@ export function PtClientDetailPage({
                 onValueChange={setActiveTab}
                 className="space-y-4"
               >
-                <div className="rounded-2xl border border-border/70 bg-card/70 p-2">
-                  <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl border-none bg-transparent p-0 shadow-none sm:grid-cols-3 xl:grid-cols-5">
+                <div className="client-profile-tab-bar">
+                  <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-xl !border-0 bg-transparent p-0 shadow-none sm:grid-cols-3 xl:grid-cols-5">
                     {workbenchTabs.map((tab) => (
                       <TabsTrigger
                         key={tab.value}
@@ -5397,250 +5483,208 @@ export function PtClientDetailPage({
                   />
                 </TabsContent>
                 <TabsContent value="checkins">
+                  {requestedCheckinId &&
+                  (linkedCheckinQuery.isError ||
+                    (linkedCheckinQuery.isSuccess &&
+                      !linkedCheckinQuery.data)) ? (
+                    <Alert className="mb-4">
+                      <AlertTitle>Check-in unavailable</AlertTitle>
+                      <AlertDescription>
+                        This check-in could not be loaded for this client.
+                      </AlertDescription>
+                      {linkedCheckinQuery.isError ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="mt-3"
+                          onClick={() => void linkedCheckinQuery.refetch()}
+                          disabled={linkedCheckinQuery.isFetching}
+                        >
+                          Try again
+                        </Button>
+                      ) : null}
+                    </Alert>
+                  ) : null}
                   <div className="space-y-6">
-                    <DashboardCard
-                      title="Current check-in assignment"
-                      subtitle="Cadence-based delivery settings for this client."
-                      action={
-                        <StatusPill
-                          status={checkinAssignmentState.kind}
-                          statusMap={{
-                            "no-assignment": {
-                              label: "Not assigned",
-                              variant: "muted",
-                            },
-                            "assigned-not-open": {
-                              label: "Assigned",
-                              variant: "secondary",
-                            },
-                            upcoming: {
-                              label: "Upcoming",
-                              variant: "muted",
-                            },
-                            open: {
-                              label: "Open",
-                              variant: "warning",
-                            },
-                            overdue: {
-                              label: "Overdue",
-                              variant: "danger",
-                            },
-                            submitted: {
-                              label: "Submitted",
-                              variant: "success",
-                            },
-                            reviewed: {
-                              label: "Reviewed",
-                              variant: "success",
-                            },
-                          }}
-                        />
-                      }
-                    >
-                      <div className="space-y-4">
-                        <AssignmentMetaRow
-                          items={[
-                            {
-                              label: "Template",
-                              value: checkinAssignmentTemplateName,
-                            },
-                            {
-                              label: "Cadence",
-                              value: checkinAssignmentTemplate
-                                ? checkinAssignmentFrequencyLabel
-                                : "Not set",
-                            },
-                            {
-                              label: "Start date",
-                              value: checkinAssignmentStartLabel,
-                            },
-                            {
-                              label: "Next scheduled",
-                              value: checkinAssignmentNextDueLabel,
-                            },
-                          ]}
-                        />
-                        <AssignmentActionRow>
-                          <p>
-                            Check-ins use cadence settings. Future check-ins
-                            follow the selected template, frequency, and start
-                            date.
-                          </p>
-                          {canManageDelivery &&
-                          !isHistoricalClientRelationship ? (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => {
-                                document
-                                  .getElementById("client-checkin-template")
-                                  ?.focus();
-                              }}
-                            >
-                              Edit check-in settings
-                            </Button>
+                    <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
+                      <DashboardCard
+                        className="h-full"
+                        title="Current check-in assignment"
+                        subtitle="Cadence-based delivery settings for this client."
+                      >
+                        <div className="space-y-4">
+                          <AssignmentMetaRow
+                            items={[
+                              {
+                                label: "Template",
+                                value: checkinAssignmentTemplateName,
+                              },
+                              {
+                                label: "Cadence",
+                                value: checkinAssignmentTemplate
+                                  ? checkinAssignmentFrequencyLabel
+                                  : "Not set",
+                              },
+                              {
+                                label: "Start date",
+                                value: checkinAssignmentStartLabel,
+                              },
+                              {
+                                label: "Next scheduled",
+                                value: checkinAssignmentNextDueLabel,
+                              },
+                            ]}
+                          />
+                          {isHistoricalClientRelationship ? (
+                            <AssignmentReadOnlyNotice historical />
                           ) : null}
-                        </AssignmentActionRow>
-                        {isHistoricalClientRelationship ? (
-                          <AssignmentReadOnlyNotice historical />
-                        ) : null}
-                      </div>
-                    </DashboardCard>
-
-                    <DashboardCard
-                      title="Check-in template"
-                      subtitle="Assign a template for this client."
-                    >
-                      {checkinTemplatesQuery.isLoading ? (
-                        <div className="space-y-2">
-                          <Skeleton className="h-10 w-full" />
-                          <Skeleton className="h-10 w-40" />
                         </div>
-                      ) : checkinTemplatesQuery.error ||
-                        availableCheckinTemplates.length === 0 ? (
-                        <EmptyState
-                          title="No check-in templates created yet"
-                          description="Create a template to assign it to clients."
-                          actionLabel="Create template"
-                          onAction={() => navigate("/pt/checkins/templates")}
-                        />
-                      ) : (
-                        <div className="space-y-3">
+                      </DashboardCard>
+
+                      <DashboardCard
+                        className="h-full"
+                        title="Check-in template"
+                        subtitle="Assign a template for this client."
+                      >
+                        {checkinTemplatesQuery.isLoading ? (
                           <div className="space-y-2">
-                            <label className="text-xs font-semibold text-muted-foreground">
-                              Template
-                            </label>
-                            <Select
-                              id="client-checkin-template"
-                              variant="field"
-                              className="h-10"
-                              value={checkinTemplateId}
-                              onChange={(event) =>
-                                setCheckinTemplateId(event.target.value)
-                              }
-                              disabled={
-                                checkinTemplatesQuery.isLoading ||
-                                checkinTemplateStatus === "saving" ||
-                                !(
-                                  canManageDelivery &&
-                                  !isHistoricalClientRelationship
-                                )
-                              }
-                            >
-                              <option value="">Use workspace default</option>
-                              {availableCheckinTemplates.map((template) => (
-                                <option key={template.id} value={template.id}>
-                                  {template.name ?? "Untitled template"}
-                                </option>
-                              ))}
-                            </Select>
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-40" />
                           </div>
-                          <div className="grid gap-3 sm:grid-cols-2">
+                        ) : checkinTemplatesQuery.error ||
+                          availableCheckinTemplates.length === 0 ? (
+                          <EmptyState
+                            title="No check-in templates created yet"
+                            description="Create a template to assign it to clients."
+                            actionLabel="Create template"
+                            onAction={() => navigate("/pt/checkins/templates")}
+                          />
+                        ) : (
+                          <div className="space-y-3">
                             <div className="space-y-2">
                               <label className="text-xs font-semibold text-muted-foreground">
-                                Frequency
+                                Template
                               </label>
                               <Select
+                                id="client-checkin-template"
                                 variant="field"
                                 className="h-10"
-                                value={checkinFrequency}
+                                value={checkinTemplateId}
                                 onChange={(event) =>
-                                  setCheckinFrequency(event.target.value)
+                                  setCheckinTemplateId(event.target.value)
                                 }
                                 disabled={
+                                  checkinTemplatesQuery.isLoading ||
+                                  checkinTemplateStatus === "saving" ||
                                   !(
                                     canManageDelivery &&
                                     !isHistoricalClientRelationship
                                   )
                                 }
                               >
-                                {checkinFrequencyOptions.map((option) => (
-                                  <option
-                                    key={option.value}
-                                    value={option.value}
-                                  >
-                                    {option.label}
+                                <option value="">Use workspace default</option>
+                                {availableCheckinTemplates.map((template) => (
+                                  <option key={template.id} value={template.id}>
+                                    {template.name ?? "Untitled template"}
                                   </option>
                                 ))}
                               </Select>
                             </div>
-                            <div className="space-y-2">
-                              <label
-                                htmlFor="client-checkin-start-date"
-                                className="text-xs font-semibold text-muted-foreground"
-                              >
-                                First check-in
-                              </label>
-                              <Input
-                                id="client-checkin-start-date"
-                                type="date"
-                                value={checkinStartDate}
-                                onChange={(event) =>
-                                  setCheckinStartDate(event.target.value)
-                                }
-                                disabled={
-                                  !(
-                                    canManageDelivery &&
-                                    !isHistoricalClientRelationship
-                                  )
-                                }
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-muted-foreground">
+                                  Frequency
+                                </label>
+                                <Select
+                                  variant="field"
+                                  className="h-10"
+                                  value={checkinFrequency}
+                                  onChange={(event) =>
+                                    setCheckinFrequency(event.target.value)
+                                  }
+                                  disabled={
+                                    !(
+                                      canManageDelivery &&
+                                      !isHistoricalClientRelationship
+                                    )
+                                  }
+                                >
+                                  {checkinFrequencyOptions.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <label
+                                  htmlFor="client-checkin-start-date"
+                                  className="text-xs font-semibold text-muted-foreground"
+                                >
+                                  First check-in
+                                </label>
+                                <Input
+                                  id="client-checkin-start-date"
+                                  type="date"
+                                  value={checkinStartDate}
+                                  onChange={(event) =>
+                                    setCheckinStartDate(event.target.value)
+                                  }
+                                  disabled={
+                                    !(
+                                      canManageDelivery &&
+                                      !isHistoricalClientRelationship
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+                            {!effectiveCheckinTemplate ? (
+                              <EmptyState
+                                title="No template assigned"
+                                description="Assign a template to start scheduled check-ins."
                               />
-                            </div>
+                            ) : null}
+                            {checkinSettingsFeedback ? (
+                              <div
+                                className={cn(
+                                  "rounded-lg border p-3 text-xs",
+                                  checkinSettingsFeedback.tone === "warning"
+                                    ? "border-warning/35 bg-warning/10 text-warning"
+                                    : "border-success/30 bg-success/10 text-success",
+                                )}
+                              >
+                                <p className="font-semibold text-foreground">
+                                  {checkinSettingsFeedback.title}
+                                </p>
+                                <p className="mt-1 text-muted-foreground">
+                                  {checkinSettingsFeedback.body}
+                                </p>
+                              </div>
+                            ) : null}
+                            {canManageDelivery &&
+                            !isHistoricalClientRelationship ? (
+                              <Button
+                                size="sm"
+                                onClick={handleSaveCheckinTemplate}
+                                disabled={checkinTemplateStatus === "saving"}
+                              >
+                                {checkinTemplateStatus === "saving"
+                                  ? "Saving..."
+                                  : "Assign template"}
+                              </Button>
+                            ) : (
+                              <AssignmentReadOnlyNotice
+                                historical={isHistoricalClientRelationship}
+                              />
+                            )}
                           </div>
-                          {checkinStartDate ? (
-                            <div className="rounded-lg border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-                              <span className="font-semibold text-foreground">
-                                Next:
-                              </span>{" "}
-                              {getNextCheckinDueDate(
-                                checkinStartDate,
-                                checkinFrequency,
-                                todayKey,
-                              ) ?? "--"}
-                            </div>
-                          ) : null}
-                          {!effectiveCheckinTemplate ? (
-                            <EmptyState
-                              title="No template assigned"
-                              description="Assign a template to start scheduled check-ins."
-                            />
-                          ) : null}
-                          {checkinSettingsFeedback ? (
-                            <div
-                              className={cn(
-                                "rounded-lg border p-3 text-xs",
-                                checkinSettingsFeedback.tone === "warning"
-                                  ? "border-warning/35 bg-warning/10 text-warning"
-                                  : "border-success/30 bg-success/10 text-success",
-                              )}
-                            >
-                              <p className="font-semibold text-foreground">
-                                {checkinSettingsFeedback.title}
-                              </p>
-                              <p className="mt-1 text-muted-foreground">
-                                {checkinSettingsFeedback.body}
-                              </p>
-                            </div>
-                          ) : null}
-                          {canManageDelivery &&
-                          !isHistoricalClientRelationship ? (
-                            <Button
-                              size="sm"
-                              onClick={handleSaveCheckinTemplate}
-                              disabled={checkinTemplateStatus === "saving"}
-                            >
-                              {checkinTemplateStatus === "saving"
-                                ? "Saving..."
-                                : "Assign template"}
-                            </Button>
-                          ) : (
-                            <AssignmentReadOnlyNotice
-                              historical={isHistoricalClientRelationship}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </DashboardCard>
+                        )}
+                      </DashboardCard>
+                    </div>
 
                     <PtClientCheckinsTab
                       rows={checkinsRows}
@@ -5879,38 +5923,18 @@ export function PtClientDetailPage({
       <Dialog
         open={reviewOpen}
         onOpenChange={(open) => {
-          setReviewOpen(open);
-          if (!open) {
-            const params = new URLSearchParams(location.search);
-            if (params.has("checkin")) {
-              params.delete("checkin");
-              navigate(
-                {
-                  pathname: location.pathname,
-                  search: params.toString(),
-                },
-                { replace: true },
-              );
-            }
-            setSelectedCheckin(null);
-            setReviewTab("answers");
-            setFeedbackText("");
-            setFeedbackValidationMessage(null);
-            setFeedbackMessage(null);
-            setFeedbackStatus("idle");
-            setReviewPhotoLoadErrors({});
-            setReviewPhotoPreview(null);
-          }
+          if (open) setReviewOpen(true);
+          else closeCheckinReview();
         }}
       >
-        <DialogContent className="flex max-h-[88vh] w-[min(96vw,1080px)] max-w-[1080px] flex-col overflow-hidden p-0">
-          <DialogHeader className="shrink-0 border-b border-border/70 bg-card/95 px-6 py-5 pr-14 backdrop-blur">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <DialogTitle className="text-lg sm:text-xl">
+        <DialogContent className="flex h-[min(92vh,760px)] max-h-[92vh] w-[min(96vw,1080px)] max-w-[1080px] flex-col overflow-hidden p-0">
+          <DialogHeader className="shrink-0 border-b border-border/70 bg-card/95 px-5 py-3 pr-14 backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                <DialogTitle className="text-base">
                   {reviewClientLabel}
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-sm">
                   {selectedCheckin?.week_ending_saturday
                     ? `Check-in due ${selectedCheckin.week_ending_saturday}`
                     : "Check-in review"}
@@ -5922,55 +5946,6 @@ export function PtClientDetailPage({
                   statusMap={checkinReviewStatusMap}
                 />
               ) : null}
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Due date</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {formatShortDate(
-                    selectedCheckin?.week_ending_saturday,
-                    "Not scheduled",
-                  )}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Submitted</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {formatShortDateTime(
-                    selectedCheckin?.submitted_at,
-                    "Not submitted",
-                  )}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Reviewed</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {formatShortDateTime(
-                    selectedCheckin?.reviewed_at,
-                    "Not reviewed",
-                  )}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Reviewer</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {selectedCheckinReviewerLabel ?? "Not assigned"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">
-                  Completion summary
-                </p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {selectedCheckinAnswerCount} answers,{" "}
-                  {selectedCheckinSubmittedPhotoCount} photos
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {selectedCheckinMissingPhotoCount > 0
-                    ? `${selectedCheckinMissingPhotoCount} required photo views missing`
-                    : "Required photo views are present"}
-                </p>
-              </div>
             </div>
           </DialogHeader>
 
@@ -6003,21 +5978,10 @@ export function PtClientDetailPage({
               </TabsList>
 
               <TabsContent value="answers" className="mt-0">
-                <div className="rounded-[24px] border border-border/70 bg-card/70 p-4">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Answers
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Scan prompts and responses quickly before writing the PT
-                        review.
-                      </p>
-                    </div>
-                    <Badge variant="secondary">
-                      {selectedCheckinAnswerCount} responses
-                    </Badge>
-                  </div>
+                <div className="ui-panel border border-border/70 p-4">
+                  <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Answers
+                  </p>
 
                   {selectedCheckinAnswersQuery.isLoading ? (
                     <div className="space-y-2">
@@ -6026,7 +5990,7 @@ export function PtClientDetailPage({
                       <Skeleton className="h-16 w-full" />
                     </div>
                   ) : selectedCheckinAnswersQuery.error ? (
-                    <Alert className="border-destructive/30">
+                    <Alert tone="danger" className="border-destructive/30">
                       <AlertTitle>Error</AlertTitle>
                       <AlertDescription>
                         {getFriendlyErrorMessage()}
@@ -6039,7 +6003,7 @@ export function PtClientDetailPage({
                         (answer, index) => (
                           <div
                             key={answer.id}
-                            className="grid gap-2 rounded-2xl border border-border/60 bg-muted/15 px-4 py-3 sm:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] sm:gap-4"
+                            className="ui-panel grid gap-2 border border-border/60 px-4 py-3 sm:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] sm:gap-4"
                           >
                             <div className="space-y-1">
                               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -6080,7 +6044,7 @@ export function PtClientDetailPage({
                       ) : null}
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-dashed border-border bg-muted/15 px-4 py-6 text-sm text-muted-foreground">
+                    <div className="ui-panel border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
                       No responses recorded.
                     </div>
                   )}
@@ -6088,24 +6052,10 @@ export function PtClientDetailPage({
               </TabsContent>
 
               <TabsContent value="photos" className="mt-0">
-                <div className="rounded-[24px] border border-border/70 bg-card/70 p-4">
-                  <div className="mb-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Photos
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Review required views first, then open any image for a
-                      closer look.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      <span className="rounded-full border border-border/60 bg-muted/20 px-3 py-1">
-                        Uploaded: {selectedCheckinSubmittedPhotoCount}
-                      </span>
-                      <span className="rounded-full border border-border/60 bg-muted/20 px-3 py-1">
-                        Missing required: {selectedCheckinMissingPhotoCount}
-                      </span>
-                    </div>
-                  </div>
+                <div className="ui-panel border border-border/70 p-4">
+                  <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Photos
+                  </p>
 
                   {selectedCheckinPhotosQuery.isLoading ? (
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -6114,7 +6064,7 @@ export function PtClientDetailPage({
                       <Skeleton className="aspect-[4/5] w-full rounded-2xl" />
                     </div>
                   ) : selectedCheckinPhotosQuery.error ? (
-                    <Alert className="border-destructive/30">
+                    <Alert tone="danger" className="border-destructive/30">
                       <AlertTitle>Error</AlertTitle>
                       <AlertDescription>
                         Unable to load review photos right now.
@@ -6133,7 +6083,7 @@ export function PtClientDetailPage({
                           return (
                             <div
                               key={card.id}
-                              className="space-y-2 rounded-2xl border border-border/60 bg-muted/15 p-2"
+                              className="ui-panel space-y-2 border border-border/60 p-2"
                             >
                               {isUnavailable ? (
                                 <div className="flex aspect-[4/5] items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/30 px-3 text-center text-xs text-muted-foreground">
@@ -6151,7 +6101,7 @@ export function PtClientDetailPage({
                               ) : (
                                 <button
                                   type="button"
-                                  className="block w-full overflow-hidden rounded-xl border border-border/60 bg-background transition hover:border-border hover:shadow-sm"
+                                  className="ui-panel block w-full overflow-hidden border border-border/60 transition hover:border-border hover:shadow-sm"
                                   onClick={() => setReviewPhotoPreview(photo)}
                                 >
                                   <img
@@ -6209,7 +6159,7 @@ export function PtClientDetailPage({
               <TabsContent value="notes" className="mt-0">
                 <div
                   className={cn(
-                    "rounded-[24px] border bg-card/70 p-4",
+                    "rounded-[var(--ui-radius-card)] border bg-card/70 p-4",
                     selectedCheckinNotesRequired
                       ? "border-warning/50 bg-warning/5"
                       : "border-border/70",
@@ -6251,12 +6201,12 @@ export function PtClientDetailPage({
                       </div>
                     ) : null}
                     {selectedCheckinNotesRequired ? (
-                      <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-muted-foreground">
+                      <div className="ui-panel border border-border/60 px-3 py-2 text-muted-foreground">
                         Add review notes to enable final review completion.
                       </div>
                     ) : null}
                     {feedbackMessage ? (
-                      <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-muted-foreground">
+                      <div className="ui-panel border border-border/60 px-3 py-2 text-muted-foreground">
                         {feedbackMessage}
                       </div>
                     ) : null}
@@ -6278,10 +6228,7 @@ export function PtClientDetailPage({
                   : "Client submission is required before this review can be completed."}
               </div>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                <Button
-                  variant="secondary"
-                  onClick={() => setReviewOpen(false)}
-                >
+                <Button variant="secondary" onClick={closeCheckinReview}>
                   Close
                 </Button>
                 <Button
@@ -6346,7 +6293,7 @@ export function PtClientDetailPage({
                 className="mx-auto max-h-[68vh] w-auto max-w-full rounded-2xl object-contain"
               />
             ) : (
-              <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+              <div className="ui-panel flex min-h-[320px] items-center justify-center border border-dashed border-border text-sm text-muted-foreground">
                 Image unavailable
               </div>
             )}
@@ -6483,7 +6430,7 @@ export function PtClientDetailPage({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3">
+            <div className="ui-panel border border-border/70 px-4 py-3">
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                 New lifecycle
               </div>
@@ -6573,7 +6520,7 @@ export function PtClientDetailPage({
               photos, and history stay preserved.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+          <div className="ui-panel border border-border/70 px-4 py-3 text-sm text-muted-foreground">
             You can re-add this client later and reuse the preserved
             relationship row.
           </div>
@@ -6586,6 +6533,7 @@ export function PtClientDetailPage({
               Cancel
             </Button>
             <Button
+              tone="danger"
               variant="secondary"
               className="border-destructive/40 text-destructive hover:border-destructive/50 hover:text-destructive"
               onClick={handleArchiveRelationship}
@@ -6649,7 +6597,7 @@ export function PtClientDetailPage({
               </Select>
             </div>
             {transferValidationMessage ? (
-              <Alert className="border-destructive/30">
+              <Alert tone="danger" className="border-destructive/30">
                 <AlertTitle>Transfer unavailable</AlertTitle>
                 <AlertDescription>{transferValidationMessage}</AlertDescription>
               </Alert>
@@ -6809,6 +6757,7 @@ function PtClientScheduleCard({
   onStatusChange,
   canEditClients,
 }: {
+  enabled: boolean;
   clientId: string | null;
   workspaceId: string | null;
   timezone: string | null;
@@ -6953,7 +6902,7 @@ function PtClientScheduleCard({
 
       const { data, error } = await supabase
         .from("checkins")
-        .select("id, week_ending_saturday, submitted_at")
+        .select("id, week_ending_saturday, submitted_at, reviewed_at")
         .eq("client_id", clientId ?? "")
         .gte("week_ending_saturday", scheduleStartKey)
         .lte("week_ending_saturday", scheduleEndKey)
@@ -7117,6 +7066,7 @@ function PtClientScheduleCard({
     let streaking = true;
     for (let i = weekRows.length - 1; i >= 0; i -= 1) {
       const row = weekRows[i];
+      if (!row) continue;
       if (row.key > todayKey) continue;
       const isWorkout = row.workout && row.workout.day_type !== "rest";
       const isCompleted = row.workout?.status === "completed";
@@ -7259,6 +7209,7 @@ function PtClientScheduleCard({
   return (
     <DashboardCard
       title="Client calendar"
+      contentClassName={isCalendarCollapsed ? "hidden" : undefined}
       action={
         <Button
           variant="ghost"
@@ -7321,7 +7272,10 @@ function PtClientScheduleCard({
               const nutritionMeals =
                 (
                   nutrition as {
-                    meals?: Array<{ logs?: Array<{ is_completed?: boolean }> }>;
+                    meals?: Array<{
+                      calories?: number | null;
+                      logs?: Array<{ is_completed?: boolean }>;
+                    }>;
                   } | null
                 )?.meals ?? [];
               const nutritionCompleted = nutritionMeals.filter((meal) =>
@@ -7423,13 +7377,8 @@ function PtClientScheduleCard({
                       ) : null}
                     </div>
 
-                    <div className="space-y-1">
-                      <p
-                        className={cn(
-                          "font-semibold text-foreground",
-                          isLowInfoRestDay ? "text-sm" : "text-base",
-                        )}
-                      >
+                    <div className="min-h-12 space-y-1">
+                      <p className="truncate text-base font-semibold leading-6 text-foreground">
                         {dayTypeLabel}
                       </p>
                       {workoutTemplateLabel ? (
@@ -7550,7 +7499,7 @@ function PtClientScheduleCard({
           <DialogHeader>
             <DialogTitle>Day details</DialogTitle>
             <DialogDescription>
-              {formatLabel(selectedRow.key)}
+              {formatLabel(selectedRow?.key ?? selectedKey)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -7658,7 +7607,8 @@ function PtClientScheduleCard({
                 PT notes
               </label>
               <textarea
-                className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={dayNote}
                 disabled={!canEditClients}
                 onChange={(event) => setDayNote(event.target.value)}
@@ -7993,7 +7943,8 @@ function PtClientScheduleCard({
                 Notes
               </label>
               <textarea
-                className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={overrideNotes}
                 onChange={(event) => setOverrideNotes(event.target.value)}
                 placeholder="Optional notes for the client."
@@ -8110,7 +8061,7 @@ function PtClientBaselineTab({
   const markerTemplateOptions = baselineMarkerTemplatesQuery.data ?? [];
   const submittedMarkers = baselineMarkersQuery.data ?? [];
   const markerReadoutPanel = (
-    <div className="rounded-2xl border border-border/60 bg-background/35 p-3">
+    <div className="ui-panel border border-border/60 p-3">
       <p className="text-sm font-semibold text-foreground">
         Performance markers
       </p>
@@ -8122,7 +8073,7 @@ function PtClientBaselineTab({
           {submittedMarkers.map((marker, index) => (
             <div
               key={`${marker.template?.name ?? "marker"}-${index}`}
-              className="rounded-xl border border-border/50 bg-muted/15 px-3 py-2.5 text-sm"
+              className="ui-panel border border-border/50 px-3 py-2.5 text-sm"
             >
               <p className="text-xs text-muted-foreground">
                 {marker.template?.name ?? "Marker"}
@@ -8145,7 +8096,7 @@ function PtClientBaselineTab({
             {markerTemplateOptions.map((template) => (
               <div
                 key={template.id}
-                className="rounded-xl border border-border/50 bg-muted/15 px-3 py-2.5"
+                className="ui-panel border border-border/50 px-3 py-2.5"
               >
                 <p className="text-sm font-medium text-foreground">
                   {template.name ?? "Marker"}
@@ -8169,7 +8120,7 @@ function PtClientBaselineTab({
           </div>
         </>
       ) : (
-        <div className="mt-3 rounded-xl border border-dashed border-border/60 bg-muted/15 p-3 text-sm text-muted-foreground">
+        <div className="ui-panel mt-3 border border-dashed border-border/60 p-3 text-sm text-muted-foreground">
           No active performance markers. Enable them in PT Settings when you
           want benchmark questions to appear during baseline assessment.
         </div>
@@ -8201,7 +8152,7 @@ function PtClientBaselineTab({
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="ui-inset border border-border/60 p-3">
                     <p className="text-xs text-muted-foreground">Submitted</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {formatShortDateTime(
@@ -8210,7 +8161,7 @@ function PtClientBaselineTab({
                       )}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="ui-inset border border-border/60 p-3">
                     <p className="text-xs text-muted-foreground">
                       Measurements
                     </p>
@@ -8218,13 +8169,13 @@ function PtClientBaselineTab({
                       {providedMetricCount} of {metricCards.length}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="ui-inset border border-border/60 p-3">
                     <p className="text-xs text-muted-foreground">Markers</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {markerCount > 0 ? `${markerCount} recorded` : "None yet"}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="ui-inset border border-border/60 p-3">
                     <p className="text-xs text-muted-foreground">Photos</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {photoCount} of {baselinePhotoTypes.length} uploaded
@@ -8232,7 +8183,7 @@ function PtClientBaselineTab({
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
+                <div className="ui-inset border border-border/60 p-3.5">
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-foreground">
                       Measurements
@@ -8246,7 +8197,7 @@ function PtClientBaselineTab({
                     {metricCards.map((metric) => (
                       <div
                         key={metric.label}
-                        className="rounded-xl border border-border/50 bg-muted/15 p-2.5"
+                        className="ui-inset border border-border/50 p-2.5"
                       >
                         <p className="text-xs text-muted-foreground">
                           {metric.label}
@@ -8261,7 +8212,7 @@ function PtClientBaselineTab({
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
+                <div className="ui-inset border border-border/60 p-3.5">
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-foreground">
                       Baseline photos
@@ -8286,7 +8237,7 @@ function PtClientBaselineTab({
                             {baselinePhotoMap[type] ? "Uploaded" : "Missing"}
                           </Badge>
                         </div>
-                        <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/20">
+                        <div className="ui-inset overflow-hidden border border-border/60">
                           {baselinePhotoMap[type] ? (
                             <img
                               src={baselinePhotoMap[type] ?? ""}
@@ -8307,7 +8258,7 @@ function PtClientBaselineTab({
 
               <div className="space-y-3">
                 {markerReadoutPanel}
-                <div className="rounded-2xl border border-border/60 bg-background/35 p-3.5">
+                <div className="ui-inset border border-border/60 p-3.5">
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-foreground">
                       Coach readout
@@ -8318,7 +8269,8 @@ function PtClientBaselineTab({
                     </p>
                   </div>
                   <textarea
-                    className="min-h-[120px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-ui="field"
+                    className="app-field app-field-textarea min-h-[120px] w-full rounded-xl border border-border/60 bg-background/70 px-3 py-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={baselineNotes}
                     onChange={(event) => onNotesChange(event.target.value)}
                     placeholder="Summarize posture, readiness, physique observations, or any coaching notes you want visible during future reviews."
@@ -8373,6 +8325,8 @@ function PtClientCheckinsTab({
   onLoadMore: () => void;
   onReview: (checkin: CheckinRow) => void;
 }) {
+  const [view, setView] = useState("review");
+  const [visibleCount, setVisibleCount] = useState(12);
   const orderedRows = useMemo(() => {
     const priority = new Map([
       ["submitted", 0],
@@ -8413,6 +8367,14 @@ function PtClientCheckinsTab({
     [orderedRows, todayKey],
   );
 
+  const filteredRows = orderedRows.filter((row) =>
+    view === "review"
+      ? !!row.submitted_at && !row.reviewed_at
+      : view === "upcoming"
+        ? !row.submitted_at && String(row.week_ending_saturday) >= todayKey
+        : !!row.reviewed_at ||
+          (!row.submitted_at && String(row.week_ending_saturday) < todayKey),
+  );
   return (
     <Card className="border-border/70 bg-card/80 xl:col-start-1">
       <CardHeader>
@@ -8432,25 +8394,25 @@ function PtClientCheckinsTab({
         ) : orderedRows.length > 0 ? (
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Needs review</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {counts.submitted}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Overdue</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {counts.overdue}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Awaiting client</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {counts.awaitingClient}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Reviewed</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {counts.reviewed}
@@ -8459,7 +8421,29 @@ function PtClientCheckinsTab({
             </div>
 
             <div className="space-y-3">
-              {orderedRows.map((checkin) => {
+              <div className="flex flex-wrap gap-2" aria-label="Check-in views">
+                {[
+                  ["review", "Needs review"],
+                  ["upcoming", "Upcoming"],
+                  ["history", "History"],
+                ].map(([value, label]) => (
+                  <Button
+                    key={value}
+                    variant={view === value ? "default" : "secondary"}
+                    aria-pressed={view === value}
+                    onClick={() => {
+                      setView(value ?? "review");
+                      setVisibleCount(12);
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              {!filteredRows.length && (
+                <p className="p-3 text-sm">No check-ins in this view.</p>
+              )}
+              {filteredRows.slice(0, visibleCount).map((checkin) => {
                 const status = getCheckinReviewState(checkin, todayKey);
                 const canReview =
                   status === "submitted" || status === "reviewed";
@@ -8478,7 +8462,7 @@ function PtClientCheckinsTab({
                   ? `Reviewed at ${formatShortDateTime(checkin.reviewed_at)}`
                   : checkin.submitted_at
                     ? `Submitted at ${formatShortDateTime(checkin.submitted_at)}`
-                    : `Due ${dueLabel}`;
+                    : null;
 
                 return (
                   <div
@@ -8495,7 +8479,7 @@ function PtClientCheckinsTab({
                         onReview(checkin);
                       }
                     }}
-                    className="flex w-full flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/60 bg-background/35 p-4 text-left transition hover:border-border hover:bg-background/55"
+                    className="ui-inset flex w-full flex-wrap items-center justify-between gap-4 border border-border/60 p-4 text-left transition hover:border-border hover:bg-background/55"
                   >
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
@@ -8514,9 +8498,11 @@ function PtClientCheckinsTab({
                         <span className="rounded-full border border-border/60 bg-muted/20 px-3 py-1">
                           Due window: {dueLabel}
                         </span>
-                        <span className="rounded-full border border-border/60 bg-muted/20 px-3 py-1">
-                          {secondarySummary}
-                        </span>
+                        {secondarySummary ? (
+                          <span className="rounded-full border border-border/60 bg-muted/20 px-3 py-1">
+                            {secondarySummary}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                     <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -8546,6 +8532,14 @@ function PtClientCheckinsTab({
               })}
             </div>
 
+            {filteredRows.length > visibleCount && (
+              <Button
+                variant="secondary"
+                onClick={() => setVisibleCount((count) => count + 12)}
+              >
+                Load more
+              </Button>
+            )}
             {canLoadMore ? (
               <div className="flex justify-center pt-1">
                 <Button variant="secondary" size="sm" onClick={onLoadMore}>
@@ -8578,6 +8572,7 @@ function PtClientHabitsTab({
   hasAnyHabits: boolean;
   habitsToday: string;
 }) {
+  const [habitView, setHabitView] = useState("habit-logs");
   const [selectedHabitMetric, setSelectedHabitMetric] = useState<{
     metric: HabitMetricKey;
     dateKey: string;
@@ -8677,64 +8672,41 @@ function PtClientHabitsTab({
           null)
         : null;
 
-    const points = weeklyRows
-      .map((row) => ({
-        date: row.dateKey,
-        value: row.log ? config.extract(row.log) : null,
-      }))
-      .filter(
-        (point): point is { date: string; value: number } =>
-          typeof point.value === "number",
-      );
-
-    const selectedPoint =
-      points.find((point) => point.date === selectedHabitMetric.dateKey) ??
-      null;
-    const latest = points.length > 0 ? points[points.length - 1].value : null;
-    const earliest = points.length > 0 ? points[0].value : null;
-    const averageValue =
-      points.length > 0
-        ? points.reduce((sum, point) => sum + point.value, 0) / points.length
-        : null;
-    const delta =
-      latest !== null && earliest !== null ? latest - earliest : null;
-    const coveragePct = Math.round((points.length / 7) * 100);
+    const points = weeklyRows.map((row) => ({
+      date: row.dateKey,
+      value: row.log ? config.extract(row.log) : null,
+    }));
 
     return {
       label: config.label,
       weightUnit,
       points,
-      selectedPoint,
-      latest,
-      averageValue,
-      delta,
-      coveragePct,
       format: config.format,
     };
   }, [selectedHabitMetric, weeklyRows]);
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="habit-logs" className="space-y-4">
-        <TabsList className="grid h-auto w-full max-w-md grid-cols-2 gap-2 rounded-xl border-none bg-transparent p-0 shadow-none">
-          <TabsTrigger
-            value="habit-logs"
-            className="h-auto rounded-xl border border-border/45 bg-background/30 px-3 py-2.5 text-xs font-semibold"
-          >
-            Habit logs
-          </TabsTrigger>
-          <TabsTrigger
-            value="wearables"
-            className="h-auto rounded-xl border border-border/45 bg-background/30 px-3 py-2.5 text-xs font-semibold"
-          >
-            Wearables
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="habit-logs" className="mt-0">
-          <DashboardCard
-            title="Day-by-day"
-            subtitle="Last 7 days of habit logs."
-          >
+      <Tabs value={habitView} onValueChange={setHabitView}>
+        <DashboardCard
+          title={habitView === "habit-logs" ? "Day-by-day" : "Wearables"}
+          subtitle={
+            habitView === "habit-logs"
+              ? "Last 7 days of habit logs."
+              : undefined
+          }
+          className="[&>.ui-card-header]:flex-wrap"
+          action={
+            <TabsList
+              aria-label="Habit data source"
+              className="habit-source-tabs ml-auto"
+            >
+              <TabsTrigger value="habit-logs">Habit logs</TabsTrigger>
+              <TabsTrigger value="wearables">Wearables</TabsTrigger>
+            </TabsList>
+          }
+        >
+          <TabsContent value="habit-logs" className="mt-0">
             {habitsQuery.isLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-6 w-1/2" />
@@ -8964,119 +8936,41 @@ function PtClientHabitsTab({
                 </div>
               </>
             )}
-          </DashboardCard>
-        </TabsContent>
-        <TabsContent value="wearables" className="mt-0">
-          <PtClientWearablesPanel
-            clientId={clientId}
-            workspaceId={workspaceId}
-          />
-        </TabsContent>
+          </TabsContent>
+          <TabsContent value="wearables" className="mt-0">
+            <PtClientWearablesPanel
+              clientId={clientId}
+              workspaceId={workspaceId}
+            />
+          </TabsContent>
+        </DashboardCard>
       </Tabs>
 
       <Dialog
         open={selectedHabitMetric !== null}
         onOpenChange={(open) => (!open ? setSelectedHabitMetric(null) : null)}
       >
-        <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[720px]">
+          <DialogHeader className="mb-6 pr-10">
             <DialogTitle>
               {habitMetricTrend
                 ? `${habitMetricTrend.label} trend`
                 : "Habit trend"}
             </DialogTitle>
             <DialogDescription>
-              {selectedHabitMetric
-                ? `Clicked ${selectedHabitMetric.dateKey}. Showing last 7 days for this metric.`
-                : "Showing last 7 days for this metric."}
+              Your client's logged entries over the last 7 days.
             </DialogDescription>
           </DialogHeader>
-          {habitMetricTrend ? (
-            <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-xs text-muted-foreground">Selected day</p>
-                  <p className="text-base font-semibold">
-                    {habitMetricTrend.selectedPoint
-                      ? habitMetricTrend.format(
-                          habitMetricTrend.selectedPoint.value,
-                          habitMetricTrend.weightUnit,
-                        )
-                      : "No data"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-xs text-muted-foreground">Latest</p>
-                  <p className="text-base font-semibold">
-                    {habitMetricTrend.latest !== null
-                      ? habitMetricTrend.format(
-                          habitMetricTrend.latest,
-                          habitMetricTrend.weightUnit,
-                        )
-                      : "No data"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-xs text-muted-foreground">7-day average</p>
-                  <p className="text-base font-semibold">
-                    {habitMetricTrend.averageValue !== null
-                      ? habitMetricTrend.format(
-                          habitMetricTrend.averageValue,
-                          habitMetricTrend.weightUnit,
-                        )
-                      : "No data"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-xs text-muted-foreground">
-                    Change (first to latest)
-                  </p>
-                  <p className="text-base font-semibold">
-                    {habitMetricTrend.delta !== null
-                      ? `${habitMetricTrend.delta > 0 ? "+" : ""}${habitMetricTrend.format(
-                          habitMetricTrend.delta,
-                          habitMetricTrend.weightUnit,
-                        )}`
-                      : "No data"}
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-xs text-muted-foreground">Coverage</p>
-                <p className="text-base font-semibold">
-                  {habitMetricTrend.coveragePct}% of days
-                </p>
-              </div>
-              <div className="space-y-2 rounded-lg border border-border p-3">
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Day-by-day
-                </p>
-                {habitMetricTrend.points.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No entries in the last 7 days.
-                  </p>
-                ) : (
-                  <div className="space-y-1">
-                    {habitMetricTrend.points.map((point) => (
-                      <div
-                        key={point.date}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <span className="text-muted-foreground">
-                          {point.date}
-                        </span>
-                        <span className="font-medium">
-                          {habitMetricTrend.format(
-                            point.value,
-                            habitMetricTrend.weightUnit,
-                          )}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+          {habitMetricTrend && selectedHabitMetric ? (
+            <HabitMetricTrend
+              key={`${selectedHabitMetric.metric}-${selectedHabitMetric.dateKey}`}
+              label={habitMetricTrend.label}
+              points={habitMetricTrend.points}
+              initialDate={selectedHabitMetric.dateKey}
+              formatValue={(value) =>
+                habitMetricTrend.format(value, habitMetricTrend.weightUnit)
+              }
+            />
           ) : null}
         </DialogContent>
       </Dialog>
@@ -9315,6 +9209,7 @@ function PtClientPlanTab({
                             Completed workout history is preserved.
                           </p>
                           <Button
+                            tone="danger"
                             className="w-full text-destructive hover:text-destructive sm:w-auto"
                             variant="ghost"
                             disabled={
@@ -9369,6 +9264,7 @@ function PtClientPlanTab({
                             history is preserved.
                           </p>
                           <Button
+                            tone="danger"
                             className="w-full text-destructive hover:text-destructive sm:w-auto"
                             variant="ghost"
                             disabled={
@@ -9467,7 +9363,7 @@ function PtClientPlanTab({
                 <AssignmentMetaRow
                   items={[
                     {
-                      label: "Template source",
+                      label: "Workout",
                       value:
                         templatesQuery.data?.find(
                           (template) => template.id === selectedTemplateId,
@@ -9772,52 +9668,6 @@ function PtClientNutritionTab({
     },
   });
 
-  const nutritionNext7Query = useQuery({
-    queryKey: ["pt-client-nutrition-next-7", clientId, todayKey],
-    enabled: enabled && !!clientId,
-    queryFn: async () => {
-      const { data: plans, error: plansError } = await supabase
-        .from("assigned_nutrition_plans")
-        .select(
-          "id, nutrition_template:nutrition_templates!inner(id, workspace_id)",
-        )
-        .eq("client_id", clientId ?? "")
-        .eq("status", "active");
-      if (plansError) throw plansError;
-
-      const planIds = (plans ?? [])
-        .filter((row: { nutrition_template?: unknown }) => {
-          const template = getSingleRelation(row.nutrition_template);
-          return Boolean(
-            template &&
-            typeof template === "object" &&
-            "workspace_id" in template &&
-            template.workspace_id,
-          );
-        })
-        .map((row: { id: string }) => row.id);
-      if (!planIds.length) return [];
-
-      const end = addDaysToDateString(todayKey, 6);
-      const { data, error } = await supabase
-        .from("assigned_nutrition_days")
-        .select("id, date")
-        .in("assigned_nutrition_plan_id", planIds)
-        .gte("date", todayKey)
-        .lte("date", end);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const nutritionPreviewKeys = useMemo(
-    () =>
-      Array.from({ length: 7 }).map((_, idx) =>
-        addDaysToDateString(todayKey, idx),
-      ),
-    [todayKey],
-  );
-
   const handleNutritionUnassign = async () => {
     if (!canEditClients || !clientId || !activeNutritionPlanQuery.data?.id) {
       return false;
@@ -9840,9 +9690,6 @@ function PtClientNutritionTab({
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: ["pt-client-active-nutrition-plan", clientId],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["pt-client-nutrition-next-7", clientId, todayKey],
       }),
       queryClient.invalidateQueries({
         queryKey: ["pt-client-nutrition-week", clientId],
@@ -9896,6 +9743,7 @@ function PtClientNutritionTab({
               Cancel
             </Button>
             <Button
+              tone="danger"
               type="button"
               variant="secondary"
               className="border-destructive/40 bg-destructive/10 text-destructive hover:border-destructive/60 hover:bg-destructive/15 hover:text-destructive"
@@ -10026,11 +9874,6 @@ function PtClientNutritionTab({
         <AssignmentCardHeader
           title="Assign nutrition program"
           description="Assign or replace the client's active nutrition snapshot."
-          status={
-            <StatusPill
-              status={selectedNutritionProgramId ? "ready" : "idle"}
-            />
-          }
         />
         <CardContent className="space-y-4">
           <AssignmentSnapshotCallout />
@@ -10142,13 +9985,6 @@ function PtClientNutritionTab({
                     }
                     await Promise.all([
                       queryClient.invalidateQueries({
-                        queryKey: [
-                          "pt-client-nutrition-next-7",
-                          clientId,
-                          todayKey,
-                        ],
-                      }),
-                      queryClient.invalidateQueries({
                         queryKey: ["pt-client-nutrition-week", clientId],
                       }),
                       queryClient.invalidateQueries({
@@ -10165,31 +10001,6 @@ function PtClientNutritionTab({
                       : "Assign nutrition program"}
                 </Button>
               ) : null}
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-2 text-xs">
-                <p className="mb-2 font-semibold text-foreground">
-                  Next 7 days preview
-                </p>
-                <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-                  {nutritionPreviewKeys.map((key) => {
-                    const hasProgram = (nutritionNext7Query.data ?? []).some(
-                      (row) => row.date === key,
-                    );
-                    return (
-                      <div
-                        key={key}
-                        className={cn(
-                          "rounded-md border px-2 py-1 text-center",
-                          hasProgram
-                            ? "border-primary/60 bg-primary/10"
-                            : "border-border/60",
-                        )}
-                      >
-                        {key.slice(5)}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
               {nutritionAssignError ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
                   {nutritionAssignError}
@@ -10259,7 +10070,7 @@ function PtClientLogsTab({
         ) : ptSessionsQuery.data && ptSessionsQuery.data.length > 0 ? (
           <div className="space-y-4 text-sm">
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">
                   Recorded sessions
                 </p>
@@ -10267,13 +10078,13 @@ function PtClientLogsTab({
                   {ptSessionsQuery.data.length}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">Completed</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {completedCount}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <div className="ui-inset border border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">In progress</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {activeCount}
@@ -10299,7 +10110,7 @@ function PtClientLogsTab({
                     key={session.id}
                     type="button"
                     onClick={() => onOpenSession(session.id)}
-                    className="flex w-full flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/60 bg-background/35 px-4 py-3 text-left transition hover:border-border hover:bg-background/55"
+                    className="ui-inset flex w-full flex-wrap items-center justify-between gap-4 border border-border/60 px-4 py-3 text-left transition hover:border-border hover:bg-background/55"
                   >
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">

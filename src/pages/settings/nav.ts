@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type { AppIcon } from "../../lib/icons";
 import {
   Building2,
   UserRound,
@@ -7,7 +7,7 @@ import {
   Palette,
   SlidersHorizontal,
   TriangleAlert,
-} from "lucide-react";
+} from "../../lib/icons";
 
 export type SettingsSectionId =
   | "workspace"
@@ -23,7 +23,7 @@ export type SettingsNavItem = {
   label: string;
   description: string;
   to: `/settings/${SettingsSectionId}`;
-  icon: LucideIcon;
+  icon: AppIcon;
 };
 
 export const settingsNavItems: SettingsNavItem[] = [

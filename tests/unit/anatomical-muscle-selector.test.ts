@@ -11,7 +11,7 @@ import {
   SOURCE_SLUG_TO_MUSCLE_KEY,
   VENDORED_ARTWORK_REGIONS,
 } from "../../src/components/pt/anatomical-muscle-selector/artwork/artwork-adapter";
-import { REPSYNC_ANATOMY_OVERLAYS } from "../../src/components/pt/anatomical-muscle-selector/artwork/repsync-anatomy-overlays";
+import { getImageSurfaceArtwork } from "../../src/components/pt/anatomical-muscle-selector/artwork/supplied-anatomy";
 import {
   MUSCLE_KEYS,
   isMuscleKey,
@@ -378,28 +378,44 @@ describe("controlled anatomical selector source contract", () => {
     expect(selectorSource).not.toContain("min-h-14");
   });
 
-  it("reframes artwork and hit regions through one shared transform", () => {
-    expect(adapterSource).toContain("scale(1.25 1)");
-    expect(adapterSource).toContain('viewBox: surface === "front"');
+  it("uses the supplied image coordinate space for artwork and hit regions", () => {
+    for (const surface of ANATOMY_SURFACES) {
+      const artwork = getImageSurfaceArtwork(surface);
+      const png = readFileSync(
+        resolve(process.cwd(), "public", artwork.href.slice(1)),
+      );
+      expect(png.subarray(1, 4).toString()).toBe("PNG");
+      expect(png.readUInt32BE(16)).toBe(artwork.width);
+      expect(png.readUInt32BE(20)).toBe(artwork.height);
+      expect(artwork.viewBox).toBe(`0 0 ${artwork.width} ${artwork.height}`);
+    }
     expect(figureSource).toContain('className="anatomy-content-layer"');
-    expect(figureSource).toContain("transform={artwork.contentTransform}");
+    expect(figureSource).not.toContain("artwork.contentTransform");
+    expect(figureSource).toContain("href={artwork.href}");
     expect(figureSource.indexOf("<BaseSilhouette")).toBeLessThan(
       figureSource.indexOf('className="anatomy-hit-layer"'),
     );
   });
 
-  it("keeps refined hip artwork smaller than its transparent hit geometry", () => {
-    for (const id of [
-      "front-hip-flexors",
-      "front-hip-abductors",
-      "back-hip-abductors",
-    ]) {
-      const overlay = REPSYNC_ANATOMY_OVERLAYS.find(
-        (candidate) => candidate.id === id,
-      );
-      expect(overlay?.hitPaths).toBeDefined();
-      expect(overlay?.hitPaths?.left?.[0]).not.toBe(overlay?.paths.left?.[0]);
-      expect(overlay?.hitPaths?.right?.[0]).not.toBe(overlay?.paths.right?.[0]);
+  it("aligns selectable paths with highlight boundaries in image coordinates", () => {
+    for (const region of ANATOMICAL_REGION_DEFINITIONS) {
+      expect(region.hitAreas.length).toBe(region.artwork.length);
+      region.artwork.forEach((shape, index) => {
+        const hit = region.hitAreas[index];
+        expect(shape.kind).toBe("path");
+        expect(hit.kind).toBe("path");
+        if (shape.kind !== "path" || hit.kind !== "path") return;
+        expect(hit.d).toBe(shape.d);
+        expect(hit.side).toBe(shape.side);
+        const pairs = [...shape.d.matchAll(/(\d+) (\d+)/g)];
+        expect(pairs.length).toBeGreaterThan(2);
+        for (const [, x, y] of pairs) {
+          expect(Number(x)).toBeGreaterThanOrEqual(0);
+          expect(Number(x)).toBeLessThanOrEqual(1024);
+          expect(Number(y)).toBeGreaterThanOrEqual(0);
+          expect(Number(y)).toBeLessThanOrEqual(1536);
+        }
+      });
     }
   });
 

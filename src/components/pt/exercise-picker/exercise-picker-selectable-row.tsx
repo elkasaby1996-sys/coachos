@@ -1,4 +1,4 @@
-import { Check, CircleAlert, Plus } from "lucide-react";
+import { Check, CircleAlert, Plus } from "../../../lib/icons";
 import { Badge } from "../../ui/badge";
 import { cn } from "../../../lib/utils";
 import { getMuscleMetadata } from "../../../lib/exercise-muscle-taxonomy";

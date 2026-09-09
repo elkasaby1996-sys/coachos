@@ -48,7 +48,7 @@ export function SettingsLayout() {
       <div className="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="hidden md:block">
           <nav
-            className="surface-panel sticky top-24 rounded-[24px] p-2"
+            className="surface-panel sticky top-24 rounded-[var(--ui-radius-card)] p-2"
             style={getModuleToneStyle("settings")}
           >
             {settingsNavItems.map((item) => {

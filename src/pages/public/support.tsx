@@ -1,97 +1,184 @@
+import { useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
+  ArrowLeft,
   ArrowUpRight,
-  CheckCircle2,
-  LifeBuoy,
-  Mail,
+  ChevronDown,
   ShieldCheck,
-  Timer,
-} from "lucide-react";
-import { PublicInfoCard, PublicInfoLayout } from "./public-info-layout";
+} from "../../lib/icons";
+import { useSessionAuth } from "../../lib/auth";
+import { AppFooter } from "../../components/common/app-footer";
+import "../../styles/support.css";
+import { SupportRequestForm } from "../../features/support/support-request-form";
 
 const supportEmail = "support@repsync.com";
+const description =
+  "Get help with your RepSync account, billing, or coaching workspace.";
+const emailLink = (subject: string) =>
+  `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}`;
+const requestDetails = [
+  {
+    title: "Your account",
+    description: "The email you use for RepSync and your workspace name.",
+  },
+  {
+    title: "What happened",
+    description: "The page you were on, what you tried, and what you expected.",
+  },
+  {
+    title: "A little context",
+    description:
+      "Any error message, plus the browser or device you were using.",
+  },
+];
 
 export function SupportPage() {
+  const { isAuthenticated } = useSessionAuth();
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = "Support | RepSync";
+    document.body.classList.add("public-info-portal-light");
+    const existing = document.head.querySelector<HTMLMetaElement>(
+      'meta[name="description"]',
+    );
+    const meta = existing ?? document.createElement("meta");
+    const previousDescription = meta.getAttribute("content");
+    meta.name = "description";
+    meta.content = description;
+    if (!existing) document.head.appendChild(meta);
+    return () => {
+      document.title = previousTitle;
+      document.body.classList.remove("public-info-portal-light");
+      if (!existing) meta.remove();
+      else if (previousDescription === null) meta.removeAttribute("content");
+      else meta.content = previousDescription;
+    };
+  }, []);
   return (
-    <PublicInfoLayout
-      eyebrow="Help desk"
-      title="Contact RepSync support."
-      description="Describe the problem, include the email linked to your account, and attach relevant screenshots."
-      aside={
-        <div className="space-y-6 text-sm text-muted-foreground">
-          <div className="space-y-2">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-              <Mail className="h-5 w-5" />
-            </div>
-            <p className="pt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-              Direct support
-            </p>
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-              Email the RepSync team
-            </h2>
-            <p className="leading-6">
-              Account access and billing issues are reviewed first. Include the
-              email linked to your account so we can help faster.
-            </p>
-          </div>
-          <a
-            className="inline-flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-xl bg-primary px-4 font-semibold text-primary-foreground transition-colors duration-200 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            href={`mailto:${supportEmail}`}
-          >
-            {supportEmail}
-            <ArrowUpRight className="h-4 w-4" />
-          </a>
-          <div className="rounded-2xl border border-warning/30 bg-warning/10 p-4">
-            <div className="mb-2 flex items-center gap-2 font-semibold text-foreground">
-              <ShieldCheck className="h-4 w-4 text-warning" />
-              Keep your account safe
-            </div>
-            <p className="text-xs font-medium leading-5 text-foreground/75">
-              Never send passwords, payment card numbers, or private client
-              health details by email.
-            </p>
-          </div>
+    <div className="light support-page">
+      <a href="#support-content" className="support-skip-link">
+        Skip to content
+      </a>
+      <header className="support-header">
+        <div className="support-container support-header-inner">
+          <Link to="/" className="support-wordmark" aria-label="RepSync home">
+            REPSYNC
+          </Link>
+          <Link to="/login" className="support-back-link">
+            <ArrowLeft size={16} aria-hidden="true" />
+            {isAuthenticated ? "Back to RepSync" : "Back to sign in"}
+          </Link>
         </div>
-      }
-    >
-      <PublicInfoCard
-        icon={<LifeBuoy className="h-4 w-4" />}
-        title="Include these details"
-        className="sm:col-span-2"
+      </header>
+      <main
+        id="support-content"
+        className="support-container support-main"
+        tabIndex={-1}
       >
-        <ul className="grid gap-2 sm:grid-cols-3">
-          <li>Workspace or account email.</li>
-          <li>Page, action, or workflow affected.</li>
-          <li>What happened and what you expected instead.</li>
-        </ul>
-      </PublicInfoCard>
-      <PublicInfoCard
-        icon={<Timer className="h-4 w-4" />}
-        title="Response priority"
-      >
-        <p>
-          Access and billing issues are reviewed first. Product questions are
-          handled with the details needed to reproduce the issue.
-        </p>
-      </PublicInfoCard>
-      <PublicInfoCard
-        icon={<ShieldCheck className="h-4 w-4" />}
-        title="Account safety"
-      >
-        <p>
-          RepSync support will never ask for your password. If you cannot sign
-          in, use the password reset flow or email support from your account
-          address.
-        </p>
-      </PublicInfoCard>
-      <PublicInfoCard
-        icon={<CheckCircle2 className="h-4 w-4" />}
-        title="Check before sending"
-      >
-        <p>
-          Refresh the page, check your internet connection, and note any error
-          message exactly as it appears.
-        </p>
-      </PublicInfoCard>
-    </PublicInfoLayout>
+        <section className="support-contact" aria-labelledby="support-title">
+          <div className="support-intro">
+            <h1 id="support-title">How can we help?</h1>
+            <p className="support-description">
+              A question about your account or something not working? The
+              RepSync team is here to help.
+            </p>
+            <SupportRequestForm />
+          </div>
+          <aside
+            className="support-details"
+            aria-labelledby="support-details-title"
+          >
+            <h2 id="support-details-title">Help us help you</h2>
+            <p>A few details can save a lot of back and forth.</p>
+            <ol>
+              {requestDetails.map((detail, index) => (
+                <li key={detail.title}>
+                  <span className="support-step" aria-hidden="true">
+                    0{index + 1}
+                  </span>
+                  <div>
+                    <h3>{detail.title}</h3>
+                    <p>{detail.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <div className="support-privacy-note">
+              <ShieldCheck size={19} aria-hidden="true" />
+              <p>
+                Keep passwords, payment card numbers, and private client health
+                details out of your message.
+              </p>
+            </div>
+          </aside>
+        </section>
+        <section
+          className="support-quick-help"
+          aria-labelledby="quick-help-title"
+        >
+          <div className="support-quick-help-heading">
+            <h2 id="quick-help-title">A good place to start</h2>
+            <p>A few quick answers before you get in touch.</p>
+          </div>
+          <div className="support-questions">
+            <details>
+              <summary>
+                I can’t sign in
+                <ChevronDown size={19} aria-hidden="true" />
+              </summary>
+              <div className="support-answer">
+                <p>
+                  Use the email linked to your RepSync account to reset your
+                  password. Still having trouble? Email us from that address and
+                  include the message you see when signing in.
+                </p>
+                <Link to="/forgot-password">
+                  Reset your password{" "}
+                  <ArrowUpRight size={16} aria-hidden="true" />
+                </Link>
+              </div>
+            </details>
+            <details>
+              <summary>
+                I have a billing question
+                <ChevronDown size={19} aria-hidden="true" />
+              </summary>
+              <div className="support-answer">
+                <p>
+                  Include your workspace name, account email, and the invoice or
+                  charge date. Account access and billing issues are reviewed
+                  first.
+                </p>
+                <a href={emailLink("RepSync billing question")}>
+                  Contact us about billing{" "}
+                  <ArrowUpRight size={16} aria-hidden="true" />
+                </a>
+              </div>
+            </details>
+            <details>
+              <summary>
+                Something isn’t working as expected
+                <ChevronDown size={19} aria-hidden="true" />
+              </summary>
+              <div className="support-answer">
+                <p>
+                  Check your connection and refresh the page after saving your
+                  work. If the issue continues, send the steps that led to it,
+                  your browser or device, and any error message.
+                </p>
+                <a href={emailLink("RepSync technical issue")}>
+                  Report an issue <ArrowUpRight size={16} aria-hidden="true" />
+                </a>
+              </div>
+            </details>
+          </div>
+        </section>
+      </main>
+      <AppFooter
+        surface="transparent"
+        className="support-footer"
+        contentClassName="support-container"
+      />
+    </div>
   );
 }

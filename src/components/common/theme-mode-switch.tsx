@@ -1,5 +1,5 @@
 import { cn } from "../../lib/utils";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "../../lib/icons";
 import { LIGHT_MODE_ENABLED } from "../../lib/theme";
 
 interface ThemeModeSwitchProps {

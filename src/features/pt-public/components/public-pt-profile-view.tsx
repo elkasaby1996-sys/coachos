@@ -9,7 +9,7 @@ import {
   Linkedin,
   MapPin,
   Youtube,
-} from "lucide-react";
+} from "../../../lib/icons";
 import { motion, useReducedMotion } from "framer-motion";
 import { Badge } from "../../../components/ui/badge";
 import type { BadgeVariant } from "../../../components/ui/badge";

@@ -36,10 +36,14 @@ export interface ButtonProps
     React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  tone?: "danger";
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, children, ...props }, ref) => {
+  (
+    { className, variant, size, tone, asChild = false, children, ...props },
+    ref,
+  ) => {
     if (import.meta.env.DEV && !asChild) {
       React.Children.forEach(children, (child) => {
         if (React.isValidElement(child) && child.type === "button") {
@@ -53,6 +57,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
+        data-ui="button"
+        data-variant={variant ?? "default"}
+        data-size={size ?? "default"}
+        data-tone={tone}
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}

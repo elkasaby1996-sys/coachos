@@ -69,7 +69,7 @@ import { exerciseLibraryFullQueryOptions } from "../../lib/exercise-queries";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
 import { useSearchParams } from "react-router-dom";
-import { Play, Plus, RefreshCcw } from "lucide-react";
+import { Play, Plus, RefreshCcw } from "../../lib/icons";
 
 type ExerciseFormState = {
   name: string;
@@ -691,7 +691,7 @@ export function PtExerciseLibraryPage() {
       <WorkspacePageHeader
         eyebrow="Coaching library"
         title="Exercise Library"
-        description="Browse your shared owner library or save movements from the connected provider using one canonical muscle filter."
+        description="Find movements by muscle and equipment, build your library, and create your own exercises."
       />
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,0.88fr)] xl:items-start">
@@ -738,7 +738,7 @@ export function PtExerciseLibraryPage() {
         </aside>
 
         <section
-          className="order-2 min-w-0 rounded-[26px] border border-border/70 bg-card/55 p-3 shadow-card sm:p-4 xl:order-1"
+          className="exercise-library-results ui-panel order-2 min-w-0 xl:order-1"
           aria-label={
             view === "library"
               ? "My Library results"

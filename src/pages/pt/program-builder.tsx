@@ -1,3 +1,4 @@
+import { NotificationToast } from "../../components/common/notification-toast";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -258,9 +259,7 @@ export function PtProgramBuilderPage() {
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get("saved") !== "1") return;
 
-    setSaveNotice(
-      "Program saved. Your weekly structure is now in the library.",
-    );
+    setSaveNotice("Your weekly structure is now in the library.");
     navigate(location.pathname, { replace: true });
   }, [location.pathname, location.search, navigate]);
 
@@ -476,9 +475,7 @@ export function PtProgramBuilderPage() {
       navigate(`/pt/programs/${programId}/edit?saved=1`);
       return true;
     }
-    setSaveNotice(
-      "Program saved. Your weekly structure is now in the library.",
-    );
+    setSaveNotice("Your weekly structure is now in the library.");
     setSaveStatus("idle");
     return true;
   };
@@ -560,36 +557,15 @@ export function PtProgramBuilderPage() {
       <WorkspacePageHeader
         title={isNew ? "New Program" : "Program Builder"}
         description="Configure weekly structure and day-by-day assignments."
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => navigate("/pt/programs")}
-            >
-              Back to programs
-            </Button>
-          </>
-        }
+        backTo="/pt/programs"
+        backLabel="Back to programs"
       />
 
-      {saveNotice ? (
-        <Card className="border-emerald-400/25 bg-emerald-500/8">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-emerald-100">
-                Program saved
-              </p>
-              <p className="text-xs text-emerald-100/80">{saveNotice}</p>
-            </div>
-            <Badge
-              variant="secondary"
-              className="border-emerald-300/20 bg-emerald-500/12 text-[10px] uppercase tracking-[0.18em] text-emerald-100"
-            >
-              Synced
-            </Badge>
-          </CardContent>
-        </Card>
-      ) : null}
+      <NotificationToast
+        title="Program saved"
+        message={saveNotice}
+        onDismiss={() => setSaveNotice(null)}
+      />
 
       {(templateQuery.isLoading && !isNew) || templateDaysQuery.isLoading ? (
         <Card className="border-border/70 bg-card/80">
@@ -602,7 +578,7 @@ export function PtProgramBuilderPage() {
           </CardContent>
         </Card>
       ) : templateQuery.error ? (
-        <Card className="border-destructive/40">
+        <Card tone="danger" className="border-destructive/40">
           <CardHeader>
             <CardTitle>Program error</CardTitle>
           </CardHeader>
@@ -674,7 +650,8 @@ export function PtProgramBuilderPage() {
                 Description
               </label>
               <textarea
-                className="min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[96px] w-full rounded-lg border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-foreground shadow-[inset_0_1px_0_oklch(1_0_0/0.03)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={form.description}
                 disabled={!canManageDelivery}
                 onChange={(event) => {
@@ -829,62 +806,60 @@ export function PtProgramBuilderPage() {
                             handleDropTemplate(week, day, selectedTemplateId);
                           }
                         }}
-                        className={`surface-subtle flex h-full flex-col justify-between p-3 transition ${
+                        className={`surface-subtle row-span-5 grid min-w-0 grid-rows-subgrid gap-2 p-3 transition ${
                           draggingTemplateId
                             ? "border-accent/60 bg-accent/10"
                             : "hover:border-border"
                         }`}
                       >
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-semibold uppercase text-muted-foreground">
-                              {dayLabel}
-                            </p>
-                            {state?.is_rest ? (
-                              <Badge
-                                variant="muted"
-                                className="text-[10px] uppercase"
-                              >
-                                Rest day
-                              </Badge>
-                            ) : null}
-                          </div>
-                          <div className="space-y-2">
-                            <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                              {state?.workout_template_id
-                                ? (selectedTemplate?.name ?? "Workout assigned")
-                                : "Drop a template here"}
-                            </div>
-                            <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                              <input
-                                type="checkbox"
-                                checked={state?.is_rest ?? false}
-                                disabled={!canManageDelivery}
-                                onChange={(event) =>
-                                  updateDay(week, day, {
-                                    is_rest: event.target.checked,
-                                    workout_template_id: event.target.checked
-                                      ? null
-                                      : (state?.workout_template_id ?? null),
-                                  })
-                                }
-                              />
+                        <div className="flex min-h-6 flex-wrap items-start justify-between gap-1">
+                          <p className="text-xs font-semibold uppercase text-muted-foreground">
+                            {dayLabel}
+                          </p>
+                          {state?.is_rest ? (
+                            <Badge
+                              variant="muted"
+                              className="text-[10px] uppercase"
+                            >
                               Rest day
-                            </label>
-                            <textarea
-                              className="min-h-[60px] w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
-                              placeholder="Notes"
-                              value={state?.notes ?? ""}
-                              disabled={!canManageDelivery}
-                              onChange={(event) =>
-                                updateDay(week, day, {
-                                  notes: event.target.value,
-                                })
-                              }
-                            />
-                          </div>
+                            </Badge>
+                          ) : null}
                         </div>
-                        <div className="mt-3 text-[11px] text-muted-foreground">
+                        <div className="min-w-0 whitespace-normal break-words rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                          {state?.workout_template_id
+                            ? (selectedTemplate?.name ?? "Workout assigned")
+                            : "Drop a template here"}
+                        </div>
+                        <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={state?.is_rest ?? false}
+                            disabled={!canManageDelivery}
+                            onChange={(event) =>
+                              updateDay(week, day, {
+                                is_rest: event.target.checked,
+                                workout_template_id: event.target.checked
+                                  ? null
+                                  : (state?.workout_template_id ?? null),
+                              })
+                            }
+                          />
+                          Rest day
+                        </label>
+                        <textarea
+                          data-ui="field"
+                          className="app-field app-field-textarea h-full min-h-[112px] w-full resize-y rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                          aria-label={`${dayLabel} notes for week ${week}`}
+                          placeholder="Notes"
+                          value={state?.notes ?? ""}
+                          disabled={!canManageDelivery}
+                          onChange={(event) =>
+                            updateDay(week, day, {
+                              notes: event.target.value,
+                            })
+                          }
+                        />
+                        <div className="min-w-0 pt-1 text-[11px] text-muted-foreground [overflow-wrap:anywhere]">
                           {state?.is_rest
                             ? "Recovery focus"
                             : (selectedTemplate?.name ?? "No workout selected")}
@@ -898,7 +873,7 @@ export function PtProgramBuilderPage() {
           </Tabs>
         </CardContent>
       </Card>
-      <div className="flex flex-col gap-3 rounded-[20px] border border-border/70 bg-card/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="ui-panel flex flex-col gap-3 border border-border/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-foreground">
             {hasUnsavedChanges

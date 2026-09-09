@@ -9,7 +9,7 @@ import {
   ShieldAlert,
   Trophy,
   UserPlus,
-} from "lucide-react";
+} from "../../../lib/icons";
 import type { NotificationRecord, NotificationType } from "./types";
 import type { ModuleTone } from "../../../lib/module-tone";
 
@@ -50,6 +50,79 @@ function getNotificationClientName(notification: NotificationRecord) {
   }
 
   return null;
+}
+
+/** Prefer recorded attribution; never infer a sender from free-form message text. */
+export function getNotificationSource(notification: NotificationRecord) {
+  const namedActor = getTextMetadataValue(notification.metadata, [
+    "sender_name",
+    "senderName",
+    "actor_name",
+    "actorName",
+    "coach_name",
+    "coachName",
+    "inviter_name",
+    "inviterName",
+  ]);
+  if (namedActor) return namedActor;
+
+  const messageSender = notification.title
+    .trim()
+    .match(/^(?:New )?message from (.+)$/i);
+  if (messageSender?.[1]) return messageSender[1].trim();
+
+  if (
+    [
+      "system",
+      "security",
+      "birthday_reminder",
+      "client_inactive",
+      "workout_due_today",
+      "checkin_due_tomorrow",
+    ].includes(notification.type)
+  )
+    return "RepSync";
+
+  if (
+    [
+      "checkin_submitted",
+      "message_received",
+      "client_joined_workspace",
+      "invite_accepted",
+      "join_request_submitted",
+    ].includes(notification.type)
+  ) {
+    const clientName = getTextMetadataValue(notification.metadata, [
+      "client_name",
+      "clientName",
+      "client_display_name",
+    ]);
+    if (clientName) return clientName;
+  }
+
+  // These are generated notification phrases, not arbitrary message previews.
+  const phrases =
+    notification.type === "message_received"
+      ? [notification.title]
+      : [notification.title, notification.body];
+  for (const phrase of phrases) {
+    const name = phrase
+      .trim()
+      .match(
+        /^(.+?) (?:submitted (?:a |their )?check-in|accepted (?:your |the |an )?invite|invited you|shared (?:a |the )?file|reviewed your check-in|assigned you|joined (?:your |the )?workspace)[.!]?/i,
+      )?.[1];
+    if (name && !/^(?:a client|client|someone)$/i.test(name)) return name;
+  }
+  if (notification.type === "message_received") {
+    const legacySender = notification.body
+      .trim()
+      .match(/^(?:New )?message from ([^.!?]+)[.!]?$/i)?.[1];
+    return legacySender?.trim() || "Sender unavailable";
+  }
+  return notification.actor_type === "system" ||
+    notification.actor_type === "global"
+    ? "RepSync"
+    : "Sender unavailable";
 }
 
 export function getNotificationTitle(

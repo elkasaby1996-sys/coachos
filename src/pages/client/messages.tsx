@@ -1,3 +1,4 @@
+import { useRecordDraft } from "../../lib/record-drafts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -7,7 +8,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Search, SendHorizontal, Trash2 } from "lucide-react";
+import { Search, SendHorizontal, Trash2 } from "../../lib/icons";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -67,9 +68,13 @@ import {
   type MyLeadChatThreadSummary,
 } from "../../features/lead-chat/lib/lead-chat";
 
+import { ProfileAvatar } from "../../components/common/profile-avatar";
+
 type ClientProfileRow = {
   id: string;
   display_name: string | null;
+  avatar_url: string | null;
+  photo_url: string | null;
   workspace_id: string | null;
   created_at: string;
 };
@@ -100,6 +105,7 @@ type WorkspaceCoachProfileRow = {
   user_id: string;
   full_name: string | null;
   display_name: string | null;
+  profile_photo_url: string | null;
 };
 
 type WorkspaceCoachIdentityRow = {
@@ -129,6 +135,7 @@ type UnifiedInboxThread =
   | {
       id: string;
       type: "workspace";
+      photoUrl: string | null;
       title: string;
       preview: string;
       timestamp: string | null;
@@ -141,6 +148,7 @@ type UnifiedInboxThread =
   | {
       id: string;
       type: "lead";
+      photoUrl: string | null;
       title: string;
       preview: string;
       timestamp: string | null;
@@ -239,12 +247,6 @@ export function ClientMessagesPage() {
   });
 
   useEffect(() => {
-    if (!draftParam || hasAppliedDraftRef.current) return;
-    setMessageInput(draftParam);
-    hasAppliedDraftRef.current = true;
-  }, [draftParam]);
-
-  useEffect(() => {
     setHiddenThreadIds(readHiddenThreadIdsForUser(session?.user?.id));
   }, [session?.user?.id]);
 
@@ -254,7 +256,9 @@ export function ClientMessagesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, display_name, workspace_id, created_at")
+        .select(
+          "id, display_name, avatar_url, photo_url, workspace_id, created_at",
+        )
         .eq("user_id", session?.user?.id ?? "")
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -366,8 +370,11 @@ export function ClientMessagesPage() {
     (workspaceNamesQuery.data ?? []).forEach((workspace) => {
       if (workspace.owner_user_id) values.add(workspace.owner_user_id);
     });
+    (leadThreadsQuery.data ?? []).forEach((thread) =>
+      values.add(thread.ptUserId),
+    );
     return Array.from(values);
-  }, [workspaceNamesQuery.data]);
+  }, [workspaceNamesQuery.data, leadThreadsQuery.data]);
 
   const workspaceCoachProfilesQuery = useQuery({
     queryKey: [
@@ -379,7 +386,7 @@ export function ClientMessagesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pt_hub_profiles")
-        .select("user_id, full_name, display_name")
+        .select("user_id, full_name, display_name, profile_photo_url")
         .in("user_id", workspaceOwnerUserIds);
       if (error) throw error;
       return (data ?? []) as WorkspaceCoachProfileRow[];
@@ -501,6 +508,10 @@ export function ClientMessagesPage() {
           }),
           type: "workspace",
           title: displayTitle,
+          photoUrl:
+            workspaceCoachProfilesQuery.data?.find(
+              (profile) => profile.user_id === workspaceOwnerUserId,
+            )?.profile_photo_url ?? null,
           preview: conversation.last_message_preview ?? "No messages yet",
           timestamp: conversation.last_message_at,
           unreadCount:
@@ -537,6 +548,10 @@ export function ClientMessagesPage() {
         }),
         type: "lead",
         title: thread.ptDisplayName || "Lead conversation",
+        photoUrl:
+          workspaceCoachProfilesQuery.data?.find(
+            (profile) => profile.user_id === thread.ptUserId,
+          )?.profile_photo_url ?? null,
         preview: thread.lastMessagePreview ?? "No messages yet",
         timestamp: thread.lastMessageAt ?? thread.submittedAt ?? null,
         unreadCount: thread.unreadCount,
@@ -559,6 +574,7 @@ export function ClientMessagesPage() {
     workspaceConversationsQuery.data,
     workspaceCoachIdentityById,
     workspaceCoachDisplayNameByUserId,
+    workspaceCoachProfilesQuery.data,
     workspaceCoachNameByConversationId,
     workspaceNameById,
     workspaceOwnerIdById,
@@ -908,6 +924,60 @@ export function ClientMessagesPage() {
     })();
   }, [activeLeadId, leadThreadQuery.data?.messages, queryClient]);
 
+  useEffect(() => {
+    const update = () => {
+      const viewport = window.visualViewport;
+      document.documentElement.style.setProperty(
+        "--client-visual-height",
+        `${viewport?.height ?? window.innerHeight}px`,
+      );
+      const typing = Boolean(
+        document.activeElement?.closest(".client-message-composer"),
+      );
+      document.documentElement.classList.toggle(
+        "client-composing",
+        typing && window.innerWidth < 768,
+      );
+    };
+    const deferredUpdate = () => window.requestAnimationFrame(update);
+    window.visualViewport?.addEventListener("resize", update);
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", deferredUpdate);
+    update();
+    return () => {
+      window.visualViewport?.removeEventListener("resize", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", deferredUpdate);
+      document.documentElement.classList.remove("client-composing");
+    };
+  }, []);
+
+  const messageDraft = useRecordDraft<string>({
+    account: session?.user?.id,
+    kind: "conversation",
+    record: selectedThread?.id,
+    version: "1",
+    enabled: !!selectedThread?.isWritable,
+    onRestore: setMessageInput,
+  });
+  useEffect(() => {
+    setMessageInput("");
+  }, [selectedThread?.id]);
+  useEffect(() => {
+    if (messageDraft.ready && draftParam && !hasAppliedDraftRef.current) {
+      if (!messageInput) {
+        setMessageInput(draftParam);
+        messageDraft.save(draftParam);
+      }
+      hasAppliedDraftRef.current = true;
+    }
+  }, [messageDraft.ready, draftParam]);
+  const sentDraft = useRef<{
+    clear: () => Promise<void>;
+    thread: string;
+    body: string;
+  } | null>(null);
+
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (!selectedThread) {
@@ -921,6 +991,12 @@ export function ClientMessagesPage() {
       }
 
       const trimmed = messageInput.trim();
+      if (!messageDraft.ready) return;
+      sentDraft.current = {
+        clear: messageDraft.clear,
+        thread: selectedThread?.id ?? "",
+        body: messageInput,
+      };
       if (!trimmed) return;
 
       if (selectedThread.type === "workspace") {
@@ -946,7 +1022,11 @@ export function ClientMessagesPage() {
     },
     onSuccess: async (result) => {
       setSendError(null);
-      setMessageInput("");
+      if (sentDraft.current) {
+        await sentDraft.current.clear();
+        if (sentDraft.current.thread === selectedThread?.id)
+          setMessageInput("");
+      }
       updateTyping(false);
 
       if (!result) return;
@@ -1052,7 +1132,7 @@ export function ClientMessagesPage() {
     <div className="portal-shell">
       <PortalPageHeader
         title="Messages"
-        subtitle="One inbox for lead and active coaching conversations."
+        subtitle="Keep in touch with your coaches and follow your conversations."
         stateText={typingUsers.length > 0 ? "Coach is typing" : undefined}
       />
 
@@ -1060,7 +1140,7 @@ export function ClientMessagesPage() {
         <StatusBanner
           variant="warning"
           title="Some conversations could not load"
-          description="You can still use available threads. Retry to refresh lead and coaching inbox data."
+          description="You can still open the conversations that loaded. Select Retry to load the others."
           actions={
             <Button
               variant="secondary"
@@ -1150,7 +1230,11 @@ export function ClientMessagesPage() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 space-y-1">
+                        <ProfileAvatar
+                          name={thread.title}
+                          src={thread.photoUrl}
+                        />
+                        <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex items-center gap-2">
                             <p className="truncate text-sm font-semibold text-foreground">
                               {thread.title}
@@ -1188,7 +1272,13 @@ export function ClientMessagesPage() {
         <SurfaceCard className="overflow-hidden">
           <SurfaceCardHeader className="border-b border-border/60 pb-4">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex min-w-0 items-center">
+              <div className="flex min-w-0 items-center gap-3">
+                {selectedThread ? (
+                  <ProfileAvatar
+                    name={selectedThread.title}
+                    src={selectedThread.photoUrl}
+                  />
+                ) : null}
                 <div className="min-w-0">
                   <SurfaceCardTitle className="truncate text-lg">
                     {selectedThread?.title ?? "Select a conversation"}
@@ -1204,6 +1294,7 @@ export function ClientMessagesPage() {
                 <div className="flex items-center gap-2">
                   {canHideSelectedThread ? (
                     <Button
+                      tone="danger"
                       size="sm"
                       variant="ghost"
                       className="text-muted-foreground hover:text-destructive"
@@ -1222,7 +1313,7 @@ export function ClientMessagesPage() {
             <SurfaceCardContent className="flex min-h-[30rem] items-center justify-center py-8">
               <EmptyStateBlock
                 title="Pick a conversation"
-                description="Select a lead or active coaching conversation from the inbox list."
+                description="Select a conversation from your inbox."
               />
             </SurfaceCardContent>
           ) : selectedThreadMessageLoading ? (
@@ -1234,7 +1325,7 @@ export function ClientMessagesPage() {
           ) : selectedThreadMessageError ? (
             <SurfaceCardContent className="flex min-h-[30rem] items-center justify-center py-8">
               <EmptyStateBlock
-                title="Unable to load this thread"
+                title="Unable to load this conversation"
                 description="Try again or select another conversation."
                 actions={
                   <EmptyStateActionButton
@@ -1251,7 +1342,7 @@ export function ClientMessagesPage() {
               />
             </SurfaceCardContent>
           ) : (
-            <div className="flex h-[calc(100dvh-12rem)] min-h-[30rem] flex-col">
+            <div className="client-message-thread flex flex-col">
               <SurfaceCardContent
                 ref={messageListRef}
                 className="min-h-0 flex-1 overflow-y-auto bg-background/10 overscroll-contain"
@@ -1364,13 +1455,18 @@ export function ClientMessagesPage() {
                               setVisibleMessageCount((current) => current + 100)
                             }
                           >
-                            Show older loaded messages
+                            Show older messages
                           </Button>
                         </div>
                       ) : null}
                       {renderedWorkspaceMessages.length > 0 ? (
                         renderedWorkspaceMessages.map((message) => {
                           const isMine = message.sender_role === "client";
+                          const messageClient = clientProfilesQuery.data?.find(
+                            (profile) =>
+                              profile.id ===
+                              selectedThread.workspaceConversation.client_id,
+                          );
                           const senderLabel = formatMessageSenderLabel({
                             currentUserId: session?.user?.id,
                             message: {
@@ -1397,6 +1493,24 @@ export function ClientMessagesPage() {
                                 }`}
                               >
                                 <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                  <ProfileAvatar
+                                    name={
+                                      isMine
+                                        ? (messageClient?.display_name ?? "You")
+                                        : senderLabel
+                                    }
+                                    src={
+                                      isMine
+                                        ? messageClient?.avatar_url?.trim() ||
+                                          messageClient?.photo_url
+                                        : workspaceCoachProfilesQuery.data?.find(
+                                            (profile) =>
+                                              profile.user_id ===
+                                              message.sender_user_id,
+                                          )?.profile_photo_url
+                                    }
+                                    className="h-6 w-6 text-[10px]"
+                                  />
                                   <span className="font-medium text-foreground/90">
                                     {senderLabel}
                                   </span>
@@ -1419,7 +1533,10 @@ export function ClientMessagesPage() {
                                 <EmptyStateActionButton
                                   key={prompt}
                                   label={prompt}
-                                  onClick={() => setMessageInput(prompt)}
+                                  onClick={() => {
+                                    setMessageInput(prompt);
+                                    messageDraft.save(prompt);
+                                  }}
                                 />
                               ))}
                             </>
@@ -1445,6 +1562,20 @@ export function ClientMessagesPage() {
                             }`}
                           >
                             <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                              <ProfileAvatar
+                                name={
+                                  isMine
+                                    ? (clientProfile?.display_name ?? "You")
+                                    : selectedThread.title
+                                }
+                                src={
+                                  isMine
+                                    ? clientProfile?.avatar_url?.trim() ||
+                                      clientProfile?.photo_url
+                                    : selectedThread.photoUrl
+                                }
+                                className="h-6 w-6 text-[10px]"
+                              />
                               <span className="font-medium text-foreground/90">
                                 {isMine
                                   ? "You"
@@ -1463,7 +1594,7 @@ export function ClientMessagesPage() {
                   ) : (
                     <EmptyStateBlock
                       title="No messages yet"
-                      description="This lead conversation has no messages yet."
+                      description="No messages have been sent in this conversation yet."
                     />
                   )}
 
@@ -1481,7 +1612,7 @@ export function ClientMessagesPage() {
               </SurfaceCardContent>
 
               {selectedThread.isWritable ? (
-                <div className="sticky bottom-0 border-t border-border/60 bg-background/75 px-4 pb-[calc(0.875rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+                <div className="client-message-composer sticky bottom-0 border-t border-border/60 bg-background/75 px-4 pb-[calc(0.875rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
                   <div className="space-y-2">
                     {sendError ? (
                       <p className="rounded-[16px] border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
@@ -1498,9 +1629,11 @@ export function ClientMessagesPage() {
                         style={{ height: 44, minHeight: 44, maxHeight: 44 }}
                         placeholder="Send a message..."
                         value={messageInput}
+                        disabled={!messageDraft.ready || sendMutation.isPending}
                         onChange={(event) => {
                           if (sendError) setSendError(null);
                           setMessageInput(event.target.value);
+                          messageDraft.save(event.target.value);
                         }}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" && !event.shiftKey) {
@@ -1534,15 +1667,41 @@ export function ClientMessagesPage() {
                         className="h-11 w-full min-w-[9rem] md:w-auto"
                         onClick={() => sendMutation.mutate()}
                         disabled={
+                          !messageDraft.ready ||
                           sendMutation.isPending ||
                           !messageInput.trim() ||
                           messageLimitState.overLimit
                         }
                       >
                         <SendHorizontal className="mr-2 h-4 w-4" />
-                        {sendMutation.isPending ? "Sending..." : "Send"}
+                        {sendMutation.isPending
+                          ? "Sending..."
+                          : sendError
+                            ? "Retry send"
+                            : "Send"}
                       </Button>
                     </div>
+                    {messageDraft.status && (
+                      <p role="status" className="text-xs">
+                        {messageDraft.status.replace(
+                          "Save or submit to share it with your coach.",
+                          "Send to share this message.",
+                        )}
+                      </p>
+                    )}
+                    {messageInput && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={sendMutation.isPending}
+                        onClick={async () => {
+                          await messageDraft.clear();
+                          setMessageInput("");
+                        }}
+                      >
+                        Discard draft
+                      </Button>
+                    )}
                     <FieldCharacterMeta
                       count={messageLimitState.count}
                       limit={messageLimitState.limit}
@@ -1554,7 +1713,8 @@ export function ClientMessagesPage() {
                 <div className="border-t border-border/60 bg-background/55 px-4 py-4">
                   <SectionCard>
                     <p className="text-sm text-muted-foreground">
-                      This conversation is archived and read-only.
+                      This conversation is archived. You can read past messages
+                      but cannot send new ones.
                     </p>
                   </SectionCard>
                 </div>
@@ -1569,8 +1729,8 @@ export function ClientMessagesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Hide conversation?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the conversation from your inbox view. Message
-              history is not erased.
+              Hide this conversation from your inbox. Your messages will be
+              kept.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1583,6 +1743,7 @@ export function ClientMessagesPage() {
               </Button>
             </AlertDialogCancel>
             <Button
+              tone="danger"
               variant="secondary"
               className="text-destructive hover:text-destructive"
               onClick={hideConversation}

@@ -5,6 +5,9 @@ type WorkspaceSettingsRow = {
   name: string | null;
   slug?: string | null;
   logo_url: string | null;
+  accent_color: string | null;
+  client_welcome_title: string;
+  invite_sender_name: string;
   owner_user_id: string | null;
   default_checkin_template_id: string | null;
   timezone: string | null;

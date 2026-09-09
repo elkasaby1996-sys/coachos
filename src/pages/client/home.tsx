@@ -1,7 +1,10 @@
+import { hydrateNutritionAssignmentContext } from "../../lib/nutrition-assignment-context";
+import { sumRecorded, formatRecorded } from "../../lib/client-measurements";
+import "../../styles/client-home.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "../../lib/icons";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -21,7 +24,6 @@ import {
 } from "../../components/common/action-feedback";
 import {
   EmptyStateBlock,
-  PortalPageHeader,
   SectionCard,
   StatusBanner,
   SurfaceCard,
@@ -253,6 +255,11 @@ function ClientWorkspaceHomePage() {
         .eq("date", todayKey)
         .order("date", { ascending: true });
       if (error) throw error;
+      await Promise.all(
+        (data ?? []).map((row) =>
+          hydrateNutritionAssignmentContext(row.assigned_nutrition_plan),
+        ),
+      );
       return data ?? [];
     },
   });
@@ -395,7 +402,7 @@ function ClientWorkspaceHomePage() {
     [todayWorkoutQuery.data],
   );
   const todayWorkout = todayWorkoutList[0] ?? null;
-  const isRestDay = !todayWorkout || todayWorkout.day_type === "rest";
+  const isRestDay = todayWorkout?.day_type === "rest";
   const todayWorkoutStatus =
     todayWorkout?.status === "pending"
       ? "planned"
@@ -431,26 +438,20 @@ function ClientWorkspaceHomePage() {
         consumed_at?: string | null;
       }>;
     }>;
-    return meals.reduce<{
-      calories: number;
-      protein_g: number;
-      carbs_g: number;
-      fat_g: number;
-    }>(
-      (acc, meal) => {
-        const latest = (meal.logs ?? [])
+    const logs = meals.map(
+      (meal) =>
+        (meal.logs ?? [])
           .slice()
           .sort((a, b) =>
-            String(a.consumed_at ?? "") < String(b.consumed_at ?? "") ? 1 : -1,
-          )[0];
-        acc.calories += latest?.actual_calories ?? meal.calories ?? 0;
-        acc.protein_g += latest?.actual_protein_g ?? meal.protein_g ?? 0;
-        acc.carbs_g += latest?.actual_carbs_g ?? meal.carbs_g ?? 0;
-        acc.fat_g += latest?.actual_fat_g ?? meal.fat_g ?? 0;
-        return acc;
-      },
-      { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
+            String(b.consumed_at).localeCompare(String(a.consumed_at)),
+          )[0],
     );
+    return {
+      calories: sumRecorded(logs.map((log) => log?.actual_calories)),
+      protein_g: sumRecorded(logs.map((log) => log?.actual_protein_g)),
+      carbs_g: sumRecorded(logs.map((log) => log?.actual_carbs_g)),
+      fat_g: sumRecorded(logs.map((log) => log?.actual_fat_g)),
+    };
   }, [todayNutrition]);
   const workoutsWeek = workoutsWeekQuery.data ?? [];
   const weeklyPlan = useMemo(
@@ -630,9 +631,9 @@ function ClientWorkspaceHomePage() {
     (quickHabitCompletedCount / quickHabitTotal) * 100,
   );
   const hasClientProfile = Boolean(clientId);
-  const hasAssignedWorkoutPlan = weeklyPlan.some(
-    (workout) => workout.day_type !== "rest",
-  );
+  const hasAssignedWorkoutPlan =
+    Boolean(todayWorkout) ||
+    weeklyPlan.some((workout) => workout.day_type !== "rest");
   const summaryTrainingStatus =
     !hasClientProfile || !hasAssignedWorkoutPlan
       ? "No plan yet"
@@ -818,16 +819,6 @@ function ClientWorkspaceHomePage() {
     [weeklyPlan],
   );
 
-  const subtitleDate = useMemo(
-    () =>
-      today.toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "short",
-        day: "numeric",
-      }),
-    [today],
-  );
-
   const latestCoachActivity =
     coachActivityQuery.data && coachActivityQuery.data.length > 0
       ? coachActivityQuery.data[0]
@@ -918,7 +909,67 @@ function ClientWorkspaceHomePage() {
   const nutritionRequestDraft = encodeURIComponent(
     "Can you set my nutrition targets for this week?",
   );
+  const nextActionQuery = useQuery({
+    queryKey: ["client-home-next-action", clientId, todayKey],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const [sessions, checkins, feedback] = await Promise.all([
+        supabase
+          .from("workout_sessions")
+          .select(
+            "id,assigned_workout_id,assigned_workout:assigned_workouts(day_type)",
+          )
+          .eq("client_id", clientId)
+          .is("completed_at", null)
+          .order("started_at", { ascending: false })
+          .limit(1),
+        supabase
+          .from("checkins")
+          .select("id,week_ending_saturday")
+          .eq("client_id", clientId)
+          .is("submitted_at", null)
+          .lte("week_ending_saturday", todayKey)
+          .order("week_ending_saturday")
+          .limit(1),
+        supabase
+          .from("notifications")
+          .select("id,entity_id,title")
+          .eq("recipient_user_id", session?.user.id)
+          .eq("type", "checkin_reviewed")
+          .is("read_at", null)
+          .order("created_at", { ascending: false })
+          .limit(1),
+      ]);
+      for (const result of [sessions, checkins, feedback])
+        if (result.error) throw result.error;
+      return {
+        session: sessions.data?.[0],
+        checkin: checkins.data?.[0],
+        feedback: feedback.data?.[0],
+      };
+    },
+  });
   const primaryAction = (() => {
+    const activeSession = nextActionQuery.data?.session;
+    if (
+      activeSession &&
+      (Array.isArray(activeSession.assigned_workout)
+        ? activeSession.assigned_workout[0]
+        : activeSession.assigned_workout
+      )?.day_type !== "rest"
+    )
+      return {
+        label: "Resume workout",
+        onClick: () =>
+          navigate(buildWorkoutRunPath(activeSession.assigned_workout_id)),
+      };
+    const dueCheckin = nextActionQuery.data?.checkin;
+    if (dueCheckin)
+      return {
+        label: "Complete check-in",
+        onClick: () => navigate(`/app/checkins?checkin=${dueCheckin.id}`),
+      };
+
     if (!clientId) {
       return {
         label: "Find a Coach",
@@ -978,6 +1029,7 @@ function ClientWorkspaceHomePage() {
   }, [focusModule]);
 
   const homeDataError =
+    nextActionQuery.error ??
     coachActivityQuery.error ??
     todayWorkoutQuery.error ??
     todayNutritionQuery.error ??
@@ -988,19 +1040,26 @@ function ClientWorkspaceHomePage() {
     sourceWorkspacesQuery.error ??
     workspaceConversationPreviewQuery.error ??
     leadThreadsQuery.error;
-  const homeSubtitle = hasClientProfile
-    ? `${subtitleDate}. Your plan, targets, and recovery for today.`
-    : `${subtitleDate}. One client app for workouts, habits, messages, and finding your coach.`;
-  const homeStateText =
-    unifiedHomeState === "lead_only"
-      ? "Lead and discovery mode"
-      : coachBadgeLabel;
   const showWorkoutsAndNutritionCard = false;
   const isViewingCurrentWeek = calendarWeekOffset === 0;
   const calendarSection = (
-    <SurfaceCard>
+    <SurfaceCard className="client-home-calendar">
       <SurfaceCardHeader className="flex-row items-center justify-between gap-3">
-        <SurfaceCardTitle>Calendar</SurfaceCardTitle>
+        <div>
+          <SurfaceCardTitle>Your week</SurfaceCardTitle>
+          <p className="client-home-section-description">
+            {weekRows[0]?.date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}{" "}
+            –{" "}
+            {weekRows[6]?.date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           {!isViewingCurrentWeek ? (
             <Button
@@ -1037,11 +1096,11 @@ function ClientWorkspaceHomePage() {
         {weeklyPlanQuery.isLoading ? (
           <LoadingPanel
             title="Loading calendar"
-            description="Mapping the next 7 days of training and recovery."
+            description="Loading your schedule for the next 7 days."
           />
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
+            <div className="client-home-week">
               {weekRows.map((row) => {
                 const workout = row.workout;
                 const rowIsRestDay = !workout || workout.day_type === "rest";
@@ -1064,19 +1123,6 @@ function ClientWorkspaceHomePage() {
                     (workout as { workout_template_name?: string })
                       ?.workout_template_name ??
                     "Workout");
-                const statusVariant =
-                  status === "completed"
-                    ? "success"
-                    : status === "skipped"
-                      ? "danger"
-                      : status === "rest day"
-                        ? "warning"
-                        : "muted";
-                const workoutType = rowIsRestDay
-                  ? null
-                  : (getWorkoutTemplateInfo(workout).workout_type_tag ??
-                    "Workout");
-
                 return (
                   <button
                     key={row.key}
@@ -1087,40 +1133,29 @@ function ClientWorkspaceHomePage() {
                       }
                     }}
                     disabled={!workout?.id || rowIsRestDay}
-                    className={`rounded-[var(--radius-lg)] border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                      row.key === todayKey
-                        ? "border-primary/40 bg-primary/10 shadow-[0_18px_42px_-34px_rgba(56,189,248,0.75)]"
-                        : "border-border/70 bg-background/45 hover:border-border"
-                    }`}
+                    className="client-home-day"
+                    data-today={row.key === todayKey || undefined}
+                    data-rest={rowIsRestDay || undefined}
+                    aria-current={row.key === todayKey ? "date" : undefined}
+                    title={workout?.coach_note ?? title}
                   >
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {row.date.toLocaleDateString("en-US", {
-                            weekday: "short",
-                            day: "numeric",
-                          })}
-                        </span>
-                        {!rowIsRestDay ? (
-                          <Badge variant={statusVariant}>{statusLabel}</Badge>
-                        ) : null}
-                      </div>
-                      <div className="space-y-1">
-                        <p className="line-clamp-2 text-sm font-semibold text-foreground">
-                          {title}
-                        </p>
-                        {workoutType ? (
-                          <p className="text-xs text-muted-foreground">
-                            {workoutType}
-                          </p>
-                        ) : null}
-                      </div>
-                      {workout?.coach_note ? (
-                        <p className="line-clamp-3 text-xs leading-5 text-muted-foreground">
-                          {workout.coach_note}
-                        </p>
-                      ) : null}
+                    <div className="client-home-day-date">
+                      <span>
+                        {row.date.toLocaleDateString("en-US", {
+                          weekday: "short",
+                        })}
+                      </span>
+                      <strong>{row.date.getDate()}</strong>
                     </div>
+                    <p className="client-home-day-title">
+                      {!workout ? "No workout scheduled" : title}
+                    </p>
+                    <span
+                      className="client-home-day-status"
+                      data-status={status}
+                    >
+                      {!workout ? "Unscheduled" : statusLabel}
+                    </span>
                   </button>
                 );
               })}
@@ -1129,7 +1164,7 @@ function ClientWorkspaceHomePage() {
             {weeklyPlan.length === 0 ? (
               <EmptyStateBlock
                 title="No sessions scheduled yet"
-                description="Focus on recovery basics while your coach builds your next training block."
+                description="Your scheduled workouts and rest days will appear here."
               />
             ) : null}
           </>
@@ -1139,12 +1174,59 @@ function ClientWorkspaceHomePage() {
   );
 
   return (
-    <div className="portal-shell" data-testid="client-home-page">
-      <PortalPageHeader
-        title="Home"
-        subtitle={homeSubtitle}
-        stateText={homeStateText}
-      />
+    <div
+      className="portal-shell client-home-redesign"
+      data-testid="client-home-page"
+    >
+      <header className="flex flex-wrap justify-end gap-2">
+        {nextActionQuery.data?.feedback?.entity_id && (
+          <Button
+            onClick={() =>
+              navigate(
+                `/app/checkins?checkin=${nextActionQuery.data?.feedback?.entity_id}`,
+              )
+            }
+          >
+            Read coach feedback
+          </Button>
+        )}
+        {!clientProfile?.workspace_id && (
+          <Button variant="secondary" onClick={() => navigate(findCoachHref)}>
+            Find a coach
+          </Button>
+        )}
+        {(workspaceConversationPreviewQuery.data?.length ?? 0) > 0 && (
+          <Button variant="secondary" onClick={() => navigate("/app/messages")}>
+            Message coach
+          </Button>
+        )}
+      </header>
+
+      <SectionCard
+        className="flex flex-wrap items-center justify-between gap-4"
+        aria-label="Next action"
+      >
+        <div className="space-y-1">
+          <p className="font-semibold">Next up</p>
+          <p className="text-sm text-muted-foreground">
+            {nextActionQuery.data?.session
+              ? "Continue your unfinished session."
+              : nextActionQuery.data?.checkin
+                ? `Your check-in for ${nextActionQuery.data.checkin.week_ending_saturday} is ready to complete.`
+                : isRestDay
+                  ? "Rest day. You can still record your daily habits."
+                  : todayWorkout
+                    ? "Your scheduled workout is ready below."
+                    : clientProfile?.workspace_id
+                      ? "No workout is scheduled today."
+                      : "Plan your first personal workout, or find a coach."}
+          </p>
+        </div>
+        <Button onClick={primaryAction.onClick}>
+          {primaryAction.label}
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </Button>
+      </SectionCard>
 
       {homeDataError ? (
         <StatusBanner
@@ -1161,105 +1243,126 @@ function ClientWorkspaceHomePage() {
       {!hasWorkspaceMembership ? (
         <StatusBanner
           variant="info"
-          title="You do not currently have an active coaching workspace."
-          description="Your client account is still active. Use a coach invite when you are ready to join a workspace again."
+          title="You are not currently linked to a coach."
+          description="You can still use your account. Accept a coach invitation to receive assigned plans."
         />
       ) : null}
 
-      {calendarSection}
-
-      <SurfaceCard id="home-section-next-up">
-        <SurfaceCardHeader className="pb-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <SurfaceCardTitle className="text-2xl">
-                Today&apos;s agenda
-              </SurfaceCardTitle>
+      <section id="home-section-next-up" aria-label="Today's agenda">
+        <div className="client-home-agenda">
+          <SectionCard className="client-home-agenda-card">
+            <div className="min-w-0 space-y-1">
+              <p className="client-home-card-label">Today&apos;s workout</p>
+              <p className="text-xl font-semibold leading-7 text-foreground [overflow-wrap:anywhere]">
+                {summaryTrainingTitle}
+              </p>
             </div>
-          </div>
-        </SurfaceCardHeader>
-        <SurfaceCardContent className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,0.95fr)]">
-          <SectionCard className="space-y-5">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1">
-                  <p className="field-label">Today&apos;s workout</p>
-                  <p className="text-xl font-semibold leading-7 text-foreground">
-                    {summaryTrainingTitle}
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {todayWorkout?.coach_note ? (
-              <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
+              <div className="client-home-coach-note">
                 <p className="field-label">Coach note</p>
                 <p className="mt-2 text-sm leading-6 text-foreground">
                   {todayWorkout.coach_note}
                 </p>
               </div>
-            ) : null}
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {summaryTrainingHint}
+              </p>
+            )}
+            <div className="client-home-card-footer">
+              <span>{summaryTrainingBadgeLabel}</span>
+              {todayWorkout && !isRestDay && (
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    navigate(
+                      todayWorkoutStatus === "completed"
+                        ? `/app/workout-summary/${todayWorkout.id}`
+                        : buildWorkoutRunPath(todayWorkout.id),
+                    )
+                  }
+                >
+                  Open workout
+                </Button>
+              )}
+            </div>
           </SectionCard>
-
-          <div className="space-y-3">
-            <SectionCard className="space-y-4">
-              <div className="space-y-1">
-                <div>
-                  <p className="field-label">Today&apos;s nutrition</p>
-                </div>
+          <SectionCard className="client-home-agenda-card">
+            <div className="min-w-0 space-y-1">
+              <p className="client-home-card-label">Recorded nutrition today</p>
+              <p className="text-xl font-semibold leading-7 text-foreground [overflow-wrap:anywhere]">
+                {todayNutritionTemplate?.name ??
+                  (todayNutrition
+                    ? "Your nutrition plan"
+                    : clientProfile?.workspace_id
+                      ? "No nutrition plan assigned yet."
+                      : "Create a personal nutrition plan to get started.")}
+              </p>
+            </div>
+            <div className="client-home-macros">
+              <div className="space-y-0.5">
+                <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                  Calories
+                </p>
+                <p className="font-semibold text-foreground">
+                  {formatRecorded(todayNutritionTotals.calories)}
+                  {todayNutritionTotals.calories !== null ? " kcal" : ""}
+                </p>
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {todayNutritionTemplate?.name ??
-                      "Your coach has not assigned a nutrition plan yet."}
-                  </p>
-                </div>
-                <div className="grid min-w-[15rem] grid-cols-2 gap-x-5 gap-y-2 text-xs 2xl:grid-cols-4">
-                  <div className="space-y-0.5">
-                    <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                      Calories
-                    </p>
-                    <p className="font-semibold text-foreground">
-                      {Math.round(todayNutritionTotals.calories)} kcal
-                    </p>
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                      Protein
-                    </p>
-                    <p className="font-semibold text-foreground">
-                      {Math.round(todayNutritionTotals.protein_g)}g
-                    </p>
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                      Carbs
-                    </p>
-                    <p className="font-semibold text-foreground">
-                      {Math.round(todayNutritionTotals.carbs_g)}g
-                    </p>
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                      Fats
-                    </p>
-                    <p className="font-semibold text-foreground">
-                      {Math.round(todayNutritionTotals.fat_g)}g
-                    </p>
-                  </div>
-                </div>
+              <div className="space-y-0.5">
+                <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                  Protein
+                </p>
+                <p className="font-semibold text-foreground">
+                  {formatRecorded(todayNutritionTotals.protein_g)}
+                  {todayNutritionTotals.protein_g !== null ? "g" : ""}
+                </p>
               </div>
-            </SectionCard>
-          </div>
-        </SurfaceCardContent>
-      </SurfaceCard>
+              <div className="space-y-0.5">
+                <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                  Carbs
+                </p>
+                <p className="font-semibold text-foreground">
+                  {formatRecorded(todayNutritionTotals.carbs_g)}
+                  {todayNutritionTotals.carbs_g !== null ? "g" : ""}
+                </p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                  Fats
+                </p>
+                <p className="font-semibold text-foreground">
+                  {formatRecorded(todayNutritionTotals.fat_g)}
+                  {todayNutritionTotals.fat_g !== null ? "g" : ""}
+                </p>
+              </div>
+            </div>
+            <div className="client-home-card-footer">
+              <span>
+                {todayNutrition ? "Your assigned plan" : "No plan assigned"}
+              </span>
+              <Button
+                variant="secondary"
+                onClick={() => navigate("/app/nutrition")}
+              >
+                Open nutrition
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </div>
+          </SectionCard>
+        </div>
+      </section>
 
-      <SurfaceCard id="home-section-checklist">
+      {calendarSection}
+
+      <SurfaceCard id="home-section-checklist" className="client-home-log">
         <SurfaceCardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
-              <SurfaceCardTitle>Habits</SurfaceCardTitle>
+              <SurfaceCardTitle>Daily log</SurfaceCardTitle>
+              <p className="client-home-section-description">
+                Record your nutrition, recovery, and activity.
+              </p>
             </div>
             <Badge
               variant={checklistProgress === 100 ? "success" : "secondary"}
@@ -1271,7 +1374,7 @@ function ClientWorkspaceHomePage() {
           </div>
         </SurfaceCardHeader>
         <SurfaceCardContent className="space-y-5">
-          <SectionCard>
+          <div>
             <form
               className="space-y-4"
               onSubmit={(event) => {
@@ -1279,18 +1382,10 @@ function ClientWorkspaceHomePage() {
                 void handleQuickHabitSave();
               }}
             >
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-foreground">
-                  Quick habit log
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Log today&apos;s nutrition, recovery, body, and activity.
-                </p>
-              </div>
-              <div className="space-y-4">
+              <div className="client-home-log-groups">
                 <div className="space-y-3">
                   <p className="field-label">Nutrition</p>
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <label
                         className="field-label"
@@ -1390,7 +1485,7 @@ function ClientWorkspaceHomePage() {
 
                 <div className="space-y-3">
                   <p className="field-label">Recovery</p>
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <label className="field-label" htmlFor="home-habit-sleep">
                         Sleep
@@ -1489,7 +1584,7 @@ function ClientWorkspaceHomePage() {
 
                 <div className="space-y-3">
                   <p className="field-label">Body + activity</p>
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <label
                         className="field-label"
@@ -1539,7 +1634,7 @@ function ClientWorkspaceHomePage() {
                         ))}
                       </div>
                     </div>
-                    <div className="space-y-2 sm:col-span-2 xl:col-span-2">
+                    <div className="space-y-2 col-span-2">
                       <label className="field-label" htmlFor="home-habit-steps">
                         Steps
                       </label>
@@ -1573,7 +1668,7 @@ function ClientWorkspaceHomePage() {
                 >
                   {quickHabitSaveStatus === "saving"
                     ? "Saving..."
-                    : "Save quick log"}
+                    : "Save daily log"}
                 </Button>
                 <Button
                   type="button"
@@ -1585,7 +1680,7 @@ function ClientWorkspaceHomePage() {
               </div>
               {quickHabitSaveStatus === "saved" ? (
                 <ActionStatusMessage tone="success">
-                  Quick habit log saved.
+                  Daily log saved.
                 </ActionStatusMessage>
               ) : null}
               {quickHabitSaveStatus === "error" && quickHabitError ? (
@@ -1594,7 +1689,7 @@ function ClientWorkspaceHomePage() {
                 </ActionStatusMessage>
               ) : null}
             </form>
-          </SectionCard>
+          </div>
         </SurfaceCardContent>
       </SurfaceCard>
 
@@ -1618,8 +1713,7 @@ function ClientWorkspaceHomePage() {
           <SurfaceCardHeader>
             <SurfaceCardTitle>Workouts and nutrition</SurfaceCardTitle>
             <SurfaceCardDescription>
-              One account-level view of today and next-up actions across
-              personal and coached plans.
+              Your personal and coach-assigned plans for today.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent className="grid gap-6 lg:grid-cols-2">
@@ -1678,7 +1772,7 @@ function ClientWorkspaceHomePage() {
                     return (
                       <div
                         key={workout.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-3 py-2"
+                        className="ui-inset flex flex-wrap items-center justify-between gap-2 border border-border/70 px-3 py-2"
                       >
                         <div className="space-y-1">
                           <p className="text-sm font-medium text-foreground">
@@ -1728,7 +1822,11 @@ function ClientWorkspaceHomePage() {
                 </p>
                 <p className="text-lg font-semibold text-foreground">
                   {todayNutritionTemplate?.name ??
-                    "Your coach has not assigned a nutrition plan yet."}
+                    (todayNutrition
+                      ? "Your nutrition plan"
+                      : clientProfile?.workspace_id
+                        ? "No nutrition plan assigned yet."
+                        : "Create a personal nutrition plan to get started.")}
                 </p>
                 {todayNutritionTemplate ? (
                   <Badge variant="muted">
@@ -1740,7 +1838,7 @@ function ClientWorkspaceHomePage() {
               {todayNutritionQuery.isLoading ? (
                 <LoadingPanel
                   title="Loading nutrition"
-                  description="Pulling in today’s meals and macro targets."
+                  description="Loading your meals and nutrition targets for today."
                 />
               ) : todayNutrition ? (
                 <>
@@ -1781,7 +1879,7 @@ function ClientWorkspaceHomePage() {
                         return (
                           <div
                             key={String((day as { id?: string }).id ?? "")}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 px-3 py-2"
+                            className="ui-inset flex flex-wrap items-center justify-between gap-2 border border-border/70 px-3 py-2"
                           >
                             <div className="space-y-1">
                               <p className="text-sm font-medium text-foreground">
@@ -1816,29 +1914,29 @@ function ClientWorkspaceHomePage() {
                       })}
                     </div>
                   ) : null}
-                  <div className="grid grid-cols-2 gap-4 rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4 text-center sm:grid-cols-4">
+                  <div className="ui-inset grid grid-cols-2 gap-4 border border-border/70 p-4 text-center sm:grid-cols-4">
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Calories</p>
                       <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.calories)}
+                        {formatRecorded(todayNutritionTotals.calories)}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Protein</p>
                       <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.protein_g)}
+                        {formatRecorded(todayNutritionTotals.protein_g)}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Carbs</p>
                       <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.carbs_g)}
+                        {formatRecorded(todayNutritionTotals.carbs_g)}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Fat</p>
                       <p className="font-semibold">
-                        {Math.round(todayNutritionTotals.fat_g)}
+                        {formatRecorded(todayNutritionTotals.fat_g)}
                       </p>
                     </div>
                   </div>
@@ -1854,7 +1952,13 @@ function ClientWorkspaceHomePage() {
               ) : (
                 <EmptyStateBlock
                   title="No nutrition plan assigned"
-                  description="Your coach has not assigned a nutrition plan yet."
+                  description={
+                    todayNutrition
+                      ? "Your nutrition plan"
+                      : clientProfile?.workspace_id
+                        ? "No nutrition plan assigned yet."
+                        : "Create a personal nutrition plan to get started."
+                  }
                   actions={
                     upcomingNutritionDay?.id ? (
                       <Button
@@ -1878,7 +1982,7 @@ function ClientWorkspaceHomePage() {
               ) : (
                 <>
                   <div className="grid gap-4 sm:grid-cols-3">
-                    <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
+                    <div className="ui-inset border border-border/70 p-4">
                       <p className="text-sm text-muted-foreground">Calories</p>
                       <p className="mt-2 text-sm font-semibold text-foreground">
                         {typeof targets?.calories === "number"
@@ -1886,7 +1990,7 @@ function ClientWorkspaceHomePage() {
                           : "Coach setting in progress"}
                       </p>
                     </div>
-                    <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
+                    <div className="ui-inset border border-border/70 p-4">
                       <p className="text-sm text-muted-foreground">Protein</p>
                       <p className="mt-2 text-sm font-semibold text-foreground">
                         {typeof targets?.protein_g === "number"
@@ -1894,7 +1998,7 @@ function ClientWorkspaceHomePage() {
                           : "Prioritize protein today"}
                       </p>
                     </div>
-                    <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
+                    <div className="ui-inset border border-border/70 p-4">
                       <p className="text-sm text-muted-foreground">Steps</p>
                       <p className="mt-2 text-sm font-semibold text-foreground">
                         {typeof targets?.steps === "number"
@@ -1903,7 +2007,7 @@ function ClientWorkspaceHomePage() {
                       </p>
                     </div>
                   </div>
-                  <div className="rounded-[var(--radius-lg)] border border-border/70 bg-background/45 p-4">
+                  <div className="ui-inset border border-border/70 p-4">
                     <p className="text-sm font-medium text-foreground">
                       Coach note
                     </p>
@@ -1935,7 +2039,7 @@ function ClientWorkspaceHomePage() {
           <SurfaceCardHeader>
             <SurfaceCardTitle>Lead conversations</SurfaceCardTitle>
             <SurfaceCardDescription>
-              Continue pre-workspace chat in the same home surface.
+              Continue your conversation with a coach.
             </SurfaceCardDescription>
           </SurfaceCardHeader>
           <SurfaceCardContent>
@@ -1986,7 +2090,7 @@ export function ClientHomePage() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Workspace access activated</DialogTitle>
+            <DialogTitle>Your coaching account is connected</DialogTitle>
             <DialogDescription>
               You have been added to{" "}
               <span className="font-medium text-foreground">
@@ -1995,7 +2099,7 @@ export function ClientHomePage() {
               .
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-[18px] border border-border/70 bg-background/45 p-3 text-sm text-muted-foreground">
+          <div className="ui-panel border border-border/70 p-3 text-sm text-muted-foreground">
             {inviteJoinContext.message}
           </div>
           <DialogFooter>

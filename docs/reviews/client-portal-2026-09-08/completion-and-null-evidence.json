@@ -1,0 +1,10 @@
+{
+  "workout": {
+    "url": "http://localhost:5173/app/workout-summary/a9082026-a001-4000-8000-000000000901",
+    "text": "SETS LOGGED\n\n1\n\nEXERCISES\n\n1\n\nTOTAL VOLUME\n\n500\n\nAVERAGE RPE\n\n--\n\nSession recap\nSep 8, 11:15 AM\n\nReview your logged sets by exercise.\n\nTrap Bar Deadlift\n\n1 set logged\n\nVolume 500\n\nLoad change 0.0\n\n#1\n\n5 reps @ 100\n\n--\nShare feedback with your coach while this session is still fresh.\nMessage coach about this workout"
+  },
+  "nutrition": {
+    "blankSavedAs": "0",
+    "text": "Personal\nPlanned\nMeals\n\nMark meals as completed.\n\nReview lunch\n\nPending\nMeal details\n\nUpdate actual intake\n\nReview lunch\n\n600 cals / 40p / 65c / 20f\n\nMEAL COMPONENTS\n\nNo foods have been added to this meal yet.\n\nMark complete\nSave meal log\nSummary\n\nPlanned vs actual\n\nCompletion\n\n0/1 meals (0%)\n\nPlanned totals\n\n600 cals\n\n40p / 65c / 20f\n\nActual totals\n\n0 cals\n\n40p / 65c / 20f"
+  }
+}

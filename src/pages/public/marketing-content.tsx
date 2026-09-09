@@ -22,7 +22,7 @@ import {
   UserRound,
   UsersRound,
   Utensils,
-} from "lucide-react";
+} from "../../lib/icons";
 import { AppFooter } from "../../components/common/app-footer";
 import {
   legalReviewRequired,

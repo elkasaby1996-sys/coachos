@@ -18,7 +18,7 @@ import {
   Search,
   Send,
   X,
-} from "lucide-react";
+} from "../../lib/icons";
 import { Button } from "../ui/button";
 import { EmptyState, Skeleton } from "../ui/coachos";
 import { Input } from "../ui/input";
@@ -34,6 +34,8 @@ import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import { cn } from "../../lib/utils";
+import { ProfileAvatar } from "../common/profile-avatar";
+import { useClientAvatars } from "../../hooks/use-client-avatars";
 import { getCharacterLimitState } from "../../lib/character-limits";
 import { FieldCharacterMeta } from "../common/field-character-meta";
 import {
@@ -167,10 +169,12 @@ function MessageWidgetSearch({
 
 function MessageWidgetRow({
   row,
+  photoUrl,
   active,
   onSelect,
 }: {
   row: InboxRow;
+  photoUrl?: string | null;
   active: boolean;
   onSelect: () => void;
 }) {
@@ -179,14 +183,15 @@ function MessageWidgetRow({
       type="button"
       onClick={onSelect}
       className={cn(
-        "w-full rounded-[22px] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
+        "w-full rounded-[var(--ui-radius-card)] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
         active
           ? "border-primary/28 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.14),transparent_46%),linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.78),oklch(var(--bg-surface)/0.68))] shadow-[0_22px_46px_-34px_oklch(var(--accent)/0.28)]"
           : "border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.72),oklch(var(--bg-surface)/0.58))] hover:border-border hover:bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.8),oklch(var(--bg-surface)/0.64))]",
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <ProfileAvatar name={row.name} src={photoUrl} />
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-semibold text-foreground">
               {row.name}
@@ -317,8 +322,9 @@ function MessageWidgetComposer({
           {error}
         </p>
       ) : null}
-      <div className="flex items-center gap-2 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.6))] p-2 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] backdrop-blur-xl">
+      <div className="flex items-center gap-2 rounded-[var(--ui-radius-card)] border border-white/10 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.6))] p-2 shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] backdrop-blur-xl">
         <textarea
+          data-ui="field"
           ref={textareaRef}
           rows={1}
           value={value}
@@ -327,7 +333,7 @@ function MessageWidgetComposer({
           placeholder={placeholder}
           data-invalid={limitError ? "true" : undefined}
           aria-invalid={limitError ? true : undefined}
-          className="!h-10 !min-h-10 !max-h-10 w-full resize-none overflow-hidden bg-transparent px-3 py-2 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground/80 [scrollbar-width:none] [&::-webkit-resizer]:hidden [&::-webkit-scrollbar]:hidden"
+          className="app-field app-field-textarea !h-10 !min-h-10 !max-h-10 w-full resize-none overflow-hidden bg-transparent px-3 py-2 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground/80 [scrollbar-width:none] [&::-webkit-resizer]:hidden [&::-webkit-scrollbar]:hidden"
         />
         <Button
           type="button"
@@ -426,6 +432,7 @@ export function PtMessageComposeProvider({
   });
 
   const clients = useMemo(() => clientsQuery.data ?? [], [clientsQuery.data]);
+  const clientAvatars = useClientAvatars(clients.map((client) => client.id));
 
   const conversationMap = useMemo(() => {
     const map = new Map<string, ConversationRow>();
@@ -891,7 +898,7 @@ export function PtMessageComposeProvider({
                 }
                 tabIndex={-1}
                 data-pt-message-compose-drawer="true"
-                className="pointer-events-auto fixed inset-x-3 top-[max(env(safe-area-inset-top),0.75rem)] bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] flex flex-col overflow-hidden rounded-[30px] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[0_34px_86px_-40px_oklch(0_0_0/0.92)] outline-none backdrop-blur-xl sm:inset-x-auto sm:right-4 sm:top-[8.75rem] sm:bottom-[calc(env(safe-area-inset-bottom)+5rem)] sm:h-auto sm:w-[400px]"
+                className="pointer-events-auto fixed inset-x-3 top-[max(env(safe-area-inset-top),0.75rem)] bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] flex flex-col overflow-hidden rounded-[var(--ui-radius-card)] border border-border/75 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.86),oklch(var(--bg-surface)/0.72))] shadow-[0_34px_86px_-40px_oklch(0_0_0/0.92)] outline-none backdrop-blur-xl sm:inset-x-auto sm:right-4 sm:top-[8.75rem] sm:bottom-[calc(env(safe-area-inset-bottom)+5rem)] sm:h-auto sm:w-[400px]"
               >
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,oklch(var(--accent)/0.1),transparent_34%),linear-gradient(180deg,oklch(1_0_0/0.04),transparent_36%)]" />
                 <div className="relative flex min-h-12 items-center justify-between border-b border-border/65 px-4 py-1.5">
@@ -909,7 +916,18 @@ export function PtMessageComposeProvider({
                       </Button>
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-foreground">
-                          {selectedRow?.name ?? "Conversation"}
+                          <span className="flex items-center gap-2">
+                            <ProfileAvatar
+                              name={selectedRow?.name ?? "Client"}
+                              src={clientAvatars.data?.get(
+                                selectedClientId ?? "",
+                              )}
+                              className="h-7 w-7"
+                            />
+                            <span className="truncate">
+                              {selectedRow?.name ?? "Conversation"}
+                            </span>
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -980,7 +998,7 @@ export function PtMessageComposeProvider({
                           )}
                         </div>
                       ) : (
-                        <div className="rounded-[24px] border border-dashed border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.6))] px-4 py-5">
+                        <div className="rounded-[var(--ui-radius-card)] border border-dashed border-border/70 bg-[linear-gradient(180deg,oklch(var(--bg-surface-elevated)/0.74),oklch(var(--bg-surface)/0.6))] px-4 py-5">
                           <div className="text-sm font-semibold text-foreground">
                             Start the conversation
                           </div>
@@ -1032,7 +1050,7 @@ export function PtMessageComposeProvider({
                           {Array.from({ length: 6 }).map((_, index) => (
                             <Skeleton
                               key={index}
-                              className="h-20 w-full rounded-[22px]"
+                              className="h-20 w-full rounded-[var(--ui-radius-card)]"
                             />
                           ))}
                         </div>
@@ -1053,6 +1071,7 @@ export function PtMessageComposeProvider({
                           {filteredInboxRows.map((row) => (
                             <MessageWidgetRow
                               key={row.client.id}
+                              photoUrl={clientAvatars.data?.get(row.client.id)}
                               row={row}
                               active={row.client.id === selectedClientId}
                               onSelect={() => {

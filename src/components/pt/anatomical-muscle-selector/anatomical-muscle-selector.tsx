@@ -1,15 +1,18 @@
 import { useId, useState } from "react";
-import { List, RotateCcw, ScanSearch } from "lucide-react";
+import { Check, List, ScanSearch } from "../../../lib/icons";
 import {
+  BODY_REGIONS,
   getMuscleMetadata,
   type MuscleKey,
 } from "../../../lib/exercise-muscle-taxonomy";
 import { cn } from "../../../lib/utils";
-import { Button } from "../../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { AccessibleMuscleList } from "./accessible-muscle-list";
 import { AnatomicalFigure } from "./anatomical-figure";
-import type { AnatomySurface } from "./anatomy-registry";
+import {
+  getAnatomicalRegionsForSurface,
+  type AnatomySurface,
+} from "./anatomy-registry";
 import "./anatomical-muscle-selector.css";
 
 export type AnatomicalMuscleSelectorProps = {
@@ -19,118 +22,157 @@ export type AnatomicalMuscleSelectorProps = {
   className?: string;
 };
 
+function SelectionContext({
+  value,
+  activeSurface,
+}: {
+  value: MuscleKey | null;
+  activeSurface: AnatomySurface;
+}) {
+  const selectedMuscle = value ? getMuscleMetadata(value) : null;
+  const region = BODY_REGIONS.find(
+    (item) => item.key === selectedMuscle?.regionKey,
+  );
+  const onSurface = getAnatomicalRegionsForSurface(activeSurface).some(
+    (item) => item.muscleKey === value,
+  );
+  return (
+    <div
+      className="anatomy-selection-context"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <span className="anatomy-selection-icon" aria-hidden="true">
+        {selectedMuscle ? <Check size={16} /> : <ScanSearch size={16} />}
+      </span>
+      <div>
+        <strong>{selectedMuscle ? selectedMuscle.label : "All muscles"}</strong>
+        <p>
+          {selectedMuscle
+            ? `${region?.label}${onSurface ? " · Selected" : ` · Selected on ${activeSurface === "front" ? "back" : "front"}`}`
+            : "Choose one muscle to filter exercises."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+type AnatomyWorkspaceProps = {
+  value: MuscleKey | null;
+  onValueChange: (value: MuscleKey) => void;
+  disabled: boolean;
+  activeSurface: AnatomySurface;
+  setActiveSurface: (surface: AnatomySurface) => void;
+};
+
+function AnatomyWorkspace({
+  value,
+  onValueChange,
+  disabled,
+  activeSurface,
+  setActiveSurface,
+}: AnatomyWorkspaceProps) {
+  const id = useId();
+  const headingId = `${id}-${activeSurface}-heading`;
+  const [view, setView] = useState("map");
+  return (
+    <Tabs value={view} onValueChange={setView} className="anatomy-workspace">
+      <TabsList className="anatomy-view-tabs" aria-label="Anatomy display">
+        <TabsTrigger value="map" disabled={disabled}>
+          <ScanSearch size={15} aria-hidden="true" />
+          Body map
+        </TabsTrigger>
+        <TabsTrigger value="list" disabled={disabled}>
+          <List size={15} aria-hidden="true" />
+          Muscle list
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="map" className="anatomy-map-content">
+        <div className="anatomy-map-layout">
+          <div className="anatomy-map-visual">
+            <div
+              className="anatomy-surface-switch"
+              role="group"
+              aria-label="Anatomical surface"
+            >
+              {(["front", "back"] as const).map((surface) => (
+                <button
+                  key={surface}
+                  type="button"
+                  disabled={disabled}
+                  aria-pressed={activeSurface === surface}
+                  onClick={() => setActiveSurface(surface)}
+                >
+                  {surface === "front" ? "Front" : "Back"}
+                </button>
+              ))}
+            </div>
+            <h3 id={headingId} className="sr-only">
+              {activeSurface} anatomical muscle map
+            </h3>
+            <div className="anatomy-canvas">
+              <div className="anatomy-figure-stage">
+                <AnatomicalFigure
+                  surface={activeSurface}
+                  value={value}
+                  onValueChange={onValueChange}
+                  disabled={disabled}
+                  labelledBy={headingId}
+                />
+              </div>
+              <div className="anatomy-selection-row">
+                <SelectionContext value={value} activeSurface={activeSurface} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </TabsContent>
+      <TabsContent value="list" className="anatomy-list-content">
+        <AccessibleMuscleList
+          value={value}
+          onValueChange={onValueChange}
+          disabled={disabled}
+        />
+        <div className="anatomy-selection-row">
+          <SelectionContext value={value} activeSurface={activeSurface} />
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+}
+
 export function AnatomicalMuscleSelector({
   value,
   onValueChange,
   disabled = false,
   className,
 }: AnatomicalMuscleSelectorProps) {
-  const id = useId();
   const [activeSurface, setActiveSurface] = useState<AnatomySurface>("front");
-  const selectedMuscle = value ? getMuscleMetadata(value) : null;
-
   const selectMuscle = (muscleKey: MuscleKey) => {
     if (!disabled) onValueChange(muscleKey);
   };
-
-  const headingId = `${id}-${activeSurface}-heading`;
+  const workspaceProps = {
+    value,
+    onValueChange: selectMuscle,
+    disabled,
+    activeSurface,
+    setActiveSurface,
+  };
 
   return (
     <section
       className={cn(
-        "anatomy-selector w-full min-w-0 rounded-[26px] bg-card/72 p-3 shadow-card sm:p-4",
+        "anatomy-selector anatomy-theme",
         disabled && "is-disabled",
         className,
       )}
       aria-label="Anatomical muscle selector"
-      aria-disabled={disabled}
+      aria-disabled={disabled || undefined}
     >
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {selectedMuscle
-          ? `${selectedMuscle.label} selected.`
-          : "Muscle selection cleared."}
+      <div className="anatomy-selector-heading">
+        <h3>Target muscle</h3>
       </div>
-
-      <Tabs defaultValue="map" className="min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <TabsList className="anatomy-view-tabs grid min-w-0 flex-1 grid-cols-2">
-            <TabsTrigger value="map" className="gap-2">
-              <ScanSearch className="h-4 w-4" aria-hidden="true" />
-              Body map
-            </TabsTrigger>
-            <TabsTrigger value="list" className="gap-2">
-              <List className="h-4 w-4" aria-hidden="true" />
-              Muscle list
-            </TabsTrigger>
-          </TabsList>
-          {selectedMuscle ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="shrink-0"
-              disabled={disabled}
-              aria-label="Clear selected muscle"
-              onClick={() => onValueChange(null)}
-            >
-              <RotateCcw className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Clear</span>
-            </Button>
-          ) : null}
-        </div>
-
-        <TabsContent value="map" className="mt-2 min-w-0">
-          <div
-            className="anatomy-surface-switch mx-auto grid w-full max-w-64 grid-cols-2 gap-1 rounded-xl border border-border/65 bg-muted/45 p-1"
-            role="group"
-            aria-label="Anatomical surface"
-          >
-            {(["front", "back"] as const).map((surface) => (
-              <button
-                key={surface}
-                type="button"
-                aria-pressed={activeSurface === surface}
-                disabled={disabled}
-                onClick={() => setActiveSurface(surface)}
-                className={cn(
-                  "min-h-10 cursor-pointer rounded-lg px-4 py-2 text-sm font-medium capitalize transition-[background-color,color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed",
-                  activeSurface === surface
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {surface}
-              </button>
-            ))}
-          </div>
-
-          <h3 id={headingId} className="sr-only">
-            {activeSurface} anatomical muscle map
-          </h3>
-          <div className="anatomy-canvas mt-2 min-w-0 overflow-hidden rounded-[18px] px-1.5 py-1.5 sm:mt-[25px] sm:px-2 sm:py-[23px]">
-            <div className="anatomy-figure-stage flex min-w-0 justify-center">
-              <AnatomicalFigure
-                surface={activeSurface}
-                value={value}
-                onValueChange={selectMuscle}
-                disabled={disabled}
-                labelledBy={headingId}
-              />
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="list" className="min-w-0">
-          <p className="mb-3 text-sm leading-5 text-muted-foreground">
-            Browse the same canonical muscles grouped by body region.
-          </p>
-          <AccessibleMuscleList
-            value={value}
-            onValueChange={selectMuscle}
-            disabled={disabled}
-          />
-        </TabsContent>
-      </Tabs>
+      <AnatomyWorkspace {...workspaceProps} />
     </section>
   );
 }

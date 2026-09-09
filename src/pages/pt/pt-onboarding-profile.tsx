@@ -226,7 +226,7 @@ export function PtProfileOnboardingPage() {
 
   return (
     <AuthBackdrop contentClassName="max-w-2xl">
-      <Card className="w-full rounded-[28px] border-border/70 bg-card/88 shadow-[0_32px_90px_-52px_rgba(0,0,0,0.72)] backdrop-blur-xl">
+      <Card className="w-full rounded-[var(--ui-radius-card)] border-border/70 bg-card/88 shadow-[0_32px_90px_-52px_rgba(0,0,0,0.72)] backdrop-blur-xl">
         <CardHeader className="space-y-2">
           <CardTitle>Finish your coach profile</CardTitle>
           <p className="text-sm text-muted-foreground">
@@ -298,7 +298,8 @@ export function PtProfileOnboardingPage() {
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">Bio</label>
               <textarea
-                className="min-h-[140px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground"
+                data-ui="field"
+                className="app-field app-field-textarea min-h-[140px] w-full rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground"
                 value={form.bio}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, bio: event.target.value }))

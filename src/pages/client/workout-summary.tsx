@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Dumbbell, Gauge, Scale, Sparkles } from "lucide-react";
+import { Sparkles } from "../../lib/icons";
+import { PortalPageHeader } from "../../components/client/portal/portal-ui";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -220,24 +221,15 @@ export function ClientWorkoutSummaryPage() {
 
   return (
     <div className="space-y-6 pb-16 md:pb-0">
-      <section className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Workout summary
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {workoutTemplate?.name ?? "Workout summary"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {workoutTemplate?.description ?? "Summary details below."}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => navigate("/app/home")}>
-            Back to home
-          </Button>
-        </div>
-      </section>
+      <PortalPageHeader
+        title={workoutTemplate?.name ?? "Workout summary"}
+        subtitle={
+          workoutTemplate?.description ??
+          "Review your session, completed sets, and training volume."
+        }
+        backTo="/app/workouts"
+        backLabel="Back to workouts"
+      />
 
       {errors.length > 0 ? (
         <div className="space-y-2">
@@ -289,43 +281,39 @@ export function ClientWorkoutSummaryPage() {
         <div className="space-y-4">
           <Card className={`${cardChrome} bg-card/70`}>
             <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-border/70 bg-muted/15 p-3">
+              <div className="ui-inset border border-border/70 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                   Sets logged
                 </p>
                 <div className="mt-2 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
                   <p className="text-xl font-semibold">{totalSets}</p>
                 </div>
               </div>
-              <div className="rounded-xl border border-border/70 bg-muted/15 p-3">
+              <div className="ui-inset border border-border/70 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                   Exercises
                 </p>
                 <div className="mt-2 flex items-center gap-2">
-                  <Dumbbell className="h-4 w-4 text-primary" />
                   <p className="text-xl font-semibold">
                     {sessionStats.exerciseCount}
                   </p>
                 </div>
               </div>
-              <div className="rounded-xl border border-border/70 bg-muted/15 p-3">
+              <div className="ui-inset border border-border/70 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                   Total volume
                 </p>
                 <div className="mt-2 flex items-center gap-2">
-                  <Scale className="h-4 w-4 text-primary" />
                   <p className="text-xl font-semibold">
                     {sessionStats.totalVolume.toLocaleString()}
                   </p>
                 </div>
               </div>
-              <div className="rounded-xl border border-border/70 bg-muted/15 p-3">
+              <div className="ui-inset border border-border/70 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                   Average RPE
                 </p>
                 <div className="mt-2 flex items-center gap-2">
-                  <Gauge className="h-4 w-4 text-primary" />
                   <p className="text-xl font-semibold">
                     {sessionStats.avgRpe ?? "--"}
                   </p>
@@ -389,7 +377,7 @@ export function ClientWorkoutSummaryPage() {
                     return (
                       <div
                         key={exerciseId}
-                        className="rounded-xl border border-border/70 bg-background/65 p-3"
+                        className="ui-inset border border-border/70 p-3"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
@@ -432,7 +420,7 @@ export function ClientWorkoutSummaryPage() {
                   })}
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+                <div className="ui-inset border border-dashed border-border p-4 text-sm text-muted-foreground">
                   No sets logged yet. Log a few sets to see your recap.
                 </div>
               )}

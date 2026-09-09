@@ -1,0 +1,237 @@
+.pt-hub-theme:has(.clients-page) {
+  overflow: clip;
+}
+
+.client-outline-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 10px 15px;
+  border: 1px solid var(--analytics-line);
+  border-radius: 10px;
+  background: var(--analytics-panel);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.client-outline-link:hover {
+  border-color: #0e8c94;
+  color: #0e8c94;
+}
+.client-filter-toolbar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 16px;
+}
+.client-filter-search {
+  grid-column: 1 / -1;
+}
+.client-filter-toolbar > * {
+  min-width: 0;
+}
+.client-filter-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--analytics-muted);
+}
+.client-directory-panel .workspace-client-columns {
+  padding-block: 12px;
+  color: var(--analytics-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.client-directory-panel .workspace-client-row {
+  min-height: 82px;
+  padding-block: 17px;
+}
+.client-directory-panel .workspace-client-open {
+  font-size: 15px;
+  font-weight: 600;
+}
+.client-directory-panel .workspace-client-identity > p {
+  margin-top: 5px;
+  font-size: 12px;
+}
+.client-directory-panel .workspace-client-space {
+  font-size: 12px;
+}
+.client-directory-panel .workspace-client-arrow {
+  color: #0e8c94;
+}
+.client-directory-footer {
+  font-size: 12px;
+}
+
+/* These rules belong to the profile's content; the workspace shell and
+   portaled editing dialogs retain their own layout and behavior. */
+.client-profile-page > * {
+  min-width: 0;
+}
+.client-profile-page .ui-card {
+  border-radius: 16px;
+  border-color: var(--analytics-line);
+  box-shadow: none;
+  background: var(--analytics-panel);
+}
+.client-profile-page .ui-card > .ui-card-header:not(.kpi-card-content) {
+  padding: 22px 24px 18px;
+  border-bottom: 0;
+  background: transparent;
+}
+.client-profile-page .ui-card-title:not(.kpi-value) {
+  font-size: 19px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.25px;
+}
+.client-profile-page .ui-card > .ui-card-content {
+  padding: 0 24px 24px;
+}
+.client-profile-page .ui-card > .ui-card-content:first-child {
+  padding-top: 24px;
+}
+.client-profile-page .client-profile-heading {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+.client-profile-page .client-profile-heading > .ui-card-content:first-child {
+  padding: 4px 0 8px;
+}
+.client-profile-heading h1 {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -1.5px;
+  overflow-wrap: anywhere;
+}
+.client-profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 58px;
+  height: 58px;
+  border: 1px solid oklch(var(--primary) / 0.18);
+  border-radius: 16px;
+  background: oklch(var(--primary) / 0.07);
+  color: oklch(var(--primary));
+  font-size: 18px;
+  font-weight: 500;
+}
+.client-profile-summary > div:first-child {
+  height: 100%;
+}
+.client-profile-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  height: 100%;
+  border: 1px solid var(--analytics-line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--analytics-panel);
+}
+.client-profile-metric-grid > * {
+  min-width: 0;
+}
+.client-profile-metric-grid > :nth-child(even) {
+  border-left: 1px solid var(--analytics-line);
+}
+.client-profile-metric-grid > :nth-child(n + 3) {
+  border-top: 1px solid var(--analytics-line);
+}
+.client-profile-metric-grid .ui-card {
+  border: 0;
+  border-radius: 0;
+  min-height: 0;
+  backdrop-filter: none;
+}
+.client-profile-metric-grid .ui-card-header {
+  padding: 20px 22px;
+  gap: 9px;
+}
+.client-profile-metric-grid .kpi-label {
+  color: var(--analytics-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.client-profile-metric-grid .kpi-value {
+  font-family: var(--ui-font-body);
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.75px;
+}
+.client-profile-metric-grid .kpi-helper {
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+.client-profile-tab-bar {
+  padding: 0 0 18px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--analytics-line);
+}
+.client-profile-tab-bar [role="tab"] {
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  box-shadow: none;
+  letter-spacing: 0;
+  transition:
+    background 150ms,
+    color 150ms;
+}
+.client-profile-tab-bar [role="tab"]:hover {
+  background: oklch(var(--primary) / 0.06);
+}
+.client-profile-tab-bar [role="tab"][data-state="active"] {
+  border-color: oklch(var(--primary) / 0.2);
+  background: oklch(var(--primary) / 0.08);
+  color: oklch(var(--primary));
+  box-shadow: none;
+}
+@media (max-width: 700px) {
+  .clients-page .analytics-heading {
+    flex-wrap: wrap;
+  }
+  .client-filter-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .client-profile-heading h1 {
+    font-size: 34px;
+  }
+  .client-profile-page .ui-card > .ui-card-header:not(.kpi-card-content) {
+    padding: 18px 18px 16px;
+  }
+  .client-profile-page .ui-card > .ui-card-content {
+    padding: 0 18px 18px;
+  }
+  .client-profile-page .ui-card > .ui-card-content:first-child {
+    padding-top: 18px;
+  }
+  .client-profile-page .client-profile-heading > .ui-card-content:first-child {
+    padding: 4px 0 8px;
+  }
+  .client-profile-metric-grid .ui-card-header {
+    padding: 18px;
+  }
+  .client-profile-metric-grid .kpi-value {
+    font-size: 26px;
+  }
+}
+@media (max-width: 420px) {
+  .client-filter-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .client-profile-metric-grid .ui-card-header {
+    padding: 15px;
+  }
+}
