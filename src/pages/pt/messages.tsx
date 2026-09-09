@@ -34,6 +34,8 @@ import { FieldCharacterMeta } from "../../components/common/field-character-meta
 import { Textarea } from "../../components/ui/textarea";
 import { getCharacterLimitState } from "../../lib/character-limits";
 import { useConvertedLeadHistory } from "../../features/lead-chat/lib/lead-chat";
+import { ProfileAvatar } from "../../components/common/profile-avatar";
+import { useClientAvatars } from "../../hooks/use-client-avatars";
 
 const formatTime = (timestamp: string | null) => {
   if (!timestamp) return "";
@@ -138,6 +140,10 @@ export function PtMessagesPage() {
       return (data ?? []) as ClientRow[];
     },
   });
+
+  const clientAvatars = useClientAvatars(
+    (clientsQuery.data ?? []).map((client) => client.id),
+  );
 
   const conversationsQuery = useQuery({
     queryKey: ["pt-messages-conversations", workspaceId],
@@ -704,7 +710,11 @@ export function PtMessagesPage() {
                         )}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 space-y-1">
+                          <ProfileAvatar
+                            name={row.name}
+                            src={clientAvatars.data?.get(row.client.id)}
+                          />
+                          <div className="min-w-0 flex-1 space-y-1">
                             <div className="flex items-center gap-2">
                               <div
                                 className="truncate font-semibold text-foreground"
@@ -767,6 +777,10 @@ export function PtMessagesPage() {
           title={
             selectedClient ? (
               <div className="flex min-w-0 items-center gap-2">
+                <ProfileAvatar
+                  name={selectedConversationRow?.name ?? "Client"}
+                  src={clientAvatars.data?.get(selectedClient.id)}
+                />
                 <span className="truncate text-base font-semibold text-foreground">
                   {selectedConversationRow?.name ?? "Client"}
                 </span>

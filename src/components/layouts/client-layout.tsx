@@ -21,6 +21,7 @@ import {
   type AppIcon as PhosphorIcon,
 } from "../../lib/icons";
 import { useState } from "react";
+import { ProfileAvatar } from "../common/profile-avatar";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import { cn } from "../../lib/utils";
 import { AppShellBackgroundLayer } from "../common/app-shell-background";
@@ -205,7 +206,6 @@ export function ClientLayout() {
     clientProfile?.full_name?.trim() ||
     clientProfile?.display_name?.trim() ||
     "Client profile";
-  const profileInitial = (profileDisplayName.charAt(0) || "C").toUpperCase();
   const isLightMode = resolvedTheme === "light";
   const visibleNavItems = navItems;
   const isWorkoutDetail = /^\/app\/workout-(run|summary)\//.test(
@@ -309,7 +309,14 @@ export function ClientLayout() {
                                 isLightMode,
                               )}
                             >
-                              {profileInitial}
+                              <ProfileAvatar
+                                name={profileDisplayName}
+                                src={
+                                  clientProfile?.avatar_url?.trim() ||
+                                  clientProfile?.photo_url
+                                }
+                                className="h-full w-full rounded-[inherit]"
+                              />
                             </div>
                             <div className="min-w-0 flex-1 space-y-0.5 text-left">
                               <div className="flex min-w-0 items-center gap-2">

@@ -38,6 +38,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { NotificationBell } from "../../features/notifications/components/notification-bell";
 import {
   createPtWorkspace,
+  usePtHubProfile,
   usePtHubSettings,
   usePtHubWorkspaces,
 } from "../../features/pt-hub/lib/pt-hub";
@@ -52,6 +53,7 @@ import { useWorkspace } from "../../lib/use-workspace";
 import { tracePoint } from "../../lib/perf-trace";
 import { LoadingScreen } from "../common/bootstrap-gate";
 import { AppFooter } from "../common/app-footer";
+import { ProfileAvatar } from "../common/profile-avatar";
 import { PageContainer } from "../common/page-container";
 import { ThemeModeSwitch } from "../common/theme-mode-switch";
 import { useTheme } from "../common/theme-provider";
@@ -547,7 +549,8 @@ export function PtLayout() {
     refreshWorkspace,
   } = useWorkspace();
   const { authError, user } = useSessionAuth();
-  const { patchBootstrap } = useBootstrapAuth();
+  const { patchBootstrap, ptProfile } = useBootstrapAuth();
+  const hubProfileQuery = usePtHubProfile();
   const settingsQuery = usePtHubSettings();
   const { resolvedTheme, toggleTheme } = useTheme();
   const isLightMode = resolvedTheme === "light";
@@ -1027,13 +1030,6 @@ export function PtLayout() {
     }
   };
 
-  const userInitial = (
-    profileDisplayName.charAt(0) ||
-    user?.email?.charAt(0) ||
-    user?.phone?.charAt(0) ||
-    "U"
-  ).toUpperCase();
-
   const searchOverlay =
     searchOpen && searchPanelLayout && typeof document !== "undefined"
       ? createPortal(
@@ -1438,7 +1434,14 @@ export function PtLayout() {
                           <div
                             className={getHeaderPillIconClassName(isLightMode)}
                           >
-                            {userInitial}
+                            <ProfileAvatar
+                              name={profileDisplayName}
+                              src={
+                                hubProfileQuery.data?.profilePhotoUrl ||
+                                ptProfile?.avatar_url
+                              }
+                              className="h-full w-full rounded-[inherit]"
+                            />
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">

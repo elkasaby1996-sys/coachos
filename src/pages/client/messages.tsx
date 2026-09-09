@@ -68,9 +68,13 @@ import {
   type MyLeadChatThreadSummary,
 } from "../../features/lead-chat/lib/lead-chat";
 
+import { ProfileAvatar } from "../../components/common/profile-avatar";
+
 type ClientProfileRow = {
   id: string;
   display_name: string | null;
+  avatar_url: string | null;
+  photo_url: string | null;
   workspace_id: string | null;
   created_at: string;
 };
@@ -101,6 +105,7 @@ type WorkspaceCoachProfileRow = {
   user_id: string;
   full_name: string | null;
   display_name: string | null;
+  profile_photo_url: string | null;
 };
 
 type WorkspaceCoachIdentityRow = {
@@ -130,6 +135,7 @@ type UnifiedInboxThread =
   | {
       id: string;
       type: "workspace";
+      photoUrl: string | null;
       title: string;
       preview: string;
       timestamp: string | null;
@@ -142,6 +148,7 @@ type UnifiedInboxThread =
   | {
       id: string;
       type: "lead";
+      photoUrl: string | null;
       title: string;
       preview: string;
       timestamp: string | null;
@@ -249,7 +256,9 @@ export function ClientMessagesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, display_name, workspace_id, created_at")
+        .select(
+          "id, display_name, avatar_url, photo_url, workspace_id, created_at",
+        )
         .eq("user_id", session?.user?.id ?? "")
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -361,8 +370,11 @@ export function ClientMessagesPage() {
     (workspaceNamesQuery.data ?? []).forEach((workspace) => {
       if (workspace.owner_user_id) values.add(workspace.owner_user_id);
     });
+    (leadThreadsQuery.data ?? []).forEach((thread) =>
+      values.add(thread.ptUserId),
+    );
     return Array.from(values);
-  }, [workspaceNamesQuery.data]);
+  }, [workspaceNamesQuery.data, leadThreadsQuery.data]);
 
   const workspaceCoachProfilesQuery = useQuery({
     queryKey: [
@@ -374,7 +386,7 @@ export function ClientMessagesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pt_hub_profiles")
-        .select("user_id, full_name, display_name")
+        .select("user_id, full_name, display_name, profile_photo_url")
         .in("user_id", workspaceOwnerUserIds);
       if (error) throw error;
       return (data ?? []) as WorkspaceCoachProfileRow[];
@@ -496,6 +508,10 @@ export function ClientMessagesPage() {
           }),
           type: "workspace",
           title: displayTitle,
+          photoUrl:
+            workspaceCoachProfilesQuery.data?.find(
+              (profile) => profile.user_id === workspaceOwnerUserId,
+            )?.profile_photo_url ?? null,
           preview: conversation.last_message_preview ?? "No messages yet",
           timestamp: conversation.last_message_at,
           unreadCount:
@@ -532,6 +548,10 @@ export function ClientMessagesPage() {
         }),
         type: "lead",
         title: thread.ptDisplayName || "Lead conversation",
+        photoUrl:
+          workspaceCoachProfilesQuery.data?.find(
+            (profile) => profile.user_id === thread.ptUserId,
+          )?.profile_photo_url ?? null,
         preview: thread.lastMessagePreview ?? "No messages yet",
         timestamp: thread.lastMessageAt ?? thread.submittedAt ?? null,
         unreadCount: thread.unreadCount,
@@ -554,6 +574,7 @@ export function ClientMessagesPage() {
     workspaceConversationsQuery.data,
     workspaceCoachIdentityById,
     workspaceCoachDisplayNameByUserId,
+    workspaceCoachProfilesQuery.data,
     workspaceCoachNameByConversationId,
     workspaceNameById,
     workspaceOwnerIdById,
@@ -1209,7 +1230,11 @@ export function ClientMessagesPage() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 space-y-1">
+                        <ProfileAvatar
+                          name={thread.title}
+                          src={thread.photoUrl}
+                        />
+                        <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex items-center gap-2">
                             <p className="truncate text-sm font-semibold text-foreground">
                               {thread.title}
@@ -1247,7 +1272,13 @@ export function ClientMessagesPage() {
         <SurfaceCard className="overflow-hidden">
           <SurfaceCardHeader className="border-b border-border/60 pb-4">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex min-w-0 items-center">
+              <div className="flex min-w-0 items-center gap-3">
+                {selectedThread ? (
+                  <ProfileAvatar
+                    name={selectedThread.title}
+                    src={selectedThread.photoUrl}
+                  />
+                ) : null}
                 <div className="min-w-0">
                   <SurfaceCardTitle className="truncate text-lg">
                     {selectedThread?.title ?? "Select a conversation"}
@@ -1431,6 +1462,11 @@ export function ClientMessagesPage() {
                       {renderedWorkspaceMessages.length > 0 ? (
                         renderedWorkspaceMessages.map((message) => {
                           const isMine = message.sender_role === "client";
+                          const messageClient = clientProfilesQuery.data?.find(
+                            (profile) =>
+                              profile.id ===
+                              selectedThread.workspaceConversation.client_id,
+                          );
                           const senderLabel = formatMessageSenderLabel({
                             currentUserId: session?.user?.id,
                             message: {
@@ -1457,6 +1493,24 @@ export function ClientMessagesPage() {
                                 }`}
                               >
                                 <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                  <ProfileAvatar
+                                    name={
+                                      isMine
+                                        ? (messageClient?.display_name ?? "You")
+                                        : senderLabel
+                                    }
+                                    src={
+                                      isMine
+                                        ? messageClient?.avatar_url?.trim() ||
+                                          messageClient?.photo_url
+                                        : workspaceCoachProfilesQuery.data?.find(
+                                            (profile) =>
+                                              profile.user_id ===
+                                              message.sender_user_id,
+                                          )?.profile_photo_url
+                                    }
+                                    className="h-6 w-6 text-[10px]"
+                                  />
                                   <span className="font-medium text-foreground/90">
                                     {senderLabel}
                                   </span>
@@ -1508,6 +1562,20 @@ export function ClientMessagesPage() {
                             }`}
                           >
                             <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                              <ProfileAvatar
+                                name={
+                                  isMine
+                                    ? (clientProfile?.display_name ?? "You")
+                                    : selectedThread.title
+                                }
+                                src={
+                                  isMine
+                                    ? clientProfile?.avatar_url?.trim() ||
+                                      clientProfile?.photo_url
+                                    : selectedThread.photoUrl
+                                }
+                                className="h-6 w-6 text-[10px]"
+                              />
                               <span className="font-medium text-foreground/90">
                                 {isMine
                                   ? "You"

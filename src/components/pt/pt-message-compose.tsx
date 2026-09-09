@@ -34,6 +34,8 @@ import { useWorkspace } from "../../lib/use-workspace";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { getClientLifecycleMeta } from "../../lib/client-lifecycle";
 import { cn } from "../../lib/utils";
+import { ProfileAvatar } from "../common/profile-avatar";
+import { useClientAvatars } from "../../hooks/use-client-avatars";
 import { getCharacterLimitState } from "../../lib/character-limits";
 import { FieldCharacterMeta } from "../common/field-character-meta";
 import {
@@ -167,10 +169,12 @@ function MessageWidgetSearch({
 
 function MessageWidgetRow({
   row,
+  photoUrl,
   active,
   onSelect,
 }: {
   row: InboxRow;
+  photoUrl?: string | null;
   active: boolean;
   onSelect: () => void;
 }) {
@@ -186,7 +190,8 @@ function MessageWidgetRow({
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <ProfileAvatar name={row.name} src={photoUrl} />
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-semibold text-foreground">
               {row.name}
@@ -427,6 +432,7 @@ export function PtMessageComposeProvider({
   });
 
   const clients = useMemo(() => clientsQuery.data ?? [], [clientsQuery.data]);
+  const clientAvatars = useClientAvatars(clients.map((client) => client.id));
 
   const conversationMap = useMemo(() => {
     const map = new Map<string, ConversationRow>();
@@ -910,7 +916,18 @@ export function PtMessageComposeProvider({
                       </Button>
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-foreground">
-                          {selectedRow?.name ?? "Conversation"}
+                          <span className="flex items-center gap-2">
+                            <ProfileAvatar
+                              name={selectedRow?.name ?? "Client"}
+                              src={clientAvatars.data?.get(
+                                selectedClientId ?? "",
+                              )}
+                              className="h-7 w-7"
+                            />
+                            <span className="truncate">
+                              {selectedRow?.name ?? "Conversation"}
+                            </span>
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1054,6 +1071,7 @@ export function PtMessageComposeProvider({
                           {filteredInboxRows.map((row) => (
                             <MessageWidgetRow
                               key={row.client.id}
+                              photoUrl={clientAvatars.data?.get(row.client.id)}
                               row={row}
                               active={row.client.id === selectedClientId}
                               onSelect={() => {

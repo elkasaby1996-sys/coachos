@@ -4,6 +4,7 @@ import {
   isValidTimezone,
 } from "../../components/client/profile-inputs";
 import { useEffect, useMemo, useState } from "react";
+import { NotificationToast } from "../../components/common/notification-toast";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -403,7 +404,7 @@ export function ClientSettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = parseActiveTab(searchParams.get("tab"));
   const { session, user } = useSessionAuth();
-  const { activeClientId } = useBootstrapAuth();
+  const { activeClientId, refreshBootstrap } = useBootstrapAuth();
   const { themePreference, updateAppearance } = useThemePreference();
 
   const [banner, setBanner] = useState<{
@@ -720,8 +721,17 @@ export function ClientSettingsPage() {
           activeClientId,
         ],
       }),
-      queryClient.invalidateQueries({ queryKey: ["bootstrap-auth"] }),
+      refreshBootstrap(),
+      queryClient.invalidateQueries({ queryKey: ["client-message-profiles"] }),
+      queryClient.invalidateQueries({ queryKey: ["client-avatars"] }),
     ]);
+
+    const savedProfile = queryClient.getQueryData<ClientProfileRow>([
+      "client-settings-profile",
+      session?.user?.id,
+      activeClientId,
+    ]);
+    if (savedProfile) setProfileForm(buildInitialProfileForm(savedProfile));
 
     setBanner({
       tone: "success",
@@ -924,7 +934,12 @@ export function ClientSettingsPage() {
         subtitle="Manage your profile, preferences, and account."
       />
       <SettingsPageShell tabs={<SettingsTabs tabs={settingsTabLinks} />}>
-        {banner ? (
+        <NotificationToast
+          title={banner?.title}
+          message={banner?.tone === "success" ? banner.description : null}
+          onDismiss={() => setBanner(null)}
+        />
+        {banner && banner.tone !== "success" ? (
           <StatusBanner
             variant={
               banner.tone === "error"
