@@ -164,11 +164,18 @@
 .client-portal-brand {
   display: inline-flex;
   align-items: center;
+  gap: 12px;
+  max-width: min(100%, 480px);
+  overflow-wrap: anywhere;
   min-height: 44px;
   color: oklch(var(--foreground));
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.3em;
+}
+.client-portal-brand[data-workspace-brand="true"] {
+  max-width: min(480px, calc(100% - 100px));
+  letter-spacing: normal;
 }
 .client-portal-header [aria-label="Profile menu"] {
   display: flex;

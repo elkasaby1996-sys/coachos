@@ -13,7 +13,10 @@ import {
 import { Input } from "../ui/input";
 import { supabase } from "../../lib/supabase";
 import { useSessionAuth } from "../../lib/auth";
-import { getWorkspaceIdForUser } from "../../lib/workspace";
+import { useWorkspace } from "../../lib/use-workspace";
+import { useWorkspaceBranding } from "../../features/workspace-branding/use-workspace-branding";
+import { getInviteSenderName } from "../../features/workspace-branding/branding";
+import { WorkspaceLogo } from "../../features/workspace-branding/components";
 
 type InviteRecord = {
   id: string;
@@ -70,6 +73,8 @@ function getInviteMeta(selection: ExpirySelection) {
 
 export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
   const { user } = useSessionAuth();
+  const { workspaceId } = useWorkspace();
+  const brandingQuery = useWorkspaceBranding(workspaceId);
   const [open, setOpen] = useState(false);
   const [expirySelection, setExpirySelection] =
     useState<ExpirySelection>("24h");
@@ -77,6 +82,12 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [invite, setInvite] = useState<InviteRecord | null>(null);
+
+  useEffect(() => {
+    setInvite(null);
+    setCopied(false);
+    setError(null);
+  }, [workspaceId]);
 
   useEffect(() => {
     if (!copied) return;
@@ -100,7 +111,6 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
     setCopied(false);
 
     try {
-      const workspaceId = await getWorkspaceIdForUser(user.id);
       if (!workspaceId) {
         throw new Error("Workspace not found for this PT.");
       }
@@ -171,6 +181,22 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
         </div>
 
         <div className="space-y-4 px-6 py-4 sm:px-6">
+          {brandingQuery.data ? (
+            <div className="flex items-center gap-3 rounded-xl border border-border p-3">
+              <WorkspaceLogo
+                name={brandingQuery.data.name || "Workspace"}
+                url={brandingQuery.data.logo_url}
+              />
+              <div className="min-w-0 text-sm">
+                <p className="truncate font-medium">
+                  {brandingQuery.data.name}
+                </p>
+                <p className="text-muted-foreground">
+                  Invitation from {getInviteSenderName(brandingQuery.data)}
+                </p>
+              </div>
+            </div>
+          ) : null}
           {error ? (
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
               {error}

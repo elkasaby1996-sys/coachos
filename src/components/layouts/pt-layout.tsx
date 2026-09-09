@@ -22,6 +22,7 @@ import {
   ClipboardList,
   Dumbbell,
   Gauge,
+  Layers3,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -54,6 +55,9 @@ import { tracePoint } from "../../lib/perf-trace";
 import { LoadingScreen } from "../common/bootstrap-gate";
 import { AppFooter } from "../common/app-footer";
 import { ProfileAvatar } from "../common/profile-avatar";
+import { useWorkspaceBranding } from "../../features/workspace-branding/use-workspace-branding";
+import { getWorkspaceBrandingStyle } from "../../features/workspace-branding/branding";
+import { WorkspaceLogo } from "../../features/workspace-branding/components";
 import { PageContainer } from "../common/page-container";
 import { ThemeModeSwitch } from "../common/theme-mode-switch";
 import { useTheme } from "../common/theme-provider";
@@ -217,7 +221,7 @@ const ptNavGroups: Array<{
         label: "Programs",
         description: "Create, edit, and assign structured programs.",
         to: "/pt/programs",
-        icon: CalendarDays,
+        icon: Layers3,
         module: "coaching",
       },
       {
@@ -388,12 +392,15 @@ function sidebarLinkClasses(
   collapsed: boolean,
 ) {
   return cn(
-    "group relative flex items-center gap-3 rounded-[var(--ui-radius-card)] border text-sm font-medium transition-all duration-200",
-    collapsed ? "justify-center px-2.5 py-2.5" : "px-3.5 py-3",
+    "group relative flex items-center gap-3 border text-sm font-medium transition-colors duration-200",
+    collapsed
+      ? "mx-auto h-11 w-11 shrink-0 justify-center rounded-xl p-0"
+      : "rounded-[var(--ui-radius-card)] px-3.5 py-3",
+    isActive && !collapsed && "translate-x-1",
     isActive
       ? isLightMode
-        ? "translate-x-1 border-transparent bg-transparent text-[oklch(var(--text-primary))]"
-        : "translate-x-1 border-transparent bg-transparent text-foreground"
+        ? "border-transparent bg-transparent text-[oklch(var(--text-primary))]"
+        : "border-transparent bg-transparent text-foreground"
       : isLightMode
         ? "border-transparent bg-transparent text-[oklch(var(--text-secondary))] hover:border-[oklch(var(--border-default)/0.75)] hover:bg-[oklch(var(--bg-surface-elevated)/0.34)] hover:text-[oklch(var(--text-primary))]"
         : "border-transparent bg-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground",
@@ -417,7 +424,12 @@ function SidebarNav({
   const reduceMotion = useReducedMotion();
 
   return (
-    <nav className="mt-5 min-h-0 flex-1 overflow-y-auto pb-4 pr-1 lg:flex lg:flex-col lg:gap-6">
+    <nav
+      className={cn(
+        "mt-5 min-h-0 flex-1 overflow-y-auto pb-4 lg:flex lg:flex-col lg:gap-6",
+        !collapsed && "pr-1",
+      )}
+    >
       {navGroups.map((group) => (
         <div key={group.label} className="space-y-2.5">
           {!collapsed ? (
@@ -440,6 +452,7 @@ function SidebarNav({
                   key={item.to}
                   to={item.to}
                   title={collapsed ? item.label : undefined}
+                  aria-label={collapsed ? item.label : undefined}
                   onClick={onNavigate}
                   className={({ isActive }) =>
                     sidebarLinkClasses(isActive, isLightMode, collapsed)
@@ -457,7 +470,7 @@ function SidebarNav({
                                 : "pt-nav-active-expanded"
                           }
                           className={cn(
-                            "absolute inset-0 rounded-[var(--ui-radius-card)]",
+                            "absolute inset-0 rounded-[inherit]",
                             getModuleToneClasses(item.module).navActive,
                           )}
                           style={getModuleToneStyle(item.module)}
@@ -572,6 +585,7 @@ export function PtLayout() {
     });
   }, [loading, location.pathname, workspaceId]);
   const headerWorkspaceId = routeWorkspaceId ?? workspaceId;
+  const brandingQuery = useWorkspaceBranding(headerWorkspaceId);
   const errorMessage =
     error?.message ??
     authError?.message ??
@@ -1160,7 +1174,13 @@ export function PtLayout() {
         "pt-workspace-theme theme-shell-canvas relative isolate flex min-h-screen flex-col overflow-hidden lg:h-screen",
         isLightMode ? "pt-workspace-theme-light" : "pt-workspace-theme-dark",
       )}
-      style={getModuleToneStyle(currentModule)}
+      style={{
+        ...getModuleToneStyle(currentModule),
+        ...getWorkspaceBrandingStyle(
+          brandingQuery.data?.accent_color,
+          !isLightMode,
+        ),
+      }}
     >
       <AppShellBackgroundLayer
         animated
@@ -1229,7 +1249,12 @@ export function PtLayout() {
           >
             <div className="h-full min-h-0">
               <div className="pt-workspace-rail pt-workspace-rail-desktop surface-panel-strong h-full min-h-0 overflow-hidden border-border/70">
-                <div className="flex h-full min-h-0 flex-col px-4 py-5">
+                <div
+                  className={cn(
+                    "flex h-full min-h-0 flex-col py-5",
+                    desktopNavCollapsed ? "px-3" : "px-4",
+                  )}
+                >
                   <div
                     className={cn(
                       "mb-4 flex items-center",
@@ -1384,6 +1409,13 @@ export function PtLayout() {
                           className={getHeaderPillClassName(isLightMode)}
                           aria-label="Workspace menu"
                         >
+                          {brandingQuery.data?.logo_url ? (
+                            <WorkspaceLogo
+                              name={workspaceDisplayName}
+                              url={brandingQuery.data.logo_url}
+                              className="h-8 w-8"
+                            />
+                          ) : null}
                           <div className="min-w-0 flex-1 text-left">
                             <p className="max-w-[138px] truncate text-[0.92rem] font-medium text-foreground">
                               {workspaceDisplayName}

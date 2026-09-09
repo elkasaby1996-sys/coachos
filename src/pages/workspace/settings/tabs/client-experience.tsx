@@ -9,15 +9,23 @@ import {
 import { useDirtyNavigationGuard } from "../../../../features/settings/hooks/use-dirty-navigation-guard";
 import { supabase } from "../../../../lib/supabase";
 import { useWorkspaceSettingsOutletContext } from "../outlet-context";
+import { Input } from "../../../../components/ui/input";
+import { NotificationToast } from "../../../../components/common/notification-toast";
+import { WorkspaceWelcome } from "../../../../features/workspace-branding/components";
+import { getInviteSenderName } from "../../../../features/workspace-branding/branding";
 
 const WELCOME_MESSAGE_LIMIT = 2000;
 
 type ClientExperienceFormState = {
   welcomeMessage: string;
+  welcomeTitle: string;
+  inviteSenderName: string;
 };
 
 const emptyState: ClientExperienceFormState = {
   welcomeMessage: "",
+  welcomeTitle: "",
+  inviteSenderName: "",
 };
 
 export function WorkspaceSettingsClientExperienceTab() {
@@ -27,13 +35,20 @@ export function WorkspaceSettingsClientExperienceTab() {
   const [form, setForm] = useState<ClientExperienceFormState>(emptyState);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const initialState = useMemo(
     () =>
       ({
         welcomeMessage: workspace?.client_welcome_message ?? "",
+        welcomeTitle: workspace?.client_welcome_title ?? "",
+        inviteSenderName: workspace?.invite_sender_name ?? "",
       }) satisfies ClientExperienceFormState,
-    [workspace?.client_welcome_message],
+    [
+      workspace?.client_welcome_message,
+      workspace?.client_welcome_title,
+      workspace?.invite_sender_name,
+    ],
   );
 
   useEffect(() => {
@@ -49,6 +64,16 @@ export function WorkspaceSettingsClientExperienceTab() {
 
   const saveClientExperience = async () => {
     if (!canManage || !workspaceId || welcomeMessageError) return false;
+    if (
+      form.welcomeTitle.length > 120 ||
+      form.inviteSenderName.length > 120 ||
+      /[\r\n<>]/.test(form.inviteSenderName)
+    ) {
+      setErrorText(
+        "Use up to 120 characters for the title and sender name. Sender names cannot contain line breaks or angle brackets.",
+      );
+      return false;
+    }
 
     setSaving(true);
     setErrorText(null);
@@ -57,13 +82,26 @@ export function WorkspaceSettingsClientExperienceTab() {
         .from("workspaces")
         .update({
           client_welcome_message: form.welcomeMessage.trim(),
+          client_welcome_title: form.welcomeTitle.trim(),
+          invite_sender_name: form.inviteSenderName.trim(),
         })
-        .eq("id", workspaceId);
+        .eq("id", workspaceId)
+        .select("id")
+        .single();
       if (error) throw error;
 
       await queryClient.invalidateQueries({
         queryKey: ["workspace-settings-shell", workspaceId],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["workspace-branding", workspaceId],
+      });
+      setForm((current) => ({
+        welcomeMessage: current.welcomeMessage.trim(),
+        welcomeTitle: current.welcomeTitle.trim(),
+        inviteSenderName: current.inviteSenderName.trim(),
+      }));
+      setMessage("Welcome banner and invite identity saved.");
       return true;
     } catch (error) {
       setErrorText(
@@ -91,6 +129,7 @@ export function WorkspaceSettingsClientExperienceTab() {
   return (
     <div className="space-y-4">
       {guardDialog}
+      <NotificationToast message={message} onDismiss={() => setMessage(null)} />
 
       {errorText ? (
         <div className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
@@ -99,15 +138,31 @@ export function WorkspaceSettingsClientExperienceTab() {
       ) : null}
 
       <SettingsSectionCard
-        title="Welcome Message"
-        description="Instructions shown to new clients when they join this workspace."
+        title="Client welcome banner"
+        description="A personal welcome on your invite page, client home, and onboarding screens. Leave both fields empty to hide it."
       >
+        <SettingsFieldRow
+          label="Welcome title"
+          hint="Optional. Leave empty to use your workspace name."
+        >
+          <Input
+            aria-label="Welcome title"
+            value={form.welcomeTitle}
+            maxLength={120}
+            disabled={!canManage || saving}
+            placeholder={`Welcome to ${workspace?.name || "your workspace"}`}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, welcomeTitle: event.target.value }))
+            }
+          />
+        </SettingsFieldRow>
         <SettingsFieldRow
           label="New client instructions"
           hint="Shown to new clients as the workspace welcome message."
         >
           <div className="relative">
             <Textarea
+              aria-label="New client instructions"
               value={form.welcomeMessage}
               onChange={(event) =>
                 setForm((prev) => ({
@@ -149,6 +204,70 @@ export function WorkspaceSettingsClientExperienceTab() {
               You do not have permission to edit client experience settings.
             </p>
           ) : null}
+        </SettingsFieldRow>
+      </SettingsSectionCard>
+
+      {workspace && (form.welcomeTitle.trim() || form.welcomeMessage.trim()) ? (
+        <SettingsSectionCard title="Welcome preview">
+          <WorkspaceWelcome
+            branding={{
+              ...workspace,
+              client_welcome_title: form.welcomeTitle,
+              client_welcome_message: form.welcomeMessage,
+            }}
+          />
+        </SettingsSectionCard>
+      ) : null}
+
+      <SettingsSectionCard
+        title="Invite sender identity"
+        description="Use a recognisable name when inviting clients and team members."
+      >
+        <SettingsFieldRow
+          label="Sender display name"
+          hint="Leave empty to use the workspace name."
+        >
+          <Input
+            aria-label="Invite sender display name"
+            value={form.inviteSenderName}
+            maxLength={120}
+            disabled={!canManage || saving}
+            placeholder={workspace?.name || "Your workspace"}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                inviteSenderName: event.target.value,
+              }))
+            }
+          />
+        </SettingsFieldRow>
+        <SettingsFieldRow
+          label="Sending address"
+          hint="Invitations use RepSync’s configured no-reply email address. Replies are not monitored."
+        >
+          <p className="text-sm font-medium">RepSync no-reply</p>
+        </SettingsFieldRow>
+        <SettingsFieldRow label="Invite preview">
+          <div className="space-y-2 rounded-xl border border-border bg-background p-4 text-sm">
+            <p>
+              <span className="text-muted-foreground">From: </span>
+              {getInviteSenderName({
+                name: workspace?.name ?? null,
+                invite_sender_name: form.inviteSenderName,
+              })}{" "}
+              <span className="text-muted-foreground">
+                via RepSync no-reply
+              </span>
+            </p>
+            <p className="font-medium">
+              You’re invited to join{" "}
+              {workspace?.name || "your coaching workspace"}
+            </p>
+            <p className="text-muted-foreground">
+              Your personal invitation includes your workspace logo and welcome
+              message.
+            </p>
+          </div>
         </SettingsFieldRow>
       </SettingsSectionCard>
 

@@ -457,7 +457,7 @@ export function PtWorkoutTemplatesPage() {
               key={template.id}
               title={template.name ?? "Workout template"}
               subtitle={template.description ?? "No description"}
-              className="coach-library-card flex h-full flex-col bg-card/90 [&>.ui-card-header]:flex-1 [&>.ui-card-header]:items-start [&>.ui-card-header>div:first-child]:min-w-0"
+              className="flex h-full flex-col bg-card/90 [&>.ui-card-header]:flex-1 [&>.ui-card-header]:items-start [&>.ui-card-header>div:first-child]:min-w-0"
               action={
                 <div className="flex shrink-0 items-center gap-1 self-start">
                   <Button

@@ -5,10 +5,12 @@ export function ProfileAvatar({
   name,
   src,
   className,
+  fallback,
 }: {
   name: string;
   src?: string | null;
   className?: string;
+  fallback?: string;
 }) {
   return (
     <Avatar.Root
@@ -26,7 +28,7 @@ export function ProfileAvatar({
         className="flex h-full w-full items-center justify-center"
         aria-label={name}
       >
-        {name.trim().charAt(0).toUpperCase() || "?"}
+        {fallback || name.trim().charAt(0).toUpperCase() || "?"}
       </Avatar.Fallback>
     </Avatar.Root>
   );

@@ -1,4 +1,6 @@
 import { NotificationToast } from "../../components/common/notification-toast";
+import { ProfileAvatar } from "../../components/common/profile-avatar";
+import { getClientRouteKeyFallback } from "../../lib/client-route-key";
 // @ts-nocheck
 import "../../styles/pt-hub-analytics.css";
 import "../../styles/pt-hub-clients.css";
@@ -289,11 +291,6 @@ function ClientDetailInlineStatusBadges({
   );
 }
 
-const getClientRouteKeyFallback = (clientId: string | null | undefined) =>
-  clientId
-    ? `c-${clientId.split("-").join("").slice(0, 8).toLowerCase()}`
-    : null;
-
 const getAssignmentActionErrorMessage = (error: unknown) => {
   const details = getErrorDetails(error);
   const message = details.message ?? getErrorMessage(error);
@@ -580,6 +577,7 @@ type PtClientProfile = {
   gym_name: string | null;
   tags: string[] | string | null;
   photo_url: string | null;
+  avatar_url: string | null;
   updated_at: string | null;
 };
 
@@ -1247,7 +1245,7 @@ export function PtClientDetailPage({
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, relationship_status, removed_at, removed_by_user_id, lifecycle_state, manual_risk_flag, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, updated_at",
+          "id, workspace_id, checkin_template_id, checkin_frequency, checkin_start_date, created_at, display_name, goal, status, relationship_status, removed_at, removed_by_user_id, lifecycle_state, manual_risk_flag, lifecycle_changed_at, paused_reason, churn_reason, injuries, limitations, height_cm, current_weight, days_per_week, dob, training_type, timezone, phone, location, unit_preference, gender, gym_name, tags, photo_url, avatar_url, updated_at",
         )
         .eq("id", clientId ?? "")
         .maybeSingle();
@@ -4683,9 +4681,15 @@ export function PtClientDetailPage({
             <CardContent className="space-y-5 p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex flex-wrap items-start gap-4">
-                  <div className="client-profile-avatar" aria-hidden="true">
-                    {getInitials(clientSnapshot?.display_name)}
-                  </div>
+                  <ProfileAvatar
+                    className="client-profile-avatar"
+                    name={clientSnapshot?.display_name ?? "Client"}
+                    src={
+                      clientSnapshot?.avatar_url?.trim() ||
+                      clientSnapshot?.photo_url
+                    }
+                    fallback={getInitials(clientSnapshot?.display_name)}
+                  />
                   <div className="space-y-2">
                     <div className="client-detail-header-name-row flex flex-wrap items-center gap-2">
                       <h1>

@@ -17,10 +17,23 @@ import {
 import { supabase } from "../../../../lib/supabase";
 import { refreshWorkspaceNameAcrossApp } from "../../../../lib/workspace-query";
 import { useWorkspaceSettingsOutletContext } from "../outlet-context";
+import { NotificationToast } from "../../../../components/common/notification-toast";
+import { Button } from "../../../../components/ui/button";
+import {
+  WorkspaceLogo,
+  WorkspaceLogoPicker,
+} from "../../../../features/workspace-branding/components";
+import {
+  getWorkspaceBrandingStyle,
+  isAccentColor,
+  isLogoUrl,
+} from "../../../../features/workspace-branding/branding";
+import { useTheme } from "../../../../components/common/theme-provider";
 
 type GeneralFormState = {
   workspaceName: string;
   logoUrl: string;
+  accentColor: string;
   timezone: string;
   unitPreference: string;
   weekStartDay: string;
@@ -29,6 +42,7 @@ type GeneralFormState = {
 const emptyState: GeneralFormState = {
   workspaceName: "",
   logoUrl: "",
+  accentColor: "",
   timezone: "UTC",
   unitPreference: "metric",
   weekStartDay: "monday",
@@ -62,6 +76,9 @@ export function WorkspaceSettingsGeneralTab() {
     useWorkspaceSettingsOutletContext();
   const [form, setForm] = useState<GeneralFormState>(emptyState);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const { resolvedTheme } = useTheme();
   const [errorText, setErrorText] = useState<string | null>(null);
 
   const initialState = useMemo(
@@ -69,12 +86,14 @@ export function WorkspaceSettingsGeneralTab() {
       ({
         workspaceName: workspace?.name ?? "",
         logoUrl: workspace?.logo_url ?? "",
+        accentColor: workspace?.accent_color ?? "",
         timezone: workspace?.timezone ?? emptyState.timezone,
         unitPreference: workspace?.unit_preference ?? emptyState.unitPreference,
         weekStartDay: workspace?.week_start_day ?? emptyState.weekStartDay,
       }) satisfies GeneralFormState,
     [
       workspace?.logo_url,
+      workspace?.accent_color,
       workspace?.name,
       workspace?.timezone,
       workspace?.unit_preference,
@@ -96,7 +115,16 @@ export function WorkspaceSettingsGeneralTab() {
 
   const saveGeneral = async () => {
     if (!canManage || !workspaceId) return false;
+    if (uploading) return false;
     if (hasOverLimitErrors) return false;
+    if (!isLogoUrl(form.logoUrl)) {
+      setErrorText("Please upload a valid workspace logo.");
+      return false;
+    }
+    if (form.accentColor && !isAccentColor(form.accentColor)) {
+      setErrorText("Use a six-digit hex colour, such as #007F86.");
+      return false;
+    }
 
     const nextName = form.workspaceName.trim();
     if (!nextName) {
@@ -112,11 +140,14 @@ export function WorkspaceSettingsGeneralTab() {
         .update({
           name: nextName,
           logo_url: form.logoUrl.trim() || null,
+          accent_color: form.accentColor || null,
           timezone: form.timezone,
           unit_preference: form.unitPreference,
           week_start_day: form.weekStartDay,
         })
-        .eq("id", workspaceId);
+        .eq("id", workspaceId)
+        .select("id")
+        .single();
       if (error) throw error;
 
       await Promise.all([
@@ -128,6 +159,15 @@ export function WorkspaceSettingsGeneralTab() {
         }),
       ]);
       await refreshWorkspaceNameAcrossApp(queryClient, workspaceId, nextName);
+      await queryClient.invalidateQueries({
+        queryKey: ["workspace-branding", workspaceId],
+      });
+      setForm((current) => ({
+        ...current,
+        workspaceName: nextName,
+        logoUrl: current.logoUrl.trim(),
+      }));
+      setMessage("Workspace branding and general settings saved.");
       return true;
     } catch (error) {
       setErrorText(
@@ -155,6 +195,7 @@ export function WorkspaceSettingsGeneralTab() {
   return (
     <div className="space-y-4">
       {guardDialog}
+      <NotificationToast message={message} onDismiss={() => setMessage(null)} />
 
       {errorText ? (
         <div className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
@@ -196,16 +237,90 @@ export function WorkspaceSettingsGeneralTab() {
 
         <SettingsFieldRow
           label="Workspace logo"
-          hint="Logo used by client-facing workspace surfaces where supported."
+          hint="Shown in your workspace header, client portal, and invitations."
         >
-          <Input
+          <WorkspaceLogoPicker
+            workspaceId={workspaceId}
             value={form.logoUrl}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, logoUrl: event.target.value }))
-            }
-            disabled={!canManage}
-            placeholder="https://example.com/workspace-logo.png"
+            onChange={(logoUrl) => setForm((prev) => ({ ...prev, logoUrl }))}
+            disabled={!canManage || saving}
+            onBusyChange={setUploading}
           />
+        </SettingsFieldRow>
+
+        <SettingsFieldRow
+          label="Accent colour"
+          hint="Personalise buttons, links, and highlights. Shades adjust for readable contrast in light and dark mode."
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="color"
+              aria-label="Choose accent colour"
+              value={
+                isAccentColor(form.accentColor) ? form.accentColor : "#007F86"
+              }
+              disabled={!canManage || saving}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  accentColor: event.target.value,
+                }))
+              }
+              className="h-11 w-14 cursor-pointer rounded-lg border border-border bg-background p-1"
+            />
+            <Input
+              aria-label="Accent colour hex"
+              value={form.accentColor}
+              placeholder="Default accent"
+              maxLength={7}
+              disabled={!canManage || saving}
+              className="w-40"
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  accentColor: event.target.value,
+                }))
+              }
+            />
+            <Button
+              variant="secondary"
+              disabled={!canManage || saving || !form.accentColor}
+              onClick={() => setForm((prev) => ({ ...prev, accentColor: "" }))}
+            >
+              Use default
+            </Button>
+          </div>
+          {form.accentColor && !isAccentColor(form.accentColor) ? (
+            <p role="alert" className="text-xs text-danger">
+              Enter a six-digit hex colour, such as #007F86.
+            </p>
+          ) : null}
+        </SettingsFieldRow>
+
+        <SettingsFieldRow
+          label="Brand preview"
+          hint="Preview your logo and accent before saving."
+        >
+          <div
+            className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-background p-4"
+            style={getWorkspaceBrandingStyle(
+              form.accentColor,
+              resolvedTheme === "dark",
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <WorkspaceLogo
+                name={form.workspaceName || "Workspace"}
+                url={form.logoUrl}
+              />
+              <span className="truncate font-semibold">
+                {form.workspaceName || "Your workspace"}
+              </span>
+            </div>
+            <span className="rounded-lg bg-[var(--ui-action)] px-4 py-2 text-sm font-medium text-[var(--ui-action-text)]">
+              View your plan
+            </span>
+          </div>
         </SettingsFieldRow>
 
         <SettingsFieldRow
@@ -297,7 +412,7 @@ export function WorkspaceSettingsGeneralTab() {
 
       <StickySaveBar
         isDirty={isDirty && !hasOverLimitErrors}
-        isSaving={saving}
+        isSaving={saving || uploading}
         onSave={saveGeneral}
         onDiscard={discard}
       />

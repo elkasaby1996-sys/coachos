@@ -54,6 +54,12 @@ import {
   type ModuleTone,
 } from "../../lib/module-tone";
 import { WorkspaceHeaderModeProvider } from "../pt/workspace-header-mode";
+import { useWorkspaceBranding } from "../../features/workspace-branding/use-workspace-branding";
+import { getWorkspaceBrandingStyle } from "../../features/workspace-branding/branding";
+import {
+  WorkspaceLogo,
+  WorkspaceWelcome,
+} from "../../features/workspace-branding/components";
 
 const navItems = [
   {
@@ -171,6 +177,7 @@ export function ClientLayout() {
     clientProfile,
   } = useBootstrapAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
+  const brandingQuery = useWorkspaceBranding(clientProfile?.workspace_id);
   const onboardingQuery = useClientOnboarding();
   const onboardingSummary = onboardingQuery.data ?? null;
   const preWorkspaceMode = !hasWorkspaceMembership;
@@ -272,7 +279,13 @@ export function ClientLayout() {
   return (
     <div
       className="client-portal theme-shell-canvas relative isolate min-h-screen overflow-hidden [background:var(--portal-page-bg)]"
-      style={getModuleToneStyle(currentModule)}
+      style={{
+        ...getModuleToneStyle(currentModule),
+        ...getWorkspaceBrandingStyle(
+          brandingQuery.data?.accent_color,
+          !isLightMode,
+        ),
+      }}
     >
       <AppShellBackgroundLayer />
       <div className="relative z-10 flex min-h-screen w-full">
@@ -289,9 +302,22 @@ export function ClientLayout() {
                     <NavLink
                       to="/app/home"
                       className="client-portal-brand"
-                      aria-label="RepSync home"
+                      data-workspace-brand={Boolean(brandingQuery.data?.name)}
+                      aria-label={
+                        brandingQuery.data?.name
+                          ? `${brandingQuery.data.name} home`
+                          : "RepSync home"
+                      }
                     >
-                      REPSYNC
+                      {brandingQuery.data?.logo_url ? (
+                        <WorkspaceLogo
+                          name={brandingQuery.data.name || "Workspace"}
+                          url={brandingQuery.data.logo_url}
+                        />
+                      ) : null}
+                      <span className="min-w-0 truncate">
+                        {brandingQuery.data?.name || "REPSYNC"}
+                      </span>
                     </NavLink>
                     <div className="flex items-center gap-2 self-start sm:self-auto">
                       <NotificationBell viewAllHref="/app/notifications" />
@@ -429,6 +455,9 @@ export function ClientLayout() {
           </header>
           <main className="client-portal-main min-w-0 flex-1 py-4 sm:py-5 lg:py-6">
             <PageContainer size="client-shell" align="left">
+              {location.pathname === "/app/home" || isOnboardingRoute ? (
+                <WorkspaceWelcome branding={brandingQuery.data} />
+              ) : null}
               {shouldRenderOnboardingBanner && onboardingSummary ? (
                 <div className="mb-6">
                   <ClientOnboardingSoftGate

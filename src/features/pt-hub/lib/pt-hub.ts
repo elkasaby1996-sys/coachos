@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { getClientRouteKeyFallback } from "../../../lib/client-route-key";
 import { useSessionAuth } from "../../../lib/auth";
 import {
   isClientAtRisk,
@@ -538,9 +539,7 @@ function mapPtClientSummary(
 
   return {
     id: row.id,
-    urlKey:
-      row.url_key?.trim() ||
-      `c-${row.id.split("-").join("").slice(0, 8).toLowerCase()}`,
+    urlKey: row.url_key?.trim() || getClientRouteKeyFallback(row.id) || "",
     workspaceId: row.workspace_id ?? "",
     workspaceSlug: row.workspace_slug?.trim() || workspaceSlug,
     workspaceName,
