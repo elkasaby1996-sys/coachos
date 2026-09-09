@@ -389,10 +389,10 @@ export const productPageContent = {
     },
   ] satisfies ProductChapterContent[],
   finalCta: {
-    eyebrow: "7-day Growth trial",
+    eyebrow: "14-day Growth trial",
     heading: "Explore the Whole Coaching Relationship for 7 Days.",
     body: "Use acquisition, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, and the client experience.",
-    primaryLabel: "Start 7-day trial",
+    primaryLabel: "Start 14-day trial",
     primaryDestination: productPageRoutes.trial,
     secondaryLabel: "Explore for coaches",
     secondaryDestination: productPageRoutes.forCoaches,

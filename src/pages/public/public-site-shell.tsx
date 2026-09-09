@@ -80,7 +80,7 @@ export function PublicHeader() {
         <PublicSiteLink to="/login" variant="text">
           Log in
         </PublicSiteLink>
-        <PublicSiteLink to="/start-trial">Start 7-day trial</PublicSiteLink>
+        <PublicSiteLink to="/start-trial">Start 14-day trial</PublicSiteLink>
       </div>
     </header>
   );
@@ -192,7 +192,7 @@ export function PublicMobileTrialBar() {
   return (
     <div className="rs-mobile-trial-bar">
       <span>
-        <strong>7-day Growth trial</strong>
+        <strong>14-day Growth trial</strong>
         No card required
       </span>
       <PublicSiteLink to="/start-trial">Start trial</PublicSiteLink>

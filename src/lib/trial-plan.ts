@@ -1,29 +1,26 @@
-export const trialPlanIds = ["launch", "growth", "scale", "studio"] as const;
-
-export type TrialPlanId = (typeof trialPlanIds)[number];
-
-export const defaultTrialPlan: TrialPlanId = "growth";
-
-const trialPlanLabels: Record<TrialPlanId, string> = {
-  launch: "Launch",
-  growth: "Growth",
-  scale: "Scale",
-  studio: "Studio",
-};
+import {
+  PUBLIC_PLAN_KEYS,
+  PUBLIC_TRIAL_POLICY,
+  normalizePublicPlanKey,
+  getPublicPlanLabel,
+  type PublicPlanKey,
+} from "../features/commercial-catalogue/contracts";
+export const trialPlanIds = PUBLIC_PLAN_KEYS;
+/** @deprecated This is the intended paid plan, not the trial feature experience. */
+export type TrialPlanId = PublicPlanKey;
+export const defaultTrialPlan: TrialPlanId =
+  PUBLIC_TRIAL_POLICY.defaultRequestedPlanKey;
 
 const pendingTrialPlanStorageKey = "repsync_pending_trial_plan";
 
 export function normalizeTrialPlan(
   value: string | null | undefined,
 ): TrialPlanId {
-  const normalized = value?.trim().toLowerCase();
-  return trialPlanIds.includes(normalized as TrialPlanId)
-    ? (normalized as TrialPlanId)
-    : defaultTrialPlan;
+  return normalizePublicPlanKey(value);
 }
 
 export function getTrialPlanLabel(plan: TrialPlanId) {
-  return trialPlanLabels[plan];
+  return getPublicPlanLabel(plan);
 }
 
 export function getTrialPlanFromSearch(search: string) {

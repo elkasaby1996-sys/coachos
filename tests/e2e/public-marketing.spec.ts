@@ -21,6 +21,47 @@ const publicRoutes = [
 ] as const;
 
 test.describe("public marketing site", () => {
+  test("shows the v1 commercial prices and retains paid-plan intent", async ({
+    page,
+  }) => {
+    await page.goto("/pricing");
+    const cards = page.locator(".rs-pricing-plan");
+    await expect(cards).toHaveCount(3);
+    for (const [index, name, price, clients, workspaces] of [
+      [0, "Launch", "$19", 10, "1 workspace"],
+      [1, "Growth", "$59", 50, "3 workspaces"],
+      [2, "Scale", "$119", 100, "5 workspaces"],
+    ] as const) {
+      const card = cards.nth(index);
+      await expect(card.locator(".rs-stitch-kicker")).toHaveText(name);
+      await expect(card.locator(".rs-pricing-plan__price strong")).toHaveText(
+        price,
+      );
+      await expect(card).toContainText(`Client capacity: ${clients}`);
+      await expect(card).toContainText(workspaces);
+    }
+    await expect(
+      page.locator(".rs-pricing-plan--featured .rs-stitch-kicker"),
+    ).toHaveText("Growth");
+    await page.getByRole("button", { name: "Annual" }).click();
+    await expect(cards.locator(".rs-pricing-plan__price strong")).toHaveText([
+      "$190",
+      "$590",
+      "$1,190",
+    ]);
+    await cards
+      .nth(2)
+      .getByRole("link", { name: "Start 14-day trial" })
+      .click();
+    await expect(page).toHaveURL(/\/signup\/pt\?plan=scale$/);
+    await expect(
+      page.getByRole("heading", { name: "Start your 14-day Growth trial" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Scale is your intended paid plan/),
+    ).toBeVisible();
+  });
+
   for (const [route, heading] of publicRoutes) {
     test(`renders ${route} without mobile overflow`, async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 900 });
@@ -72,7 +113,7 @@ test.describe("public marketing site", () => {
     await page.goto("/");
 
     await expect(
-      page.getByRole("link", { name: "Start 7-day trial" }).first(),
+      page.getByRole("link", { name: "Start 14-day trial" }).first(),
     ).toHaveAttribute("href", "/start-trial");
     await expect(
       page.getByRole("link", { name: "Plan your switch" }).first(),
@@ -87,7 +128,7 @@ test.describe("public marketing site", () => {
 
     await expect(page).toHaveURL(/\/signup\/pt$/);
     await expect(
-      page.getByRole("heading", { name: "Start your 7-day Growth trial" }),
+      page.getByRole("heading", { name: "Start your 14-day Growth trial" }),
     ).toBeVisible();
     await expect(page.getByLabel("Full name")).toBeVisible();
     await expect(
