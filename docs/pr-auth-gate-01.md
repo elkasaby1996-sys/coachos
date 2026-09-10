@@ -297,3 +297,15 @@ preserving binary images. The extra artifact directories are gitignored.
 
 The merged application build, lint, formatting, configuration test discovery,
 workflow YAML parsing and redaction checks passed locally before CI was rerun.
+
+The configured-account run then exposed disabled sign-in buttons with the
+current configured credentials. The preceding successful main CI run already
+skipped those same two optional preconditions. The shared helper now asserts
+that Sign in is enabled before clicking, so an unusable form produces a bounded
+readiness failure rather than consuming the entire test timeout. Existing
+precondition handling remains intact; no skip statements or retries were added.
+The local auth suite continues to require successful sign-in with seeded users.
+
+Artifact redaction also covers short passwords in action values and accessibility
+snapshots. Affected uploads from the diagnostic run were removed after retaining
+sanitized local evidence.

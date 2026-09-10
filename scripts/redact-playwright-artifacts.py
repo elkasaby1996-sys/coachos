@@ -17,6 +17,10 @@ SECRETS = [
     value for key, value in os.environ.items()
     if re.search(r"KEY|TOKEN|PASSWORD|SECRET", key, re.I) and len(value) > 5
 ]
+PASSWORDS = {
+    value for key, value in os.environ.items()
+    if "PASSWORD" in key.upper() and value
+}
 for name in ("auth-fixtures.ts", "auth-seeds.ts"):
     source = ROOT / "tests/e2e/utils" / name
     SECRETS.extend(re.findall(r'password:\s*"([^"]+)"', source.read_text()))
@@ -24,8 +28,14 @@ SECRETS.extend(["wrong-password", "smoke-invite-client-token"])
 
 
 def clean_text(value):
+    if value in PASSWORDS:
+        return "[REDACTED]"
     for secret in SECRETS:
         value = value.replace(secret, "[REDACTED]")
+    value = re.sub(
+        r'(?im)(textbox "[^"]*password[^"]*"[^\n]*?:\s*)[^\n]+',
+        r'\1[REDACTED]', value,
+    )
     value = re.sub(r"eyJ[\w-]+\.[\w-]+\.[\w-]+", "[REDACTED-JWT]", value)
     value = re.sub(r'(?i)(Bearer\s+)[^\s"\\]+', r'\1[REDACTED]', value)
     value = re.sub(

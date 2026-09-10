@@ -64,11 +64,13 @@ async function isRouteStable(page: Page, targetPath: string) {
 }
 
 export async function clickVisibleEnabledSignInButton(page: Page) {
-  await page
+  const button = page
     .locator("form")
     .getByRole("button", { name: /^sign in$/i })
-    .filter({ hasText: "Sign in" })
-    .click();
+    .filter({ hasText: "Sign in" });
+  // Report an unusable form before exhausting the caller's entire test budget.
+  await expect(button).toBeEnabled();
+  await button.click();
 }
 
 export async function waitForAuthSessionReady(page: Page, timeoutMs = 15_000) {
