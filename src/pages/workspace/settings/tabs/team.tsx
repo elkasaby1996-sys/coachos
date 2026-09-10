@@ -1,3 +1,4 @@
+import { invalidateAccountCapacity } from "../../../../features/account-capacity/query-keys";
 import { useEffect, useState } from "react";
 import type React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -382,6 +383,7 @@ function InviteTeamMemberDialog({
         baseUrl: window.location.origin,
       }),
     onSuccess: async (invite) => {
+      invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
       });
@@ -529,6 +531,7 @@ function ClientAssignmentDialog({
         clientIds,
       }),
     onSuccess: async () => {
+      invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
       });
@@ -610,6 +613,7 @@ function TeamMemberTable({
         role: input.role,
       }),
     onSuccess: async () => {
+      invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
       });
@@ -629,6 +633,7 @@ function TeamMemberTable({
         status: input.status,
       }),
     onSuccess: async (_, variables) => {
+      invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
       });
@@ -855,6 +860,7 @@ function PendingInviteTable({
         baseUrl: window.location.origin,
       }),
     onSuccess: async (invite) => {
+      invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
       });
@@ -870,6 +876,7 @@ function PendingInviteTable({
     mutationFn: (inviteId: string) =>
       revokeWorkspaceTeamInvite({ workspaceId, inviteId }),
     onSuccess: async () => {
+      invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
       });

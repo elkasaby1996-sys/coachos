@@ -1,3 +1,4 @@
+import { invalidateAccountCapacity } from "../../account-capacity/query-keys";
 import {
   type ReactNode,
   useEffect,
@@ -360,6 +361,7 @@ export function PtHubPackageManager() {
   }, [packages]);
 
   async function invalidatePackageQueries() {
+    invalidateAccountCapacity(queryClient);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["pt-packages", user?.id] }),
       queryClient.invalidateQueries({

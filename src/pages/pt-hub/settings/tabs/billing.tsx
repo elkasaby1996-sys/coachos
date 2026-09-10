@@ -11,10 +11,16 @@ import {
   AccountEntitlementError,
 } from "../../../../features/account-entitlements";
 import { getPublicPlanLabel } from "../../../../features/commercial-catalogue/contracts";
+import {
+  useMyAccountCapacitySnapshot,
+  AccountCapacityError,
+} from "../../../../features/account-capacity";
+import { CapacityMeters } from "../../../../features/account-capacity/capacity-meters";
 
 export function PtHubSettingsBillingTab() {
   const paymentsQuery = usePtHubPayments();
   const entitlementsQuery = useMyEffectiveAccountEntitlements();
+  const capacityQuery = useMyAccountCapacitySnapshot();
   const subscription = entitlementsQuery.data?.subscription;
   const invoices = paymentsQuery.data?.invoices ?? [];
   const dateLabel = (value: string) =>
@@ -134,6 +140,39 @@ export function PtHubSettingsBillingTab() {
             Manage subscription (Unavailable)
           </Button>
         </SettingsFieldRow>
+      </SettingsSectionCard>
+
+      <SettingsSectionCard
+        title="Account capacity"
+        description="Current usage across all workspaces you own. Pending invitations and short-lived reservations are shown separately."
+      >
+        <p className="text-sm text-muted-foreground">
+          Current usage across all workspaces you own. Pending invitations and
+          short-lived reservations are shown separately.
+        </p>
+        {capacityQuery.isLoading ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            Loading account capacity...
+          </p>
+        ) : capacityQuery.error ? (
+          <div role="alert" className="space-y-3">
+            <p className="text-sm font-medium">Account capacity unavailable</p>
+            <p className="text-sm text-muted-foreground">
+              {capacityQuery.error instanceof AccountCapacityError
+                ? capacityQuery.error.message
+                : "Account capacity could not be loaded. Please try again."}
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void capacityQuery.refetch()}
+            >
+              Retry capacity
+            </Button>
+          </div>
+        ) : capacityQuery.data ? (
+          <CapacityMeters snapshot={capacityQuery.data} />
+        ) : null}
       </SettingsSectionCard>
 
       <SettingsSectionCard

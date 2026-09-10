@@ -28,9 +28,12 @@ describe("PT Hub Billing canonical status", () => {
       expect(source).toContain(text);
     expect(source).toMatch(/<Button[^>]*disabled>\s*Manage subscription/);
     expect(source).toMatch(/<Button[^>]*disabled>\s*Add payment method/);
-    expect(source).not.toMatch(
-      /checkout|usageMeter|capacity-meter|stripe|renewalDate/i,
-    );
+    expect(source).not.toMatch(/checkout|usageMeter|stripe|renewalDate/i);
+    // PR-PRICE-03 adds descriptive capacity while preserving PR-PRICE-02's
+    // canonical entitlement card and disconnected payment controls.
+    expect(source).toContain("useMyAccountCapacitySnapshot()");
+    expect(source).toContain("<CapacityMeters snapshot={capacityQuery.data}");
+    expect(source).not.toMatch(/disabled=\{[^}]*capacity/i);
   });
   it("explains trial, intent, complimentary contract and current enforcement boundary", () => {
     for (const text of [

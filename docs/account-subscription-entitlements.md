@@ -1,5 +1,7 @@
 # Account subscription and entitlements (PR-PRICE-02)
 
+Account usage and reservation semantics are documented in [account capacity metering](account-capacity-metering.md).
+
 ## Account boundary
 
 At launch, one billing account identifies one owner user and all workspaces they own. New commercial records and the internal entitlement resolver use `billing_account_id`. Workspace ownership is used only to locate that account. Workspace members retain independent role and assigned-client authorization; a plan never grants a role.
