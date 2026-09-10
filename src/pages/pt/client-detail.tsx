@@ -1,3 +1,4 @@
+import { invalidateAccountCapacity } from "../../features/account-capacity/query-keys";
 import { NotificationToast } from "../../components/common/notification-toast";
 import { ProfileAvatar } from "../../components/common/profile-avatar";
 import { getClientRouteKeyFallback } from "../../lib/client-route-key";
@@ -3730,6 +3731,7 @@ export function PtClientDetailPage({
       }),
       queryClient.invalidateQueries({ queryKey: ["pt-checkins-queue"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
+      invalidateAccountCapacity(queryClient),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),
@@ -3792,6 +3794,7 @@ export function PtClientDetailPage({
     }
 
     await Promise.all([
+      invalidateAccountCapacity(queryClient),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),
@@ -3892,6 +3895,7 @@ export function PtClientDetailPage({
         queryKey: ["pt-client-operational-summary"],
       }),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-workspaces"] }),
+      invalidateAccountCapacity(queryClient),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),
@@ -3962,6 +3966,7 @@ export function PtClientDetailPage({
 
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["pt-dashboard"] }),
+      invalidateAccountCapacity(queryClient),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
       queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),

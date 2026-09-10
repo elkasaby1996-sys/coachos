@@ -1,3 +1,4 @@
+import { invalidateAccountCapacity } from "../../features/account-capacity/query-keys";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
@@ -293,6 +294,7 @@ export function InvitePage() {
           queryClient.invalidateQueries({
             queryKey: ["client-workspace-onboarding"],
           }),
+          invalidateAccountCapacity(queryClient),
           queryClient.invalidateQueries({ queryKey: ["pt-hub-clients"] }),
           queryClient.invalidateQueries({ queryKey: ["pt-hub-clients-page"] }),
           queryClient.invalidateQueries({ queryKey: ["pt-hub-client-stats"] }),

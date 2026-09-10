@@ -1,3 +1,4 @@
+import { invalidateAccountCapacity } from "../../features/account-capacity/query-keys";
 import { useMemo, useState } from "react";
 import type React from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -525,6 +526,7 @@ export function TeamInviteAcceptancePage() {
       setSuccessMessage(null);
     },
     onSuccess: async (result) => {
+      invalidateAccountCapacity(queryClient);
       setSuccessMessage("Workspace added to your PT Hub");
       await refreshBootstrap();
       await queryClient.invalidateQueries({ queryKey: ["pt-hub-workspaces"] });

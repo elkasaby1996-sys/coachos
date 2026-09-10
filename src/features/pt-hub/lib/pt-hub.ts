@@ -1,3 +1,4 @@
+import { invalidateAccountCapacity } from "../../account-capacity/query-keys";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { persistPendingRequestedPaidPlan } from "../../account-entitlements/persist-requested-plan";
 import { invalidateAccountEntitlements } from "../../account-entitlements/query-keys";
@@ -2869,6 +2870,7 @@ export async function createPtWorkspace(
     throw new Error("Workspace was created, but no workspace ID was returned.");
   }
 
+  if (queryClient) invalidateAccountCapacity(queryClient);
   if (queryClient) await invalidateAccountEntitlements(queryClient);
   return createdWorkspaceId;
 }

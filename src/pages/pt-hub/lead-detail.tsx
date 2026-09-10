@@ -1,3 +1,4 @@
+import { invalidateAccountCapacity } from "../../features/account-capacity/query-keys";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -180,6 +181,7 @@ export function PtHubLeadDetailPage() {
             switchWorkspace(approvalResult.workspace_id);
             refreshWorkspace();
           }
+          invalidateAccountCapacity(queryClient);
           await Promise.all([
             queryClient.invalidateQueries({
               queryKey: ["pt-hub-workspaces", user?.id],

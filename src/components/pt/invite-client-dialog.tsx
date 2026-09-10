@@ -1,3 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateAccountCapacity } from "../../features/account-capacity/query-keys";
 import { ReactElement, useEffect, useMemo, useState } from "react";
 import { Check, Copy, Link2 } from "../../lib/icons";
 import { Button } from "../ui/button";
@@ -72,6 +74,7 @@ function getInviteMeta(selection: ExpirySelection) {
 }
 
 export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
+  const queryClient = useQueryClient();
   const { user } = useSessionAuth();
   const { workspaceId } = useWorkspace();
   const brandingQuery = useWorkspaceBranding(workspaceId);
@@ -135,6 +138,7 @@ export function InviteClientDialog({ trigger }: { trigger: ReactElement }) {
         throw insertError;
       }
 
+      invalidateAccountCapacity(queryClient);
       setInvite(data as InviteRecord);
     } catch (err: any) {
       console.error("Failed to create invite", err);
