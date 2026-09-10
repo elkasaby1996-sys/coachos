@@ -1,3 +1,4 @@
+import { capacityMutationFailure } from "../../features/account-capacity/mutation-errors";
 import { invalidateAccountCapacity } from "../../features/account-capacity/query-keys";
 import { useMemo, useState } from "react";
 import type React from "react";
@@ -535,6 +536,11 @@ export function TeamInviteAcceptancePage() {
       }, 250);
     },
     onError: (error) => {
+      const capacityError = capacityMutationFailure(error, queryClient, "team");
+      if (capacityError) {
+        setErrorMessage(capacityError.message);
+        return;
+      }
       const code = getWorkspaceTeamInviteErrorCode(error);
       setAcceptErrorCode(code);
       if (code === "INVITE_EMAIL_MISMATCH") return;

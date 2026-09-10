@@ -1,3 +1,4 @@
+import { useCapacityMutationFeedback } from "../../features/account-capacity/mutation-feedback";
 import { invalidateAccountCapacity } from "../../features/account-capacity/query-keys";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -27,6 +28,7 @@ import { useWorkspace } from "../../lib/use-workspace";
 export function PtHubLeadDetailPage() {
   const { leadId } = useParams<{ leadId: string }>();
   const queryClient = useQueryClient();
+  const capacityFeedback = useCapacityMutationFeedback("owner");
   const { user } = useSessionAuth();
   const { switchWorkspace, refreshWorkspace } = useWorkspace();
   const leadsQuery = usePtHubLeads();
@@ -131,116 +133,126 @@ export function PtHubLeadDetailPage() {
   }
 
   return (
-    <PtHubLeadDetailView
-      lead={lead}
-      currentPackage={currentPackage}
-      currentPackageLookupLoading={currentPackageLookupLoading}
-      workspaces={(workspacesQuery.data ?? []).map((workspace) => ({
-        id: workspace.id,
-        name: workspace.name,
-      }))}
-      currentUserId={user?.id ?? null}
-      leadChatMessages={leadChatThreadQuery.data?.messages ?? []}
-      leadChatStatus={
-        leadChatThreadQuery.isPending
-          ? "loading"
-          : leadChatThreadQuery.isError
-            ? "error"
-            : leadChatThreadQuery.data?.conversation
-              ? leadChatThreadQuery.data.conversation.status
-              : "missing"
-      }
-      onRetryChat={() => void leadChatThreadQuery.refetch()}
-      leadChatArchivedReason={
-        leadChatThreadQuery.data?.conversation?.archivedReason ?? null
-      }
-      sendingLeadMessage={sendingLeadMessage}
-      saving={saving}
-      onUpdateStatus={async (nextLeadId, status) => {
-        setSaving(true);
-        try {
-          await updatePtHubLeadStatus({
-            leadId: nextLeadId,
-            status,
-          });
-          await refreshLeads();
-        } finally {
-          setSaving(false);
+    <>
+      {capacityFeedback.notice}
+      <PtHubLeadDetailView
+        lead={lead}
+        currentPackage={currentPackage}
+        currentPackageLookupLoading={currentPackageLookupLoading}
+        workspaces={(workspacesQuery.data ?? []).map((workspace) => ({
+          id: workspace.id,
+          name: workspace.name,
+        }))}
+        currentUserId={user?.id ?? null}
+        leadChatMessages={leadChatThreadQuery.data?.messages ?? []}
+        leadChatStatus={
+          leadChatThreadQuery.isPending
+            ? "loading"
+            : leadChatThreadQuery.isError
+              ? "error"
+              : leadChatThreadQuery.data?.conversation
+                ? leadChatThreadQuery.data.conversation.status
+                : "missing"
         }
-      }}
-      onApprove={async (nextLeadId, params) => {
-        setSaving(true);
-        try {
-          const approvalResult = await approvePtHubLead({
-            leadId: nextLeadId,
-            workspaceId: params.workspaceId,
-            workspaceName: params.workspaceName,
-            allowTransfer: params.allowTransfer,
-          });
-          if (approvalResult?.workspace_id) {
-            switchWorkspace(approvalResult.workspace_id);
-            refreshWorkspace();
+        onRetryChat={() => void leadChatThreadQuery.refetch()}
+        leadChatArchivedReason={
+          leadChatThreadQuery.data?.conversation?.archivedReason ?? null
+        }
+        sendingLeadMessage={sendingLeadMessage}
+        saving={saving}
+        onUpdateStatus={async (nextLeadId, status) => {
+          setSaving(true);
+          try {
+            await updatePtHubLeadStatus({
+              leadId: nextLeadId,
+              status,
+            });
+            await refreshLeads();
+          } finally {
+            setSaving(false);
           }
-          invalidateAccountCapacity(queryClient);
-          await Promise.all([
-            queryClient.invalidateQueries({
-              queryKey: ["pt-hub-workspaces", user?.id],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["pt-hub-clients"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["pt-hub-clients-page"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["pt-hub-client-stats"],
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["pt-dashboard"],
-            }),
-          ]);
-          await refreshLeads();
-        } finally {
-          setSaving(false);
-        }
-      }}
-      onDecline={async (nextLeadId) => {
-        setSaving(true);
-        try {
-          await updatePtHubLeadStatus({
-            leadId: nextLeadId,
-            status: "declined",
-          });
-          await queryClient.invalidateQueries({
-            queryKey: ["lead-chat-thread", nextLeadId],
-          });
-          await refreshLeads();
-        } finally {
-          setSaving(false);
-        }
-      }}
-      onSendLeadMessage={async (nextLeadId, body) => {
-        setSendingLeadMessage(true);
-        try {
-          await sendLeadChatMessage({ leadId: nextLeadId, body });
-          await queryClient.invalidateQueries({
-            queryKey: ["lead-chat-thread", nextLeadId],
-          });
-          await refreshLeads();
-        } finally {
-          setSendingLeadMessage(false);
-        }
-      }}
-      onAddNote={async (nextLeadId, body) => {
-        if (!user?.id) return;
-        setSaving(true);
-        try {
-          await addPtHubLeadNote({ leadId: nextLeadId, userId: user.id, body });
-          await refreshLeads();
-        } finally {
-          setSaving(false);
-        }
-      }}
-    />
+        }}
+        onApprove={async (nextLeadId, params) => {
+          setSaving(true);
+          try {
+            const approvalResult = await approvePtHubLead({
+              leadId: nextLeadId,
+              workspaceId: params.workspaceId,
+              workspaceName: params.workspaceName,
+              allowTransfer: params.allowTransfer,
+            });
+            if (approvalResult?.workspace_id) {
+              switchWorkspace(approvalResult.workspace_id);
+              refreshWorkspace();
+            }
+            invalidateAccountCapacity(queryClient);
+            await Promise.all([
+              queryClient.invalidateQueries({
+                queryKey: ["pt-hub-workspaces", user?.id],
+              }),
+              queryClient.invalidateQueries({
+                queryKey: ["pt-hub-clients"],
+              }),
+              queryClient.invalidateQueries({
+                queryKey: ["pt-hub-clients-page"],
+              }),
+              queryClient.invalidateQueries({
+                queryKey: ["pt-hub-client-stats"],
+              }),
+              queryClient.invalidateQueries({
+                queryKey: ["pt-dashboard"],
+              }),
+            ]);
+            await refreshLeads();
+          } catch (error) {
+            capacityFeedback.report(error);
+            throw error;
+          } finally {
+            setSaving(false);
+          }
+        }}
+        onDecline={async (nextLeadId) => {
+          setSaving(true);
+          try {
+            await updatePtHubLeadStatus({
+              leadId: nextLeadId,
+              status: "declined",
+            });
+            await queryClient.invalidateQueries({
+              queryKey: ["lead-chat-thread", nextLeadId],
+            });
+            await refreshLeads();
+          } finally {
+            setSaving(false);
+          }
+        }}
+        onSendLeadMessage={async (nextLeadId, body) => {
+          setSendingLeadMessage(true);
+          try {
+            await sendLeadChatMessage({ leadId: nextLeadId, body });
+            await queryClient.invalidateQueries({
+              queryKey: ["lead-chat-thread", nextLeadId],
+            });
+            await refreshLeads();
+          } finally {
+            setSendingLeadMessage(false);
+          }
+        }}
+        onAddNote={async (nextLeadId, body) => {
+          if (!user?.id) return;
+          setSaving(true);
+          try {
+            await addPtHubLeadNote({
+              leadId: nextLeadId,
+              userId: user.id,
+              body,
+            });
+            await refreshLeads();
+          } finally {
+            setSaving(false);
+          }
+        }}
+      />
+    </>
   );
 }

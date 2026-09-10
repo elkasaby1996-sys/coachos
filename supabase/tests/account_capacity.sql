@@ -2,6 +2,13 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 select no_plan();
+-- PR-PRICE-03 historical usage fixtures, transaction-local DDL, rolled back below.
+alter table workspaces disable trigger zz_capacity_admission;
+alter table clients disable trigger zz_capacity_admission;
+alter table workspace_members disable trigger zz_capacity_admission;
+alter table workspace_member_invites disable trigger zz_capacity_admission;
+alter table pt_packages disable trigger zz_capacity_admission;
+
 insert into auth.users(id,email) select ('a0300000-0000-4000-8000-' || lpad(n::text,12,'0'))::uuid,'capacity-' || n || '@example.test' from generate_series(1,20) n;
 insert into pt_profiles(user_id,workspace_id,full_name) select id,null,'Capacity coach' from auth.users where id in ('a0300000-0000-4000-8000-000000000001','a0300000-0000-4000-8000-000000000002','a0300000-0000-4000-8000-000000000003');
 insert into workspaces(id,name,owner_user_id) values
@@ -183,7 +190,14 @@ select is(get_my_account_capacity_snapshot()#>>'{dimensions,0,actual}','151','al
 select is(get_my_account_capacity_snapshot()#>>'{dimensions,2,state}','over_limit','complimentary workspace overage retained');
 select is(get_my_account_capacity_snapshot()#>>'{dimensions,3,state}','unlimited','Scale package limit unlimited');
 select is(evaluate_my_capacity_change('counted_clients')->>'reasonCode','capacity_already_over_limit','evaluation explains existing overage');
-select lives_ok($$select create_workspace('Still available above capacity')$$,'existing workspace mutation remains available');
+reset role;
+alter table workspaces enable trigger zz_capacity_admission;
+alter table clients enable trigger zz_capacity_admission;
+alter table workspace_members enable trigger zz_capacity_admission;
+alter table workspace_member_invites enable trigger zz_capacity_admission;
+alter table pt_packages enable trigger zz_capacity_admission;
+set local role authenticated;
+select throws_ok($$select create_workspace('Additional workspace')$$,'P0001','Account capacity admission failed.','PR-PRICE-04 prevents increasing an over-limit dimension');
 reset role;
 select is(reserve_account_capacity((select id from billing_accounts where owner_user_id='a0300000-0000-4000-8000-000000000003'),'published_packages',100,'unlimited','operation','operation:a0300000-0000-4000-8000-000000000018',null,'pgtap',now()+interval '1 minute')->>'granted','true','unlimited reservation granted');
 select * from finish();

@@ -1,3 +1,4 @@
+import { useCapacityMutationFeedback } from "../../features/account-capacity/mutation-feedback";
 import { FormEvent, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, useNavigate } from "react-router-dom";
@@ -22,6 +23,7 @@ import { createPtWorkspace } from "../../features/pt-hub/lib/pt-hub";
 
 export function PtWorkspaceOnboardingPage() {
   const queryClient = useQueryClient();
+  const capacityFeedback = useCapacityMutationFeedback("owner");
   const navigate = useNavigate();
   const { session, authLoading } = useSessionAuth();
   const {
@@ -160,6 +162,7 @@ export function PtWorkspaceOnboardingPage() {
       await refreshRole?.();
       navigate("/pt-hub", { replace: true });
     } catch (err) {
+      capacityFeedback.report(err);
       setError(
         err instanceof Error ? err.message : "Failed to create workspace.",
       );
@@ -198,6 +201,7 @@ export function PtWorkspaceOnboardingPage() {
                 required
               />
             </div>
+            {capacityFeedback.notice}
             {error ? (
               <div className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
                 {error}

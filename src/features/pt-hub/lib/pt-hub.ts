@@ -1,3 +1,4 @@
+import { capacityMutationFailure } from "../../account-capacity/mutation-errors";
 import { invalidateAccountCapacity } from "../../account-capacity/query-keys";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { persistPendingRequestedPaidPlan } from "../../account-entitlements/persist-requested-plan";
@@ -2007,7 +2008,7 @@ export async function approvePtHubLead(params: {
     p_allow_transfer: params.allowTransfer ?? false,
   });
 
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error, undefined, "owner") ?? error;
 
   const row = (
     Array.isArray(data) ? (data[0] ?? null) : data
@@ -2653,14 +2654,11 @@ export async function createPtPackage(params: {
   const normalizedState = normalizePackageStateForPersistence(params.input);
   const payload = toPtPackageMutationPayload(normalizedState);
 
-  const { error } = await supabase.from("pt_packages").insert({
-    pt_user_id: params.ptUserId,
-    ...payload,
-    archived_at:
-      normalizedState.status === "archived" ? new Date().toISOString() : null,
+  const { error } = await supabase.rpc("create_my_pt_package", {
+    p_input: payload,
   });
 
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error, undefined, "owner") ?? error;
 }
 
 export async function updatePtPackage(params: {
@@ -2671,34 +2669,27 @@ export async function updatePtPackage(params: {
   const normalizedState = normalizePackageStateForPersistence(params.input);
   const payload = toPtPackageMutationPayload(normalizedState);
 
-  const { error } = await supabase
-    .from("pt_packages")
-    .update({
-      ...payload,
-      archived_at:
-        normalizedState.status === "archived" ? new Date().toISOString() : null,
-    })
-    .eq("id", params.packageId)
-    .eq("pt_user_id", params.ptUserId);
+  const { error } = await supabase.rpc("update_my_pt_package", {
+    p_package_id: params.packageId,
+    p_input: payload,
+  });
 
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error, undefined, "owner") ?? error;
 }
 
 export async function archivePtPackage(params: {
   ptUserId: string;
   packageId: string;
 }) {
-  const { error } = await supabase
-    .from("pt_packages")
-    .update({
+  const { error } = await supabase.rpc("update_my_pt_package", {
+    p_package_id: params.packageId,
+    p_input: {
       status: "archived",
       is_public: false,
-      archived_at: new Date().toISOString(),
-    })
-    .eq("id", params.packageId)
-    .eq("pt_user_id", params.ptUserId);
+    },
+  });
 
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error, undefined, "owner") ?? error;
 }
 
 export async function reorderPtPackages(params: {
@@ -2710,13 +2701,13 @@ export async function reorderPtPackages(params: {
 
   await Promise.all(
     orderedIds.map(async (packageId, index) => {
-      const { error } = await supabase
-        .from("pt_packages")
-        .update({ sort_order: index * 10 })
-        .eq("id", packageId)
-        .eq("pt_user_id", params.ptUserId);
+      const { error } = await supabase.rpc("update_my_pt_package", {
+        p_package_id: packageId,
+        p_input: { sort_order: index * 10 },
+      });
 
-      if (error) throw error;
+      if (error)
+        throw capacityMutationFailure(error, undefined, "owner") ?? error;
     }),
   );
 }
@@ -2860,7 +2851,8 @@ export async function createPtWorkspace(
       });
     },
   });
-  if (error) throw error;
+  if (error)
+    throw capacityMutationFailure(error, queryClient, "owner") ?? error;
 
   const createdWorkspaceId = Array.isArray(data)
     ? ((data[0] as { workspace_id?: string } | undefined)?.workspace_id ?? null)

@@ -1,3 +1,4 @@
+import { useCapacityMutationFeedback } from "../../../../features/account-capacity/mutation-feedback";
 import { invalidateAccountCapacity } from "../../../../features/account-capacity/query-keys";
 import { useEffect, useState } from "react";
 import type React from "react";
@@ -368,6 +369,10 @@ function InviteTeamMemberDialog({
   const [clientIds, setClientIds] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const queryClient = useQueryClient();
+  const { isOwner } = useWorkspaceSettingsOutletContext();
+  const capacityFeedback = useCapacityMutationFeedback(
+    isOwner ? "owner" : "team",
+  );
   const emailIsValid = /\S+@\S+\.\S+/.test(email.trim());
   const showZeroWarning =
     clientAccessMode === "assigned_clients_only" && clientIds.length === 0;
@@ -383,6 +388,7 @@ function InviteTeamMemberDialog({
         baseUrl: window.location.origin,
       }),
     onSuccess: async (invite) => {
+      capacityFeedback.clear();
       invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
@@ -397,7 +403,8 @@ function InviteTeamMemberDialog({
     },
     onError: (error) => {
       onError(
-        error instanceof Error ? error.message : "Unable to send invite.",
+        capacityFeedback.report(error) ??
+          (error instanceof Error ? error.message : "Unable to send invite."),
       );
     },
   });
@@ -412,6 +419,7 @@ function InviteTeamMemberDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
+        {capacityFeedback.notice}
         <DialogHeader>
           <DialogTitle>Invite member</DialogTitle>
           <DialogDescription>
@@ -518,6 +526,10 @@ function ClientAssignmentDialog({
 }) {
   const [clientIds, setClientIds] = useState<string[]>([]);
   const queryClient = useQueryClient();
+  const { isOwner } = useWorkspaceSettingsOutletContext();
+  const capacityFeedback = useCapacityMutationFeedback(
+    isOwner ? "owner" : "team",
+  );
 
   useEffect(() => {
     if (open) setClientIds(member?.assignedClientIds ?? []);
@@ -531,6 +543,7 @@ function ClientAssignmentDialog({
         clientIds,
       }),
     onSuccess: async () => {
+      capacityFeedback.clear();
       invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
@@ -550,6 +563,7 @@ function ClientAssignmentDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
+        {capacityFeedback.notice}
         <DialogHeader>
           <DialogTitle>Manage assigned clients</DialogTitle>
           <DialogDescription>
@@ -598,6 +612,10 @@ function TeamMemberTable({
   onError: (message: string) => void;
 }) {
   const queryClient = useQueryClient();
+  const { isOwner } = useWorkspaceSettingsOutletContext();
+  const capacityFeedback = useCapacityMutationFeedback(
+    isOwner ? "owner" : "team",
+  );
   const [assignmentMember, setAssignmentMember] =
     useState<WorkspaceTeamMemberRow | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
@@ -613,6 +631,7 @@ function TeamMemberTable({
         role: input.role,
       }),
     onSuccess: async () => {
+      capacityFeedback.clear();
       invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
@@ -633,6 +652,7 @@ function TeamMemberTable({
         status: input.status,
       }),
     onSuccess: async (_, variables) => {
+      capacityFeedback.clear();
       invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
@@ -646,7 +666,8 @@ function TeamMemberTable({
     },
     onError: (error) =>
       onError(
-        error instanceof Error ? error.message : "Unable to update member.",
+        capacityFeedback.report(error) ??
+          (error instanceof Error ? error.message : "Unable to update member."),
       ),
   });
 
@@ -660,6 +681,7 @@ function TeamMemberTable({
 
   return (
     <>
+      {capacityFeedback.notice}
       <div className="overflow-x-auto rounded-2xl border border-border/70">
         <table className="ui-table w-full min-w-[760px] text-left text-sm">
           <thead className="border-b border-border/70 bg-muted/30 text-xs uppercase tracking-[0.18em] text-muted-foreground">
@@ -850,6 +872,10 @@ function PendingInviteTable({
   onError: (message: string) => void;
 }) {
   const queryClient = useQueryClient();
+  const { isOwner } = useWorkspaceSettingsOutletContext();
+  const capacityFeedback = useCapacityMutationFeedback(
+    isOwner ? "owner" : "team",
+  );
   const [revokeInvite, setRevokeInvite] =
     useState<WorkspaceTeamInviteRow | null>(null);
   const resendMutation = useMutation({
@@ -860,6 +886,7 @@ function PendingInviteTable({
         baseUrl: window.location.origin,
       }),
     onSuccess: async (invite) => {
+      capacityFeedback.clear();
       invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
@@ -869,13 +896,15 @@ function PendingInviteTable({
     },
     onError: (error) =>
       onError(
-        error instanceof Error ? error.message : "Unable to resend invite.",
+        capacityFeedback.report(error) ??
+          (error instanceof Error ? error.message : "Unable to resend invite."),
       ),
   });
   const revokeMutation = useMutation({
     mutationFn: (inviteId: string) =>
       revokeWorkspaceTeamInvite({ workspaceId, inviteId }),
     onSuccess: async () => {
+      capacityFeedback.clear();
       invalidateAccountCapacity(queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["workspace-team-settings", workspaceId],
@@ -899,6 +928,7 @@ function PendingInviteTable({
 
   return (
     <>
+      {capacityFeedback.notice}
       <div className="overflow-x-auto rounded-2xl border border-border/70">
         <table className="ui-table w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-border/70 bg-muted/30 text-xs uppercase tracking-[0.18em] text-muted-foreground">

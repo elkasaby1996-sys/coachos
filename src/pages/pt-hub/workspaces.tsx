@@ -1,3 +1,4 @@
+import { useCapacityMutationFeedback } from "../../features/account-capacity/mutation-feedback";
 import { NotificationToast } from "../../components/common/notification-toast";
 import { useEffect, useState } from "react";
 import { Plus } from "../../lib/icons";
@@ -31,6 +32,7 @@ export function PtHubWorkspacesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const capacityFeedback = useCapacityMutationFeedback("owner");
   const { switchWorkspace, refreshWorkspace } = useWorkspace();
   const workspacesQuery = usePtHubWorkspaces();
   const acceptedWorkspaceId = searchParams.get("acceptedWorkspace");
@@ -71,6 +73,7 @@ export function PtHubWorkspacesPage() {
     }
     setSaving(true);
     setError(null);
+    capacityFeedback.clear();
     try {
       const workspaceId = await createPtWorkspace(workspaceName, queryClient);
       await queryClient.invalidateQueries({
@@ -81,6 +84,7 @@ export function PtHubWorkspacesPage() {
       setDialogOpen(false);
       switchWorkspace(workspaceId);
     } catch (createError) {
+      capacityFeedback.report(createError);
       setError(
         createError instanceof Error
           ? createError.message
@@ -169,6 +173,7 @@ export function PtHubWorkspacesPage() {
               limit={workspaceNameLimitState.limit}
               errorText={workspaceNameLimitState.errorText}
             />
+            {capacityFeedback.notice}
             {error ? <p className="text-xs text-danger">{error}</p> : null}
           </div>
           <DialogFooter className="flex-row justify-end gap-2">

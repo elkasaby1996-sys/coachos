@@ -1,3 +1,4 @@
+import { capacityMutationFailure } from "../account-capacity/mutation-errors";
 import {
   buildInviteUrl,
   normalizeInviteEmail,
@@ -197,7 +198,7 @@ export async function createWorkspaceTeamInvite(
     p_client_ids: input.clientIds ?? [],
     p_base_url: input.baseUrl,
   });
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error) ?? error;
   const invite = parseRpcJson<WorkspaceTeamInviteCreated>(data);
   const { data: branding } = await supabase
     .from("workspaces")
@@ -223,7 +224,7 @@ export async function previewWorkspaceTeamInvite(token: string) {
   const { data, error } = await supabase.rpc("preview_workspace_team_invite", {
     p_token: token,
   });
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error) ?? error;
   return parseRpcJson<TeamInvitePreview>(data);
 }
 
@@ -232,7 +233,7 @@ export async function acceptWorkspaceTeamInvite(token: string) {
   const { data, error } = await supabase.rpc("accept_workspace_team_invite", {
     p_token: token,
   });
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error) ?? error;
   return parseRpcJson<WorkspaceTeamInviteAccepted>(data);
 }
 
@@ -241,7 +242,7 @@ export async function declineWorkspaceTeamInvite(inviteId: string) {
   const { data, error } = await supabase.rpc("decline_workspace_team_invite", {
     p_invite_id: inviteId,
   });
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error) ?? error;
   return parseRpcJson<WorkspaceTeamInviteDeclined>(data);
 }
 
@@ -256,7 +257,7 @@ export async function resendWorkspaceTeamInvite(input: {
     p_invite_id: input.inviteId,
     p_base_url: input.baseUrl,
   });
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error) ?? error;
   const result = parseRpcJson<WorkspaceTeamInviteResent & { email?: string }>(
     data,
   );
@@ -275,6 +276,6 @@ export async function revokeWorkspaceTeamInvite(input: {
     p_workspace_id: input.workspaceId,
     p_invite_id: input.inviteId,
   });
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error) ?? error;
   return parseRpcJson<WorkspaceTeamInviteRevoked>(data);
 }

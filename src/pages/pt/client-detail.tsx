@@ -1,3 +1,4 @@
+import { useCapacityMutationFeedback } from "../../features/account-capacity/mutation-feedback";
 import { invalidateAccountCapacity } from "../../features/account-capacity/query-keys";
 import { NotificationToast } from "../../components/common/notification-toast";
 import { ProfileAvatar } from "../../components/common/profile-avatar";
@@ -2932,6 +2933,10 @@ export function PtClientDetailPage({
 
   const clientSnapshot =
     clientProfile ?? (clientQuery.data as PtClientProfile | null);
+  const capacityFeedback = useCapacityMutationFeedback(
+    workspaceAccessRole === "owner" ? "owner" : "team",
+  );
+
   const clientRelationshipStatus =
     clientSnapshot?.relationship_status ?? "active";
   const isHistoricalClientRelationship =
@@ -3683,7 +3688,7 @@ export function PtClientDetailPage({
 
     if (error) {
       setToastVariant("error");
-      setToastMessage(getErrorMessage(error));
+      setToastMessage(capacityFeedback.report(error) ?? getErrorMessage(error));
       setLifecycleActionStatus("idle");
       return;
     }
@@ -3843,7 +3848,16 @@ export function PtClientDetailPage({
     );
 
     if (error) {
-      setTransferValidationMessage(getClientTransferErrorMessage(error));
+      setTransferValidationMessage(
+        capacityFeedback.report(
+          error,
+          workspacesQuery.data?.find(
+            (workspace) => workspace.id === transferTargetWorkspaceId,
+          )?.ownerUserId === user?.id
+            ? "owner"
+            : "team",
+        ) ?? getClientTransferErrorMessage(error),
+      );
       setTransferActionStatus("idle");
       return;
     }
@@ -4618,6 +4632,7 @@ export function PtClientDetailPage({
 
   return (
     <DashboardShell>
+      {!lifecycleDialogOpen && !transferDialogOpen && capacityFeedback.notice}
       <NotificationToast
         message={toastMessage}
         tone={toastVariant}
@@ -6434,6 +6449,7 @@ export function PtClientDetailPage({
               surfaced correctly across PT Hub and the workspace.
             </DialogDescription>
           </DialogHeader>
+          {capacityFeedback.notice}
           <div className="space-y-4">
             <div className="ui-panel border border-border/70 px-4 py-3">
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
@@ -6569,6 +6585,7 @@ export function PtClientDetailPage({
               {CLIENT_DETAIL_TRANSFER_CONFIRMATION_COPY}
             </DialogDescription>
           </DialogHeader>
+          {capacityFeedback.notice}
           <div className="space-y-3">
             <div className="space-y-2">
               <label

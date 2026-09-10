@@ -25,12 +25,14 @@ select id,null,'Commercial test coach' from auth.users where id::text like 'a020
 
 -- Reproduce the pre-migration state, then exercise the actual migration helper.
 alter table workspaces disable trigger workspace_account_trial;
+alter table workspaces disable trigger zz_capacity_admission;
 insert into workspaces(id,name,owner_user_id) values
  ('b0200000-0000-4000-8000-000000000001','Legacy A','a0200000-0000-4000-8000-000000000001'),
  ('b0200000-0000-4000-8000-000000000002','Legacy B','a0200000-0000-4000-8000-000000000001');
 select backfill_legacy_billing_accounts();
 select backfill_legacy_billing_accounts();
 alter table workspaces enable trigger workspace_account_trial;
+alter table workspaces enable trigger zz_capacity_admission;
 select is((select count(*)::integer from billing_accounts where owner_user_id='a0200000-0000-4000-8000-000000000001'),1,'multiple legacy workspaces get one account');
 select results_eq($$select s.subscription_kind,s.status,p.plan_key,p.version,s.source,s.current_period_ends_at from account_subscriptions s join billing_accounts a on a.id=s.billing_account_id join commercial_plan_versions p on p.id=s.plan_version_id where a.owner_user_id='a0200000-0000-4000-8000-000000000001'$$,
  $$values ('complimentary'::text,'active'::text,'scale'::text,1,'legacy_beta_backfill'::text,null::timestamptz)$$,'legacy gets one Scale complimentary contract without renewal');
@@ -66,14 +68,15 @@ select is(jsonb_array_length(get_my_effective_account_entitlements()->'targetFea
 select is(get_my_effective_account_entitlements()->'enabledFeatureKeys','[]'::jsonb,'non-saleable features excluded');
 reset role;
 select ok((select trial_started_at=transaction_timestamp() and trial_ends_at=trial_started_at+interval '14 days' and trial_recovery_ends_at=trial_ends_at+interval '7 days' from account_subscriptions s join billing_accounts a on a.id=s.billing_account_id where a.owner_user_id='a0200000-0000-4000-8000-000000000002'),'database transaction time with 14+7 day clock');
-insert into workspaces(id,name,owner_user_id) values ('b0200000-0000-4000-8000-000000000003','Second trial workspace','a0200000-0000-4000-8000-000000000002');
+-- A first workspace already exists; repeat the trial helper without growing usage.
+select set_config('test.price02_workspace',(select id::text from workspaces where owner_user_id='a0200000-0000-4000-8000-000000000002'),true);
 select start_account_trial_for_owner('a0200000-0000-4000-8000-000000000002','first_workspace');
 select start_account_trial_for_owner('a0200000-0000-4000-8000-000000000002','first_workspace');
 select is((select count(*)::integer from account_subscriptions s join billing_accounts a on a.id=s.billing_account_id where a.owner_user_id='a0200000-0000-4000-8000-000000000002'),1,'second workspace and repeated locked helper do not reset trial');
-update workspaces set owner_user_id='a0200000-0000-4000-8000-000000000004' where id='b0200000-0000-4000-8000-000000000003';
+update workspaces set owner_user_id='a0200000-0000-4000-8000-000000000004' where id=current_setting('test.price02_workspace')::uuid;
 select is((select requested_plan_key from billing_accounts where owner_user_id='a0200000-0000-4000-8000-000000000004'),'growth','invalid trigger intent defaults Growth');
 select is((select source from account_subscriptions s join billing_accounts a on a.id=s.billing_account_id where a.owner_user_id='a0200000-0000-4000-8000-000000000004'),'workspace_transfer','ownership received starts trial');
-update workspaces set owner_user_id='a0200000-0000-4000-8000-000000000002' where id='b0200000-0000-4000-8000-000000000003';
+update workspaces set owner_user_id='a0200000-0000-4000-8000-000000000002' where id=current_setting('test.price02_workspace')::uuid;
 select is((select count(*)::integer from account_subscriptions s join billing_accounts a on a.id=s.billing_account_id where a.owner_user_id='a0200000-0000-4000-8000-000000000002'),1,'ownership round trip preserves one trial');
 select throws_ok($$update account_subscriptions set trial_started_at=trial_started_at+interval '1 day' where subscription_kind='trial'$$,'P0001',null,'trial clock cannot reset');
 select throws_ok($$insert into account_subscriptions(billing_account_id,plan_version_id,subscription_kind,status,source) select billing_account_id,plan_version_id,'paid','active','manual' from account_subscriptions where subscription_kind='trial' limit 1$$,'23505',null,'one current subscription constraint');
@@ -135,38 +138,42 @@ select id,'support.migration_assistance','enable','Commercial fixture','manual' 
 select ok(get_my_effective_account_entitlements()->'enabledFeatureKeys' ? 'support.migration_assistance','saleable unmapped enable applied');
 select ok(not(get_my_effective_account_entitlements()->'targetFeatureKeys' ? 'support.migration_assistance'),'override does not rewrite plan mappings');
 
+-- The transfer retains the former owner's membership; remove that fixture
+-- commitment before introducing the dedicated authorization-test coach.
+delete from workspace_members where workspace_id=current_setting('test.price02_workspace')::uuid
+  and user_id='a0200000-0000-4000-8000-000000000004';
 insert into workspace_members(workspace_id,user_id,role,status) values
- ('b0200000-0000-4000-8000-000000000003','a0200000-0000-4000-8000-000000000005','pt_coach','active');
+ (current_setting('test.price02_workspace')::uuid,'a0200000-0000-4000-8000-000000000005','pt_coach','active');
 insert into clients(workspace_id,user_id,full_name,status) values
- ('b0200000-0000-4000-8000-000000000003','a0200000-0000-4000-8000-000000000006','Commercial fixture client','active');
+ (current_setting('test.price02_workspace')::uuid,'a0200000-0000-4000-8000-000000000006','Commercial fixture client','active');
 set local role authenticated;
-select is(get_workspace_effective_entitlements('b0200000-0000-4000-8000-000000000003')->>'canManageBilling','true','workspace owner manages billing');
+select is(get_workspace_effective_entitlements(current_setting('test.price02_workspace')::uuid)->>'canManageBilling','true','workspace owner manages billing');
 reset role;
 select set_config('request.jwt.claim.sub','a0200000-0000-4000-8000-000000000005',true);
 set local role authenticated;
-select is(get_workspace_effective_entitlements('b0200000-0000-4000-8000-000000000003')->>'canManageBilling','false','active coach safe workspace access');
-select is(get_workspace_effective_entitlements('b0200000-0000-4000-8000-000000000003')->>'planKey','growth','member sees owner effective plan');
-select ok(not(get_workspace_effective_entitlements('b0200000-0000-4000-8000-000000000003') ?| array['billingAccount','requestedPaidPlanKey','subscription','targetFeatureKeys','events','overrides']),'workspace payload omits private billing data');
+select is(get_workspace_effective_entitlements(current_setting('test.price02_workspace')::uuid)->>'canManageBilling','false','active coach safe workspace access');
+select is(get_workspace_effective_entitlements(current_setting('test.price02_workspace')::uuid)->>'planKey','growth','member sees owner effective plan');
+select ok(not(get_workspace_effective_entitlements(current_setting('test.price02_workspace')::uuid) ?| array['billingAccount','requestedPaidPlanKey','subscription','targetFeatureKeys','events','overrides']),'workspace payload omits private billing data');
 select is(get_my_effective_account_entitlements()#>>'{billingAccount,ownerUserId}','a0200000-0000-4000-8000-000000000005','owner RPC only caller identity');
 select is(get_my_effective_account_entitlements()#>>'{subscription,effectiveStatus}','no_subscription','member does not inherit owner billing account');
 reset role;
 update workspace_members set status='suspended' where user_id='a0200000-0000-4000-8000-000000000005';
 set local role authenticated;
-select throws_ok($$select get_workspace_effective_entitlements('b0200000-0000-4000-8000-000000000003')$$,'42501',null,'suspended member denied');
+select throws_ok($$select get_workspace_effective_entitlements(current_setting('test.price02_workspace')::uuid)$$,'42501',null,'suspended member denied');
 reset role;
 update workspace_members set status='removed' where user_id='a0200000-0000-4000-8000-000000000005';
 set local role authenticated;
-select throws_ok($$select get_workspace_effective_entitlements('b0200000-0000-4000-8000-000000000003')$$,'42501',null,'removed member denied');
+select throws_ok($$select get_workspace_effective_entitlements(current_setting('test.price02_workspace')::uuid)$$,'42501',null,'removed member denied');
 reset role;
 select set_config('request.jwt.claim.sub','a0200000-0000-4000-8000-000000000006',true);
 set local role authenticated;
-select throws_ok($$select get_workspace_effective_entitlements('b0200000-0000-4000-8000-000000000003')$$,'42501',null,'client member denied');
+select throws_ok($$select get_workspace_effective_entitlements(current_setting('test.price02_workspace')::uuid)$$,'42501',null,'client member denied');
 select throws_ok($$select get_my_effective_account_entitlements()$$,'42501',null,'client cannot read owner API');
 select throws_ok($$select set_my_requested_paid_plan('growth')$$,'42501',null,'client cannot persist PT intent');
 reset role;
 select set_config('request.jwt.claim.sub','a0200000-0000-4000-8000-000000000003',true);
 set local role authenticated;
-select throws_ok($$select get_workspace_effective_entitlements('b0200000-0000-4000-8000-000000000003')$$,'42501',null,'unrelated PT denied');
+select throws_ok($$select get_workspace_effective_entitlements(current_setting('test.price02_workspace')::uuid)$$,'42501',null,'unrelated PT denied');
 reset role;
 select set_config('request.jwt.claim.sub','a0200000-0000-4000-8000-000000000001',true);
 select is(get_my_effective_account_entitlements()#>>'{subscription,accessLabel}','Complimentary beta access','legacy complimentary response');

@@ -1,3 +1,4 @@
+import { useCapacityMutationFeedback } from "../../account-capacity/mutation-feedback";
 import { invalidateAccountCapacity } from "../../account-capacity/query-keys";
 import {
   type ReactNode,
@@ -281,6 +282,7 @@ function PackageFormField({
 export function PtHubPackageManager() {
   const { user } = useSessionAuth();
   const queryClient = useQueryClient();
+  const capacityFeedback = useCapacityMutationFeedback("owner");
   const packagesQuery = usePtPackages();
   const packageLeadReferenceCountsQuery = usePtPackageLeadReferenceCounts();
   const packageLeadReferenceCounts = packageLeadReferenceCountsQuery.data ?? {};
@@ -361,6 +363,7 @@ export function PtHubPackageManager() {
   }, [packages]);
 
   async function invalidatePackageQueries() {
+    capacityFeedback.clear();
     invalidateAccountCapacity(queryClient);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["pt-packages", user?.id] }),
@@ -431,6 +434,7 @@ export function PtHubPackageManager() {
       setFeedback({ tone: "success", text: "Package created." });
       setIsCreating(false);
     } catch (error) {
+      capacityFeedback.report(error);
       setFeedback({
         tone: "error",
         text:
@@ -468,6 +472,7 @@ export function PtHubPackageManager() {
       await invalidatePackageQueries();
       setFeedback({ tone: "success", text: "Package updated." });
     } catch (error) {
+      capacityFeedback.report(error);
       setFeedback({
         tone: "error",
         text:
@@ -492,6 +497,7 @@ export function PtHubPackageManager() {
       setFeedback({ tone: "success", text: "Package archived." });
       setArchiveCandidate(null);
     } catch (error) {
+      capacityFeedback.report(error);
       setFeedback({
         tone: "error",
         text:
@@ -525,6 +531,7 @@ export function PtHubPackageManager() {
       await invalidatePackageQueries();
       setFeedback({ tone: "success", text: "Package order updated." });
     } catch (error) {
+      capacityFeedback.report(error);
       setFeedback({
         tone: "error",
         text:
@@ -567,6 +574,7 @@ export function PtHubPackageManager() {
         text: isPublic ? "Package is public." : "Package is hidden.",
       });
     } catch (error) {
+      capacityFeedback.report(error);
       setFeedback({
         tone: "error",
         text:
@@ -591,6 +599,7 @@ export function PtHubPackageManager() {
       setFeedback({ tone: "success", text: "Package deleted permanently." });
       setDeleteCandidate(null);
     } catch (error) {
+      capacityFeedback.report(error);
       const errorCode = getPtPackageDeleteErrorCode(error);
       if (errorCode === PT_PACKAGE_DELETE_ERROR_REFERENCED) {
         setFeedback({
@@ -764,6 +773,7 @@ export function PtHubPackageManager() {
 
   return (
     <div className="space-y-4">
+      {capacityFeedback.notice}
       {feedback ? (
         <div
           className={

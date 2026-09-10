@@ -1,3 +1,4 @@
+import { useCapacityMutationFeedback } from "../../features/account-capacity/mutation-feedback";
 import "../../styles/coach-pages.css";
 import {
   useEffect,
@@ -553,6 +554,7 @@ export function PtLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const capacityFeedback = useCapacityMutationFeedback("owner");
   const {
     workspaceId,
     workspaceIds,
@@ -969,6 +971,7 @@ export function PtLayout() {
 
     setIsCreatingWorkspace(true);
     setCreateWorkspaceError(null);
+    capacityFeedback.clear();
     try {
       const createdWorkspaceId = await createPtWorkspace(nextName, queryClient);
 
@@ -991,6 +994,7 @@ export function PtLayout() {
           ),
       });
     } catch (createError) {
+      capacityFeedback.report(createError);
       setCreateWorkspaceError(
         createError instanceof Error
           ? createError.message
@@ -1593,6 +1597,7 @@ export function PtLayout() {
               limit={workspaceNameLimitState.limit}
               errorText={workspaceNameLimitState.errorText}
             />
+            {capacityFeedback.notice}
             {createWorkspaceError ? (
               <p className="text-xs text-danger">{createWorkspaceError}</p>
             ) : null}

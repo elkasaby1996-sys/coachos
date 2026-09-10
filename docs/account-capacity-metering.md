@@ -1,5 +1,7 @@
 # Account capacity metering (PR-PRICE-03)
 
+PR-PRICE-04 admission is documented in [atomic capacity enforcement](account-capacity-enforcement.md).
+
 Capacity is descriptive account-level usage. No product mutation invokes reservation or evaluation functions, and no capacity state changes product access, disables controls, deletes data, suspends members, archives clients, or unpublishes packages. Existing complimentary beta accounts may exceed every finite limit.
 
 ## Boundary and canonical sources
