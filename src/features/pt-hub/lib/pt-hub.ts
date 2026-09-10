@@ -1,4 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { persistPendingRequestedPaidPlan } from "../../account-entitlements/persist-requested-plan";
+import { invalidateAccountEntitlements } from "../../account-entitlements/query-keys";
 import { useMemo } from "react";
 import { getClientRouteKeyFallback } from "../../../lib/client-route-key";
 import { useSessionAuth } from "../../../lib/auth";
@@ -1376,6 +1378,7 @@ export function usePtHubPayments() {
       ).length;
 
       const subscription: PTSubscriptionSummary = {
+        // Compatibility display only. Canonical billing uses account-entitlements.
         planName:
           settingsQuery.data?.subscriptionPlan ??
           DEFAULT_SETTINGS.subscriptionPlan,
@@ -2835,7 +2838,10 @@ export async function submitPublicPtApplication(input: PTPublicLeadInput) {
   return data as string | null;
 }
 
-export async function createPtWorkspace(workspaceName: string) {
+export async function createPtWorkspace(
+  workspaceName: string,
+  queryClient?: QueryClient,
+) {
   const nextName = workspaceName.trim();
   if (!nextName) {
     throw new Error("Workspace name is required.");
@@ -2846,10 +2852,12 @@ export async function createPtWorkspace(workspaceName: string) {
     scope: "current-user",
     cooldownMs: 15_000,
     message: "Please wait a few seconds before creating another workspace.",
-    run: async () =>
-      await supabase.rpc("create_workspace", {
+    run: async () => {
+      await persistPendingRequestedPaidPlan(queryClient);
+      return await supabase.rpc("create_workspace", {
         p_name: nextName,
-      }),
+      });
+    },
   });
   if (error) throw error;
 
@@ -2861,6 +2869,7 @@ export async function createPtWorkspace(workspaceName: string) {
     throw new Error("Workspace was created, but no workspace ID was returned.");
   }
 
+  if (queryClient) await invalidateAccountEntitlements(queryClient);
   return createdWorkspaceId;
 }
 

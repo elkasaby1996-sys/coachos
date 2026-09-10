@@ -1,5 +1,7 @@
 # Commercial catalogue foundation (PR-PRICE-01)
 
+PR-PRICE-02 builds on this immutable catalogue with [account subscriptions, trial policy, and effective entitlement APIs](account-subscription-entitlements.md). The historical PR-PRICE-01 scope and verification below remain unchanged.
+
 ## Ownership and boundaries
 
 The commercial catalogue is owned by reviewed database migrations. Runtime users, account owners, and the service role cannot directly read or write its tables. The public RPC is the only runtime read surface. Commercial plan mappings describe intended contracts; they do not grant permissions or enforce entitlements. Existing workspace role and assigned-client access checks remain independent.

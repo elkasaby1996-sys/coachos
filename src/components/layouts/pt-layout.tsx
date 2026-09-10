@@ -970,7 +970,7 @@ export function PtLayout() {
     setIsCreatingWorkspace(true);
     setCreateWorkspaceError(null);
     try {
-      const createdWorkspaceId = await createPtWorkspace(nextName);
+      const createdWorkspaceId = await createPtWorkspace(nextName, queryClient);
 
       patchBootstrap({
         accountType: "pt",

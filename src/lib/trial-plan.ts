@@ -55,3 +55,10 @@ export function clearPendingTrialPlan() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(pendingTrialPlanStorageKey);
 }
+
+export function hasPendingTrialPlan() {
+  return (
+    typeof window !== "undefined" &&
+    window.localStorage.getItem(pendingTrialPlanStorageKey) !== null
+  );
+}

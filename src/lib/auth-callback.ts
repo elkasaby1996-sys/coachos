@@ -1,5 +1,7 @@
 import { TRIAL_DURATION_DAYS } from "../features/commercial-catalogue/contracts";
 import type { User } from "@supabase/supabase-js";
+import type { QueryClient } from "@tanstack/react-query";
+import { persistPendingRequestedPaidPlan } from "../features/account-entitlements/persist-requested-plan";
 import {
   ensureClientProfile,
   ensurePtProfile,
@@ -12,11 +14,7 @@ import {
   syncPtAccountIdentity,
   type AccountType,
 } from "./account-profiles";
-import {
-  clearPendingTrialPlan,
-  getPendingTrialPlan,
-  getTrialPlanLabel,
-} from "./trial-plan";
+import { getPendingTrialPlan, getTrialPlanLabel } from "./trial-plan";
 
 export type AuthCallbackKind =
   | "signup"
@@ -133,6 +131,7 @@ export async function provisionCallbackProfile(params: {
   user: User;
   intent: AccountType;
   inviteToken: string | null;
+  queryClient?: QueryClient;
 }) {
   const storedIntent =
     params.intent === "unknown" ? getSignupIntentFallback() : params.intent;
@@ -148,6 +147,7 @@ export async function provisionCallbackProfile(params: {
       userId: params.user.id,
       fullName,
     });
+    void persistPendingRequestedPaidPlan(params.queryClient);
     await syncPtAccountIdentity({
       userId: params.user.id,
       fullName,
@@ -159,7 +159,6 @@ export async function provisionCallbackProfile(params: {
       subscriptionPlan: getTrialPlanLabel(selectedPlan),
       subscriptionStatus: `${TRIAL_DURATION_DAYS}-day trial`,
     });
-    clearPendingTrialPlan();
     return;
   }
 

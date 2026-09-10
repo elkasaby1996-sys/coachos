@@ -35,7 +35,7 @@ function sqlString(value: string) {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-async function pgQuery<T = unknown>(query: string): Promise<T[]> {
+export async function pgQuery<T = unknown>(query: string): Promise<T[]> {
   const response = await fetch(`${getSupabaseApiUrl()}/pg/query`, {
     method: "POST",
     headers: {
@@ -71,7 +71,7 @@ async function getUserIdByEmail(email: string) {
   return rows[0]?.id ?? null;
 }
 
-async function ensureUser(user: SeedUser) {
+export async function ensureUser(user: SeedUser) {
   const existingUserId = await getUserIdByEmail(user.email);
 
   // No other worker owns this identity, and these scenarios do not change its

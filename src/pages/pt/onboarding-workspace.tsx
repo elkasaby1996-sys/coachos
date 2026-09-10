@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { ActionButtonLabel } from "../../components/common/action-feedback";
@@ -20,6 +21,7 @@ import { AuthBackdrop } from "../../components/common/auth-backdrop";
 import { createPtWorkspace } from "../../features/pt-hub/lib/pt-hub";
 
 export function PtWorkspaceOnboardingPage() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { session, authLoading } = useSessionAuth();
   const {
@@ -130,7 +132,7 @@ export function PtWorkspaceOnboardingPage() {
     setSaving(true);
     setError(null);
     try {
-      const createdWorkspaceId = await createPtWorkspace(name);
+      const createdWorkspaceId = await createPtWorkspace(name, queryClient);
 
       window.localStorage.removeItem("coachos_pt_workspace_name");
       window.localStorage.removeItem("coachos_signup_intent");
