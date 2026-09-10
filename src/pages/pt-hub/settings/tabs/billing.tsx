@@ -6,39 +6,21 @@ import {
   SettingsSectionCard,
 } from "../../../../features/settings/components/settings-primitives";
 import { usePtHubPayments } from "../../../../features/pt-hub/lib/pt-hub";
+import {
+  useMyEffectiveAccountEntitlements,
+  AccountEntitlementError,
+} from "../../../../features/account-entitlements";
+import { getPublicPlanLabel } from "../../../../features/commercial-catalogue/contracts";
 
 export function PtHubSettingsBillingTab() {
   const paymentsQuery = usePtHubPayments();
-
-  if (paymentsQuery.isLoading) {
-    return (
-      <SettingsSectionCard
-        title="Billing"
-        description="Loading billing settings..."
-      >
-        <p className="text-sm text-muted-foreground">
-          Please wait while we load billing details.
-        </p>
-      </SettingsSectionCard>
+  const entitlementsQuery = useMyEffectiveAccountEntitlements();
+  const subscription = entitlementsQuery.data?.subscription;
+  const invoices = paymentsQuery.data?.invoices ?? [];
+  const dateLabel = (value: string) =>
+    new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+      new Date(value),
     );
-  }
-
-  if (paymentsQuery.error || !paymentsQuery.data) {
-    return (
-      <SettingsSectionCard
-        title="Billing"
-        description="Billing details are currently unavailable."
-      >
-        <SettingsHelperCallout
-          title="Read-only fallback"
-          body="Billing and invoice data could not be loaded. Retry later."
-          tone="warning"
-        />
-      </SettingsSectionCard>
-    );
-  }
-
-  const { subscription, invoices } = paymentsQuery.data;
 
   return (
     <div className="space-y-4">
@@ -46,11 +28,104 @@ export function PtHubSettingsBillingTab() {
         title="Plan and Subscription"
         description="Global PT Hub subscription controls."
       >
-        <SettingsFieldRow label="Current plan" hint="Source: pt_hub_settings">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">{subscription.planName}</Badge>
+        {entitlementsQuery.isLoading ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            Loading subscription details...
+          </p>
+        ) : entitlementsQuery.error ? (
+          <div role="alert">
+            <SettingsHelperCallout
+              title="Subscription details unavailable"
+              body={
+                entitlementsQuery.error instanceof AccountEntitlementError
+                  ? entitlementsQuery.error.message
+                  : "Subscription details could not be loaded. Please try again."
+              }
+              tone="warning"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void entitlementsQuery.refetch()}
+            >
+              Try again
+            </Button>
           </div>
-        </SettingsFieldRow>
+        ) : subscription ? (
+          <>
+            <SettingsFieldRow label="Current plan" hint="Account subscription">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">{subscription.accessLabel}</Badge>
+              </div>
+            </SettingsFieldRow>
+            {subscription.effectiveStatus === "no_subscription" ? (
+              <p className="text-sm text-muted-foreground">
+                Your 14-day Growth trial begins when you create your first
+                workspace.
+              </p>
+            ) : null}
+            {subscription.effectiveStatus === "trialing" &&
+            subscription.trialEndsAt ? (
+              <SettingsFieldRow
+                label="Trial end date"
+                hint="Growth trial; no automatic conversion."
+              >
+                <span className="text-sm">
+                  {dateLabel(subscription.trialEndsAt)}
+                </span>
+              </SettingsFieldRow>
+            ) : null}
+            {subscription.effectiveStatus === "trial_recovery" &&
+            subscription.trialRecoveryEndsAt ? (
+              <SettingsFieldRow
+                label="Recovery end date"
+                hint="Trial ended. The recovery state is existing delivery only; access restrictions are not enforced yet."
+              >
+                <span className="text-sm">
+                  {dateLabel(subscription.trialRecoveryEndsAt)}
+                </span>
+              </SettingsFieldRow>
+            ) : null}
+            {subscription.kind === "complimentary" ? (
+              <p className="text-sm text-muted-foreground">
+                Complimentary beta access follows the Scale v1 entitlement
+                contract.
+              </p>
+            ) : null}
+            {subscription.kind === "paid" &&
+            subscription.currentPeriodStartedAt &&
+            subscription.currentPeriodEndsAt ? (
+              <SettingsFieldRow label="Current period">
+                <span className="text-sm">
+                  {dateLabel(subscription.currentPeriodStartedAt)} –{" "}
+                  {dateLabel(subscription.currentPeriodEndsAt)}
+                </span>
+              </SettingsFieldRow>
+            ) : null}
+            {["restricted", "canceled", "expired", "grace"].includes(
+              subscription.effectiveStatus,
+            ) ? (
+              <p className="text-sm text-muted-foreground">
+                Subscription state: {subscription.effectiveStatus}. Access mode:{" "}
+                {subscription.accessMode.replace(/_/g, " ")}. This is a
+                read-only status display; access restrictions are not enforced
+                yet.
+              </p>
+            ) : null}
+            {entitlementsQuery.data ? (
+              <SettingsFieldRow
+                label="Intended paid plan"
+                hint="A preference only; does not change your current access."
+              >
+                <span className="text-sm">
+                  {getPublicPlanLabel(
+                    entitlementsQuery.data.billingAccount.requestedPaidPlanKey,
+                  )}
+                </span>
+              </SettingsFieldRow>
+            ) : null}
+          </>
+        ) : null}
         <SettingsFieldRow
           label="Billing portal"
           hint="Self-serve billing portal is not connected yet."
@@ -85,6 +160,16 @@ export function PtHubSettingsBillingTab() {
         description="Invoice export and payments history."
       >
         <div className="space-y-2">
+          {paymentsQuery.isLoading ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Loading invoice placeholder...
+            </p>
+          ) : null}
+          {paymentsQuery.error ? (
+            <p role="alert" className="text-sm text-muted-foreground">
+              Invoice details are currently unavailable.
+            </p>
+          ) : null}
           {invoices.map((invoice) => (
             <div
               key={invoice.id}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { AlertCircle, CheckCircle2, Loader2 } from "../../lib/icons";
 import { AuthBackdrop } from "../../components/common/auth-backdrop";
@@ -24,6 +25,7 @@ type CallbackState =
   | { status: "error"; title: string; description: string };
 
 export function AuthCallbackPage() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const bootstrap = useBootstrapAuth();
   const bootstrapRef = useRef(bootstrap);
@@ -113,6 +115,7 @@ export function AuthCallbackPage() {
           user: session.user,
           intent: parsed.intent,
           inviteToken: parsed.inviteToken,
+          queryClient,
         });
         await bootstrapRef.current.refreshBootstrap();
         const latestBootstrap = bootstrapRef.current;
@@ -171,7 +174,7 @@ export function AuthCallbackPage() {
     return () => {
       active = false;
     };
-  }, [navigate]);
+  }, [navigate, queryClient]);
 
   const isLoading = state.status === "loading";
   const isSuccess = state.status === "success";

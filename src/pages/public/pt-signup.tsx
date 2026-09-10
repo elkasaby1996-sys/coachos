@@ -1,5 +1,7 @@
 import { TRIAL_DURATION_DAYS } from "../../features/commercial-catalogue/contracts";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { persistPendingRequestedPaidPlan } from "../../features/account-entitlements/persist-requested-plan";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuthPageLoader } from "../../components/common/auth-page-loader";
 import { AuthComponent } from "../../components/ui/sign-up";
@@ -23,7 +25,6 @@ import {
   useSessionAuth,
 } from "../../lib/auth";
 import {
-  clearPendingTrialPlan,
   getTrialPlanFromSearch,
   getTrialPlanLabel,
   persistPendingTrialPlan,
@@ -49,6 +50,7 @@ async function getPtNextPath(userId: string) {
 }
 
 export function PtSignupPage() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -147,6 +149,7 @@ export function PtSignupPage() {
           userId: activeUserId,
           fullName,
         });
+        void persistPendingRequestedPaidPlan(queryClient);
         await updatePtProfile(activeUserId, {
           full_name: fullName,
           onboarding_completed_at: new Date().toISOString(),
@@ -159,7 +162,6 @@ export function PtSignupPage() {
           subscriptionPlan: selectedPlanLabel,
           subscriptionStatus: `${TRIAL_DURATION_DAYS}-day trial`,
         });
-        clearPendingTrialPlan();
       }
 
       if (data.session?.user?.id) {

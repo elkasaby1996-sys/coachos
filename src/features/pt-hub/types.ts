@@ -242,6 +242,7 @@ export interface PTProfilePreviewData {
   transformations: PTPublicTransformation[];
 }
 
+/** Non-authoritative compatibility/placeholder display; use account-entitlements for billing. */
 export interface PTSubscriptionSummary {
   planName: string;
   billingStatus: string;

@@ -72,7 +72,7 @@ export function PtHubWorkspacesPage() {
     setSaving(true);
     setError(null);
     try {
-      const workspaceId = await createPtWorkspace(workspaceName);
+      const workspaceId = await createPtWorkspace(workspaceName, queryClient);
       await queryClient.invalidateQueries({
         queryKey: ["pt-hub-workspaces"],
       });
