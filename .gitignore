@@ -8,6 +8,8 @@ vite.config.ts.timestamp-*
 .DS_Store
 playwright-report
 test-results
+playwright-report-configured
+test-results-configured
 tsconfig.tsbuildinfo
 supabase/.temp
 supabase/.env.local

@@ -1,3 +1,8 @@
+import {
+  PUBLIC_PLAN_SNAPSHOT_V1,
+  formatCommercialPrice,
+  formatPublishedPackageCapacity,
+} from "../../features/commercial-catalogue/public-plan-snapshot";
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
@@ -28,7 +33,7 @@ import {
   legalReviewRequired,
   publicFaqGroups,
 } from "../../lib/marketing-public";
-import { buildTrialPath, type TrialPlanId } from "../../lib/trial-plan";
+import { buildTrialPath } from "../../lib/trial-plan";
 import { BloomField } from "./bloom-field";
 import { usePublicSeo } from "./public-seo";
 import {
@@ -137,71 +142,43 @@ const switchingSteps = [
   },
 ];
 
-const pricingPlans = [
-  {
-    id: "launch" as TrialPlanId,
-    name: "Launch",
+const pricingPlanCopy = {
+  launch: {
     audience: "For new and part-time coaches building their first client base.",
-    monthlyPrice: "$19",
-    annualPrice: "$190",
-    limits: [
-      "10 active clients",
-      "1 coach seat",
-      "1 workspace",
-      "3 published packages",
-    ],
     summary:
       "Everything required to coach professionally, for up to 10 clients.",
   },
-  {
-    id: "growth" as TrialPlanId,
-    name: "Growth",
+  growth: {
     audience:
       "For full-time independent coaches and coaches beginning to work with an assistant.",
-    monthlyPrice: "$49",
-    annualPrice: "$490",
-    limits: [
-      "35 active clients",
-      "2 coach seats",
-      "3 workspaces",
-      "Unlimited published packages",
-    ],
     summary: "Run a full-time coaching operation with room for an assistant.",
-    featured: true,
   },
-  {
-    id: "scale" as TrialPlanId,
-    name: "Scale",
+  scale: {
     audience:
       "For established coaches, small coaching companies, and multi-coach delivery teams.",
-    monthlyPrice: "$99",
-    annualPrice: "$990",
-    limits: [
-      "100 active clients",
-      "5 coach seats",
-      "10 workspaces",
-      "Unlimited published packages",
-    ],
     summary:
-      "A coaching-business operating system for teams managing up to 100 active clients.",
+      "A coaching-business operating system for teams managing up to 100 clients.",
   },
-  {
-    id: "studio" as TrialPlanId,
-    name: "Studio",
-    audience:
-      "For larger teams, studios, gyms, and multi-brand coaching businesses.",
-    monthlyPrice: "From $199",
-    annualPrice: "From $1,990",
-    limits: [
-      "200 active clients",
-      "10 coach seats",
-      "Unlimited workspaces",
-      "Unlimited published packages",
-    ],
-    summary:
-      "Central oversight for larger coaching operations and multiple delivery environments.",
-  },
-];
+};
+
+const pricingPlans = PUBLIC_PLAN_SNAPSHOT_V1.map((plan) => ({
+  id: plan.planKey,
+  name: plan.displayName,
+  ...pricingPlanCopy[plan.planKey],
+  monthlyPrice: formatCommercialPrice(
+    plan.monthlyPriceMinor,
+    plan.currencyCode,
+  ),
+  annualPrice: formatCommercialPrice(plan.annualPriceMinor, plan.currencyCode),
+  limits: [
+    `Client capacity: ${plan.capacities.countedClients}`,
+    `${plan.capacities.includedCoachSeats} included coach ${plan.capacities.includedCoachSeats === 1 ? "seat" : "seats"}`,
+    `${plan.capacities.activeWorkspaces} ${plan.capacities.activeWorkspaces === 1 ? "workspace" : "workspaces"}`,
+    formatPublishedPackageCapacity(plan.capacities.publishedPackages),
+  ],
+  featured: plan.isMostPopular,
+}));
+// Legacy feature copy is not catalogue readiness evidence. PR-PRICE-10 gates final public feature rendering.
 
 const pricingCoreFeatures = [
   "Public coach profile",
@@ -223,7 +200,7 @@ const pricingCoreFeatures = [
 
 const pricingDefinitions = [
   {
-    title: "Active client",
+    title: "Client capacity",
     body: "A client in an ongoing coaching relationship. Onboarding, active, and paused clients count. Leads, invitations, completed relationships, churned clients, and archived records do not.",
   },
   {
@@ -544,7 +521,7 @@ function HomeSwitching() {
 
 function FinalCta({
   title = "Start building a more connected coaching operation.",
-  body = "Use the full Growth workflow for seven days, then choose the capacity that fits your clients, team, and workspaces.",
+  body = "Use the full Growth workflow for 14 days, then choose the capacity that fits your clients, team, and workspaces.",
 }: {
   title?: string;
   body?: string;
@@ -555,7 +532,7 @@ function FinalCta({
       <h2>{title}</h2>
       <p>{body}</p>
       <div className="rs-stitch-cta__actions">
-        <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
+        <SiteLink to="/start-trial">Start 14-day trial</SiteLink>
         <SiteLink to="/for-coaches" variant="secondary">
           Explore RepSync for coaches
         </SiteLink>
@@ -587,7 +564,7 @@ export function MarketingHomePage() {
               check-ins, messaging, and client attention.
             </p>
             <div className="rs-stitch-hero__actions">
-              <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
+              <SiteLink to="/start-trial">Start 14-day trial</SiteLink>
               <SiteLink to="/product" variant="secondary">
                 Explore the product
               </SiteLink>
@@ -940,7 +917,7 @@ function ProductReferenceSideNav() {
       </nav>
       <div className="rs-product-ref-side__trial">
         <p>Ready to configure the workflow around your own clients?</p>
-        <Link to="/start-trial">Start 7-day trial</Link>
+        <Link to="/start-trial">Start 14-day trial</Link>
       </div>
     </aside>
   );
@@ -1545,9 +1522,9 @@ function ProductReferenceCta() {
     <section className="rs-product-ref-cta">
       <SyncRail />
       <p className="rs-product-ref-label">Start with Growth</p>
-      <h2>Run the Full Coaching Workflow for Seven Days.</h2>
+      <h2>Run the Full Coaching Workflow for 14 Days.</h2>
       <div>
-        <Link to="/start-trial">Start 7-day trial</Link>
+        <Link to="/start-trial">Start 14-day trial</Link>
         <Link to="/for-coaches">Explore for coaches</Link>
       </div>
     </section>
@@ -1963,7 +1940,7 @@ function ProductDeepCta() {
         their business as they do from their athletes.
       </p>
       <div>
-        <Link to="/start-trial">Start 7-day trial</Link>
+        <Link to="/start-trial">Start 14-day trial</Link>
         <Link to="/pricing">View plans</Link>
       </div>
       <span>No card required. Clients use RepSync free.</span>
@@ -2091,7 +2068,7 @@ export function ForCoachesPage() {
             systems.
           </p>
           <div className="rs-stitch-hero__actions">
-            <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
+            <SiteLink to="/start-trial">Start 14-day trial</SiteLink>
             <SiteLink to="/product" variant="secondary">
               Explore the product
             </SiteLink>
@@ -2470,7 +2447,7 @@ export function ForCoachesPage() {
 
       <FinalCta
         title="Start with the full coaching workflow."
-        body="Use Growth access for seven days, configure your operation, and choose a plan after you understand how RepSync fits the way you coach."
+        body="Use Growth access for 14 days, configure your operation, and choose a plan after you understand how RepSync fits the way you coach."
       />
     </PublicLayout>
   );
@@ -2969,7 +2946,7 @@ export function SwitchPage() {
             and what can move without disrupting active coaching.
           </p>
           <div className="rs-stitch-hero__actions">
-            <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
+            <SiteLink to="/start-trial">Start 14-day trial</SiteLink>
             <SiteLink to="#transition-process" variant="secondary">
               See the transition process
             </SiteLink>
@@ -3123,7 +3100,7 @@ export function SwitchPage() {
           clients.
         </p>
         <div className="rs-stitch-cta__actions">
-          <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
+          <SiteLink to="/start-trial">Start 14-day trial</SiteLink>
           <SiteLink to="/for-coaches" variant="secondary">
             Explore RepSync for coaches
           </SiteLink>
@@ -3158,14 +3135,14 @@ export function PricingPage() {
           </h1>
           <p>
             Every RepSync plan includes the core coaching workflow. Choose based
-            on active clients, team size, and workspace needs - not by giving up
-            the tools required to coach properly.
+            on client capacity, team size, and workspace needs - not by giving
+            up the tools required to coach properly.
           </p>
           <div
             className="rs-pricing-hero__assurances"
             aria-label="Trial details"
           >
-            <span>7-day Growth trial</span>
+            <span>14-day Growth trial</span>
             <span>No card required</span>
             <span>Clients use RepSync free</span>
           </div>
@@ -3174,7 +3151,7 @@ export function PricingPage() {
               <strong>Plans from $19/month.</strong>
               Choose your capacity after the Growth trial.
             </p>
-            <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
+            <SiteLink to="/start-trial">Start 14-day trial</SiteLink>
           </div>
         </div>
       </section>
@@ -3237,7 +3214,7 @@ export function PricingPage() {
                 to={buildTrialPath(plan.id)}
                 variant={plan.featured ? "primary" : "secondary"}
               >
-                Start 7-day trial
+                Start 14-day trial
               </SiteLink>
             </article>
           ))}
@@ -3273,27 +3250,18 @@ export function PricingPage() {
           <p className="rs-stitch-kicker">Additional coach seats</p>
           <h2>Add support without changing the client limit.</h2>
           <p>
-            Additional coach seats cost $9 per month. An additional seat adds
-            team access but does not increase the active-client allowance.
+            Additional coach seats are priced at $12 monthly or $120 annually.
+            An additional seat adds team access but does not increase the client
+            capacity.
           </p>
         </div>
         <div className="rs-pricing-seats__limits rs-stitch-reveal">
-          <p>
-            <strong>Launch</strong>
-            <span>Maximum 2 total seats</span>
-          </p>
-          <p>
-            <strong>Growth</strong>
-            <span>Maximum 5 total seats</span>
-          </p>
-          <p>
-            <strong>Scale</strong>
-            <span>Maximum 10 total seats</span>
-          </p>
-          <p>
-            <strong>Studio</strong>
-            <span>Custom above 10</span>
-          </p>
+          {PUBLIC_PLAN_SNAPSHOT_V1.map((plan) => (
+            <p key={plan.planKey}>
+              <strong>{plan.displayName}</strong>
+              <span>Maximum {plan.capacities.maxCoachSeats} total seats</span>
+            </p>
+          ))}
         </div>
       </section>
 
@@ -3333,21 +3301,22 @@ export function PricingPage() {
 
       <section className="rs-pricing-trial">
         <div className="rs-pricing-trial__copy rs-stitch-reveal">
-          <p className="rs-stitch-kicker">7-day Growth trial</p>
+          <p className="rs-stitch-kicker">14-day Growth trial</p>
           <h2>Use the full Growth workflow before choosing a plan.</h2>
           <p>
-            Start with Growth capacity and features for seven days. Explore a
+            Try Growth features for 14 days with capacity for 10 clients, two
+            coach seats, one workspace, and three published packages. Explore a
             sample workspace, configure your own coaching environment, and
             decide which plan fits after you understand the workflow.
           </p>
-          <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
+          <SiteLink to="/start-trial">Start 14-day trial</SiteLink>
         </div>
         <ul className="rs-pricing-trial__details rs-stitch-reveal">
           {[
             "No card required",
             "One trial per coach account",
-            "Trial begins after the first workspace is ready",
-            "Trial lasts seven calendar days",
+            "No automatic conversion",
+            "Trial lasts 14 calendar days",
             "Plan intent does not create a charge",
           ].map((detail) => (
             <li key={detail}>
@@ -3361,13 +3330,13 @@ export function PricingPage() {
       <section className="rs-pricing-final rs-stitch-reveal">
         <SyncRail />
         <p className="rs-stitch-kicker">Get started</p>
-        <h2>Start with Growth access for seven days.</h2>
+        <h2>Start with Growth access for 14 days.</h2>
         <p>
           Explore the full coaching workflow, then choose the capacity that fits
           your client base, team, and workspace structure.
         </p>
         <div className="rs-stitch-cta__actions">
-          <SiteLink to="/start-trial">Start 7-day trial</SiteLink>
+          <SiteLink to="/start-trial">Start 14-day trial</SiteLink>
           <SiteLink to="/product" variant="secondary">
             Explore the product
           </SiteLink>

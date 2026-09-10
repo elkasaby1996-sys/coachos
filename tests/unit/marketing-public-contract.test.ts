@@ -196,7 +196,7 @@ describe("marketing public page source contract", () => {
   );
 
   it("uses the requested CTA labels consistently", () => {
-    expect(marketingSource).toContain("Start 7-day trial");
+    expect(marketingSource).toContain("Start 14-day trial");
     expect(marketingSource).toContain("Explore the product");
     expect(marketingSource).toContain("Plan your switch");
     expect(marketingSource).not.toContain("Book a demo");

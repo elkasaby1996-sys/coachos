@@ -319,9 +319,17 @@ function LoginGate() {
 
   // If already logged in, don't allow staying on /login
   if (session) {
-    if (redirectTarget) return <Navigate to={redirectTarget} replace />;
-    if (!bootstrapResolved) return <FullPageLoader />;
-    return <Navigate to={bootstrapPath ?? "/no-workspace"} replace />;
+    return (
+      <BootstrapGate>
+        {redirectTarget ? (
+          <Navigate to={redirectTarget} replace />
+        ) : !bootstrapResolved ? (
+          <FullPageLoader />
+        ) : (
+          <Navigate to={bootstrapPath ?? "/no-workspace"} replace />
+        )}
+      </BootstrapGate>
+    );
   }
 
   return <LoginPage />;
@@ -336,6 +344,14 @@ function PublicRootGate() {
     bootstrapResolved,
     bootstrapPath,
   });
+
+  if (isAuthenticated && !bootstrapResolved) {
+    return (
+      <BootstrapGate>
+        <FullPageLoader />
+      </BootstrapGate>
+    );
+  }
 
   if (decision.type === "loading") return <MarketingHomePage />;
   if (decision.type === "redirect") {

@@ -110,7 +110,9 @@ const BootstrapAuthContext = createContext<
 >(undefined);
 
 const SESSION_LOAD_TIMEOUT_MS = 30_000;
-const LOOKUP_TIMEOUT_MS = 3_000;
+// Covers authenticated token acquisition and the database response. Successful
+// local responses can exceed five seconds under parallel load.
+const LOOKUP_TIMEOUT_MS = 10_000;
 const BOOTSTRAP_RECENT_SUCCESS_TTL_MS = 3_000;
 const AUTH_CLOCK_SKEW_RETRY_DELAY_MS = 500;
 const AUTH_CLOCK_SKEW_RETRY_ATTEMPTS = 1;
@@ -1252,6 +1254,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setBootstrapStale(false);
           setBootstrapUserId(null);
           setBootstrapError(resolution.error);
+        } catch (error) {
+          if (currentRequestId !== bootstrapRequestIdRef.current) return;
+          setBootstrapLoading(false);
+          setBootstrapResolved(false);
+          setBootstrapStale(false);
+          setBootstrapUserId(null);
+          setBootstrapError(
+            error instanceof Error ? error : new Error(String(error)),
+          );
         } finally {
           if (inFlightBootstrapRef.current?.key === bootstrapRunKey) {
             inFlightBootstrapRef.current = null;

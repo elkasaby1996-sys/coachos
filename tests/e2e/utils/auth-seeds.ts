@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { createAuthSmokeFixtures } from "./auth-fixtures";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
 
@@ -7,36 +9,14 @@ type SeedUser = {
   fullName: string;
 };
 
-export const authSmokeFixtures = {
-  ptComplete: {
-    email: "smoke-pt-complete@repsync.test",
-    password: "SmokePass123!",
-    fullName: "Smoke PT Complete",
-    workspaceId: "11111111-1111-4111-8111-111111111111",
-    workspaceName: "Smoke PT Complete Workspace",
-  },
-  ptIncompleteProfile: {
-    email: "smoke-pt-incomplete@repsync.test",
-    password: "SmokePass123!",
-    fullName: "Smoke PT Incomplete",
-    workspaceId: "22222222-2222-4222-8222-222222222222",
-    workspaceName: "Smoke PT Incomplete Workspace",
-  },
-  clientNoWorkspace: {
-    email: "smoke-client-empty@repsync.test",
-    password: "SmokePass123!",
-    fullName: "Smoke Client Empty",
-    clientId: "33333333-3333-4333-8333-333333333333",
-  },
-  clientInvite: {
-    email: "smoke-client-invite@repsync.test",
-    password: "SmokePass123!",
-    fullName: "Smoke Client Invite",
-    clientId: "44444444-4444-4444-8444-444444444444",
-    inviteCode: "SMOKE-INVITE-CLIENT",
-    inviteToken: "smoke-invite-client-token",
-  },
-} as const;
+// A parallel slot has only one live worker. Replacements reseed that slot's
+// records; distinct slots and independent runs never share mutable identities.
+export const authSmokeFixtures = createAuthSmokeFixtures(
+  process.env.REPSYNC_E2E_RUN_ID &&
+    process.env.TEST_PARALLEL_INDEX !== undefined
+    ? `${process.env.REPSYNC_E2E_RUN_ID}:${process.env.TEST_PARALLEL_INDEX}`
+    : randomUUID(),
+);
 
 const localServiceRoleKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
@@ -92,23 +72,13 @@ async function getUserIdByEmail(email: string) {
 }
 
 async function ensureUser(user: SeedUser) {
-  const admin = getAdminClient();
   const existingUserId = await getUserIdByEmail(user.email);
 
-  if (existingUserId) {
-    const { error } = await admin.auth.admin.updateUserById(existingUserId, {
-      email: user.email,
-      password: user.password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: user.fullName,
-        name: user.fullName,
-      },
-    });
-    if (error) throw error;
-    return existingUserId;
-  }
+  // No other worker owns this identity, and these scenarios do not change its
+  // credentials. Rehashing passwords on every reseed contends with sign-in.
+  if (existingUserId) return existingUserId;
 
+  const admin = getAdminClient();
   const { data, error } = await admin.auth.admin.createUser({
     email: user.email,
     password: user.password,
@@ -118,27 +88,7 @@ async function ensureUser(user: SeedUser) {
       name: user.fullName,
     },
   });
-  if (error) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const racedUserId = await getUserIdByEmail(user.email);
-    if (racedUserId) {
-      const { error: updateError } = await admin.auth.admin.updateUserById(
-        racedUserId,
-        {
-          email: user.email,
-          password: user.password,
-          email_confirm: true,
-          user_metadata: {
-            full_name: user.fullName,
-            name: user.fullName,
-          },
-        },
-      );
-      if (updateError) throw updateError;
-      return racedUserId;
-    }
-    throw error;
-  }
+  if (error) throw error;
   if (!data.user?.id) {
     throw new Error(`Failed to create auth user for ${user.email}.`);
   }
@@ -153,7 +103,8 @@ function isSupabaseSeedApiUnavailable(error: unknown) {
   return `${message} ${cause}`.includes("ECONNREFUSED 127.0.0.1:54321");
 }
 
-async function seedAuthSmokeStatesOrThrow() {
+async function seedAuthSmokeStatesOrThrow(fixtures = authSmokeFixtures) {
+  const authSmokeFixtures = fixtures;
   const ptCompleteUserId = await ensureUser(authSmokeFixtures.ptComplete);
   const ptIncompleteUserId = await ensureUser(
     authSmokeFixtures.ptIncompleteProfile,
@@ -377,9 +328,9 @@ async function seedAuthSmokeStatesOrThrow() {
   };
 }
 
-export async function seedAuthSmokeStates() {
+export async function seedAuthSmokeStates(fixtures = authSmokeFixtures) {
   try {
-    return await seedAuthSmokeStatesOrThrow();
+    return await seedAuthSmokeStatesOrThrow(fixtures);
   } catch (error) {
     if (isSupabaseSeedApiUnavailable(error)) {
       return null;

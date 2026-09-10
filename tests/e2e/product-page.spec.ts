@@ -29,7 +29,7 @@ test.describe("public product page", () => {
     }
 
     await expect(
-      page.getByRole("link", { name: "Start 7-day trial" }).first(),
+      page.getByRole("link", { name: "Start 14-day trial" }).first(),
     ).toHaveAttribute("href", "/start-trial");
     await expect(
       page.getByRole("link", { name: "Explore for coaches" }),

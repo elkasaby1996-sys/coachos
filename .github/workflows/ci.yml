@@ -99,21 +99,69 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: Run smoke E2E
+      - name: Run configured-account integration checks
+        run: npx playwright test --config playwright.configured-data.config.ts
+
+      - name: Setup local Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: v2.109.1
+
+      - name: Start local Supabase for the default smoke gate
+        run: |
+          supabase start --yes > "$RUNNER_TEMP/supabase-start.log" 2>&1
+          supabase status --output json > "$RUNNER_TEMP/supabase-status.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const status = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/supabase-status.json`, 'utf8'));
+          for (const key of [status.ANON_KEY, status.SERVICE_ROLE_KEY]) {
+            if (!key) throw new Error('Local Supabase credentials are missing');
+            console.log(`::add-mask::${key}`);
+          }
+          fs.appendFileSync(process.env.GITHUB_ENV, [
+            `LOCAL_SUPABASE_URL=${status.API_URL}`,
+            `LOCAL_SUPABASE_ANON_KEY=${status.ANON_KEY}`,
+            `LOCAL_SUPABASE_SERVICE_ROLE_KEY=${status.SERVICE_ROLE_KEY}`,
+            '',
+          ].join('\n'));
+          NODE
+
+      - name: Run default four-worker smoke gate
+        env:
+          E2E_BASE_URL: ""
+          E2E_PT_EMAIL: ""
+          E2E_PT_PASSWORD: ""
+          E2E_CLIENT_EMAIL: ""
+          E2E_CLIENT_PASSWORD: ""
+          E2E_CLIENT_ID: ""
+          E2E_WORKOUT_TEMPLATE_ID: ""
+          VITE_SUPABASE_URL: ${{ env.LOCAL_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ env.LOCAL_SUPABASE_ANON_KEY }}
+          E2E_SUPABASE_API_URL: ${{ env.LOCAL_SUPABASE_URL }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ env.LOCAL_SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run test:e2e:smoke
 
-      - name: Upload Playwright report
+      - name: Redact Playwright artifacts
+        id: redact
         if: always()
+        run: python3 scripts/redact-playwright-artifacts.py
+
+      - name: Upload Playwright report
+        if: always() && steps.redact.outcome == 'success'
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: playwright-report
-          path: playwright-report
+          path: |
+            playwright-report
+            playwright-report-configured
           if-no-files-found: ignore
 
       - name: Upload Playwright raw results
-        if: always()
+        if: always() && steps.redact.outcome == 'success'
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: playwright-test-results
-          path: test-results
+          path: |
+            test-results
+            test-results-configured
           if-no-files-found: ignore

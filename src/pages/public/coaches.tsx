@@ -579,7 +579,7 @@ export function CoachesPage() {
           <div className="rs-marketplace-entry__coach">
             <p>Are you a coach?</p>
             <Link to="/start-trial">
-              Start your 7-day coach trial
+              Start your 14-day coach trial
               <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </div>
