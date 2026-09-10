@@ -273,3 +273,27 @@ The PT background's small context-creation change is in
 `src/features/pt-hub/components/pt-hub-animated-background.tsx`; all other
 file-by-file changes are listed above, plus the repaint budget in
 `src/pages/public/bloom-field.tsx`.
+
+## Merge integration: CI prerequisite
+
+During the Pricing-to-main merge, required CI reproduced a setup failure:
+`Local Supabase is required for smoke setup.` The previous workflow supplied
+configured account credentials but never started the local backend required by
+the newly deterministic default suite.
+
+The required smoke job now runs both the ten existing configured-account
+integration cases and the unchanged default four-worker suite against a local
+Supabase stack. `playwright.configured-data.config.ts` selects the existing seven
+integration files without local fixture provisioning. It inherits four workers,
+zero retries and server ownership settings. The default configuration is
+unchanged. Local-only credentials are passed to the default suite; configured
+credentials stay with the separate integration run. No assertions are removed.
+
+The CI workflow masks generated credentials and sanitizes both sets of artifacts
+before upload using `scripts/redact-playwright-artifacts.py`. Upload is withheld
+if redaction fails. A synthetic nested HTML/ZIP check verified password, cookie,
+refresh-token and query-token redaction, including multiline JSON, while
+preserving binary images. The extra artifact directories are gitignored.
+
+The merged application build, lint, formatting, configuration test discovery,
+workflow YAML parsing and redaction checks passed locally before CI was rerun.
