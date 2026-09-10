@@ -13,19 +13,21 @@ function isLoopbackBaseUrl(url: string) {
 }
 
 const useExternalBaseUrl =
+  process.env.npm_lifecycle_event !== "test:e2e:smoke" &&
   Boolean(configuredBaseUrl) &&
   (!process.env.CI || !isLoopbackBaseUrl(configuredBaseUrl));
 const baseURL = useExternalBaseUrl ? configuredBaseUrl : defaultBaseUrl;
 const useWebServer = !useExternalBaseUrl;
-const reuseExistingServer =
-  process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "1";
 
 export default defineConfig({
   testDir: "tests/e2e",
   timeout: 90_000,
   fullyParallel: false,
-  retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  retries: 0,
+  workers: 4,
+  globalSetup: useWebServer
+    ? "./tests/e2e/utils/server-readiness.ts"
+    : undefined,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,
@@ -35,9 +37,9 @@ export default defineConfig({
   },
   webServer: useWebServer
     ? {
-        command: "npm run dev -- --host 127.0.0.1 --port 4173",
+        command: "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
         url: baseURL,
-        reuseExistingServer,
+        reuseExistingServer: false,
         timeout: 120_000,
       }
     : undefined,

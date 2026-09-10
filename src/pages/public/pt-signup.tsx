@@ -1,3 +1,4 @@
+import { TRIAL_DURATION_DAYS } from "../../features/commercial-catalogue/contracts";
 import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuthPageLoader } from "../../components/common/auth-page-loader";
@@ -23,7 +24,6 @@ import {
 } from "../../lib/auth";
 import {
   clearPendingTrialPlan,
-  defaultTrialPlan,
   getTrialPlanFromSearch,
   getTrialPlanLabel,
   persistPendingTrialPlan,
@@ -157,7 +157,7 @@ export function PtSignupPage() {
           contactEmail: email.trim(),
           supportEmail: email.trim(),
           subscriptionPlan: selectedPlanLabel,
-          subscriptionStatus: "7-day trial",
+          subscriptionStatus: `${TRIAL_DURATION_DAYS}-day trial`,
         });
         clearPendingTrialPlan();
       }
@@ -220,12 +220,8 @@ export function PtSignupPage() {
       mode="signup"
       brandName="R E P S Y N C"
       brandHref={getMarketingSiteUrl()}
-      title={
-        selectedPlan === defaultTrialPlan
-          ? "Start your 7-day Growth trial"
-          : `Start your 7-day trial with ${selectedPlanLabel} selected`
-      }
-      subtitle={`${selectedPlanLabel} will remain selected while you create your coach account. No card required.`}
+      title={`Start your ${TRIAL_DURATION_DAYS}-day Growth trial`}
+      subtitle={`${selectedPlanLabel} is your intended paid plan. Your trial uses Growth features. No card required. No automatic conversion.`}
       primaryLabel="Start free trial"
       secondaryLinkHref={
         inviteRedirect

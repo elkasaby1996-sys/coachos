@@ -115,12 +115,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [themePreference]);
 
-  const fetchAppearancePreference = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user?.id) return;
-
+  const fetchAppearancePreference = useCallback(async (userId: string) => {
     const { data, error } = await safeSelect<{
       user_id: string;
       role: string | null;
@@ -132,7 +127,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       fallbackColumns: "user_id, role",
       filter: (query) =>
         query
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .in("role", [...PT_ROLES])
           .order("role", { ascending: true })
           .limit(1),
@@ -152,10 +147,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    fetchAppearancePreference();
-    const { data } = supabase.auth.onAuthStateChange((event) => {
+    // INITIAL_SESSION also covers page loads. Revalidating the user here holds
+    // the auth client's lock and can block bootstrap's getSession() requests.
+    // Appearance is optional; its database query remains protected by RLS.
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "TOKEN_REFRESHED") return;
-      void fetchAppearancePreference();
+      if (session?.user.id) void fetchAppearancePreference(session.user.id);
     });
 
     return () => {

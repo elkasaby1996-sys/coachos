@@ -1113,17 +1113,17 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "Is RepSync available now?",
-        a: "Yes. Coaches can start with the full Growth workflow for seven days, with no card required, then choose the plan that fits their operation.",
+        a: "Yes. Coaches can start with the full Growth workflow for 14 days, with no card required, then choose the plan that fits their operation.",
         href: "/start-trial",
       },
       {
         q: "How does the trial work?",
-        a: "Create a coach account, configure the first workspace, and use Growth access for seven calendar days before choosing a plan.",
+        a: "Create a coach account, configure the first workspace, and use Growth access for 14 calendar days before choosing a plan.",
         href: "/start-trial",
       },
       {
         q: "Is pricing available?",
-        a: "Yes. RepSync offers Launch, Growth, Scale, and Studio plans based on active-client capacity, coach seats, and workspace needs.",
+        a: "Yes. RepSync offers Launch, Growth, and Scale plans based on client capacity, coach seats, and workspace needs.",
         href: "/pricing",
       },
       {

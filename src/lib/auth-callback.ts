@@ -1,3 +1,4 @@
+import { TRIAL_DURATION_DAYS } from "../features/commercial-catalogue/contracts";
 import type { User } from "@supabase/supabase-js";
 import {
   ensureClientProfile,
@@ -156,7 +157,7 @@ export async function provisionCallbackProfile(params: {
       country: window.localStorage.getItem("coachos_pt_signup_country"),
       city: window.localStorage.getItem("coachos_pt_signup_city"),
       subscriptionPlan: getTrialPlanLabel(selectedPlan),
-      subscriptionStatus: "7-day trial",
+      subscriptionStatus: `${TRIAL_DURATION_DAYS}-day trial`,
     });
     clearPendingTrialPlan();
     return;
