@@ -29,8 +29,9 @@ vi.mock("../../src/features/account-entitlements", () => ({
   }),
   AccountEntitlementError: class extends Error {},
 }));
-vi.mock("../../src/features/pt-hub/lib/pt-hub", () => ({
-  usePtHubPayments: () => ({ data: { invoices: [] } }),
+vi.mock("../../src/features/billing/checkout-panel", () => ({
+  BillingCheckoutPanel: () =>
+    React.createElement("div", null, "Subscription checkout"),
 }));
 import { PtHubSettingsBillingTab } from "../../src/pages/pt-hub/settings/tabs/billing";
 describe("Billing capacity", () => {
@@ -93,23 +94,21 @@ describe("Billing capacity", () => {
       "Unknown client lifecycle states count conservatively",
     );
   });
-  it("keeps entitlement and payment placeholders when capacity fails", () => {
+  it("keeps entitlement and checkout when capacity fails", () => {
     const html = renderToStaticMarkup(
       React.createElement(PtHubSettingsBillingTab),
     );
     expect(html).toContain("Complimentary beta access");
     expect(html).toContain("Account capacity unavailable");
     expect(html).toContain("Retry capacity");
-    expect(html).toContain("No payment method connected");
+    expect(html).toContain("Subscription checkout");
   });
-  it("uses the local hook without compatibility fallback or commerce controls", () => {
+  it("uses the local capacity hook without compatibility fallback", () => {
     const source = readFileSync(
       "src/pages/pt-hub/settings/tabs/billing.tsx",
       "utf8",
     );
     expect(source).toContain("useMyAccountCapacitySnapshot()");
-    expect(source).not.toMatch(
-      /subscription_plan|subscription_status|checkout|purchase/i,
-    );
+    expect(source).not.toMatch(/subscription_plan|subscription_status/i);
   });
 });

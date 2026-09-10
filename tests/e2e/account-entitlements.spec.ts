@@ -66,7 +66,9 @@ test("selected paid intent stays separate from first-workspace Growth trial", as
   await expect(
     page.getByText("Intended paid plan", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Launch", { exact: true })).toBeVisible();
+  await expect(
+    page.locator("span").filter({ hasText: /^Launch$/ }),
+  ).toBeVisible();
   const after = await readOwner(page);
   expect(after.subscription.kind).toBe("trial");
   expect(after.subscription.planKey).toBe("growth");
@@ -83,13 +85,13 @@ test("selected paid intent stays separate from first-workspace Growth trial", as
       name: "Manage subscription (Unavailable)",
       exact: true,
     }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await expect(
     page.getByRole("button", {
       name: "Add payment method (Unavailable)",
       exact: true,
     }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   expect(
     await page.evaluate(() =>
       window.localStorage.getItem("repsync_pending_trial_plan"),
@@ -131,7 +133,7 @@ test("existing beta owner sees complimentary Scale access without renewal", asyn
       name: "Manage subscription (Unavailable)",
       exact: true,
     }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath("complimentary-billing.png"),
     fullPage: true,

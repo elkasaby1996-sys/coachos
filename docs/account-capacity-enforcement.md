@@ -78,3 +78,5 @@ One forward migration, `20260910160000_atomic_capacity_enforcement.sql`, adds th
 Rollback requires an application revert plus a reviewed compensating forward migration restoring the affected functions/grants/guards together. Preserve commercial, reservation, and event history. Do not drop those records as rollback cleanup. Deployment and a compensating migration require separate review; no remote operation is part of this work.
 
 Checkout, payment providers, subscriptions/seat purchasing, proration, usage billing, route paywalls, feature-key enforcement, automatic remediation, email/push capacity notifications, and scheduled jobs remain deferred. Named client invitations need a separate durable identifiable-recipient schema. General access/feature enforcement remains a separate dependency. See the [verification record](pr-price-04-verification.md) for actual commands and coverage limitations.
+
+See [Lemon Squeezy billing foundation](lemon-squeezy-billing-provider.md) for PR-PRICE-05 hosted Checkout and webhook reconciliation.

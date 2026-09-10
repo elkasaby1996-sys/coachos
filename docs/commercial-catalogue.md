@@ -164,3 +164,5 @@ The detailed PR-PRICE-02 specification was not supplied. Proposed next step: def
 ## Verification
 
 Unit suites cover frozen values, feature mapping parity, RPC validation/errors, migration contracts, marketing snapshot usage, and trial URL/storage compatibility. Transaction-scoped `supabase/tests/commercial_catalogue.sql` verifies applied schema behavior, actual role access, lifecycle guards, public filtering, and deterministic output, then rolls back. See the PR delivery report for commands actually run and their exact results; a test file's presence alone is not a passing result.
+
+See [Lemon Squeezy billing foundation](lemon-squeezy-billing-provider.md) for PR-PRICE-05 hosted Checkout and webhook reconciliation.
