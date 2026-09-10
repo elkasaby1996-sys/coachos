@@ -1,3 +1,6 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateAccountCapacity } from "../../features/account-capacity/query-keys";
+import { capacityMutationFailure } from "../../features/account-capacity/mutation-errors";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
@@ -18,6 +21,7 @@ import { useAuth } from "../../lib/auth";
 import { getCharacterLimitState } from "../../lib/character-limits";
 
 export function JoinPage() {
+  const queryClient = useQueryClient();
   const { code } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -134,6 +138,7 @@ export function JoinPage() {
 
         if (existingClient) {
           await safeRefreshRole();
+          invalidateAccountCapacity(queryClient);
           setStatus("success");
           setMessage("You're in. Your coach will assign your first workout.");
           return;
@@ -151,7 +156,7 @@ export function JoinPage() {
     };
 
     loadInvite();
-  }, [inviteCode, safeRefreshRole, session]);
+  }, [inviteCode, queryClient, safeRefreshRole, session]);
 
   useEffect(() => {
     if (status === "success") {
@@ -231,45 +236,29 @@ export function JoinPage() {
         return;
       }
 
-      const { data: existingClient, error: existingError } = await supabase
-        .from("clients")
-        .select("id")
-        .eq("workspace_id", inviteRow.workspace_id)
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-
-      if (existingError) throw existingError;
-
-      if (!existingClient) {
-        const { error: insertError } = await supabase
-          .from("clients")
-          .insert({
-            workspace_id: inviteRow.workspace_id,
-            user_id: session.user.id,
-            status: "active",
-            display_name: displayName.trim(),
-            goal: goal.trim() || null,
-          })
-          .select("id")
-          .single();
-
-        if (insertError) throw insertError;
-
-        const { data: updatedInvite, error: updateError } = await supabase.rpc(
-          "consume_invite",
-          { p_code: inviteCode },
+      const { data: accepted, error: acceptError } = await supabase.rpc(
+        "accept_invite",
+        {
+          p_code: inviteCode,
+          p_display_name: displayName.trim(),
+        },
+      );
+      if (acceptError)
+        throw (
+          capacityMutationFailure(acceptError, queryClient, "client") ??
+          acceptError
         );
-
-        if (
-          updateError ||
-          !updatedInvite ||
-          (Array.isArray(updatedInvite) && updatedInvite.length === 0)
-        ) {
-          throw updateError ?? new Error("Invite could not be consumed.");
-        }
+      const joined = Array.isArray(accepted) ? accepted[0] : accepted;
+      if (joined?.client_id && goal.trim()) {
+        const { error: detailError } = await supabase
+          .from("clients")
+          .update({ goal: goal.trim() })
+          .eq("id", joined.client_id);
+        if (detailError) throw detailError;
       }
 
       await safeRefreshRole();
+      invalidateAccountCapacity(queryClient);
       setStatus("success");
       setMessage("You're in. Your coach will assign your first workout.");
     } catch (err) {

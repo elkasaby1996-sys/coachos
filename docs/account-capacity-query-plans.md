@@ -1,5 +1,7 @@
 # Local capacity query-plan evidence
 
+PR-PRICE-04 admission is documented in [atomic capacity enforcement](account-capacity-enforcement.md).
+
 Run with the reproducible, transaction-rolled-back [fixture](account-capacity-query-plans.sql). Added fixture: 2,001 auth identities; 20 owned workspaces; 1,000 linked clients; 50 distinct staff repeated across 20 workspaces (1,000 membership rows); 100 pending team invites; 1,000 published packages; 1,000 active reservations. Existing local browser fixtures were also present. No planner settings were changed.
 
 The first complete snapshot took 16,880.921 ms because normalization hashed every auth email even for operation subjects. Prefix-gating those lookups and matching pending email directly reduced it to 307.447 ms. The component aggregations took 1.211 / 0.710 / 0.266 / 0.021 / 0.262 / 0.280 ms for clients / staff / pending invites / workspaces / packages / reservations respectively.

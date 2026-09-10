@@ -143,7 +143,7 @@ test("concurrent first workspace inserts create exactly one account and trial", 
 }, testInfo) => {
   const coach = await seedEntitlementCoach(testInfo.testId);
   const workspaceIds = [randomUUID(), randomUUID()];
-  await Promise.all(
+  const outcomes = await Promise.all(
     workspaceIds.map(async (id) => {
       const response = await request.post(
         `${process.env.E2E_SUPABASE_API_URL?.trim() || "http://127.0.0.1:54321"}/pg/query`,
@@ -153,9 +153,14 @@ test("concurrent first workspace inserts create exactly one account and trial", 
           },
         },
       );
-      expect(response.ok()).toBe(true);
+      if (!response.ok())
+        expect(await response.text()).toContain(
+          "ACCOUNT_CAPACITY_LIMIT_REACHED",
+        );
+      return response.ok();
     }),
   );
+  expect(outcomes.filter(Boolean)).toHaveLength(1);
   const [row] = await pgQuery<{
     accounts: number;
     trials: number;

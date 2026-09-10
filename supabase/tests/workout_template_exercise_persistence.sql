@@ -21,6 +21,12 @@ values
   ('00000000-0000-4000-8000-000000000703', 'authenticated', 'authenticated', 'wte-viewer@example.test', 'x', now(), now(), now()),
   ('00000000-0000-4000-8000-000000000704', 'authenticated', 'authenticated', 'wte-client@example.test', 'x', now(), now(), now());
 
+-- Existing beta account with enough capacity for this domain regression fixture.
+select public.ensure_commercial_billing_account('00000000-0000-4000-8000-000000000701','legacy_backfill');
+insert into public.account_subscriptions(billing_account_id,plan_version_id,subscription_kind,status,source)
+select a.id,p.id,'complimentary','active','legacy_beta_backfill' from public.billing_accounts a
+cross join public.commercial_plan_versions p where a.owner_user_id='00000000-0000-4000-8000-000000000701' and p.plan_key='scale' and p.version=1;
+
 insert into public.workspaces (id, name, owner_user_id, slug)
 values (
   '00000000-0000-4000-8000-000000000710',

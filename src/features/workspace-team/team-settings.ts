@@ -1,3 +1,4 @@
+import { capacityMutationFailure } from "../account-capacity/mutation-errors";
 import type {
   ClientAccessMode,
   InviteStatus,
@@ -133,7 +134,7 @@ export async function listWorkspaceTeamSettings(workspaceId: string) {
       p_workspace_id: workspaceId,
     },
   );
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error) ?? error;
   const summary = parseRpcJson<WorkspaceTeamSettingsSummary>(data);
   return {
     members: dedupeWorkspaceTeamMembers(summary.members ?? []),
@@ -152,7 +153,7 @@ export async function searchWorkspaceTeamClients(input: {
     p_search: input.search ?? null,
     p_limit: input.limit ?? 50,
   });
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error) ?? error;
   return (
     (data ?? []) as Array<{
       id: string;
@@ -180,7 +181,7 @@ export async function updateWorkspaceTeamMemberRole(input: {
       p_role: input.role,
     },
   );
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error) ?? error;
   return parseRpcJson<{ memberId: string; role: InvitableWorkspaceRole }>(data);
 }
 
@@ -198,7 +199,7 @@ export async function updateWorkspaceTeamMemberStatus(input: {
       p_status: input.status,
     },
   );
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error) ?? error;
   return parseRpcJson<{ memberId: string; status: WorkspaceMemberStatus }>(
     data,
   );
@@ -218,7 +219,7 @@ export async function updateWorkspaceTeamMemberClients(input: {
       p_client_ids: input.clientIds,
     },
   );
-  if (error) throw error;
+  if (error) throw capacityMutationFailure(error) ?? error;
   return parseRpcJson<{
     memberId: string;
     assignedClientCount: number;

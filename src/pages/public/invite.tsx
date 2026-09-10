@@ -1,3 +1,4 @@
+import { capacityMutationFailure } from "../../features/account-capacity/mutation-errors";
 import { invalidateAccountCapacity } from "../../features/account-capacity/query-keys";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -272,7 +273,11 @@ export function InvitePage() {
             p_token: tokenValue,
           },
         );
-        if (acceptError) throw acceptError;
+        if (acceptError)
+          throw (
+            capacityMutationFailure(acceptError, queryClient, "client") ??
+            acceptError
+          );
         const acceptRow = (
           Array.isArray(acceptData) ? (acceptData[0] ?? null) : acceptData
         ) as AcceptInviteResult | null;

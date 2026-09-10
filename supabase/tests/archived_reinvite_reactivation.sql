@@ -58,6 +58,12 @@ select
   now()
 from ids;
 
+-- Existing beta account with enough capacity for this domain regression fixture.
+select public.ensure_commercial_billing_account('00000000-0000-4000-8000-000000000401','legacy_backfill');
+insert into public.account_subscriptions(billing_account_id,plan_version_id,subscription_kind,status,source)
+select a.id,p.id,'complimentary','active','legacy_beta_backfill' from public.billing_accounts a
+cross join public.commercial_plan_versions p where a.owner_user_id='00000000-0000-4000-8000-000000000401' and p.plan_key='scale' and p.version=1;
+
 with ids as (
   select
     '00000000-0000-4000-8000-000000000401'::uuid as coach_id,

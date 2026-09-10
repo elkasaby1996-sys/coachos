@@ -77,18 +77,22 @@ test("trial owner sees lifecycle usage, pending staff and published packages", a
   expect((await readCapacity(page)).dimensions.map((d) => d.actual)).toEqual([
     4, 1, 1, 1,
   ]);
-  // Existing browser action remains successful despite an at-limit workspace.
-  await page.evaluate(async () => {
+  // PR-PRICE-04 submits normally, then enforces the final workspace ceiling.
+  const denial = await page.evaluate(async () => {
     const path = "/src/features/pt-hub/lib/pt-hub.ts";
-    await (
-      await import(path)
-    ).createPtWorkspace("Capacity still permits workspace creation");
+    try {
+      await (await import(path)).createPtWorkspace("Additional workspace");
+    } catch (error) {
+      return (error as { code?: string }).code;
+    }
+    return null;
   });
+  expect(denial).toBe("ACCOUNT_CAPACITY_LIMIT_REACHED");
   expect(
     (await readCapacity(page)).dimensions.find(
       (d) => d.key === "active_workspaces",
     )?.state,
-  ).toBe("over_limit");
+  ).toBe("at_limit");
   await page.screenshot({
     path: info.outputPath("capacity-trial-desktop.png"),
     fullPage: true,
@@ -110,9 +114,12 @@ test("complimentary overage preserves access and unlimited packages", async ({
   page,
 }, info) => {
   const coach = await seedEntitlementCoach(`price03:${info.testId}`, true);
+  // Admin-only, connection-local historical fixture; no shared trigger changes.
   const clients = Array.from({ length: 101 }, () => randomUUID());
   await pgQuery(`insert into auth.users(id,email) values ${clients.map((id) => `('${id}','${id}@capacity.test')`).join(",")};
+    begin; set local session_replication_role=replica;
     insert into public.clients(user_id,workspace_id,lifecycle_state) values ${clients.map((id) => `('${id}','${coach.workspaceId}','active')`).join(",")};
+    commit;
     insert into public.pt_packages(pt_user_id,title,status,is_public) values('${coach.userId}','Beta package','active',true);`);
   await openBilling(page, coach);
   await expect(page.getByTestId("capacity-counted_clients")).toContainText(
@@ -151,6 +158,24 @@ test("complimentary overage preserves access and unlimited packages", async ({
     path: info.outputPath("capacity-beta-desktop.png"),
     fullPage: true,
   });
+  const records = await pgQuery<{ id: string }>(
+    `select id from public.clients where workspace_id='${coach.workspaceId}' order by id;`,
+  );
+  await page.evaluate(async (clientId) => {
+    const path = "/src/lib/supabase.ts";
+    const { supabase } = await import(path);
+    const { error } = await supabase.rpc("pt_update_client_lifecycle", {
+      p_client_id: clientId,
+      p_lifecycle_state: "completed",
+    });
+    if (error) throw error;
+  }, records[0].id);
+  expect((await readCapacity(page)).dimensions[0].actual).toBe(100);
+  expect(
+    await pgQuery(
+      `select count(*)::int total from public.clients where workspace_id='${coach.workspaceId}';`,
+    ),
+  ).toEqual([{ total: 101 }]);
 });
 
 test("concurrent final-slot service reservations grant at most one", async ({
