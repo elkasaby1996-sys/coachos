@@ -80,3 +80,5 @@ Rollback requires an application revert plus a reviewed compensating forward mig
 Checkout, payment providers, subscriptions/seat purchasing, proration, usage billing, route paywalls, feature-key enforcement, automatic remediation, email/push capacity notifications, and scheduled jobs remain deferred. Named client invitations need a separate durable identifiable-recipient schema. General access/feature enforcement remains a separate dependency. See the [verification record](pr-price-04-verification.md) for actual commands and coverage limitations.
 
 See [Lemon Squeezy billing foundation](lemon-squeezy-billing-provider.md) for PR-PRICE-05 hosted Checkout and webhook reconciliation.
+
+See [commercial access modes](commercial-access-modes.md) for PR-PRICE-08 access enforcement and recovery.

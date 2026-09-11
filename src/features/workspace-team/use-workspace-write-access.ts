@@ -1,3 +1,4 @@
+import { useWorkspaceCommercialAccess } from "../commercial-access/use-commercial-access";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabase";
 import { useWorkspace } from "../../lib/use-workspace";
@@ -15,6 +16,7 @@ type WorkspaceAccessContextRow = {
 
 export function useWorkspaceWriteAccess() {
   const { workspaceId } = useWorkspace();
+  const commercial = useWorkspaceCommercialAccess(workspaceId);
 
   const accessQuery = useQuery({
     queryKey: ["workspace-write-access", workspaceId],
@@ -39,10 +41,12 @@ export function useWorkspaceWriteAccess() {
     : null;
 
   return {
-    isLoading: accessQuery.isLoading,
-    error: accessQuery.error,
+    isLoading: accessQuery.isLoading || commercial.isPending,
+    error: accessQuery.error ?? commercial.error,
     role: accessQuery.data?.role ?? null,
     canEditClients: hasWorkspacePermission(context, "clients.edit"),
-    canManageDelivery: hasWorkspacePermission(context, "delivery.manage"),
+    canManageDelivery:
+      commercial.data?.canWriteExistingDelivery === true &&
+      hasWorkspacePermission(context, "delivery.manage"),
   };
 }

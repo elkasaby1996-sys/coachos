@@ -1,3 +1,4 @@
+import { ClientCoachingNotice } from "../../features/commercial-access/client-coaching-notice";
 import "../../styles/client-portal.css";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -172,6 +173,7 @@ export function ClientLayout() {
   const location = useLocation();
   const { loading, error } = useWorkspace();
   const {
+    activeClientId,
     bootstrapError: authError,
     hasWorkspaceMembership,
     clientProfile,
@@ -506,6 +508,9 @@ export function ClientLayout() {
               ) : (
                 <WorkspaceHeaderModeProvider value="shell">
                   <RouteTransition className="client-portal-content">
+                    <ClientCoachingNotice
+                      clientId={activeClientId ?? clientProfile?.id ?? null}
+                    />
                     <Outlet />
                   </RouteTransition>
                 </WorkspaceHeaderModeProvider>

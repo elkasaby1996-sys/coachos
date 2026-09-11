@@ -47,3 +47,5 @@ Tier completion atomically supersedes the source local row, inserts a target pai
 Billing retains Checkout, Customer Portal, payment recovery, entitlement display and capacity meters. The new owner section provides preview, annual totals, confirmation, blockers, waiting/scheduled/ambiguous states, cancel and manual refresh. Browser parameters never establish payment truth. Final apply rechecks provider state and capacity; preview does not disable unrelated domain controls.
 
 See [security](lemon-squeezy-plan-change-security.md), [test runbook](lemon-squeezy-plan-change-test-runbook.md), and [verification](pr-price-07-verification.md). Seats, quantity billing, refunds, coupons, client payments, general feature enforcement and deployment remain deferred.
+
+See [commercial access modes](commercial-access-modes.md) for PR-PRICE-08 access enforcement and recovery.

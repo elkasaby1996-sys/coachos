@@ -1,3 +1,4 @@
+import { useClientCoachingAccess } from "../../features/commercial-access/use-commercial-access";
 import { useRecordDraft } from "../../lib/record-drafts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -651,6 +652,14 @@ export function ClientMessagesPage() {
     [selectedThreadId, visibleThreads],
   );
   const selectedThreadType = selectedThread?.type ?? null;
+  const coachingAccess = useClientCoachingAccess(
+    selectedThread?.type === "workspace"
+      ? selectedThread.workspaceConversation.client_id
+      : null,
+  );
+  const relationshipWritable =
+    selectedThread?.type !== "workspace" ||
+    coachingAccess.data?.canMessageRelationship === true;
   const selectedThreadIsArchived = selectedThread?.isArchived ?? false;
 
   const activeWorkspaceConversationId =
@@ -957,7 +966,7 @@ export function ClientMessagesPage() {
     kind: "conversation",
     record: selectedThread?.id,
     version: "1",
-    enabled: !!selectedThread?.isWritable,
+    enabled: !!(selectedThread?.isWritable && relationshipWritable),
     onRestore: setMessageInput,
   });
   useEffect(() => {
@@ -983,7 +992,7 @@ export function ClientMessagesPage() {
       if (!selectedThread) {
         throw new Error("Select a conversation first.");
       }
-      if (!selectedThread.isWritable) {
+      if (!(selectedThread.isWritable && relationshipWritable)) {
         throw new Error("This conversation is read-only.");
       }
       if (messageLimitState.overLimit) {
@@ -1611,7 +1620,7 @@ export function ClientMessagesPage() {
                 </div>
               </SurfaceCardContent>
 
-              {selectedThread.isWritable ? (
+              {selectedThread.isWritable && relationshipWritable ? (
                 <div className="client-message-composer sticky bottom-0 border-t border-border/60 bg-background/75 px-4 pb-[calc(0.875rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
                   <div className="space-y-2">
                     {sendError ? (

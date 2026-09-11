@@ -1,0 +1,1124 @@
+[
+  {
+    "file": "src/lib/account-profiles.ts",
+    "table": "pt_profiles",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/lib/account-profiles.ts",
+    "table": "pt_profiles",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/lib/account-profiles.ts",
+    "table": "pt_profiles",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/lib/account-profiles.ts",
+    "table": "pt_profiles",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/lib/account-profiles.ts",
+    "table": "pt_profiles",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/lib/account-profiles.ts",
+    "table": "pt_hub_profiles",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/lib/account-profiles.ts",
+    "table": "pt_hub_settings",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/lib/account-profiles.ts",
+    "table": "clients",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/lib/coach-activity.ts",
+    "table": "coach_activity_log",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/lib/duplicate-workout-template.ts",
+    "table": "workout_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/lib/duplicate-workout-template.ts",
+    "table": "workout_template_exercises",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/lib/duplicate-workout-template.ts",
+    "table": "workout_templates",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/baseline.tsx",
+    "table": "baseline_entries",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/baseline.tsx",
+    "table": "workspace_client_onboardings",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/baseline.tsx",
+    "table": "baseline_entries",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/baseline.tsx",
+    "table": "baseline_metrics",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/baseline.tsx",
+    "table": "baseline_marker_values",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/baseline.tsx",
+    "table": "baseline_photos",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/baseline.tsx",
+    "table": "baseline_photos",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/baseline.tsx",
+    "table": "baseline_photos",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/baseline.tsx",
+    "table": "baseline_entries",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/checkin.tsx",
+    "table": "checkin_answers",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/checkin.tsx",
+    "table": "checkin_answers",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/checkin.tsx",
+    "table": "checkin_photos",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/checkin.tsx",
+    "table": "checkin_photos",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/checkin.tsx",
+    "table": "checkins",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/habits.tsx",
+    "table": "habit_logs",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/home.tsx",
+    "table": "habit_logs",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/medical.tsx",
+    "table": "client_medical_records",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/medical.tsx",
+    "table": "client_medical_records",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/medical.tsx",
+    "table": "client_medical_documents",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/messages.tsx",
+    "table": "message_typing",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/messages.tsx",
+    "table": "messages",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/nutrition-create-plan.tsx",
+    "table": "nutrition_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/nutrition-create-plan.tsx",
+    "table": "nutrition_template_days",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/nutrition-create-plan.tsx",
+    "table": "nutrition_template_meals",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/nutrition-create-plan.tsx",
+    "table": "nutrition_template_meal_components",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/nutrition-day.tsx",
+    "table": "nutrition_meal_logs",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/nutrition-day.tsx",
+    "table": "nutrition_meal_logs",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/nutrition.tsx",
+    "table": "nutrition_templates",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/nutrition.tsx",
+    "table": "nutrition_templates",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/profile.tsx",
+    "table": "clients",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/settings.tsx",
+    "table": "clients",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/settings.tsx",
+    "table": "clients",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/settings.tsx",
+    "table": "clients",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workout-detail.tsx",
+    "table": "workout_sessions",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workout-detail.tsx",
+    "table": "workout_set_logs",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workout-detail.tsx",
+    "table": "workout_set_logs",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workout-detail.tsx",
+    "table": "assigned_workouts",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workout-run.tsx",
+    "table": "workout_sessions",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workout-run.tsx",
+    "table": "workout_set_logs",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workout-run.tsx",
+    "table": "workout_set_logs",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workout-run.tsx",
+    "table": "workout_sessions",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workout-run.tsx",
+    "table": "assigned_workouts",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workout-run.tsx",
+    "table": "assigned_workouts",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workout-today.tsx",
+    "table": "assigned_workouts",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workouts.tsx",
+    "table": "exercises",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workouts.tsx",
+    "table": "assigned_workouts",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workouts.tsx",
+    "table": "assigned_workouts",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workouts.tsx",
+    "table": "assigned_workout_exercises",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workouts.tsx",
+    "table": "assigned_workouts",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workouts.tsx",
+    "table": "assigned_workouts",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workouts.tsx",
+    "table": "assigned_workouts",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workouts.tsx",
+    "table": "assigned_workouts",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workouts.tsx",
+    "table": "assigned_workout_exercises",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workouts.tsx",
+    "table": "assigned_workout_exercises",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/client/workouts.tsx",
+    "table": "assigned_workouts",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/calendar.tsx",
+    "table": "coach_calendar_events",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/calendar.tsx",
+    "table": "coach_calendar_events",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/checkin-templates.tsx",
+    "table": "checkin_questions",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/checkin-templates.tsx",
+    "table": "checkin_questions",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/checkin-templates.tsx",
+    "table": "checkin_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/checkin-templates.tsx",
+    "table": "checkin_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/checkin-templates.tsx",
+    "table": "checkin_templates",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/checkin-templates.tsx",
+    "table": "checkin_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_coach_tasks",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_programs",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_program_assignments",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_programs",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_programs",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_program_assignments",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_program_assignments",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "assigned_workouts",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_program_assignments",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_program_overrides",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_programs",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "assigned_workouts",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "assigned_workouts",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "assigned_workouts",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "assigned_workouts",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "clients",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "baseline_entries",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "workspace_client_onboardings",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "assigned_workout_exercises",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_coach_tasks",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_coach_tasks",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "client_coach_tasks",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "assigned_workouts",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail.tsx",
+    "table": "workout_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/dashboard.tsx",
+    "table": "coach_todos",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/dashboard.tsx",
+    "table": "coach_todos",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/dashboard.tsx",
+    "table": "coach_todos",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/messages.tsx",
+    "table": "message_typing",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/messages.tsx",
+    "table": "messages",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition-template-builder.tsx",
+    "table": "nutrition_templates",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition-template-builder.tsx",
+    "table": "nutrition_template_days",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition-template-builder.tsx",
+    "table": "nutrition_template_meals",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition-template-builder.tsx",
+    "table": "nutrition_template_meal_components",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition-template-builder.tsx",
+    "table": "nutrition_template_meal_components",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition-template-builder.tsx",
+    "table": "nutrition_template_meal_components",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition-template-builder.tsx",
+    "table": "nutrition_template_meal_components",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition-template-builder.tsx",
+    "table": "nutrition_template_meal_components",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition-template-builder.tsx",
+    "table": "nutrition_template_meal_components",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition.tsx",
+    "table": "nutrition_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition.tsx",
+    "table": "nutrition_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition.tsx",
+    "table": "nutrition_template_days",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition.tsx",
+    "table": "nutrition_template_meals",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition.tsx",
+    "table": "nutrition_template_meal_components",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/nutrition.tsx",
+    "table": "nutrition_templates",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/program-builder.tsx",
+    "table": "program_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/program-builder.tsx",
+    "table": "program_templates",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/program-builder.tsx",
+    "table": "program_template_days",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/program-builder.tsx",
+    "table": "program_template_days",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/programs.tsx",
+    "table": "program_templates",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/programs.tsx",
+    "table": "program_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/programs.tsx",
+    "table": "program_template_days",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/programs.tsx",
+    "table": "program_templates",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings-baseline.tsx",
+    "table": "baseline_marker_templates",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings-baseline.tsx",
+    "table": "baseline_marker_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings-baseline.tsx",
+    "table": "baseline_marker_templates",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings-baseline.tsx",
+    "table": "baseline_marker_templates",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings-baseline.tsx",
+    "table": "baseline_marker_templates",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings-baseline.tsx",
+    "table": "baseline_marker_templates",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings-baseline.tsx",
+    "table": "baseline_marker_templates",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings-exercises.tsx",
+    "table": "exercises",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings-exercises.tsx",
+    "table": "exercises",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings-exercises.tsx",
+    "table": "exercises",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings-exercises.tsx",
+    "table": "exercises",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings.tsx",
+    "table": "workspaces",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/settings.tsx",
+    "table": "workspaces",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/workout-template-builder.tsx",
+    "table": "exercises",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/workout-template-builder.tsx",
+    "table": "workout_template_exercises",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/workout-template-builder.tsx",
+    "table": "exercises",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/workout-template-builder.tsx",
+    "table": "workout_template_exercises",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/workout-template-builder.tsx",
+    "table": "workout_template_exercises",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/workout-template-builder.tsx",
+    "table": "workout_template_exercises",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/workout-template-builder.tsx",
+    "table": "workout_templates",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/workout-template-builder.tsx",
+    "table": "workout_template_exercises",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/workout-templates.tsx",
+    "table": "workout_templates",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/workout-templates.tsx",
+    "table": "workout_templates",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/public/join.tsx",
+    "table": "clients",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/workspace/settings/tabs/client-experience.tsx",
+    "table": "workspaces",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/workspace/settings/tabs/danger.tsx",
+    "table": "workspace_members",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/workspace/settings/tabs/defaults.tsx",
+    "table": "workspaces",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/workspace/settings/tabs/general.tsx",
+    "table": "workspaces",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/workspace/settings/tabs/integrations.tsx",
+    "table": "workspace_wearable_settings",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/settings/sections/DangerZoneSettings.tsx",
+    "table": "workspace_members",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/settings/sections/DefaultsSettings.tsx",
+    "table": "workspaces",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/settings/sections/WorkspaceSettings.tsx",
+    "table": "workspaces",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail-tabs/pt-client-medical-tab.tsx",
+    "table": "client_medical_records",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail-tabs/pt-client-medical-tab.tsx",
+    "table": "client_medical_records",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail-tabs/pt-client-medical-tab.tsx",
+    "table": "client_medical_documents",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail-tabs/pt-client-notes-tab.tsx",
+    "table": "coach_activity_log",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail-tabs/pt-client-notes-tab.tsx",
+    "table": "coach_activity_log",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/pages/pt/client-detail-tabs/pt-client-notes-tab.tsx",
+    "table": "coach_activity_log",
+    "writes": ["delete"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/features/pt-hub/lib/pt-hub.ts",
+    "table": "pt_hub_leads",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/features/pt-hub/lib/pt-hub.ts",
+    "table": "pt_hub_lead_notes",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/features/pt-hub/lib/pt-hub.ts",
+    "table": "pt_hub_profiles",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/features/pt-hub/lib/pt-hub.ts",
+    "table": "pt_hub_settings",
+    "writes": ["upsert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/features/pt-hub/lib/pt-hub.ts",
+    "table": "clients",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/features/notifications/api/notifications.ts",
+    "table": "notification_deliveries",
+    "writes": ["delete"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/notifications/api/notifications.ts",
+    "table": "notification_deliveries",
+    "writes": ["update"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/notifications/api/notifications.ts",
+    "table": "notification_deliveries",
+    "writes": ["update"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/notifications/api/notifications.ts",
+    "table": "notification_deliveries",
+    "writes": ["update"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/notifications/api/notifications.ts",
+    "table": "notification_deliveries",
+    "writes": ["update"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/notifications/api/notifications.ts",
+    "table": "notification_deliveries",
+    "writes": ["update"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/notifications/api/notifications.ts",
+    "table": "notification_preferences",
+    "writes": ["upsert"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/notifications/lib/notification-service.ts",
+    "table": "notification_preferences",
+    "writes": ["upsert"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/notifications/lib/notification-service.ts",
+    "table": "notification_events",
+    "writes": ["upsert"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/notifications/lib/notification-service.ts",
+    "table": "notification_deliveries",
+    "writes": ["upsert"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/notifications/lib/notification-service.ts",
+    "table": "push_subscriptions",
+    "writes": ["upsert"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/notifications/lib/notification-service.ts",
+    "table": "push_subscriptions",
+    "writes": ["update"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/features/client-onboarding/lib/client-onboarding-api.ts",
+    "table": "workspace_client_onboardings",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/features/client-onboarding/lib/client-onboarding-api.ts",
+    "table": "workspace_client_onboardings",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/components/common/client-reminders.tsx",
+    "table": "dismissed_reminders",
+    "writes": ["insert"],
+    "enforcement": "personal notification state; existing RLS"
+  },
+  {
+    "file": "src/components/pt/invite-client-dialog.tsx",
+    "table": "invites",
+    "writes": ["insert"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "src/components/pt/pt-message-compose.tsx",
+    "table": "messages",
+    "writes": ["update"],
+    "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  }
+]

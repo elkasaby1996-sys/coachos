@@ -1,3 +1,4 @@
+import { CommercialAccessBoundary } from "../../features/commercial-access/commercial-access-boundary";
 import "../../styles/coach-pages.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -824,7 +825,9 @@ export function PtHubLayout() {
                 <div className="pt-content-zoom coach-ui">
                   <WorkspaceHeaderModeProvider value="default">
                     <RouteTransition routeKey={routeTransitionKey}>
-                      <Outlet />
+                      <CommercialAccessBoundary scope="owner">
+                        <Outlet />
+                      </CommercialAccessBoundary>
                     </RouteTransition>
                   </WorkspaceHeaderModeProvider>
                 </div>

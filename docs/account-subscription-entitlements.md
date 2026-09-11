@@ -102,3 +102,5 @@ pgTAP tests run inside BEGIN/ROLLBACK, exercising real RPC/role behavior. They e
 See [verification record](pr-price-02-verification.md) for the captured baseline failures and exact commands/results. Existing unrelated baseline unit failures are preserved.
 
 See [Lemon Squeezy billing foundation](lemon-squeezy-billing-provider.md) for PR-PRICE-05 hosted Checkout and webhook reconciliation.
+
+See [commercial access modes](commercial-access-modes.md) for PR-PRICE-08 access enforcement and recovery.

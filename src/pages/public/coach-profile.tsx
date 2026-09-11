@@ -210,8 +210,16 @@ export function PublicCoachProfilePage() {
               </Link>
             </Button>
             <EmptyState
-              title="Coach profile not found"
-              description="This public coach page is either unpublished or the link is no longer valid."
+              title={
+                profileQuery.error
+                  ? "Coach profile unavailable"
+                  : "Coach profile not found"
+              }
+              description={
+                profileQuery.error
+                  ? "The profile could not be loaded. Please try again."
+                  : "This coach is not accepting new applications right now."
+              }
             />
           </div>
         </div>

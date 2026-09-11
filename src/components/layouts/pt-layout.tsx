@@ -1,3 +1,4 @@
+import { CommercialAccessBoundary } from "../../features/commercial-access/commercial-access-boundary";
 import { useCapacityMutationFeedback } from "../../features/account-capacity/mutation-feedback";
 import "../../styles/coach-pages.css";
 import {
@@ -1550,7 +1551,9 @@ export function PtLayout() {
                         className="grid gap-6"
                         routeKey={routeTransitionKey}
                       >
-                        <Outlet />
+                        <CommercialAccessBoundary scope="workspace">
+                          <Outlet />
+                        </CommercialAccessBoundary>
                       </RouteTransition>
                     </WorkspaceHeaderModeProvider>
                   </div>
