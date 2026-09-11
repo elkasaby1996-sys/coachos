@@ -1,5 +1,6 @@
 import React from "react";
 import * as Sentry from "@sentry/react";
+import { redactHostedPaymentUrls } from "./redact-hosted-payment-urls";
 import {
   createRoutesFromChildren,
   matchRoutes,
@@ -125,7 +126,9 @@ export function initSentry() {
       ) {
         return null;
       }
-      return breadcrumb;
+      return redactHostedPaymentUrls(breadcrumb);
     },
+    beforeSend: (event) => redactHostedPaymentUrls(event),
+    beforeSendTransaction: (event) => redactHostedPaymentUrls(event),
   });
 }

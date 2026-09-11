@@ -100,3 +100,5 @@ Rollback is an application revert plus a future reviewed compensating migration.
 pgTAP tests run inside BEGIN/ROLLBACK, exercising real RPC/role behavior. They emulate pre-trigger legacy rows only within their transaction. Browser fixtures use the stabilized run/worker namespace plus per-test identities; no shared trigger disabling or shared mutable identifiers is used. A concurrent browser-suite fixture submits two actual workspace insert transactions and checks one account/trial/event.
 
 See [verification record](pr-price-02-verification.md) for the captured baseline failures and exact commands/results. Existing unrelated baseline unit failures are preserved.
+
+See [Lemon Squeezy billing foundation](lemon-squeezy-billing-provider.md) for PR-PRICE-05 hosted Checkout and webhook reconciliation.

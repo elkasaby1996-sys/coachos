@@ -14,26 +14,14 @@ describe("PT Hub Billing canonical status", () => {
     expect(source).toContain('role="alert"');
     expect(source).toContain('role="status"');
   });
-  it("keeps existing sections, placeholders, and disabled controls", () => {
-    for (const text of [
-      "usePtHubPayments()",
-      "Plan and Subscription",
-      "Payment Methods",
-      "Invoice History",
-      "SettingsSectionCard",
-      "SettingsFieldRow",
-      "invoices.map",
-      "Scope boundary",
-    ])
-      expect(source).toContain(text);
-    expect(source).toMatch(/<Button[^>]*disabled>\s*Manage subscription/);
-    expect(source).toMatch(/<Button[^>]*disabled>\s*Add payment method/);
-    expect(source).not.toMatch(/checkout|usageMeter|stripe|renewalDate/i);
-    // PR-PRICE-03 adds descriptive capacity while preserving PR-PRICE-02's
-    // canonical entitlement card and disconnected payment controls.
+  it("retains canonical status and capacity while adding hosted checkout", () => {
+    expect(source).toContain("BillingCheckoutPanel");
+    expect(source).toContain("Plan and Subscription");
     expect(source).toContain("useMyAccountCapacitySnapshot()");
     expect(source).toContain("<CapacityMeters snapshot={capacityQuery.data}");
-    expect(source).not.toMatch(/disabled=\{[^}]*capacity/i);
+    expect(source).not.toMatch(
+      /Manage subscription|Add payment method|Invoice History/,
+    );
   });
   it("explains trial, intent, complimentary contract and current enforcement boundary", () => {
     for (const text of [

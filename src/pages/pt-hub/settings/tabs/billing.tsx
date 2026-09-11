@@ -5,7 +5,8 @@ import {
   SettingsHelperCallout,
   SettingsSectionCard,
 } from "../../../../features/settings/components/settings-primitives";
-import { usePtHubPayments } from "../../../../features/pt-hub/lib/pt-hub";
+import { useCallback } from "react";
+import { BillingCheckoutPanel } from "../../../../features/billing/checkout-panel";
 import {
   useMyEffectiveAccountEntitlements,
   AccountEntitlementError,
@@ -18,11 +19,14 @@ import {
 import { CapacityMeters } from "../../../../features/account-capacity/capacity-meters";
 
 export function PtHubSettingsBillingTab() {
-  const paymentsQuery = usePtHubPayments();
   const entitlementsQuery = useMyEffectiveAccountEntitlements();
   const capacityQuery = useMyAccountCapacitySnapshot();
   const subscription = entitlementsQuery.data?.subscription;
-  const invoices = paymentsQuery.data?.invoices ?? [];
+  const refetchEntitlements = entitlementsQuery.refetch;
+  const refetchCapacity = capacityQuery.refetch;
+  const refreshBilling = useCallback(async () => {
+    await Promise.all([refetchEntitlements(), refetchCapacity()]);
+  }, [refetchEntitlements, refetchCapacity]);
   const dateLabel = (value: string) =>
     new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
       new Date(value),
@@ -40,15 +44,14 @@ export function PtHubSettingsBillingTab() {
           </p>
         ) : entitlementsQuery.error ? (
           <div role="alert">
-            <SettingsHelperCallout
-              title="Subscription details unavailable"
-              body={
-                entitlementsQuery.error instanceof AccountEntitlementError
-                  ? entitlementsQuery.error.message
-                  : "Subscription details could not be loaded. Please try again."
-              }
-              tone="warning"
-            />
+            <p className="text-sm font-medium">
+              Subscription details unavailable
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {entitlementsQuery.error instanceof AccountEntitlementError
+                ? entitlementsQuery.error.message
+                : "Subscription details could not be loaded. Please try again."}
+            </p>
             <Button
               type="button"
               variant="secondary"
@@ -132,14 +135,16 @@ export function PtHubSettingsBillingTab() {
             ) : null}
           </>
         ) : null}
-        <SettingsFieldRow
-          label="Billing portal"
-          hint="Self-serve billing portal is not connected yet."
-        >
-          <Button type="button" variant="secondary" disabled>
-            Manage subscription (Unavailable)
-          </Button>
-        </SettingsFieldRow>
+        {entitlementsQuery.data ? (
+          <BillingCheckoutPanel
+            owner={entitlementsQuery.data.billingAccount.canManageBilling}
+            requestedPlan={
+              entitlementsQuery.data.billingAccount.requestedPaidPlanKey
+            }
+            subscription={subscription}
+            refresh={refreshBilling}
+          />
+        ) : null}
       </SettingsSectionCard>
 
       <SettingsSectionCard
@@ -173,61 +178,6 @@ export function PtHubSettingsBillingTab() {
         ) : capacityQuery.data ? (
           <CapacityMeters snapshot={capacityQuery.data} />
         ) : null}
-      </SettingsSectionCard>
-
-      <SettingsSectionCard
-        title="Payment Methods"
-        description="Cards and bank details for subscription billing."
-      >
-        <div className="ui-inset flex flex-wrap items-center justify-between gap-3 border border-border/70 px-4 py-3">
-          <div className="space-y-0.5">
-            <p className="text-sm font-medium text-foreground">
-              No payment method connected
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Add a card when the billing portal is connected.
-            </p>
-          </div>
-          <Button type="button" variant="secondary" disabled>
-            Add payment method (Unavailable)
-          </Button>
-        </div>
-      </SettingsSectionCard>
-
-      <SettingsSectionCard
-        title="Invoice History"
-        description="Invoice export and payments history."
-      >
-        <div className="space-y-2">
-          {paymentsQuery.isLoading ? (
-            <p role="status" className="text-sm text-muted-foreground">
-              Loading invoice placeholder...
-            </p>
-          ) : null}
-          {paymentsQuery.error ? (
-            <p role="alert" className="text-sm text-muted-foreground">
-              Invoice details are currently unavailable.
-            </p>
-          ) : null}
-          {invoices.map((invoice) => (
-            <div
-              key={invoice.id}
-              className="ui-inset flex items-center justify-between border border-border/70 px-4 py-3"
-            >
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium text-foreground">
-                  {invoice.label}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {invoice.status}
-                </p>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {invoice.amountLabel}
-              </p>
-            </div>
-          ))}
-        </div>
       </SettingsSectionCard>
 
       <SettingsHelperCallout
