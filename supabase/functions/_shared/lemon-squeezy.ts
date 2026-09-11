@@ -93,6 +93,7 @@ export type CheckoutOperation = {
 };
 export type CheckoutResult = { id: string; url: string; expiresAt: string };
 export type SubscriptionSnapshot = {
+  payment_processor?: "card" | "paypal" | "unknown";
   provider: "lemonsqueezy";
   environment: Environment;
   store_id: string;
@@ -121,6 +122,40 @@ export interface BillingProvider {
   ): Promise<CheckoutResult>;
   retrieveSubscription(id: string): Promise<SubscriptionSnapshot>;
   retrieveSubscriptionForPortal?(id: string): Promise<PortalSubscription>;
+  updateSubscriptionVariant?(
+    id: string,
+    variant: string,
+    timing: "immediate" | "period_end",
+  ): Promise<SubscriptionSnapshot>;
+  listSubscriptionInvoices?(id: string): Promise<Record<string, unknown>[]>;
+}
+export function normalizePaymentProcessor(
+  value: unknown,
+): "card" | "paypal" | "unknown" {
+  return value === "stripe"
+    ? "card"
+    : value === "paypal"
+      ? "paypal"
+      : "unknown";
+}
+export function subscriptionVariantRequest(
+  id: string,
+  variant: string,
+  timing: "immediate" | "period_end",
+) {
+  if (!["immediate", "period_end"].includes(timing))
+    throw new BillingError("BILLING_INVALID_INPUT");
+  return {
+    data: {
+      type: "subscriptions",
+      id: providerId(id),
+      attributes: {
+        variant_id: Number(providerId(variant)),
+        invoice_immediately: timing === "immediate",
+        disable_prorations: timing === "period_end",
+      },
+    },
+  };
 }
 export type PortalSubscription = Pick<
   SubscriptionSnapshot,
@@ -287,6 +322,7 @@ export function parseSubscription(
     variant_id: providerId(a.variant_id),
     price_id: providerId(item.price_id),
     first_subscription_item_id: providerId(item.id),
+    payment_processor: normalizePaymentProcessor(a.payment_processor),
     quantity: item.quantity,
     status: a.status,
     cancelled: a.cancelled,
@@ -301,11 +337,11 @@ export function createLemonSqueezyProvider(
   apiKey: string,
   transport: typeof fetch = fetch,
 ): BillingProvider {
-  async function request(path: string, body?: unknown) {
+  async function request(path: string, body?: unknown, method?: string) {
     let response: Response;
     try {
       response = await transport(`https://api.lemonsqueezy.com/v1/${path}`, {
-        method: body ? "POST" : "GET",
+        method: method ?? (body ? "POST" : "GET"),
         redirect: "error",
         cache: "no-store",
         signal: AbortSignal.timeout(20_000),
@@ -336,6 +372,63 @@ export function createLemonSqueezyProvider(
     }
   }
   return {
+    async updateSubscriptionVariant(id, variant, timing) {
+      try {
+        return parseSubscription(
+          await request(
+            `subscriptions/${providerId(id)}`,
+            subscriptionVariantRequest(id, variant, timing),
+            "PATCH",
+          ),
+          id,
+        );
+      } catch (error) {
+        if (
+          error instanceof BillingError &&
+          !error.ambiguous &&
+          error.code === "BILLING_CHECKOUT_CREATION_FAILED"
+        )
+          throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 502);
+        throw new BillingError(
+          "BILLING_PLAN_CHANGE_PROVIDER_AMBIGUOUS",
+          503,
+          true,
+        );
+      }
+    },
+    async listSubscriptionInvoices(id) {
+      const value = object(
+        await request(
+          `subscription-invoices?filter[subscription_id]=${providerId(id)}&page[size]=100&sort=-createdAt`,
+        ),
+      );
+      if (!Array.isArray(value.data))
+        throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 502);
+      return value.data.map((entry: unknown) => {
+        const data = object(entry),
+          a = object(data.attributes);
+        if (
+          data.type !== "subscription-invoices" ||
+          providerId(a.subscription_id) !== id ||
+          typeof a.test_mode !== "boolean" ||
+          !["initial", "renewal", "updated"].includes(a.billing_reason) ||
+          !["pending", "paid", "void", "refunded", "partial_refund"].includes(
+            a.status,
+          )
+        )
+          throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 502);
+        return {
+          store_id: providerId(a.store_id),
+          subscription_id: id,
+          customer_id: providerId(a.customer_id),
+          test_mode: a.test_mode,
+          billing_reason: a.billing_reason,
+          status: a.status,
+          created_at: timestamp(a.created_at),
+          updated_at: timestamp(a.updated_at),
+        };
+      });
+    },
     async createCheckout(operation, returnUrl, owner) {
       return parseCheckout(
         await request("checkouts", buildCheckout(operation, returnUrl, owner)),
@@ -462,6 +555,17 @@ export function normalizeWebhook(
     payload.customer_id = providerId(a.customer_id);
     payload.created_at = timestamp(a.created_at);
     payload.updated_at = timestamp(a.updated_at);
+    if (invoice) {
+      // Only normalized proof, never invoice URLs, card data or customer PII.
+      if (["initial", "renewal", "updated"].includes(a.billing_reason))
+        payload.billing_reason = a.billing_reason;
+      if (
+        ["pending", "paid", "void", "refunded", "partial_refund"].includes(
+          a.status,
+        )
+      )
+        payload.status = a.status;
+    }
     if (!invoice) {
       payload.product_id = providerId(a.product_id);
       payload.variant_id = providerId(a.variant_id);

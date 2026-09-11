@@ -1,0 +1,15 @@
+# Plan-change security and rollback
+
+The browser supplies only target plan, target cadence and an operation UUID. Cancel accepts only the original operation UUID; refresh accepts an empty object. Extra identifiers, amounts, timing and proration fields are rejected. All four Edge endpoints require JWT verification and authenticate the caller before resolving the canonical owner account. Service RPCs receive only the authenticated identity from that boundary. The owner state RPC derives identity from `auth.uid()` and accepts no account parameter.
+
+RLS is enabled on operations/events and all direct runtime table privileges are revoked, including service role table access. Every new security-definer function uses a fixed search path and explicit grants. Internal classification, capacity and transition helpers are not runtime-executable. No dynamic SQL is used. Backend context and mappings never become browser responses.
+
+The operation captures immutable source/target identity and keeps one nonterminal operation per provider subscription. Provider mapping changes are allowed only for that exact operation, or confirmed source restoration during cancellation. Existing customer, Store, environment, order, quantity and subscription checks remain. A third mapping still raises `BILLING_UNAPPROVED_PLAN_CHANGE`, rolls back activation and records manual review. An approved target may retire after operation creation; new operations cannot target it.
+
+Transport timeouts, uncertain server errors and invalid PATCH/GET responses cannot trigger automatic repetition. The operation is durable before dispatch. Its open state prevents a second mutation from duplicate clicks, retries or another tab. A successful PATCH does not itself grant upgraded entitlements. Source/target transition, history, provider relinking and operation completion commit atomically; injected event-write failures prove rollback.
+
+Only a bounded normalized invoice proof is retained: provider identity, environment, reason, status and timestamps. No invoice list, payment data, amount charged, name, address, email, raw response or signed URL is returned to Billing or telemetry. Existing Checkout/Portal URL redaction remains unchanged. Logs use safe error and processing codes. Append-only operation events contain operation identity and a known commercial event type, not customer data.
+
+Billing owns all plan-change fetching. AuthProvider, ThemeProvider, root routes, login and callback resolution do not import plan-change modules. Owner-only mounting and user-scoped query keys prevent data from entering startup/bootstrap or being shared across users.
+
+Rollback is an application revert plus a separately reviewed compensating migration. Preserve operations, events, provider inbox history and superseded subscription links. Never delete history or overwrite plan IDs to reverse a change. Outstanding provider mutations and target ceilings require explicit reconciliation before changing the resolver. No rollback or deployment against a remote project is authorized by this PR.

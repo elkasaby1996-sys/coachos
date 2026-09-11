@@ -8,6 +8,7 @@ import {
 import { useCallback } from "react";
 import { BillingCheckoutPanel } from "../../../../features/billing/checkout-panel";
 import { CustomerPortalPanel } from "../../../../features/billing/customer-portal-panel";
+import { PlanChangePanel } from "../../../../features/billing/plan-change-panel";
 import {
   useMyEffectiveAccountEntitlements,
   AccountEntitlementError,
@@ -147,6 +148,16 @@ export function PtHubSettingsBillingTab() {
           />
         ) : null}
       </SettingsSectionCard>
+
+      {entitlementsQuery.data?.billingAccount.canManageBilling &&
+      subscription?.kind === "paid" ? (
+        <SettingsSectionCard
+          title="Plan changes"
+          description="Review plan, billing frequency and capacity before confirming."
+        >
+          <PlanChangePanel owner={true} refresh={refreshBilling} />
+        </SettingsSectionCard>
+      ) : null}
 
       {entitlementsQuery.data?.billingAccount.canManageBilling ? (
         <SettingsSectionCard

@@ -1,5 +1,14 @@
 project_id = "coachos"
 
+[functions.billing-preview-plan-change]
+verify_jwt = true
+[functions.billing-change-subscription-plan]
+verify_jwt = true
+[functions.billing-cancel-scheduled-plan-change]
+verify_jwt = true
+[functions.billing-refresh-plan-change]
+verify_jwt = true
+
 [db]
 major_version = 17
 

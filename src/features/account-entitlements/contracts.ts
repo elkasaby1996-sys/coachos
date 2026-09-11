@@ -20,6 +20,7 @@ export const ACCOUNT_SUBSCRIPTION_STORED_STATUSES = [
   "restricted",
   "canceled",
   "expired",
+  "superseded",
 ] as const;
 export const ACCOUNT_SUBSCRIPTION_EFFECTIVE_STATUSES = [
   ...ACCOUNT_SUBSCRIPTION_STORED_STATUSES,
@@ -62,6 +63,7 @@ export const ACCESS_MODE_BY_STATUS = {
   restricted: "read_only",
   canceled: "read_only",
   expired: "none",
+  superseded: "none",
 } as const satisfies Record<
   AccountSubscriptionEffectiveStatus,
   AccountAccessMode
@@ -269,7 +271,16 @@ export const effectiveAccountEntitlementsSchema = z
           code: "custom",
           message: "Incorrect effective trial status.",
         });
-    } else if (s.effectiveStatus !== s.storedStatus)
+    } else if (
+      s.effectiveStatus !== s.storedStatus &&
+      !(
+        s.kind === "paid" &&
+        s.cancelAtPeriodEnd &&
+        s.currentPeriodEndsAt &&
+        Date.parse(s.currentPeriodEndsAt) <= Date.parse(v.computedAt) &&
+        s.effectiveStatus === "expired"
+      )
+    )
       ctx.addIssue({ code: "custom", message: "Incorrect effective status." });
   });
 export type EffectiveAccountEntitlements = z.infer<
