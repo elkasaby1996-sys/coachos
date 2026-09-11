@@ -196,11 +196,16 @@ for (const complimentary of [false, true])
       `/pt-hub/settings/billing?checkout=return&attempt=${f.attempt}`,
     );
     await expect(page.getByText(/Finalizing your subscription/)).toBeVisible();
-    await f.confirm();
     await page
       .getByRole("button", { name: "Refresh subscription", exact: true })
       .click();
-    await expect(page.getByText(/Paid subscription confirmed/)).toBeVisible();
+    await expect(page.getByText(/Finalizing your subscription/)).toBeVisible();
+    await f.confirm();
+    // Automatic polling may finish before a manual refresh can be clicked.
+    // Assert its canonical result without racing the disappearing control.
+    await expect(page.getByText(/Paid subscription confirmed/)).toBeVisible({
+      timeout: 30_000,
+    });
     await expect(page).not.toHaveURL(/checkout=return/);
     await expect(
       page.getByRole("button", {

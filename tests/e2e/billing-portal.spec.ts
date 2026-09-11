@@ -305,12 +305,21 @@ test("portal return polls only within its bound and offers manual refresh", asyn
     page.getByText("Checking for billing changes.", { exact: false }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/billing$/);
+  // Clock advancement does not flush browser requests or route handlers.
+  await page.waitForLoadState("networkidle");
+  const initialReads = f.summaryReads();
+  await page.clock.fastForward(2_000);
+  await expect.poll(() => f.summaryReads()).toBeGreaterThan(initialReads);
+  await page.waitForLoadState("networkidle");
   await page.clock.fastForward(31_000);
   await expect(
     page.getByRole("button", { name: "Refresh billing", exact: true }),
   ).toBeVisible();
+  // A tick dispatched before the deadline may still be completing after it.
+  await page.waitForLoadState("networkidle");
   const count = f.summaryReads();
   await page.clock.fastForward(60_000);
+  await page.waitForLoadState("networkidle");
   expect(f.summaryReads()).toBe(count);
   const capacityBefore = f.capacityReads();
   await page
