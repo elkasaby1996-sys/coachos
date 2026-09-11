@@ -29,3 +29,5 @@ Separate authorization and actual test-mode resources are required. An operator 
 - A returning browser waits up to 30 seconds, then offers manual refresh. Leaving the browser does not prevent webhook reconciliation.
 
 No remote Supabase or live Lemon Squeezy operation is part of this runbook's normal verification. Preserve commercial history when reverting an application or preparing a compensating migration.
+
+See [Customer Portal test runbook](lemon-squeezy-portal-test-runbook.md) for PR-PRICE-06.

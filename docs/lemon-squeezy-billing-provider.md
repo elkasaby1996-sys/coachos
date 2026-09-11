@@ -69,3 +69,5 @@ Deferred: Customer Portal, upgrades/downgrades, plan/cadence changes, cancellati
 - [Webhook event types](https://docs.lemonsqueezy.com/help/webhooks/event-types)
 
 See [security](lemon-squeezy-billing-security.md), [local runbook](lemon-squeezy-test-mode-runbook.md), and [verification](pr-price-05-verification.md).
+
+See [Customer Portal and recovery](lemon-squeezy-customer-portal.md) for PR-PRICE-06.

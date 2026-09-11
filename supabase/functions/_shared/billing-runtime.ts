@@ -1,8 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.0";
 import { BillingError, createLemonSqueezyProvider } from "./lemon-squeezy.ts";
 import type { BillingDependencies, Rpc } from "./billing-handlers.ts";
+import { portalCodes } from "./billing-portal.ts";
 
 const safeDatabaseCodes = new Set([
+  ...portalCodes,
   "BILLING_FORBIDDEN",
   "BILLING_INVALID_INPUT",
   "BILLING_ALREADY_SUBSCRIBED",
@@ -55,6 +57,7 @@ export function billingDependencies(): BillingDependencies {
         environment: environment as "test" | "live",
         appBaseUrl,
         webhookSecret,
+        portalAllowedHosts: env("BILLING_PORTAL_ALLOWED_HOSTS"),
         provider: createLemonSqueezyProvider(apiKey),
       };
     },
