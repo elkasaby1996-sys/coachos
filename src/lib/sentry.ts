@@ -129,6 +129,7 @@ export function initSentry() {
       return redactHostedPaymentUrls(breadcrumb);
     },
     beforeSend: (event) => redactHostedPaymentUrls(event),
+    beforeSendLog: (log) => redactHostedPaymentUrls(log),
     beforeSendTransaction: (event) => redactHostedPaymentUrls(event),
   });
 }

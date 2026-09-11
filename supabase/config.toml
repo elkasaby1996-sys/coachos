@@ -28,3 +28,6 @@ verify_jwt = true
 
 [functions.billing-lemon-squeezy-webhook]
 verify_jwt = false
+
+[functions.billing-create-customer-portal-link]
+verify_jwt = true

@@ -19,3 +19,5 @@ Operations must monitor failed deliveries and provider `manual_review` records. 
 The migration is forward-only and atomic. Application rollback is a code revert plus a reviewed compensating forward migration, preserving all customer/subscription/delivery history. No destructive down migration or domain data rewrite is included.
 
 Reference: [Lemon Squeezy webhook signing](https://docs.lemonsqueezy.com/help/webhooks/signing-requests).
+
+See [Customer Portal security](lemon-squeezy-portal-security.md) for PR-PRICE-06.

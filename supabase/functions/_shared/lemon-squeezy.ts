@@ -120,6 +120,48 @@ export interface BillingProvider {
     owner: { email?: string; name?: string },
   ): Promise<CheckoutResult>;
   retrieveSubscription(id: string): Promise<SubscriptionSnapshot>;
+  retrieveSubscriptionForPortal?(id: string): Promise<PortalSubscription>;
+}
+export type PortalSubscription = Pick<
+  SubscriptionSnapshot,
+  | "provider"
+  | "environment"
+  | "store_id"
+  | "subscription_id"
+  | "customer_id"
+  | "status"
+> & { customerPortal: unknown; updatePaymentMethod: unknown };
+export function parsePortalSubscription(
+  value: unknown,
+  id: string,
+): PortalSubscription {
+  const d = object(object(value).data),
+    a = object(d.attributes);
+  if (
+    d.type !== "subscriptions" ||
+    providerId(d.id) !== id ||
+    typeof a.test_mode !== "boolean" ||
+    ![
+      "active",
+      "paused",
+      "past_due",
+      "unpaid",
+      "cancelled",
+      "expired",
+    ].includes(a.status)
+  )
+    throw new BillingError("BILLING_PORTAL_IDENTITY_MISMATCH", 409);
+  const urls = a.urls == null ? {} : object(a.urls);
+  return {
+    provider: "lemonsqueezy",
+    environment: a.test_mode ? "test" : "live",
+    store_id: providerId(a.store_id),
+    subscription_id: id,
+    customer_id: providerId(a.customer_id),
+    status: a.status,
+    customerPortal: urls.customer_portal,
+    updatePaymentMethod: urls.update_payment_method,
+  };
 }
 export function buildCheckout(
   operation: CheckoutOperation,
@@ -265,6 +307,7 @@ export function createLemonSqueezyProvider(
       response = await transport(`https://api.lemonsqueezy.com/v1/${path}`, {
         method: body ? "POST" : "GET",
         redirect: "error",
+        cache: "no-store",
         signal: AbortSignal.timeout(20_000),
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -305,9 +348,16 @@ export function createLemonSqueezyProvider(
         id,
       );
     },
+    async retrieveSubscriptionForPortal(id) {
+      return parsePortalSubscription(
+        await request(`subscriptions/${providerId(id)}`),
+        id,
+      );
+    },
   };
 }
 export const supportedEvents = [
+  "subscription_plan_changed",
   "subscription_created",
   "subscription_updated",
   "subscription_cancelled",

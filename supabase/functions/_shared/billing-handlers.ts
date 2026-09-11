@@ -18,6 +18,7 @@ export type BillingConfig = {
   appBaseUrl: string;
   webhookSecret: string;
   provider: BillingProvider;
+  portalAllowedHosts?: string;
 };
 export type BillingDependencies = {
   config: () => BillingConfig | null;
@@ -241,6 +242,17 @@ export async function handleBillingWebhook(
         processingStatus: "failed",
       });
       return response({ code: "BILLING_RECONCILIATION_FAILED" }, 503);
+    }
+    if (status === "ignored") {
+      const outcome = await deps.serviceRpc(
+        "get_billing_reconciliation_result",
+        { p_delivery: delivery },
+      );
+      if (outcome?.code === "BILLING_UNAPPROVED_PLAN_CHANGE")
+        deps.log?.({
+          code: "BILLING_UNAPPROVED_PLAN_CHANGE",
+          processingStatus: "manual_review",
+        });
     }
     return response({ status });
   } catch (error) {

@@ -7,6 +7,7 @@ import {
 } from "../../../../features/settings/components/settings-primitives";
 import { useCallback } from "react";
 import { BillingCheckoutPanel } from "../../../../features/billing/checkout-panel";
+import { CustomerPortalPanel } from "../../../../features/billing/customer-portal-panel";
 import {
   useMyEffectiveAccountEntitlements,
   AccountEntitlementError,
@@ -146,6 +147,18 @@ export function PtHubSettingsBillingTab() {
           />
         ) : null}
       </SettingsSectionCard>
+
+      {entitlementsQuery.data?.billingAccount.canManageBilling ? (
+        <SettingsSectionCard
+          title="Billing management"
+          description="Manage payment details and your subscription securely with our billing provider."
+        >
+          <CustomerPortalPanel
+            owner={entitlementsQuery.data.billingAccount.canManageBilling}
+            refresh={refreshBilling}
+          />
+        </SettingsSectionCard>
+      ) : null}
 
       <SettingsSectionCard
         title="Account capacity"
