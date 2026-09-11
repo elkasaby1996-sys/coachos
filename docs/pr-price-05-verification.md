@@ -2,7 +2,65 @@
 
 ## Verdict and base
 
-Implemented and locally verified. Both final release checks passed consecutively on unchanged implementation/test code. Ready for code review as working-tree changes; not committed, pushed, deployed, or live-enabled. The inherited full-unit failure set is unchanged. No real-provider purchase proof is claimed.
+The original commit-ready verdict below was withdrawn after three reconciliation defects were reproduced during review. See the correction record immediately below for the current verification status. Original execution evidence is preserved as historical evidence, not release evidence for the correction.
+
+Original verdict: implemented and locally verified. Both original release checks passed consecutively on unchanged implementation/test code. Originally presented for code review as working-tree changes. The inherited full-unit failure set was unchanged. No real-provider purchase proof was claimed.
+
+## Reconciliation review correction — 2026-09-11
+
+Branch: `feat/pr-price-05-lemon-squeezy-billing`; correction base: `350ea0b` (PR-PRICE-05 implementation), whose parent is `61f067e` (merged PR-PRICE-04). Actual Git history differs from the correction request's uncommitted premise: PR-PRICE-05 was committed and merged through PR #189 at `e77374f`. The user explicitly requested editing `20260911010000_lemon_squeezy_billing_foundation.sql` in place and adding no second migration. This correction follows that instruction on the named branch. It has not committed, pushed, or rewritten Git history. No remote migration state was queried or changed; the user reports that this migration has never been remotely applied.
+
+### Original failed-probe evidence
+
+All probes used synthetic local database fixtures inside a rolled-back transaction:
+
+- P1 retired mapping: `retired_mapping_expiration=ignored`, `retired_mapping_local_status=active`.
+- P1 delayed cancelled creation: `delayed_cancelled_creation=ignored`, `delayed_creation_paid_rows=0`.
+- P2 review recovery: `restored_snapshot_outcome=processed`, `restored_snapshot_review_status=manual_review`.
+
+Tests were added before changing implementation. The first permanent regression run failed 36 of 133 billing assertions; all original 74 billing assertions passed. Exact failed assertions: `83-85, 89, 95-102, 104-120, 124, 126-128, 130-132`. The complete suite contained 532 assertions in 10 files. The original red log is retained at `%TEMP%/pr-price-05-correction-red.log`. Additional boundary assertions brought the final billing plan to 137 assertions.
+
+### File-by-file correction and guarantees
+
+- `supabase/migrations/20260911010000_lemon_squeezy_billing_foundation.sql`: Sale attempt insertion requires an active mapping under a shared lock. Linked reconciliation resolves only its immutable stored mapping, allowing active/retired. Delayed creation locks the account, re-reads/locks its attempt, checks signed linkage and accepts retirement only when the attempt predates or equals retirement. Product/Variant/Price/Store/environment/customer checks remain. Initial linkage projects active, paused, past_due, unpaid, cancelled or expired current state, including cancellation flags and terminal timestamps. Provider state and dates are retained accurately. Trials and malformed states fail closed. Deferred rows are superseded atomically before the conversion audit event; injected event failure rolls everything back. Successful current-provider validation always clears resolved review health independently of business state. Subscription locks and uniqueness preserve one paid linkage; stale/equal-timestamp guards remain.
+- `supabase/tests/lemon_squeezy_billing.sql`: Retains all original 74 assertions and adds 63 permanent assertions (137 total). Covers identical-snapshot review/error/timestamp recovery without local-row/event mutation; invalid and stale snapshots retaining review; cancellation-before-creation deferral; late injected rollback of all conversion effects; delayed cancelled linkage, trial terminalization, period end, Checkout completion, deferred resolution, duplicate fingerprints/distinct deliveries, one conversion event and one paid row; terminal creation and later event resolution; paused/past_due/unpaid state projection; unsupported/malformed states; linked cancellation/expiration on retired mappings; sale rejection; exact historical ready-attempt mapping; missing and post-retirement attempt rejection; and direct sale admission rejection after retirement. Fixtures are transaction-scoped and roll back.
+- `tests/unit/billing-provider.test.ts`: Adds six fake-provider handler cases proving a stale active creation body forwards each freshly retrieved supported state to SQL. These prove the existing adapter/handler already accept the required states; no Edge Function implementation change is needed.
+- `docs/lemon-squeezy-billing-provider.md`: Documents the separate sale/historical/delayed mapping semantics, current-state linkage, cancellation through `ends_at`, deferred supersession, atomicity and independent review recovery.
+- `docs/pr-price-05-verification.md`: Preserves the original verdict and failing probes, records corrections and fresh verification.
+
+No UI, authentication startup, provider client, status vocabulary, plan price/capacity, trial policy, historical migration, or remote Store configuration changed. No migration was added. Rollback before any remote application is application/file revert and a clean local database reset. If this migration has already been applied elsewhere, changing this file does not upgrade that database; deployment would require separately reviewed forward migration handling. No deployment is authorized here.
+
+### Correction verification
+
+Correction verdict: all three findings are corrected and locally verified. Ready to commit and push this correction on the named branch, under the user's stated condition that the edited migration has never been remotely applied. No commit or push was performed. PR-PRICE-06 remains unstarted.
+
+| Check                                              | Final correction result                                                                                           |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Local Supabase start                               | Passed (already running)                                                                                          |
+| Clean local reset                                  | Passed before red tests and after migration correction                                                            |
+| Database lint                                      | Passed, zero findings                                                                                             |
+| Complete SQL/pgTAP                                 | 536 assertions passed in 10 files, including 137 billing assertions                                               |
+| Focused unit/provider/handler contracts            | 80 passed in 5 files                                                                                              |
+| Deno                                               | Both billing Edge Function entrypoints passed using Deno 2.9.6                                                    |
+| Lint                                               | Passed, zero errors; same 3 inherited warnings                                                                    |
+| Format                                             | Passed after formatting this verification report                                                                  |
+| Build                                              | Passed (standalone and both final releases)                                                                       |
+| Full unit suite                                    | 1,502 passed, exactly 13 inherited failures, zero skipped                                                         |
+| Exact baseline comparison                          | File/suite/test-name comparison against the 13 original identities below: zero differences                        |
+| Original auth pair                                 | 4 passed, 4 workers, zero retries, repeat-each=2; 16.7 seconds                                                    |
+| Focused Billing/account-entitlements browser suite | 10 passed, zero failures/skips, 4 workers, zero retries; 18.3 seconds                                             |
+| Final release A                                    | Exit 0; lint/format/build passed, 74 browsers passed, 10 inherited skips; browser phase 1.2 minutes               |
+| Consecutive final release B                        | Exit 0; lint/format/build passed, 74 browsers passed, same 10 inherited skips; browser phase 1.2 minutes          |
+| Unchanged implementation/tests                     | SHA-256 hashes match before, between and after the final releases for the migration, SQL tests and provider tests |
+| Diff check                                         | Passed                                                                                                            |
+
+The first correction release attempt stopped at Prettier on this updated report. It is not counted as release evidence. The report was formatted, then final A and B ran consecutively with no intervening implementation/test edits. Only this report was finalized afterward; its formatting and the diff were rechecked. The original 74 SQL assertions and all original unit/browser tests remain; no test was removed or skipped. The six new handler tests account for the increase from 1,496 to 1,502 passing units. Browser test files are unchanged.
+
+Execution logs and machine-readable unit output are in `%TEMP%/pr-price-05-correction-*`, including `red.log`, `green-final.log`, `focused.log`, `deno.log`, `unit.json`, `auth.log`, `browser.log`, `release-a.log` (the failed preliminary format attempt), `release-final-a.log`, and `release-final-b.log`. Final evidence uses the two `release-final-*` logs only. Hash evidence is in `release-hashes-before.json` and `release-hashes-after.json`. Commands were the requested npm scripts, `npx deno check` for both billing entrypoints, and the original auth command preserved below. All Supabase operations targeted the local database.
+
+Real test-mode API calls, purchases, Store configuration, deployed webhook delivery and live billing remain unproven. No remote Supabase or Lemon Squeezy operation was performed. PR-PRICE-06 remains unstarted.
+
+## Original implementation record (superseded verdict, retained evidence)
 
 Branch: `feat/pr-price-05-lemon-squeezy-billing`. Base: `61f067e8f56711f33b29ed29bd23f277e5c875fb`, merged PR-PRICE-04 (#188). The user confirmed review outside GitHub. PR-PRICE-01 (#185), PR-PRICE-02 (#186), PR-PRICE-03 (#187), and PR-PRICE-04 are present.
 

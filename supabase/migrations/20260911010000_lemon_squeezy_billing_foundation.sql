@@ -114,6 +114,12 @@ begin
   if tg_table_name='billing_provider_customers' and tg_op='UPDATE' and
     (to_jsonb(new)-array['last_seen_at','updated_at']) is distinct from (to_jsonb(old)-array['last_seen_at','updated_at']) then raise exception 'BILLING_SUBSCRIPTION_IDENTITY_MISMATCH'; end if;
   if tg_table_name='billing_checkout_attempts' then
+    -- Sale admission records an approved mapping while it is active. Hold the
+    -- mapping lock through insertion so retirement cannot race this proof.
+    if tg_op='INSERT' then
+      select * into strict m from public.billing_provider_variant_mappings where id=new.variant_mapping_id for share;
+      if m.status<>'active' then raise exception 'BILLING_VARIANT_MAPPING_UNAVAILABLE'; end if;
+    end if;
     if tg_op='UPDATE' and (to_jsonb(new)-array['status','provider_checkout_id','provider_checkout_url','provider_expires_at','completed_provider_subscription_id','error_code','updated_at','completed_at','failed_at','expired_at']) is distinct from
       (to_jsonb(old)-array['status','provider_checkout_id','provider_checkout_url','provider_expires_at','completed_provider_subscription_id','error_code','updated_at','completed_at','failed_at','expired_at']) then raise exception 'BILLING_CHECKOUT_OPERATION_CONFLICT'; end if;
     if not exists(select 1 from public.billing_accounts where id=new.billing_account_id and owner_user_id=new.created_by_user_id) then raise exception 'BILLING_FORBIDDEN'; end if;
@@ -226,6 +232,7 @@ returns text language plpgsql security definer set search_path=pg_catalog,public
 declare d public.billing_provider_webhook_deliveries%rowtype; b public.billing_provider_subscriptions%rowtype;
   t public.billing_checkout_attempts%rowtype; m public.billing_provider_variant_mappings%rowtype;
   a uuid; local_id uuid; old_kind text; local_status text; h text; code text; sid text; stamp timestamptz; end_at timestamptz;
+  tx_at constant timestamptz:=transaction_timestamp(); cancel_pending boolean; provider_created timestamptz;
 begin
   select * into strict d from public.billing_provider_webhook_deliveries where id=p_delivery for update;
   if d.processing_status in ('processed','ignored') then return 'replayed'; end if;
@@ -249,25 +256,37 @@ begin
     if sid is distinct from d.provider_subscription_id then raise exception 'BILLING_SUBSCRIPTION_IDENTITY_MISMATCH'; end if;
     if b.id is null then
       select * into t from public.billing_checkout_attempts where id=(d.normalized_payload->>'checkout_attempt_id')::uuid;
+      if t.id is null then raise exception 'BILLING_SUBSCRIPTION_IDENTITY_MISMATCH'; end if;
+      a:=t.billing_account_id;
+      perform 1 from public.billing_accounts where id=a for update;
+      -- Re-read under lock: checkout completion/expiry may have raced retrieval.
+      select * into t from public.billing_checkout_attempts where id=t.id for update;
       if t.id is null or t.billing_account_id is distinct from (d.normalized_payload->>'billing_account_id')::uuid
         or t.plan_version_id is distinct from (d.normalized_payload->>'plan_version_id')::uuid or t.environment<>d.environment
         or t.status not in ('creating','ready','ambiguous','expired')
         or (p_snapshot->>'created_at')::timestamptz not between t.created_at and t.expected_expires_at then raise exception 'BILLING_SUBSCRIPTION_IDENTITY_MISMATCH'; end if;
-      a:=t.billing_account_id;
-      select * into strict m from public.billing_provider_variant_mappings where id=t.variant_mapping_id;
+      -- Delayed linkage uses the approved attempt, never a replacement sale mapping.
+      select * into m from public.billing_provider_variant_mappings where id=t.variant_mapping_id for share;
+      if m.id is null or m.status not in ('active','retired') or
+        (m.status='retired' and (m.retired_at is null or t.created_at>m.retired_at)) then raise exception 'BILLING_SUBSCRIPTION_VARIANT_MISMATCH'; end if;
     else
       a:=b.billing_account_id;
-      select * into strict m from public.billing_provider_variant_mappings where id=b.variant_mapping_id;
+      perform 1 from public.billing_accounts where id=a for update;
+      -- Existing obligations retain their exact immutable historical mapping.
+      select * into m from public.billing_provider_variant_mappings where id=b.variant_mapping_id for share;
+      if m.id is null or m.status not in ('active','retired') then raise exception 'BILLING_SUBSCRIPTION_VARIANT_MISMATCH'; end if;
     end if;
-    perform 1 from public.billing_accounts where id=a for update;
     if p_snapshot->>'customer_id' is null or exists(select 1 from public.billing_provider_customers c where c.provider=d.provider and c.environment=d.environment and
       ((c.billing_account_id=a and c.provider_customer_id<>p_snapshot->>'customer_id') or (c.provider_customer_id=p_snapshot->>'customer_id' and c.billing_account_id<>a))) then raise exception 'BILLING_SUBSCRIPTION_IDENTITY_MISMATCH'; end if;
     if m.environment<>d.environment or m.provider_store_id<>p_snapshot->>'store_id' or m.provider_product_id is distinct from p_snapshot->>'product_id' then raise exception 'BILLING_SUBSCRIPTION_IDENTITY_MISMATCH'; end if;
-    if m.status<>'active' or m.provider_variant_id is distinct from p_snapshot->>'variant_id' then raise exception 'BILLING_SUBSCRIPTION_VARIANT_MISMATCH'; end if;
+    if m.provider_variant_id is distinct from p_snapshot->>'variant_id' then raise exception 'BILLING_SUBSCRIPTION_VARIANT_MISMATCH'; end if;
     if m.provider_price_id is distinct from p_snapshot->>'price_id' then raise exception 'BILLING_SUBSCRIPTION_PRICE_MISMATCH'; end if;
     if (p_snapshot->>'quantity')::integer is distinct from 1 then raise exception 'BILLING_SUBSCRIPTION_IDENTITY_MISMATCH'; end if;
     if p_snapshot->>'status'='on_trial' or p_snapshot->>'trial_ends_at' is not null then raise exception 'BILLING_SUBSCRIPTION_UNSUPPORTED_TRIAL'; end if;
     if p_snapshot->>'status' is null or p_snapshot->>'status' not in ('active','paused','past_due','unpaid','cancelled','expired') then raise exception 'BILLING_RECONCILIATION_MANUAL_REVIEW'; end if;
+    if jsonb_typeof(p_snapshot->'cancelled') is distinct from 'boolean' or
+      (p_snapshot->>'status'='cancelled' and (p_snapshot->>'cancelled')::boolean is distinct from true) or
+      (p_snapshot->>'status' in ('active','paused','past_due','unpaid') and (p_snapshot->>'cancelled')::boolean is distinct from false) then raise exception 'BILLING_RECONCILIATION_MANUAL_REVIEW'; end if;
     stamp:=(p_snapshot->>'updated_at')::timestamptz;
     if stamp is null then raise exception 'BILLING_RECONCILIATION_FAILED'; end if;
     if b.id is not null then
@@ -281,42 +300,53 @@ begin
     h:=encode(extensions.digest(p_snapshot::text,'sha256'),'hex');
     if b.id is not null and stamp=b.provider_updated_at and h<>b.latest_snapshot_sha256 then raise exception 'BILLING_RECONCILIATION_MANUAL_REVIEW'; end if;
     end_at:=(case when p_snapshot->>'status' in ('cancelled','expired') then p_snapshot->>'ends_at' else p_snapshot->>'renews_at' end)::timestamptz;
-    if p_snapshot->>'status' in ('active','past_due','cancelled') and end_at is null then raise exception 'BILLING_RECONCILIATION_MANUAL_REVIEW'; end if;
+    provider_created:=(p_snapshot->>'created_at')::timestamptz;
+    if provider_created is null or (b.id is null and end_at is not null and end_at<=provider_created) or
+      (p_snapshot->>'status' in ('active','past_due','cancelled','expired') and end_at is null) then raise exception 'BILLING_RECONCILIATION_MANUAL_REVIEW'; end if;
     local_status:=case p_snapshot->>'status' when 'past_due' then 'past_due' when 'unpaid' then 'grace' when 'expired' then 'expired'
-      when 'cancelled' then case when end_at>now() then 'active' else 'expired' end else 'active' end;
+      when 'cancelled' then case when end_at>tx_at then 'active' else 'expired' end else 'active' end;
+    cancel_pending:=p_snapshot->>'status'='cancelled' and end_at>tx_at;
     if b.id is null then
-      if p_snapshot->>'status'<>'active' or (p_snapshot->>'cancelled')::boolean is distinct from false then raise exception 'BILLING_RECONCILIATION_MANUAL_REVIEW'; end if;
       if exists(select 1 from public.account_subscriptions where billing_account_id=a and status in ('trialing','trial_recovery','active','past_due','grace','restricted') and subscription_kind not in ('trial','complimentary')) then raise exception 'BILLING_RECONCILIATION_MANUAL_REVIEW'; end if;
-      insert into public.billing_provider_customers(billing_account_id,provider,environment,provider_store_id,provider_customer_id)
-        values(a,d.provider,d.environment,m.provider_store_id,p_snapshot->>'customer_id') on conflict(billing_account_id,provider,environment) do update set last_seen_at=now(),updated_at=now();
       select subscription_kind into old_kind from public.account_subscriptions where billing_account_id=a and status in ('trialing','trial_recovery','active','past_due','grace','restricted');
       -- Cancellation terminalizes early trial access without rewriting immutable trial dates.
       update public.account_subscriptions set status='canceled',canceled_at=now(),status_changed_at=now() where billing_account_id=a and status in ('trialing','trial_recovery','active','past_due','grace','restricted');
-      insert into public.account_subscriptions(billing_account_id,plan_version_id,subscription_kind,status,source,current_period_started_at,current_period_ends_at)
-        values(a,m.plan_version_id,'paid','active','billing_provider',(p_snapshot->>'created_at')::timestamptz,end_at) returning id into local_id;
+      insert into public.account_subscriptions(billing_account_id,plan_version_id,subscription_kind,status,source,current_period_started_at,current_period_ends_at,cancel_at_period_end,expired_at)
+        values(a,m.plan_version_id,'paid',local_status,'billing_provider',provider_created,end_at,cancel_pending,
+          case when local_status='expired' then tx_at else null end) returning id into local_id;
+      insert into public.billing_provider_customers(billing_account_id,provider,environment,provider_store_id,provider_customer_id)
+        values(a,d.provider,d.environment,m.provider_store_id,p_snapshot->>'customer_id') on conflict(billing_account_id,provider,environment) do update set last_seen_at=now(),updated_at=now();
       insert into public.billing_provider_subscriptions(billing_account_id,account_subscription_id,variant_mapping_id,provider,environment,provider_store_id,provider_customer_id,provider_subscription_id,provider_order_id,provider_order_item_id,provider_product_id,provider_variant_id,provider_price_id,first_subscription_item_id,quantity,provider_status,provider_cancelled,provider_renews_at,provider_ends_at,provider_trial_ends_at,provider_created_at,provider_updated_at,latest_snapshot_sha256,last_reconciled_at,reconciliation_status)
-        values(a,local_id,m.id,d.provider,d.environment,m.provider_store_id,p_snapshot->>'customer_id',sid,p_snapshot->>'order_id',p_snapshot->>'order_item_id',m.provider_product_id,m.provider_variant_id,m.provider_price_id,p_snapshot->>'first_subscription_item_id',1,'active',false,end_at,null,null,(p_snapshot->>'created_at')::timestamptz,stamp,h,now(),'processed');
+        values(a,local_id,m.id,d.provider,d.environment,m.provider_store_id,p_snapshot->>'customer_id',sid,p_snapshot->>'order_id',p_snapshot->>'order_item_id',m.provider_product_id,m.provider_variant_id,m.provider_price_id,p_snapshot->>'first_subscription_item_id',1,p_snapshot->>'status',(p_snapshot->>'cancelled')::boolean,
+          (p_snapshot->>'renews_at')::timestamptz,(p_snapshot->>'ends_at')::timestamptz,null,provider_created,stamp,h,tx_at,'processed');
       update public.billing_checkout_attempts set status='completed',completed_at=now(),expired_at=null,error_code=null,provider_checkout_url=null,completed_provider_subscription_id=sid,updated_at=now() where id=t.id;
       -- A delayed creation delivery may arrive after another Checkout was opened.
       update public.billing_checkout_attempts set status='expired',expired_at=now(),provider_checkout_url=null,error_code='BILLING_CHECKOUT_EXPIRED',updated_at=now()
         where billing_account_id=a and id<>t.id and status in ('creating','ready','ambiguous');
-      insert into public.account_subscription_events(billing_account_id,subscription_id,event_type,to_status,source,metadata)
-        values(a,local_id,'subscription.converted_to_paid','active','billing_provider',jsonb_build_object('previousKind',old_kind,'checkoutAttemptId',t.id));
     else
       local_id:=b.account_subscription_id;
       if exists(select 1 from public.account_subscriptions where billing_account_id=a and id<>local_id and status in ('trialing','trial_recovery','active','past_due','grace','restricted')) then raise exception 'BILLING_RECONCILIATION_MANUAL_REVIEW'; end if;
-      if b.latest_snapshot_sha256<>h or exists(select 1 from public.account_subscriptions where id=local_id and status<>local_status) then
+      if b.latest_snapshot_sha256<>h or exists(select 1 from public.account_subscriptions where id=local_id and
+        (status is distinct from local_status or current_period_ends_at is distinct from end_at or cancel_at_period_end is distinct from cancel_pending)) then
         update public.account_subscriptions set status=local_status,status_changed_at=now(),
           expired_at=case when local_status='expired' then now() else expired_at end,
-          current_period_ends_at=end_at,cancel_at_period_end=(p_snapshot->>'status'='cancelled' and end_at>now()) where id=local_id;
+          current_period_ends_at=end_at,cancel_at_period_end=cancel_pending where id=local_id;
         update public.billing_provider_subscriptions set provider_status=p_snapshot->>'status',provider_cancelled=(p_snapshot->>'cancelled')::boolean,
           provider_renews_at=(p_snapshot->>'renews_at')::timestamptz,provider_ends_at=(p_snapshot->>'ends_at')::timestamptz,
           provider_updated_at=stamp,latest_snapshot_sha256=h,last_reconciled_at=now(),reconciliation_status='processed',reconciliation_error_code=null,updated_at=now() where id=b.id;
       end if;
+      -- Health is independent of business changes. All validation and stale/equal
+      -- timestamp guards have passed; do not write the local row or an event here.
+      update public.billing_provider_subscriptions set reconciliation_status='processed',reconciliation_error_code=null,
+        last_reconciled_at=tx_at,updated_at=tx_at where id=b.id;
     end if;
     update public.billing_provider_webhook_deliveries set processing_status='ignored',processed_at=now(),last_error_code=null
       where provider=d.provider and environment=d.environment and provider_subscription_id=sid and processing_status='deferred' and id<>d.id;
     update public.billing_provider_webhook_deliveries set processing_status='processed',processed_at=now(),last_error_code=null where id=d.id;
+    if b.id is null then
+      insert into public.account_subscription_events(billing_account_id,subscription_id,event_type,to_status,source,metadata)
+        values(a,local_id,'subscription.converted_to_paid',local_status,'billing_provider',jsonb_build_object('previousKind',old_kind,'checkoutAttemptId',t.id));
+    end if;
     return 'processed';
   exception when others then
     code:=sqlerrm;

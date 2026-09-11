@@ -257,6 +257,34 @@ describe("Lemon Squeezy adapter contracts", () => {
   });
 });
 describe("verified webhook handler", () => {
+  it.each(["active", "paused", "past_due", "unpaid", "cancelled", "expired"])(
+    "passes current %s state to SQL for a delayed creation body",
+    async (status) => {
+      const { deps, provider, serviceRpc } = dependencies();
+      const current = subscription();
+      Object.assign(current.data.attributes, {
+        status,
+        cancelled: status === "cancelled" || status === "expired",
+        ends_at:
+          status === "expired"
+            ? "2025-01-01T00:00:00.000Z"
+            : status === "cancelled"
+              ? expiry
+              : null,
+      });
+      const snapshot = parseSubscription(current, "95005");
+      provider.retrieveSubscription.mockResolvedValue(snapshot);
+      const result = await handleBillingWebhook(signed(event()), deps);
+      expect(result.status).toBe(200);
+      expect(provider.retrieveSubscription).toHaveBeenCalledWith("95005");
+      expect(serviceRpc).toHaveBeenCalledWith(
+        "reconcile_billing_provider_subscription",
+        { p_delivery: "delivery", p_snapshot: snapshot },
+      );
+      expect(snapshot.status).toBe(status);
+      expect(snapshot).not.toHaveProperty("urls");
+    },
+  );
   it("verifies HMAC bytes and rejects modifications and missing signatures", async () => {
     const raw = new TextEncoder().encode("original");
     const signature = createHmac("sha256", "secret").update(raw).digest("hex");
