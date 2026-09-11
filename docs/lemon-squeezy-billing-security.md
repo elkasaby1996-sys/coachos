@@ -21,3 +21,5 @@ The migration is forward-only and atomic. Application rollback is a code revert 
 Reference: [Lemon Squeezy webhook signing](https://docs.lemonsqueezy.com/help/webhooks/signing-requests).
 
 See [Customer Portal security](lemon-squeezy-portal-security.md) for PR-PRICE-06.
+
+For controlled plan-change authorization and history, see [PR-PRICE-07 security](lemon-squeezy-plan-change-security.md).

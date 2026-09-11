@@ -31,3 +31,5 @@ Separate authorization and actual test-mode resources are required. An operator 
 No remote Supabase or live Lemon Squeezy operation is part of this runbook's normal verification. Preserve commercial history when reverting an application or preparing a compensating migration.
 
 See [Customer Portal test runbook](lemon-squeezy-portal-test-runbook.md) for PR-PRICE-06.
+
+Plan-change proof requirements are recorded separately in the [PR-PRICE-07 runbook](lemon-squeezy-plan-change-test-runbook.md).

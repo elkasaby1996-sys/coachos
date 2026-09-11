@@ -31,3 +31,5 @@ One forward migration, `20260911020000_billing_customer_portal.sql`, adds narrow
 Upgrades, downgrades, cadence changes, proration, additional seats, pause controls, invoices API/UI, refunds, coupons, client payments, commissions and live deployment are deferred. The hosted portal can display provider billing history; RepSync does not add an invoice-list API or UI.
 
 See [security](lemon-squeezy-portal-security.md), [Store configuration and proof runbook](lemon-squeezy-portal-test-runbook.md), and [verification](pr-price-06-verification.md).
+
+Controlled plan switching is implemented separately in [PR-PRICE-07](lemon-squeezy-plan-changes.md).

@@ -94,6 +94,7 @@ describe("account entitlement payload contracts", () => {
       "restricted",
       "canceled",
       "expired",
+      "superseded",
     ]);
     expect(ACCOUNT_SUBSCRIPTION_EFFECTIVE_STATUSES).toEqual([
       ...ACCOUNT_SUBSCRIPTION_STORED_STATUSES,
