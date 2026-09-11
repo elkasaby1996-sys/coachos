@@ -1,5 +1,5 @@
 begin;
-select plan(74);
+select plan(137);
 insert into auth.users(id,email) values ('a0500000-0000-4000-8000-000000000001','billing-owner@example.test'),('a0500000-0000-4000-8000-000000000002','billing-beta@example.test'),('a0500000-0000-4000-8000-000000000003','billing-client@example.test');
 insert into public.pt_profiles(user_id,workspace_id,full_name) values ('a0500000-0000-4000-8000-000000000001',null,'Billing test'),('a0500000-0000-4000-8000-000000000002',null,'Billing beta');
 select public.start_account_trial_for_owner('a0500000-0000-4000-8000-000000000001','first_workspace');
@@ -127,5 +127,114 @@ select is(public.get_my_billing_checkout_state()->>'status','expired','stale rea
 select ok((select provider_checkout_url is null from public.billing_checkout_attempts where operation_id='b0500000-0000-4000-8000-000000000005'),'expiration clears private URL');
 select lives_ok($$select public.begin_my_billing_checkout_attempt('launch','monthly','b0500000-0000-4000-8000-000000000006','test')$$,'fresh operation permitted after expected expiry');
 select throws_ok($$select public.begin_my_billing_checkout_attempt('launch','annual','b0500000-0000-4000-8000-000000000006','test')$$,'P0001','BILLING_CHECKOUT_OPERATION_CONFLICT','same operation cannot switch cadence');
+-- Review regressions: independent owners and exact historical Checkout mappings.
+create function pg_temp.review_attempt(p_n integer, p_trial boolean default false) returns uuid language plpgsql as $$
+declare u uuid:=('a0510000-0000-4000-8000-'||lpad(p_n::text,12,'0'))::uuid; a uuid; t uuid;
+  started timestamptz:=case when p_n=10 then now() else now()-interval '2 months' end;
+begin
+  insert into auth.users(id,email) values(u,'review-'||p_n||'@example.test');
+  insert into public.pt_profiles(user_id,workspace_id,full_name) values(u,null,'Review owner');
+  a:=public.ensure_commercial_billing_account(u,'manual');
+  if p_trial then perform public.start_account_trial_for_owner(u,'first_workspace'); end if;
+  insert into public.billing_checkout_attempts(billing_account_id,plan_version_id,variant_mapping_id,environment,cadence,operation_id,status,
+    created_at,expected_expires_at,creation_lease_expires_at,created_by_user_id,provider_checkout_id,provider_checkout_url,provider_expires_at)
+  select a,m.plan_version_id,m.id,'test','monthly',u,'ready',started,started+interval '30 minutes',
+    started+interval '2 minutes',u,'review-'||p_n,'https://fake-store.lemonsqueezy.com/checkout/custom/review-'||p_n,
+    started+interval '30 minutes' from public.billing_provider_variant_mappings m where provider_variant_id='95003' returning id into t;
+  return t;
+end $$;
+create function pg_temp.review_snapshot(p_n integer,p_status text default 'active',p_seconds integer default 1) returns jsonb language sql as $$
+  select pg_temp.snapshot((95100+p_n)::text,(95200+p_n)::text,p_status,p_seconds)
+    ||jsonb_build_object('created_at',now()-interval '2 months'+interval '1 minute',
+      'ends_at',case when p_status='cancelled' then now()+interval '1 month' when p_status='expired' then now()-interval '1 day' else null end)
+$$;
+create function pg_temp.review_delivery(p_n integer,p_event text,p_salt text) returns uuid language sql as $$
+  select pg_temp.delivery(p_event,(95100+p_n)::text,('a0510000-0000-4000-8000-'||lpad(p_n::text,12,'0'))::uuid,'review-'||p_n||'-'||p_salt)
+$$;
+create function pg_temp.review_local(p_n integer) returns jsonb language sql as $$
+  select to_jsonb(s) from public.account_subscriptions s join public.billing_provider_subscriptions b on b.account_subscription_id=s.id
+    where b.provider_subscription_id=(95100+p_n)::text
+$$;
+select pg_temp.review_attempt(n,n=2) from generate_series(1,10) n;
+
+-- E: the accepted snapshot and business row must be unchanged when review recovers.
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(1,'subscription_created','created'),pg_temp.review_snapshot(1)),'processed','review: establish accepted snapshot');
+create temp table review_before as select pg_temp.review_local(1) local_row, (select count(*) from public.account_subscription_events) events;
+update public.billing_provider_subscriptions set last_reconciled_at=now()-interval '1 hour' where provider_subscription_id='95101';
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(1,'subscription_updated','invalid'),pg_temp.review_snapshot(1)||'{"customer_id":"99999"}'),'ignored','review: invalid current identity rejected');
+select is((select reconciliation_status from public.billing_provider_subscriptions where provider_subscription_id='95101'),'manual_review','review: invalid snapshot sets review');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(1,'subscription_updated','still-invalid'),pg_temp.review_snapshot(1)||'{"customer_id":"99999"}'),'ignored','review: still-invalid snapshot rejected');
+select is((select reconciliation_status from public.billing_provider_subscriptions where provider_subscription_id='95101'),'manual_review','review: still-invalid snapshot cannot clear review');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(1,'subscription_updated','stale'),pg_temp.review_snapshot(1,'active',0)),'ignored','review: stale retrieved snapshot cannot clear review');
+select is((select reconciliation_status from public.billing_provider_subscriptions where provider_subscription_id='95101'),'manual_review','review: stale snapshot preserves review');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(1,'subscription_updated','restored'),pg_temp.review_snapshot(1)),'processed','review: identical valid snapshot processed');
+select is((select reconciliation_status from public.billing_provider_subscriptions where provider_subscription_id='95101'),'processed','review: identical snapshot clears review');
+select is((select reconciliation_error_code from public.billing_provider_subscriptions where provider_subscription_id='95101'),null,'review: error cleared');
+select is((select last_reconciled_at from public.billing_provider_subscriptions where provider_subscription_id='95101'),now(),'review: reconciliation timestamp advances');
+select is(pg_temp.review_local(1),(select local_row from review_before),'review: health-only recovery preserves entire local row');
+select is((select count(*) from public.account_subscription_events),(select events from review_before),'review: health-only recovery creates no lifecycle event');
+
+-- C: cancellation arrives first; linkage uses current cancellation, never old active state.
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(2,'subscription_cancelled','early'),pg_temp.review_snapshot(2,'cancelled')),'deferred','delayed: cancellation before creation defers');
+create temp table review_trial_before as select to_jsonb(s) row from public.account_subscriptions s join public.billing_accounts a on a.id=s.billing_account_id where a.owner_user_id='a0510000-0000-4000-8000-000000000002';
+-- Inject failure after linkage, Checkout, prior access and deferred-delivery writes.
+create trigger billing_review_conversion_failure before insert on public.account_subscription_events for each row execute function pg_temp.reject_conversion();
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(2,'subscription_created','created'),pg_temp.review_snapshot(2,'cancelled')),'failed','delayed: late failure rolls back cancelled conversion');
+select is(pg_temp.review_local(2),null,'delayed: failure rolls back paid/provider linkage');
+select is((select count(*) from public.billing_provider_customers where provider_customer_id='95202'),0::bigint,'delayed: failure rolls back customer');
+select is((select status from public.billing_checkout_attempts where operation_id='a0510000-0000-4000-8000-000000000002'),'ready','delayed: failure rolls back Checkout completion');
+select is((select to_jsonb(s) from public.account_subscriptions s join public.billing_accounts a on a.id=s.billing_account_id where a.owner_user_id='a0510000-0000-4000-8000-000000000002'),(select row from review_trial_before),'delayed: failure preserves entire trial row');
+select is((select processing_status from public.billing_provider_webhook_deliveries where id=pg_temp.review_delivery(2,'subscription_cancelled','early')),'deferred','delayed: failure preserves deferred delivery');
+drop trigger billing_review_conversion_failure on public.account_subscription_events;
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(2,'subscription_created','created'),pg_temp.review_snapshot(2,'cancelled')),'processed','delayed: cancelled creation links successfully');
+select is(pg_temp.review_local(2)->>'status','active','delayed: future cancellation retains paid access');
+select is(pg_temp.review_local(2)->>'cancel_at_period_end','true','delayed: cancellation scheduled');
+select is((pg_temp.review_local(2)->>'current_period_ends_at')::timestamptz,now()+interval '1 month','delayed: uses provider ends_at');
+select is((select count(*) from public.billing_provider_customers where provider_customer_id='95202'),1::bigint,'delayed: one customer linkage');
+select is((select status from public.account_subscriptions where id=((select row from review_trial_before)->>'id')::uuid),'canceled','delayed: trial terminalized');
+select is((select status from public.billing_checkout_attempts where operation_id='a0510000-0000-4000-8000-000000000002'),'completed','delayed: Checkout completed');
+select is((select processing_status from public.billing_provider_webhook_deliveries where id=pg_temp.review_delivery(2,'subscription_cancelled','early')),'ignored','delayed: earlier cancellation superseded');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(2,'subscription_created','created'),pg_temp.review_snapshot(2,'cancelled')),'replayed','delayed: creation fingerprint replay');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(2,'subscription_created','duplicate'),pg_temp.review_snapshot(2,'cancelled')),'processed','delayed: distinct duplicate creation idempotent');
+select is((select count(*) from public.account_subscription_events where subscription_id=(pg_temp.review_local(2)->>'id')::uuid and event_type='subscription.converted_to_paid'),1::bigint,'delayed: exactly one conversion event');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(2,'subscription_expired','expired'),pg_temp.review_snapshot(2,'expired',2)),'processed','delayed: subsequent expiration reconciles');
+select is(pg_temp.review_local(2)->>'status','expired','delayed: subsequent expiration revokes paid access');
+select is((select count(*) from public.account_subscriptions where billing_account_id=(pg_temp.review_local(2)->>'billing_account_id')::uuid and subscription_kind='paid'),1::bigint,'delayed: exactly one paid row');
+
+-- D: all supported current states establish history, including terminal states.
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(3,'subscription_created','terminal'),pg_temp.review_snapshot(3,'expired')),'processed','terminal: expired creation establishes history');
+select is(pg_temp.review_local(3)->>'status','expired','terminal: expired creation grants no active access');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(3,'subscription_expired','later'),pg_temp.review_snapshot(3,'expired',2)),'processed','terminal: later events resolve');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(4,'subscription_created','terminal'),pg_temp.review_snapshot(4,'cancelled')||jsonb_build_object('ends_at',now()-interval '1 day')),'processed','terminal: elapsed cancellation establishes history');
+select is(pg_temp.review_local(4)->>'status','expired','terminal: elapsed cancellation grants no active access');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(5,'subscription_created','paused'),pg_temp.review_snapshot(5,'paused')),'processed','initial: paused creation links');
+select is(pg_temp.review_local(5)->>'status','active','initial: paused maps to active');
+select is((select provider_status from public.billing_provider_subscriptions where provider_subscription_id='95105'),'paused','initial: preserves provider paused state');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(6,'subscription_created','past-due'),pg_temp.review_snapshot(6,'past_due')),'processed','initial: past_due creation links');
+select is(pg_temp.review_local(6)->>'status','past_due','initial: past_due retained');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(7,'subscription_created','unpaid'),pg_temp.review_snapshot(7,'unpaid')),'processed','initial: unpaid creation links');
+select is(pg_temp.review_local(7)->>'status','grace','initial: unpaid maps to grace');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(8,'subscription_created','unknown'),pg_temp.review_snapshot(8,'unknown')),'ignored','initial: unknown status fails closed');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(8,'subscription_created','trial'),pg_temp.review_snapshot(8,'on_trial')),'ignored','initial: trial fails closed');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(8,'subscription_created','malformed'),pg_temp.review_snapshot(8,'cancelled')||'{"cancelled":false}'),'ignored','initial: malformed cancellation fails closed');
+select is(pg_temp.review_local(8),null,'initial: unsupported states grant no paid linkage');
+
+-- A/B: mapping retirement affects sales, not approved historical obligations.
+-- Backdated fixture retirement separates valid old attempts from post-retirement attempts.
+update public.billing_provider_variant_mappings set status='retired',retired_at=now()-interval '1 day' where provider_variant_id='95003';
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(1,'subscription_cancelled','retired-cancel'),pg_temp.review_snapshot(1,'cancelled',2)),'processed','retired: linked cancellation processed');
+select is(pg_temp.review_local(1)->>'status','active','retired: future cancellation retains access');
+select is(pg_temp.review_local(1)->>'cancel_at_period_end','true','retired: future cancellation scheduled');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(1,'subscription_expired','retired-expire'),pg_temp.review_snapshot(1,'expired',3)),'processed','retired: linked expiration processed');
+select is(pg_temp.review_local(1)->>'status','expired','retired: expiration revokes access');
+select is((select count(*) from public.account_subscriptions where billing_account_id=(pg_temp.review_local(1)->>'billing_account_id')::uuid and subscription_kind='paid'),1::bigint,'retired: no second paid row');
+select set_config('request.jwt.claim.sub','a0510000-0000-4000-8000-000000000001',true);
+select throws_ok($$select public.begin_my_billing_checkout_attempt('launch','monthly',gen_random_uuid(),'test')$$,'P0001','BILLING_VARIANT_MAPPING_UNAVAILABLE','retired: new Checkout cannot use historical mapping');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(9,'subscription_created','retired-created'),pg_temp.review_snapshot(9)),'processed','retired: pre-retirement ready Checkout can link');
+select is((select b.variant_mapping_id from public.billing_provider_subscriptions b where provider_subscription_id='95109'),(select variant_mapping_id from public.billing_checkout_attempts where operation_id='a0510000-0000-4000-8000-000000000009'),'retired: preserves exact attempt mapping');
+select is(public.reconcile_billing_provider_subscription(pg_temp.delivery('subscription_created','95999',null,'review-no-attempt'),pg_temp.review_snapshot(9)||'{"subscription_id":"95999"}'),'ignored','retired: arbitrary creation without prior attempt denied');
+select is(public.reconcile_billing_provider_subscription(pg_temp.review_delivery(10,'subscription_created','post-retirement'),pg_temp.review_snapshot(10)||jsonb_build_object('created_at',now())),'ignored','retired: attempt after retirement cannot link');
+select is(pg_temp.review_local(10),null,'retired: invalid attempt grants no paid linkage');
+select throws_ok($$select pg_temp.review_attempt(11)$$,'P0001','BILLING_VARIANT_MAPPING_UNAVAILABLE','retired: even direct attempt insertion requires active sale mapping');
 select * from finish();
 rollback;
