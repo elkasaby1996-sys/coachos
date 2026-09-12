@@ -1,3 +1,4 @@
+import { CommercialRemediationPanel } from "../../../../features/commercial-access/commercial-remediation-panel";
 import { Button } from "../../../../components/ui/button";
 import { Badge } from "../../../../components/ui/badge";
 import {
@@ -203,6 +204,10 @@ export function PtHubSettingsBillingTab() {
           <CapacityMeters snapshot={capacityQuery.data} />
         ) : null}
       </SettingsSectionCard>
+
+      {entitlementsQuery.data?.billingAccount.canManageBilling ? (
+        <CommercialRemediationPanel />
+      ) : null}
 
       <SettingsHelperCallout
         title="Scope boundary"

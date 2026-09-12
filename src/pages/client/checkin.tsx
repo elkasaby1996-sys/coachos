@@ -1,3 +1,4 @@
+import { useClientCoachingAccess } from "../../features/commercial-access/use-commercial-access";
 import { useRecordDraft } from "../../lib/record-drafts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -316,6 +317,7 @@ export function ClientCheckinPage() {
     [activeClientId, clientQuery.data],
   );
   const clientId = clientProfile?.id ?? null;
+  const coachingAccess = useClientCoachingAccess(clientId);
   useClientAssignmentRealtime(clientId);
 
   const todayStr = useMemo(
@@ -743,6 +745,13 @@ export function ClientCheckinPage() {
   };
 
   const handleSubmit = async () => {
+    if (coachingAccess.data?.canSubmitCheckin !== true) {
+      setToastVariant("error");
+      setToastMessage(
+        "Coaching submissions are currently unavailable. Your input is preserved.",
+      );
+      return;
+    }
     const dueDate = currentCheckin?.week_ending_saturday ?? null;
     if (!clientProfile?.id || !dueDate || !templateQuery.data?.id) return;
     if (staleCheckinWarning) {
@@ -900,7 +909,11 @@ export function ClientCheckinPage() {
 
   const checkinIsUpcoming = checkinState === "upcoming";
   const canProceed =
-    hasTemplate && !isLoading && Boolean(currentCheckin) && !checkinIsUpcoming;
+    hasTemplate &&
+    !isLoading &&
+    Boolean(currentCheckin) &&
+    !checkinIsUpcoming &&
+    (isSubmitted || coachingAccess.data?.canSubmitCheckin === true);
   const checkinLocked = isSubmitted;
 
   const refreshCheckinForm = useCallback(

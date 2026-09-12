@@ -1,3 +1,7 @@
+import {
+  commercialErrorCode,
+  commercialErrorMessage,
+} from "../../commercial-access/access-errors";
 import { capacityMutationFailure } from "../../account-capacity/mutation-errors";
 import { invalidateAccountCapacity } from "../../account-capacity/query-keys";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
@@ -2240,12 +2244,7 @@ export function usePublicPtProfile(slug: string | undefined) {
       if (!nextSlug) return null as PTPublicProfile | null;
 
       const { data, error } = await supabase
-        .from("pt_hub_profiles")
-        .select(
-          "user_id, full_name, display_name, slug, headline, searchable_headline, short_bio, specialties, certifications, coaching_style, coaching_modes, availability_modes, location_label, marketplace_visible, is_published, published_at, profile_photo_url, banner_image_url, social_links, testimonials, transformations",
-        )
-        .eq("slug", nextSlug)
-        .eq("is_published", true)
+        .rpc("get_public_commercial_coach_profiles", { p_slug: nextSlug })
         .maybeSingle<PtHubProfileRow>();
 
       if (error) throw error;
@@ -2295,19 +2294,14 @@ export function useCoachMarketplaceProfiles() {
     queryKey: ["coach-marketplace-profiles"],
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pt_hub_profiles")
-        .select(
-          "user_id, full_name, display_name, slug, headline, searchable_headline, short_bio, specialties, certifications, coaching_style, coaching_modes, availability_modes, location_label, marketplace_visible, is_published, published_at, profile_photo_url, banner_image_url, social_links, testimonials, transformations, updated_at, created_at",
-        )
-        .eq("is_published", true)
-        .order("published_at", { ascending: false, nullsFirst: false })
-        .order("updated_at", { ascending: false, nullsFirst: false })
-        .returns<PtHubProfileRow[]>();
+      const { data, error } = await supabase.rpc(
+        "get_public_commercial_coach_profiles",
+        { p_slug: null },
+      );
 
       if (error) throw error;
 
-      return (data ?? [])
+      return ((data ?? []) as PtHubProfileRow[])
         .map((row) => {
           const slug = row.slug?.trim().toLowerCase();
           if (!slug) return null;
@@ -2825,7 +2819,11 @@ export async function submitPublicPtApplication(input: PTPublicLeadInput) {
       await supabase.rpc("submit_public_pt_application", nextInput),
   });
 
-  if (error) throw error;
+  if (error) {
+    const code = commercialErrorCode(error);
+    if (code) throw new Error(commercialErrorMessage(code));
+    throw error;
+  }
 
   return data as string | null;
 }

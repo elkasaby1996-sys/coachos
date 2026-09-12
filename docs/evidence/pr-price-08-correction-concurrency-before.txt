@@ -1,0 +1,18 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: commercial-access.spec.ts >> review correction regressions >> conversation lifecycle invited/active ignores compatibility status
+- Location: tests\e2e\commercial-access.spec.ts:379:5
+
+# Error details
+
+```
+Error: expect(received).toBeNull()
+
+Received: {"code": "23505", "details": "Key (client_id)=(bf7a178f-bb5e-4bdd-957a-9030443c1e7f) already exists.", "hint": null, "message": "duplicate key value violates unique constraint \"conversations_client_id_key\""}
+```

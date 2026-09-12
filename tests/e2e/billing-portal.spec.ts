@@ -1,4 +1,10 @@
-import { expect, test, type Page, type BrowserContext } from "@playwright/test";
+import {
+  expect,
+  test,
+  type Page,
+  type BrowserContext,
+  type Request as BrowserRequest,
+} from "@playwright/test";
 import { seedEntitlementCoach } from "./utils/account-entitlement-seeds";
 import { seedAuthSmokeStates } from "./utils/auth-seeds";
 import {
@@ -19,6 +25,28 @@ test.afterEach(async ({ context }) => {
   // Finish canonical refetch route callbacks before closing their context.
   await context.unrouteAll({ behavior: "wait" });
 });
+async function holdCommercialAccess(page: Page, context: BrowserContext) {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const response = page.waitForResponse((value) =>
+    value.url().endsWith("/rpc/get_my_commercial_access_summary"),
+  );
+  await context.route(
+    "**/rest/v1/rpc/get_my_commercial_access_summary",
+    async (route) => {
+      const result = await route.fetch();
+      await held;
+      await route.fulfill({ response: result });
+    },
+  );
+  return async () => {
+    release();
+    await response;
+    await page.waitForLoadState("networkidle");
+  };
+}
 async function fixture(
   page: Page,
   context: BrowserContext,
@@ -41,6 +69,26 @@ async function fixture(
     summaryReads = 0,
     capacityReads = 0;
   const telemetry: string[] = [];
+  const pendingReads = new Set<BrowserRequest>();
+  let lastReadActivity = Date.now();
+  page.on("request", (request) => {
+    if (!request.url().includes("/rest/v1/rpc/")) return;
+    pendingReads.add(request);
+    lastReadActivity = Date.now();
+  });
+  const finishRead = (request: BrowserRequest) => {
+    if (pendingReads.delete(request)) lastReadActivity = Date.now();
+  };
+  page.on("requestfinished", finishRead);
+  page.on("requestfailed", finishRead);
+  // Unlike the already-reached document load state, this observes new RPCs
+  // dispatched by virtual-clock ticks and waits for actual network quiescence.
+  const waitForReads = () =>
+    expect
+      .poll(
+        () => pendingReads.size === 0 && Date.now() - lastReadActivity >= 500,
+      )
+      .toBe(true);
   page.on("console", (message) => telemetry.push(message.text()));
   page.on("pageerror", (error) => telemetry.push(error.message));
   await context.route(
@@ -162,7 +210,11 @@ async function fixture(
   await waitForAuthSessionReady(page);
   await waitForBootstrapResolved(page);
   await page.goto("/pt-hub/settings/billing");
+  // Finish the initial routed reads before a test navigates back from the portal.
+  // Otherwise navigation can cancel a request while its route.fetch is pending.
+  await waitForReads();
   return {
+    waitForReads,
     summary,
     telemetry,
     fail: () => {
@@ -299,27 +351,34 @@ test("portal return polls only within its bound and offers manual refresh", asyn
   context,
 }) => {
   const f = await fixture(page, context, "polling");
+  const releaseAccess = await holdCommercialAccess(page, context);
   await page.clock.install();
   await page.goto("/pt-hub/settings/billing?portal=return");
   await expect(
     page.getByText("Checking for billing changes.", { exact: false }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/billing$/);
+  // Resolving commercial access after the return marker was consumed must not
+  // remount the recovery page and discard its polling state.
+  await releaseAccess();
+  await expect(
+    page.getByText("Checking for billing changes.", { exact: false }),
+  ).toBeVisible();
   // Clock advancement does not flush browser requests or route handlers.
-  await page.waitForLoadState("networkidle");
+  await f.waitForReads();
   const initialReads = f.summaryReads();
   await page.clock.fastForward(2_000);
   await expect.poll(() => f.summaryReads()).toBeGreaterThan(initialReads);
-  await page.waitForLoadState("networkidle");
+  await f.waitForReads();
   await page.clock.fastForward(31_000);
   await expect(
     page.getByRole("button", { name: "Refresh billing", exact: true }),
   ).toBeVisible();
   // A tick dispatched before the deadline may still be completing after it.
-  await page.waitForLoadState("networkidle");
+  await f.waitForReads();
   const count = f.summaryReads();
   await page.clock.fastForward(60_000);
-  await page.waitForLoadState("networkidle");
+  await f.waitForReads();
   expect(f.summaryReads()).toBe(count);
   const capacityBefore = f.capacityReads();
   await page
@@ -333,10 +392,15 @@ test("canonical cancellation, resume and recovery update without new checkout", 
   context,
 }) => {
   const f = await fixture(page, context, "lifecycle");
+  const releaseAccess = await holdCommercialAccess(page, context);
   f.summary.cancelAtPeriodEnd = true;
   await page.goto("/pt-hub/settings/billing?portal=return");
   await expect(
     page.getByText("Cancellation scheduled", { exact: false }),
+  ).toBeVisible();
+  await releaseAccess();
+  await expect(
+    page.getByRole("button", { name: "Refresh billing", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Start subscription", exact: true }),

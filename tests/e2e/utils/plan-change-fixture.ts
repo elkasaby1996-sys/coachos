@@ -175,7 +175,18 @@ export async function planChangeFixture(
   await signInWithEmail(page, coach.email, coach.password);
   await waitForAuthSessionReady(page);
   await waitForBootstrapResolved(page);
+  // Navigation completion does not mean the lazy billing panel has its state.
+  // Start the UI assertion budget only after the real canonical read completes.
+  const planState = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        "/rest/v1/rpc/get_my_billing_plan_change_state",
+  );
   await page.goto("/pt-hub/settings/billing");
+  const response = await planState;
+  expect(response.ok()).toBe(true);
+  await response.finished();
   await expect(
     page.getByRole("button", { name: "Change plan", exact: true }),
   ).toBeVisible();

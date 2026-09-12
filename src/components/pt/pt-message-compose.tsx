@@ -1,3 +1,4 @@
+import { useClientCoachingAccess } from "../../features/commercial-access/use-commercial-access";
 import {
   useCallback,
   useEffect,
@@ -374,6 +375,7 @@ export function PtMessageComposeProvider({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const commercial = useClientCoachingAccess(open ? selectedClientId : null);
   const [messageDraft, setMessageDraft] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [hasBlockingDialogOpen, setHasBlockingDialogOpen] = useState(false);
@@ -710,6 +712,10 @@ export function PtMessageComposeProvider({
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (!selectedClientId) throw new Error("No client selected.");
+      if (commercial.data?.canMessageRelationship !== true)
+        throw new Error(
+          "Messaging is unavailable for this relationship. Your draft is preserved.",
+        );
       if (messageLimitState.overLimit) {
         throw new Error(messageLimitState.errorText ?? "Message is too long.");
       }
@@ -1020,7 +1026,9 @@ export function PtMessageComposeProvider({
                       limitError={messageLimitState.errorText}
                       sending={sendMutation.isPending}
                       disabled={
-                        !messageDraft.trim() || messageLimitState.overLimit
+                        commercial.data?.canMessageRelationship !== true ||
+                        !messageDraft.trim() ||
+                        messageLimitState.overLimit
                       }
                       active={
                         !!messageDraft.trim() && !messageLimitState.overLimit

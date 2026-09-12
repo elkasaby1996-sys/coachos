@@ -1,3 +1,4 @@
+import { useClientCoachingAccess } from "../../features/commercial-access/use-commercial-access";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
@@ -154,6 +155,7 @@ export function ClientHabitsPage() {
     [activeClientId, clientQuery.data],
   );
   const clientId = clientProfile?.id ?? null;
+  const coachingAccess = useClientCoachingAccess(clientId);
   const clientTimezone = clientProfile?.timezone ?? null;
   const todayStr = useMemo(
     () => getTodayInTimezone(clientTimezone),
@@ -244,7 +246,11 @@ export function ClientHabitsPage() {
     return diffDays(todayStr, selectedDate);
   }, [selectedDate, todayStr]);
 
-  const isEditable = daysAgo >= 0 && daysAgo <= 6;
+  const isEditable =
+    daysAgo >= 0 &&
+    daysAgo <= 6 &&
+    (clientProfile?.workspace_id == null ||
+      coachingAccess.data?.canSubmitHabitProgress === true);
   const normalizeForm = (state: HabitFormState) => ({
     calories: state.calories.trim(),
     protein_g: state.protein_g.trim(),
@@ -494,7 +500,12 @@ export function ClientHabitsPage() {
                 <StatusBanner
                   variant="locked"
                   title="This log is locked"
-                  description="You can edit entries from today and the previous 6 days."
+                  description={
+                    coachingAccess.data?.canSubmitHabitProgress === false &&
+                    clientProfile?.workspace_id
+                      ? "Coaching submissions are unavailable. Your existing records remain available."
+                      : "You can edit entries from today and the previous 6 days."
+                  }
                 />
               ) : null}
 

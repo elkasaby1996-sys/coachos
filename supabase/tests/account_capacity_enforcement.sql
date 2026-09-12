@@ -97,8 +97,8 @@ select set_config('request.jwt.claim.sub','a0400000-0000-4000-8000-000000000022'
 set local role authenticated;
 select throws_ok($$select create_workspace('Injected workspace failure')$$,'P0001','Injected workspace failure','first-workspace failure rolls back trial and admission');
 select lives_ok($$select set_my_requested_paid_plan('growth')$$,'onboarding owner may persist intent');
-select throws_ok($$select create_my_pt_package('{"title":"Onboarding publication","status":"active","is_public":true}')$$,'P0001','Account capacity admission failed.','onboarding cannot publish before first workspace');
-select lives_ok($$select create_my_pt_package('{"title":"Onboarding draft"}')$$,'onboarding can save neutral drafts');
+select throws_ok($$select create_my_pt_package('{"title":"Onboarding publication","status":"active","is_public":true}')$$,'42501','ACCOUNT_ACCESS_ONBOARDING_ONLY','onboarding cannot publish before first workspace');
+select throws_ok($$select create_my_pt_package('{"title":"Onboarding draft"}')$$,'42501','ACCOUNT_ACCESS_ONBOARDING_ONLY','onboarding denies business drafts under PR-PRICE-08');
 reset role;
 select is((select count(*)::int from workspaces where owner_user_id='a0400000-0000-4000-8000-000000000022'),0,'failed bootstrap left no workspace');
 select is((select count(*)::int from account_subscriptions s join billing_accounts a on a.id=s.billing_account_id where a.owner_user_id='a0400000-0000-4000-8000-000000000022'),0,'failed bootstrap left no trial');
@@ -163,8 +163,8 @@ update account_subscriptions set status='restricted',restricted_at=now(),status_
 where billing_account_id=(select id from billing_accounts where owner_user_id='a0400000-0000-4000-8000-000000000002');
 select set_config('request.jwt.claim.sub','a0400000-0000-4000-8000-000000000002',true);
 set local role authenticated;
-select throws_ok($$select create_my_pt_package('{"title":"Restricted publish","status":"active","is_public":true}')$$,'P0001','Account capacity admission failed.','read_only denies positive even unlimited publication');
-select lives_ok($$select create_my_pt_package('{"title":"Restricted draft"}')$$,'read_only permits neutral draft');
+select throws_ok($$select create_my_pt_package('{"title":"Restricted publish","status":"active","is_public":true}')$$,'42501','ACCOUNT_ACCESS_READ_ONLY','read_only denies positive even unlimited publication');
+select throws_ok($$select create_my_pt_package('{"title":"Restricted draft"}')$$,'42501','ACCOUNT_ACCESS_READ_ONLY','read_only denies business drafts under PR-PRICE-08');
 reset role;
 update account_subscriptions set status='grace',status_changed_at=now()
 where billing_account_id=(select id from billing_accounts where owner_user_id='a0400000-0000-4000-8000-000000000002');

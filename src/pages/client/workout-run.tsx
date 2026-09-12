@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { useClientCoachingAccess } from "../../features/commercial-access/use-commercial-access";
 import { useRecordDraft } from "../../lib/record-drafts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -239,6 +240,10 @@ export function ClientWorkoutRunPage() {
     [activeClientId, clientQuery.data],
   );
   const clientId = clientProfile?.id ?? null;
+  const coachingAccess = useClientCoachingAccess(clientId);
+  const canLogWorkout =
+    clientProfile?.workspace_id === null ||
+    coachingAccess.data?.canLogWorkout === true;
 
   const assignedWorkoutQuery = useQuery({
     queryKey: ["assigned-workout", workoutId, clientId],
@@ -695,6 +700,7 @@ export function ClientWorkoutRunPage() {
   };
 
   const handleStartWorkout = async () => {
+    if (!canLogWorkout) return;
     if (!workoutId || !clientId) return;
     if (exercises.length === 0) {
       setSaveError(
@@ -738,6 +744,10 @@ export function ClientWorkoutRunPage() {
     exercise: ExerciseState,
     sessionId: string,
   ) => {
+    if (!canLogWorkout)
+      throw new Error(
+        "Coaching submissions are unavailable. Your draft is preserved.",
+      );
     for (let idx = 0; idx < exercise.sets.length; idx += 1) {
       const setItem = exercise.sets[idx];
       const repsValue = parseOptionalNumber(setItem.reps);
@@ -787,6 +797,7 @@ export function ClientWorkoutRunPage() {
   };
 
   const saveAllExercises = async () => {
+    if (!canLogWorkout) return;
     if (!workoutSession?.id) return;
     try {
       for (
@@ -851,6 +862,7 @@ export function ClientWorkoutRunPage() {
   };
 
   const handleConfirmFinish = async () => {
+    if (!canLogWorkout) return;
     if (!workoutId || !workoutSession?.id) return;
     setFinishStatus("saving");
     setFinishError(null);
@@ -950,6 +962,7 @@ export function ClientWorkoutRunPage() {
   }, []);
 
   const handleSkipWorkout = async () => {
+    if (!canLogWorkout) return;
     if (workoutId) {
       await supabase
         .from("assigned_workouts")
@@ -1226,7 +1239,7 @@ export function ClientWorkoutRunPage() {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={handleStartWorkout}
-                    disabled={isExerciseStructureLoading}
+                    disabled={!canLogWorkout || isExerciseStructureLoading}
                   >
                     {isExerciseStructureLoading
                       ? "Loading exercises..."
@@ -1338,7 +1351,11 @@ export function ClientWorkoutRunPage() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        disabled={!workoutSession || activeBlockIsSaving}
+                        disabled={
+                          !canLogWorkout ||
+                          !workoutSession ||
+                          activeBlockIsSaving
+                        }
                         onClick={() =>
                           handleSaveBlock(
                             activeBlock.items.map((item) => item.exerciseIndex),
@@ -1532,7 +1549,9 @@ export function ClientWorkoutRunPage() {
             <div className="flex flex-wrap gap-2">
               <Button
                 onClick={handleConfirmFinish}
-                disabled={!workoutSession || finishStatus === "saving"}
+                disabled={
+                  !canLogWorkout || !workoutSession || finishStatus === "saving"
+                }
               >
                 <ActionButtonLabel
                   state={
