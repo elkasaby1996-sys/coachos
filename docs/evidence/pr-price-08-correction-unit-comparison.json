@@ -1,0 +1,69 @@
+{
+  "baseline": {
+    "numPassedTests": 1710,
+    "numFailedTests": 13,
+    "numPendingTests": 0
+  },
+  "correction": {
+    "numPassedTests": 1712,
+    "numFailedTests": 13,
+    "numPendingTests": 0
+  },
+  "sameFailures": true,
+  "sameSkips": true,
+  "failures": [
+    [
+      "tests/unit/anatomical-muscle-selector.test.ts",
+      "controlled anatomical selector source contract emits only MuscleKey values from map and list, and null from Clear"
+    ],
+    [
+      "tests/unit/anatomical-muscle-selector.test.ts",
+      "controlled anatomical selector source contract uses selector-local theme tokens without a selected glow"
+    ],
+    [
+      "tests/unit/checkin-assignment-summary-contract.test.ts",
+      "coach check-in assignment summary contract gates the edit CTA to existing delivery-write permission"
+    ],
+    [
+      "tests/unit/checkin-assignment-summary-contract.test.ts",
+      "coach check-in assignment summary contract renders a current check-in assignment summary in the coach delivery context"
+    ],
+    [
+      "tests/unit/client-continuity-contract.test.ts",
+      "client continuity beta contract removed-only clients get a safe no-active-workspace home state"
+    ],
+    [
+      "tests/unit/client-detail-assignment-card-polish.test.ts",
+      "client detail assignment card polish surfaces snapshot copy near workout, program, and nutrition assignment controls"
+    ],
+    [
+      "tests/unit/client-detail-assignment-card-polish.test.ts",
+      "client detail assignment card polish uses cadence settings language for check-in assignment cards"
+    ],
+    [
+      "tests/unit/client-portal-tag-minimization.test.ts",
+      "client portal tag minimization keeps today's actions ahead of the weekly calendar and daily log"
+    ],
+    [
+      "tests/unit/client-portal-tag-minimization.test.ts",
+      "client portal tag minimization uses client-facing copy for missing workout, nutrition, and check-in assignments"
+    ],
+    [
+      "tests/unit/final-badge-status-regression.test.ts",
+      "final badge and status regression keeps client-facing task statuses and no-assignment copy visible"
+    ],
+    [
+      "tests/unit/notification-center-contract.test.ts",
+      "delivery-backed notification center contract keeps the PT notifications page concise"
+    ],
+    [
+      "tests/unit/pt-client-baseline-marker-assignment-wiring.test.ts",
+      "PT performance marker baseline wiring makes the client baseline page use the active marker library directly"
+    ],
+    [
+      "tests/unit/workspace-header-pill-wiring.test.ts",
+      "workspace header pill wiring uses the unified full-height rail and compact utility dock across PT routes"
+    ]
+  ],
+  "skips": []
+}

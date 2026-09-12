@@ -203,6 +203,50 @@ describe("commercial enforcement inventory", () => {
     expect(migration.trim().endsWith("commit;")).toBe(true);
     expect(migration).not.toMatch(/\bexecute\s+(format|['"])/i);
   });
+  it("requires a reviewed boundary for every Edge Function table mutation", () => {
+    const independentServiceTables = new Set([
+      "marketing_leads",
+      "client_wearable_connections",
+      "client_wearable_daily_metrics",
+      "client_wearable_sleep_sessions",
+      "client_wearable_health_scores",
+      "client_wearable_activities",
+      "client_wearable_sync_runs",
+    ]);
+    const unreviewed: string[] = [];
+    for (const file of files("supabase/functions")) {
+      const source = readFileSync(file, "utf8");
+      for (const match of source.matchAll(
+        /\.from\(\s*["']([^"']+)["']\s*\)([\s\S]*?)(?=;|\bawait\b|\.from\()/g,
+      )) {
+        if (!/\.(insert|update|upsert|delete)\(/.test(match[2])) continue;
+        if (!independentServiceTables.has(match[1]))
+          unreviewed.push(`${file}: ${match[1]}`);
+        expect(migration).not.toContain(
+          `on public.${match[1]} for each row execute function public.guard_commercial_domain_write()`,
+        );
+      }
+    }
+    expect(unreviewed).toEqual([]);
+  });
+  it("keeps billing and wearable service scopes tied to authenticated identities", () => {
+    const runtime = readFileSync(
+      "supabase/functions/_shared/billing-runtime.ts",
+      "utf8",
+    );
+    expect(runtime).toContain("service.auth.getUser(token)");
+    expect(runtime).toContain('env("SUPABASE_ANON_KEY")');
+    expect(runtime).toContain("Authorization: `Bearer ${token}`");
+    const wearables = readFileSync(
+      "supabase/functions/open-wearables/index.ts",
+      "utf8",
+    );
+    expect(wearables).toContain("supabase.auth.getUser(bearerToken)");
+    expect(wearables).toContain('.eq("user_id", user.id)');
+    expect(wearables).toContain(
+      "loadWearableSettings(supabase, client.workspace_id)",
+    );
+  });
   it("does not add feature-key gating", () => {
     for (const file of files("src/features/commercial-access"))
       expect(readFileSync(file, "utf8")).not.toContain("enabledFeatureKeys");

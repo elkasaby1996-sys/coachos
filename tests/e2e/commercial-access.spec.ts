@@ -8,7 +8,21 @@ import {
   waitForAuthSessionReady,
   waitForBootstrapResolved,
 } from "./utils/test-helpers";
-test.describe.configure({ mode: "parallel" });
+// Provision fresh commercial identities sequentially so password hashing cannot
+// contend with concurrent sign-ins. Other files retain the four-worker pool.
+test.describe.configure({ mode: "default" });
+async function navigateOwner(page: Page, path: string) {
+  // A document navigation completes before bootstrap and the commercial RPC.
+  // Await the real response before making assertions about the resolved UI.
+  const access = page.waitForResponse(
+    (response) =>
+      response.url().includes("/rpc/get_my_commercial_access_summary") &&
+      response.request().method() === "POST",
+  );
+  await page.goto(path);
+  expect((await access).ok()).toBe(true);
+  await waitForBootstrapResolved(page);
+}
 async function fixture(page: Page, scope: string, status = "active") {
   const coach = await seedEntitlementCoach(`access-${scope}`, true);
   const templateId = randomUUID();
@@ -42,14 +56,14 @@ test("grace preserves existing delivery and blocks business edits", async ({
   page,
 }, info) => {
   const coach = await fixture(page, info.testId, "grace");
-  await page.goto("/pt-hub");
+  await navigateOwner(page, "/pt-hub");
   await expect(
     page.getByText("Existing client delivery remains available.", {
       exact: false,
     }),
   ).toBeVisible();
   expect(await editTemplate(page, coach.templateId)).toBeNull();
-  await page.goto("/pt-hub/profile");
+  await navigateOwner(page, "/pt-hub/profile");
   await expect(page.locator("fieldset[disabled]")).toHaveCount(1);
   const rows = await pgQuery<{ name: string }>(
     `select name from public.workout_templates where id='${coach.templateId}'`,
@@ -60,7 +74,7 @@ test("read only permits browsing and denies direct mutation without data loss", 
   page,
 }, info) => {
   const coach = await fixture(page, info.testId, "restricted");
-  await page.goto("/pt-hub");
+  await navigateOwner(page, "/pt-hub");
   await expect(
     page.getByText("Your account is read only.", { exact: false }),
   ).toBeVisible();
@@ -71,7 +85,7 @@ test("read only permits browsing and denies direct mutation without data loss", 
     `select name from public.workout_templates where id='${coach.templateId}'`,
   );
   expect(rows[0].name).toBe("Existing delivery");
-  await page.goto("/pt-hub/settings/billing");
+  await navigateOwner(page, "/pt-hub/settings/billing");
   await expect(
     page.getByRole("button", { name: "Review commitments" }),
   ).toBeEnabled();
@@ -80,7 +94,7 @@ test("expired owner has recovery shell and restored access resumes normal UI", a
   page,
 }, info) => {
   const coach = await fixture(page, info.testId, "expired");
-  await page.goto("/pt-hub");
+  await navigateOwner(page, "/pt-hub");
   await expect(
     page.getByRole("heading", { name: "Recover your coaching access" }),
   ).toBeVisible();
@@ -104,7 +118,7 @@ test("expired owner has recovery shell and restored access resumes normal UI", a
     page.getByRole("button", { name: "Review commitments" }),
   ).toBeEnabled();
   await changeStatus(coach.userId, "active");
-  await page.goto("/pt-hub");
+  await navigateOwner(page, "/pt-hub");
   await expect(page.getByTestId("pt-hub-page")).toBeVisible();
   expect(await editTemplate(page, coach.templateId)).toBeNull();
 });
@@ -165,7 +179,7 @@ test("trial recovery preserves delivery without growing the business", async ({
   const coach = await fixture(page, info.testId);
   await pgQuery(`begin; update public.account_subscriptions set status='canceled',canceled_at=now(),status_changed_at=now() where billing_account_id=(select id from public.billing_accounts where owner_user_id='${coach.userId}');
  insert into public.account_subscriptions(billing_account_id,plan_version_id,trial_policy_version_id,subscription_kind,status,source,trial_started_at,trial_ends_at,trial_recovery_ends_at) select a.id,t.feature_plan_version_id,t.id,'trial','trialing','first_workspace',now()-interval '15 days',now()-interval '1 day',now()+interval '6 days' from public.billing_accounts a cross join public.commercial_trial_policy_versions t where a.owner_user_id='${coach.userId}' and t.status='active';commit;`);
-  await page.goto("/pt-hub");
+  await navigateOwner(page, "/pt-hub");
   await expect(
     page.getByText("Existing client delivery remains available.", {
       exact: false,
@@ -274,4 +288,179 @@ test("client history and independent nutrition remain available after coach expi
   await expect(
     page.getByRole("heading", { name: "Recover your coaching access" }),
   ).toHaveCount(0);
+});
+
+// Keep fixture-heavy disagreement cases in one worker; each case still sends
+// eight independent concurrent RPC requests. The suite retains four workers.
+test.describe("review correction regressions", () => {
+  test.describe.configure({ mode: "default" });
+  test("remediation shows current deduplicated pending seats", async ({
+    page,
+  }, info) => {
+    const coach = await fixture(page, info.testId);
+    const secondWorkspace = randomUUID();
+    await pgQuery(`insert into public.workspaces(id,owner_user_id,name) values('${secondWorkspace}','${coach.userId}','Other owned workspace');
+    insert into public.workspace_member_invites(workspace_id,email,role,token_hash,status,invited_by_user_id,expires_at) values
+    ('${coach.workspaceId}','current@browser-correction.test','coach','${randomUUID()}','pending','${coach.userId}',now()+interval '1 day'),
+    ('${secondWorkspace}','current@browser-correction.test','coach','${randomUUID()}','pending','${coach.userId}',now()+interval '1 day'),
+    ('${coach.workspaceId}','expired@browser-correction.test','coach','${randomUUID()}','pending','${coach.userId}',now()-interval '1 second'),
+    ('${coach.workspaceId}','boundary@browser-correction.test','coach','${randomUUID()}','pending','${coach.userId}',transaction_timestamp()),
+    ('${coach.workspaceId}','revoked@browser-correction.test','coach','${randomUUID()}','revoked','${coach.userId}',now()+interval '1 day');`);
+    await changeStatus(coach.userId, "expired");
+    await navigateOwner(page, "/pt-hub/settings/billing");
+    const remediation = page.waitForResponse((response) =>
+      response.url().includes("/rpc/get_my_commercial_remediation"),
+    );
+    await page.getByRole("button", { name: "Review commitments" }).click();
+    expect((await remediation).ok()).toBe(true);
+    const invites = page.getByRole("list", { name: "invites", exact: true });
+    await expect(invites.getByRole("listitem")).toHaveCount(1);
+    await expect(invites).toContainText("current@browser-correction.test");
+    // Revoking a representative preserves a duplicate until it too is explicitly revoked.
+    await invites.getByRole("button", { name: "Revoke invite" }).click();
+    await page.getByRole("button", { name: "Confirm", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(invites.getByRole("listitem")).toHaveCount(1);
+    await invites.getByRole("button", { name: "Revoke invite" }).click();
+    await page.getByRole("button", { name: "Confirm", exact: true }).click();
+    await expect(invites.getByRole("listitem")).toHaveCount(0);
+  });
+
+  for (const scenario of [
+    {
+      lifecycle: "invited",
+      relationship: "active",
+      status: "completed",
+      interactive: true,
+    },
+    {
+      lifecycle: "onboarding",
+      relationship: "active",
+      status: "completed",
+      interactive: true,
+    },
+    {
+      lifecycle: "active",
+      relationship: "active",
+      status: "active",
+      interactive: true,
+    },
+    {
+      lifecycle: "paused",
+      relationship: "active",
+      status: "completed",
+      interactive: true,
+    },
+    {
+      lifecycle: "completed",
+      relationship: "active",
+      status: "active",
+      interactive: false,
+    },
+    {
+      lifecycle: "churned",
+      relationship: "active",
+      status: "active",
+      interactive: false,
+    },
+    {
+      lifecycle: "active",
+      relationship: "removed",
+      status: "active",
+      interactive: false,
+    },
+    {
+      lifecycle: "active",
+      relationship: "transferred_out",
+      status: "active",
+      interactive: false,
+    },
+  ]) {
+    test(`conversation lifecycle ${scenario.lifecycle}/${scenario.relationship} ignores compatibility status`, async ({
+      page,
+    }, info) => {
+      const coach = await seedEntitlementCoach(
+        `correction-${info.testId}`,
+        true,
+      );
+      const identity = createAuthSmokeFixtures(
+        `correction-${randomUUID()}`,
+      ).clientNoWorkspace;
+      const userId = await ensureUser(identity);
+      const clientId = randomUUID();
+      await pgQuery(`begin;
+      alter table public.clients disable trigger clients_normalize_lifecycle_transition_trigger;
+      insert into public.clients(id,workspace_id,user_id,display_name,status,lifecycle_state,relationship_status,paused_reason,churn_reason,account_onboarding_completed_at)
+      values('${clientId}','${coach.workspaceId}','${userId}','Lifecycle client','${scenario.status}','${scenario.lifecycle}','${scenario.relationship}',${scenario.lifecycle === "paused" ? "'travel'" : "null"},${scenario.lifecycle === "churned" ? "'ended'" : "null"},now());
+      alter table public.clients enable trigger clients_normalize_lifecycle_transition_trigger; commit;`);
+      await signInWithEmail(page, identity.email, identity.password);
+      await waitForAuthSessionReady(page);
+      await waitForBootstrapResolved(page);
+      const result = await page.evaluate(async (clientId) => {
+        const modulePath = "/src/lib/supabase.ts";
+        const { supabase } = await import(modulePath);
+        const access = await supabase.rpc("get_client_coaching_access", {
+          p_client_id: clientId,
+        });
+        // Independent HTTP transactions contend on the unique conversation key.
+        const attempts = await Promise.all(
+          Array.from({ length: 8 }, () =>
+            supabase.rpc("client_accessible_conversations_with_ensure"),
+          ),
+        );
+        return { access, attempts };
+      }, clientId);
+      expect(result.access.error).toBeNull();
+      expect(result.access.data.canMessageRelationship).toBe(
+        scenario.interactive,
+      );
+      for (const attempt of result.attempts) {
+        expect(attempt.error).toBeNull();
+        expect(attempt.data).toHaveLength(scenario.interactive ? 1 : 0);
+      }
+      if (scenario.interactive)
+        expect(
+          new Set(result.attempts.map((attempt) => attempt.data[0].id)).size,
+        ).toBe(1);
+      expect(JSON.stringify(result.access.data)).not.toMatch(
+        /planKey|billingAccountId|accessMode|paymentStatus/,
+      );
+      await pgQuery(`begin; select set_config('request.jwt.claim.sub','${coach.userId}',true); insert into public.conversations(workspace_id,client_id) values('${coach.workspaceId}','${clientId}') on conflict on constraint conversations_workspace_client_key do nothing;
+      insert into public.messages(conversation_id,sender_user_id,sender_role,sender_name,body) select id,'${coach.userId}','pt','Coach','Preserved correction history' from public.conversations where client_id='${clientId}'; commit;`);
+      const history = await page.evaluate(async (clientId) => {
+        const modulePath = "/src/lib/supabase.ts";
+        const { supabase } = await import(modulePath);
+        const conversations = await supabase.rpc(
+          "client_accessible_conversations_with_ensure",
+        );
+        const conversation = conversations.data?.find(
+          (row: { client_id: string }) => row.client_id === clientId,
+        );
+        const messages = await supabase
+          .from("messages")
+          .select("body")
+          .eq("conversation_id", conversation?.id);
+        const sent = await supabase.rpc("send_conversation_message", {
+          p_conversation_id: conversation?.id,
+          p_sender_user_id: (await supabase.auth.getUser()).data.user?.id,
+          p_sender_role: "client",
+          p_sender_name: "Client",
+          p_body: "Current interaction",
+          p_unread: false,
+        });
+        return { conversations, messages, sent };
+      }, clientId);
+      expect(history.conversations.error).toBeNull();
+      expect(history.conversations.data).toHaveLength(1);
+      expect(history.messages.error).toBeNull();
+      expect(history.messages.data).toContainEqual({
+        body: "Preserved correction history",
+      });
+      if (scenario.interactive) expect(history.sent.error).toBeNull();
+      else
+        expect(history.sent.error.message).toBe(
+          "CLIENT_COACHING_INTERACTION_UNAVAILABLE",
+        );
+    });
+  }
 });

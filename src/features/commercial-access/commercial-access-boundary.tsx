@@ -34,12 +34,13 @@ export function CommercialAccessBoundary({
       />
     );
   const data = query.data;
-  if (!data) return recoveryRoute ? <>{children}</> : null;
+  if (!data && !recoveryRoute) return null;
   const bootstrapRoute =
     scope === "owner" &&
-    data.accessMode === "onboarding" &&
+    data?.accessMode === "onboarding" &&
     pathname === "/pt-hub/workspaces";
   if (
+    data &&
     ["none", "onboarding"].includes(data.accessMode) &&
     !recoveryRoute &&
     !bootstrapRoute
@@ -52,6 +53,7 @@ export function CommercialAccessBoundary({
         )
       : /\/(settings|leads)(?:\/|$)/.test(pathname);
   const disabled =
+    !!data &&
     !bootstrapRoute &&
     (!recoveryRoute || businessRoute) &&
     (data.accessMode === "read_only" ||
@@ -59,11 +61,14 @@ export function CommercialAccessBoundary({
       (businessRoute && data.accessMode !== "full"));
   return (
     <>
-      <CommercialAccessBanner
-        mode={data.accessMode}
-        owner={data.canManageBilling}
-        reason={"reason" in data ? data.reason : undefined}
-      />
+      {data ? (
+        <CommercialAccessBanner
+          mode={data.accessMode}
+          owner={data.canManageBilling}
+          reason={"reason" in data ? data.reason : undefined}
+        />
+      ) : null}
+      {/* Keep recovery children mounted while the access request resolves. */}
       <fieldset disabled={disabled} className="min-w-0 border-0 p-0">
         {children}
       </fieldset>

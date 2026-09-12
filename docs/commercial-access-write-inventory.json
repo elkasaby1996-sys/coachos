@@ -1120,5 +1120,83 @@
     "table": "messages",
     "writes": ["update"],
     "enforcement": "commercial domain trigger plus existing RLS/RPC authorization"
+  },
+  {
+    "file": "supabase/functions/marketing-lead-submit/index.ts",
+    "table": "marketing_leads",
+    "writes": ["insert"],
+    "enforcement": "service role: platform marketing validation; no coach account scope"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_connections",
+    "writes": ["upsert"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_connections",
+    "writes": ["update"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_daily_metrics",
+    "writes": ["delete"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_sleep_sessions",
+    "writes": ["delete"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_health_scores",
+    "writes": ["delete"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_activities",
+    "writes": ["delete"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_daily_metrics",
+    "writes": ["upsert"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_sleep_sessions",
+    "writes": ["upsert"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_activities",
+    "writes": ["upsert"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_health_scores",
+    "writes": ["upsert"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_sync_runs",
+    "writes": ["insert"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
+  },
+  {
+    "file": "supabase/functions/open-wearables/index.ts",
+    "table": "client_wearable_connections",
+    "writes": ["update"],
+    "enforcement": "service role: authenticated client ownership and database workspace settings; independent wearable health data"
   }
 ]

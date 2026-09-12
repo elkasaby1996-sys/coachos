@@ -49,3 +49,11 @@ Billing includes explicit review-and-confirm reducing actions for client relatio
 Public profile/marketplace reads require stored publication preference, existing listed-profile rules and current full access. Marketplace discovery also requires the stored marketplace-visible preference. Neither access loss nor restoration rewrites those preferences. A direct application checks current owner access server-side before creating a lead. Rejection uses `PUBLIC_COACH_NOT_ACCEPTING_APPLICATIONS` and “This coach is not accepting new applications right now.” Service failures retain a distinct retry message.
 
 See [security](commercial-access-security.md), [write inventory](commercial-access-write-inventory.json), [test runbook](commercial-access-test-runbook.md), and [verification](pr-price-08-verification.md). Feature-key gating, paid seats, quantity billing, refunds, coupons, invoice-list UI, client payments and live deployment remain deferred.
+
+## Review corrections
+
+Pending team commitments use the canonical capacity subject set: current workspace ownership, stored pending status, expiry strictly after transaction time, null acceptance fields, valid normalized email, and no superseding active staff identity. Revocation is a stored status, not a separate timestamp. Capacity and remediation share one helper; remediation shows one representative per canonical identity. Revoking a duplicate remains explicit and refreshes the remaining commitment.
+
+Client interaction requires a current active relationship and an invited, onboarding, active or paused lifecycle, intersected with commercial access. Completed, churned, unknown and null lifecycle values preserve history without interaction. Removed/transferred-out relationships remain historical even with stale active compatibility status. Compatibility `clients.status` never decides the corrected access paths. Lead conversations and independent client-owned medical storage retain their separate authorization.
+
+Ordinary coached object deletion requires the same delivery permission as upload/update; workspace branding deletion requires business configuration permission. Recovery availability does not implicitly classify file deletion as remediation.

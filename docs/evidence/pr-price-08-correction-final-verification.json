@@ -1,0 +1,83 @@
+{
+  "branch": "feat/pr-price-08-access-mode-enforcement",
+  "base": "cce228bcc16723f304ba2ed8e354bab10be2def8",
+  "startingHead": "d8661377f8de169db47db397324232f3ef31e37f",
+  "releases": [
+    {
+      "command": "npm run verify:release",
+      "run": "A",
+      "exitCode": 0,
+      "passed": 113,
+      "skipped": 10,
+      "failures": 0,
+      "browserDuration": "8.4m",
+      "workers": 1,
+      "retries": 0
+    },
+    {
+      "command": "npm run verify:release",
+      "run": "B",
+      "exitCode": 0,
+      "passed": 113,
+      "skipped": 10,
+      "failures": 0,
+      "browserDuration": "8.4m",
+      "workers": 1,
+      "retries": 0
+    }
+  ],
+  "frozenCode": {
+    "files": 981,
+    "manifestDigest": "ab76f4465dcefa08b785e3ed4a6a4a587ee29f59e3979937662cbeadda5b254f",
+    "identicalBeforeBetweenAfter": true
+  },
+  "database": {
+    "assertions": 931,
+    "files": 13,
+    "failures": 0,
+    "lintFindings": 0
+  },
+  "focused": {
+    "unitComponentTests": 476,
+    "unitComponentFiles": 35,
+    "commercialBrowserTests": 17,
+    "portalBrowserTests": 10,
+    "freshConversationRaceRepetitions": 5,
+    "requestsPerRace": 8
+  },
+  "fullUnit": {
+    "baseline": {
+      "numPassedTests": 1710,
+      "numFailedTests": 13,
+      "numPendingTests": 0
+    },
+    "correction": {
+      "numPassedTests": 1712,
+      "numFailedTests": 13,
+      "numPendingTests": 0
+    },
+    "sameFailures": true,
+    "sameSkips": true
+  },
+  "authStress": {
+    "passed": 18,
+    "workers": 4,
+    "retries": 0,
+    "repeatEach": 2
+  },
+  "exactInheritedBrowserSkips": [
+    "[chromium] \u203a tests\\e2e\\checkin-submit-review.smoke.spec.ts:11:3 \u203a Smoke: check-in submit and PT review \u203a Client can submit check-in and PT can review",
+    "[chromium] \u203a tests\\e2e\\notifications.spec.ts:10:3 \u203a notification attribution, alignment and delete recovery at 1602px",
+    "[chromium] \u203a tests\\e2e\\notifications.spec.ts:10:3 \u203a notification attribution, alignment and delete recovery at 375px",
+    "[chromium] \u203a tests\\e2e\\nutrition-program-view.spec.ts:10:3 \u203a Nutrition cards and read-only preview at 1602px",
+    "[chromium] \u203a tests\\e2e\\nutrition-program-view.spec.ts:10:3 \u203a Nutrition cards and read-only preview at 375px",
+    "[chromium] \u203a tests\\e2e\\pt-assign-workout.smoke.spec.ts:10:3 \u203a Smoke: PT assign workout \u203a PT can assign workout to a client",
+    "[chromium] \u203a tests\\e2e\\pt-workspace-header.spec.ts:8:1 \u203a workspace header stays within its available width in both sidebar states",
+    "[chromium] \u203a tests\\e2e\\workout-template-duplicate.spec.ts:9:1 \u203a Duplicate copies the workout and prescriptions, and cleans up a failed copy",
+    "[chromium] \u203a tests\\e2e\\workout-template-view.spec.ts:10:3 \u203a View opens a read-only workout dialog at 1602px",
+    "[chromium] \u203a tests\\e2e\\workout-template-view.spec.ts:10:3 \u203a View opens a read-only workout dialog at 375px"
+  ],
+  "remoteOperations": false,
+  "realProviderCalls": false,
+  "historicalMigrationsChanged": false
+}

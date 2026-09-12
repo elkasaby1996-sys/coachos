@@ -18,13 +18,17 @@ const useExternalBaseUrl =
   (!process.env.CI || !isLoopbackBaseUrl(configuredBaseUrl));
 const baseURL = useExternalBaseUrl ? configuredBaseUrl : defaultBaseUrl;
 const useWebServer = !useExternalBaseUrl;
+const configuredWorkers = process.env.REPSYNC_E2E_WORKERS?.trim();
+if (configuredWorkers && !/^[1-9]\d*$/.test(configuredWorkers)) {
+  throw new Error("REPSYNC_E2E_WORKERS must be a positive integer.");
+}
 
 export default defineConfig({
   testDir: "tests/e2e",
   timeout: 90_000,
   fullyParallel: false,
   retries: 0,
-  workers: 4,
+  workers: configuredWorkers ? Number(configuredWorkers) : 4,
   globalSetup: useWebServer
     ? "./tests/e2e/utils/server-readiness.ts"
     : undefined,

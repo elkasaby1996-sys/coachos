@@ -89,7 +89,9 @@ begin
   if auth.uid() is null or c.id is null or not (c.user_id=auth.uid() or public.can_access_client(c.id,'clients.view')) then raise exception 'Client access denied.' using errcode='42501'; end if;
   select owner_user_id into o from public.workspaces where id=c.workspace_id;
   r:=public.resolve_account_commercial_access(o);
-  m:=case when o is null or c.relationship_status<>'active' then 'unavailable' when r->>'accessMode'='full' then 'interactive'
+  -- Unknown lifecycle fails closed; completed/churned retain historical reads.
+  m:=case when o is null or c.relationship_status is distinct from 'active'
+    or c.lifecycle_state is null or c.lifecycle_state not in ('invited','onboarding','active','paused') then 'unavailable' when r->>'accessMode'='full' then 'interactive'
     when r->>'accessMode'='existing_delivery_only' then 'existing_delivery' when r->>'accessMode'='read_only' then 'read_only' else 'unavailable' end;
   interactive:=m in ('interactive','existing_delivery');
   return jsonb_build_object('schemaVersion',1,'clientId',c.id,'serviceMode',m,'canReadCoachedContent',true,
@@ -292,6 +294,10 @@ begin
       if not public.is_coach_accepting_applications(o) then raise exception 'PUBLIC_COACH_NOT_ACCEPTING_APPLICATIONS' using errcode='42501',detail='{"code":"PUBLIC_COACH_NOT_ACCEPTING_APPLICATIONS","audience":"public"}'; end if;
     else
       perform public.assert_commercial_action_allowed(o,action,w,c);
+      if tg_table_name in ('conversations','messages','message_typing') and c is not null
+        and not (public.get_client_coaching_access(c)->>'canMessageRelationship')::boolean then
+        raise exception 'CLIENT_COACHING_INTERACTION_UNAVAILABLE' using errcode='42501';
+      end if;
     end if;
   end loop;
   if tg_op='DELETE' then return old; else return new; end if;
@@ -414,6 +420,66 @@ begin
   raise exception 'Not authorized';
 end;
 $function$;
+-- Linked clients may read their own conversation history in every lifecycle.
+-- Mutations additionally pass the canonical interaction resolver in the guard.
+create or replace function public.can_access_conversation(
+  p_conversation_id uuid,
+  p_permission text default 'clients.message'
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = pg_catalog, public, extensions
+as $$
+declare
+  v_conversation record;
+  v_context record;
+begin
+  if p_conversation_id is null then
+    return false;
+  end if;
+
+  select conv.id, conv.workspace_id, conv.client_id
+  into v_conversation
+  from public.conversations conv
+  where conv.id = p_conversation_id;
+
+  if not found then
+    return false;
+  end if;
+
+  if exists (
+    select 1
+    from public.clients c
+    where c.id = v_conversation.client_id
+      and c.user_id = (select auth.uid())
+      and c.workspace_id is not null
+      and c.workspace_id = v_conversation.workspace_id
+  ) then
+    return true;
+  end if;
+
+  if v_conversation.client_id is not null then
+    return public.can_access_client(v_conversation.client_id, p_permission);
+  end if;
+
+  select *
+  into v_context
+  from public.workspace_access_context(v_conversation.workspace_id)
+  limit 1;
+
+  if not found then
+    return false;
+  end if;
+
+  return public.has_workspace_permission(
+    v_context.role,
+    v_context.member_status,
+    p_permission
+  );
+end;
+$$;
+
 CREATE OR REPLACE FUNCTION public.client_accessible_conversations_with_ensure()
  RETURNS TABLE(id uuid, client_id uuid, workspace_id uuid, last_message_at timestamp with time zone, last_message_preview text, last_message_sender_name text, last_message_sender_role text)
  LANGUAGE plpgsql
@@ -436,13 +502,16 @@ begin
     from public.clients c
     where c.user_id = v_user_id
       and c.workspace_id is not null
-      and c.status = 'active'::public.client_status
+      -- Linked historical relationships stay readable. Only the canonical
+      -- resolver below can authorize materializing a current conversation.
     order by c.created_at asc, c.id asc
   loop
     if (public.get_client_coaching_access(relationship.client_id)->>'canMessageRelationship')::boolean then
     insert into public.conversations (workspace_id, client_id)
     values (relationship.workspace_id, relationship.client_id)
-    on conflict on constraint conversations_workspace_client_key do nothing;
+    -- Both the legacy client-only key and the workspace/client key arbitrate
+    -- concurrent materialization. Naming only one leaves the other race exposed.
+    on conflict do nothing;
     end if;
 
     select conv.*
@@ -495,7 +564,7 @@ begin
   if (public.get_client_coaching_access(p_client_id)->>'canMessageRelationship')::boolean then
   insert into public.conversations (workspace_id, client_id)
   values (p_workspace_id, p_client_id)
-  on conflict on constraint conversations_workspace_client_key do nothing
+  on conflict do nothing
   returning *
   into v_conversation;
   end if;
@@ -726,6 +795,50 @@ $$;
 revoke all on function public.get_public_commercial_coach_profiles(text) from public,anon,authenticated,service_role;
 grant execute on function public.get_public_commercial_coach_profiles(text) to anon,authenticated;
 
+-- One pending-seat row set for capacity and owner remediation. Keep every
+-- qualifying invitation here; consumers group by subject_key (one human seat).
+create function public.account_capacity_pending_seat_invites(p_owner uuid,p_at timestamptz)
+returns table(invite_id uuid,workspace_id uuid,email text,subject_key text)
+language sql stable security definer set search_path=pg_catalog,public as $$
+  with owned as materialized (select id from public.workspaces where owner_user_id=p_owner),
+  staff as (
+    select p_owner user_id union select m.user_id from public.workspace_members m join owned w on w.id=m.workspace_id
+    where m.status='active' and m.role::text in ('owner','admin','coach','assistant_coach','viewer','pt_owner','pt_coach','pt')
+  ), pending_invites as materialized (
+    select i.id,i.workspace_id,lower(btrim(i.email)) email from public.workspace_member_invites i join owned w on w.id=i.workspace_id
+    where i.status='pending' and i.expires_at>p_at and i.accepted_at is null and i.accepted_by_user_id is null
+      and btrim(i.email)<>'' and position('@' in i.email)>1
+  ), identities as materialized (
+    select lower(btrim(u.email)) email,min(u.id::text) user_id from auth.users u
+    where lower(btrim(u.email)) in (select email from pending_invites) group by lower(btrim(u.email))
+  ), staff_emails as materialized (
+    select lower(btrim(u.email)) email from staff s join auth.users u on u.id=s.user_id
+  )
+  select i.id,i.workspace_id,i.email,coalesce('user:' || u.user_id,public.account_capacity_email_key(i.email))
+  from pending_invites i left join identities u on u.email=i.email
+  where not exists(select 1 from staff_emails s where s.email=i.email);
+$$;
+revoke all on function public.account_capacity_pending_seat_invites(uuid,timestamptz) from public,anon,authenticated,service_role;
+
+create or replace function public.account_capacity_subjects(p_owner uuid,p_at timestamptz)
+returns table(dimension text,subject_key text,pending boolean,data_quality_issue boolean)
+language sql stable security definer set search_path=pg_catalog,public as $$
+  with owned as (select id from public.workspaces where owner_user_id=p_owner),
+  staff as (
+    select p_owner user_id union select m.user_id from public.workspace_members m join owned w on w.id=m.workspace_id
+    where m.status='active' and m.role::text in ('owner','admin','coach','assistant_coach','viewer','pt_owner','pt_coach','pt')
+  )
+  select 'counted_clients',coalesce('user:' || c.user_id,'client:' || c.id),false,
+    c.lifecycle_state is null or c.lifecycle_state not in ('invited','onboarding','active','paused','completed','churned')
+  from public.clients c join owned w on w.id=c.workspace_id
+  where coalesce(c.relationship_status,'active')='active' and (c.lifecycle_state is null or c.lifecycle_state not in ('completed','churned'))
+  union all select 'coach_seats','user:' || user_id,false,false from staff where user_id is not null
+  union all select 'coach_seats',i.subject_key,true,false from public.account_capacity_pending_seat_invites(p_owner,p_at) i
+  union all select 'active_workspaces','workspace:' || id,false,false from owned
+  union all select 'published_packages','package:' || id,false,false from public.pt_packages
+    where pt_user_id=p_owner and status='active' and is_public=true;
+$$;
+
 create function public.get_my_commercial_remediation()
 returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public as $$
 declare u uuid:=auth.uid();
@@ -734,7 +847,7 @@ begin
   return jsonb_build_object(
     'clients',coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'label',coalesce(c.display_name,'Client'))) from public.clients c join public.workspaces w on w.id=c.workspace_id where w.owner_user_id=u and c.relationship_status='active'),'[]'),
     'members',coalesce((select jsonb_agg(jsonb_build_object('id',m.id,'workspaceId',m.workspace_id,'label','Team member')) from public.workspace_members m join public.workspaces w on w.id=m.workspace_id where w.owner_user_id=u and m.user_id<>u and m.status='active'),'[]'),
-    'invites',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'workspaceId',i.workspace_id,'label',i.email)) from public.workspace_member_invites i join public.workspaces w on w.id=i.workspace_id where w.owner_user_id=u and i.status='pending'),'[]'),
+    'invites',coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'workspaceId',i.workspace_id,'label',i.email)) from (select distinct on (subject_key) invite_id id,workspace_id,email from public.account_capacity_pending_seat_invites(u,transaction_timestamp()) order by subject_key,invite_id) i),'[]'),
     'packages',coalesce((select jsonb_agg(jsonb_build_object('id',p.id,'label',p.title)) from public.pt_packages p where p.pt_user_id=u and p.status<>'archived'),'[]'));
 end $$;
 revoke all on function public.get_my_commercial_remediation() from public,anon,authenticated,service_role;
@@ -748,7 +861,7 @@ begin
   if p_bucket='workspace_branding' then
     select owner_user_id into o from public.workspaces where id::text=first_part and public.can_manage_workspace_team(id);
     if o is null then return false; end if;
-    return coalesce(public.resolve_account_commercial_access(o)->>'accessMode'='full',false);
+    return public.is_commercial_action_allowed(public.resolve_account_commercial_access(o)->>'accessMode','business_configuration_write');
   end if;
   select * into c from public.clients where id::text=first_part;
   if c.id is null then return false; end if;
@@ -763,6 +876,9 @@ create policy commercial_storage_insert on storage.objects as restrictive for in
   with check(public.commercial_storage_write_allowed(bucket_id,name));
 create policy commercial_storage_update on storage.objects as restrictive for update to authenticated
   using(public.commercial_storage_write_allowed(bucket_id,name)) with check(public.commercial_storage_write_allowed(bucket_id,name));
+-- Ordinary object deletion is delivery/business mutation, never implicit remediation.
+create policy commercial_storage_delete on storage.objects as restrictive for delete to authenticated
+  using(public.commercial_storage_write_allowed(bucket_id,name));
 CREATE OR REPLACE FUNCTION public.ensure_workspace_checkins(p_workspace_id uuid, p_range_start date, p_range_end date)
  RETURNS void
  LANGUAGE plpgsql

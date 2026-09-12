@@ -1,0 +1,76 @@
+BEGIN
+SELECT 2500
+INSERT 0 2500
+INSERT 0 2500
+DO
+INSERT 0 2500
+INSERT 0 2500
+INSERT 0 2500
+INSERT 0 2500
+UPDATE 625
+ANALYZE
+ANALYZE
+ANALYZE
+ANALYZE
+ANALYZE
+                                                                                                                                                                         QUERY PLAN
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Function Scan on public.get_public_commercial_coach_profiles  (cost=0.25..10.25 rows=1000 width=602) (actual time=707.287..707.371 rows=1286 loops=1)
+   Output: id, user_id, full_name, display_name, headline, short_bio, specialties, certifications, coaching_style, profile_photo_url, banner_image_url, social_links, created_at, updated_at, slug, searchable_headline, coaching_modes, availability_modes, location_label, marketplace_visible, is_published, published_at, testimonials, transformations
+   Function Call: get_public_commercial_coach_profiles(NULL::text)
+   Buffers: shared hit=23141
+ Query Identifier: -6592373737614206373
+ Planning Time: 0.036 ms
+ Execution Time: 707.444 ms
+(7 rows)
+
+                                                                                                                                                                                                          QUERY PLAN
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=716.82..718.10 rows=512 width=429) (actual time=671.287..671.371 rows=1286 loops=1)
+   Output: p.id, p.user_id, p.full_name, p.display_name, p.headline, p.short_bio, p.specialties, p.certifications, p.coaching_style, p.profile_photo_url, p.banner_image_url, p.social_links, p.created_at, p.updated_at, p.slug, p.searchable_headline, p.coaching_modes, p.availability_modes, p.location_label, p.marketplace_visible, p.is_published, p.published_at, p.testimonials, p.transformations
+   Sort Key: p.published_at DESC NULLS LAST, p.updated_at DESC, p.id
+   Sort Method: quicksort  Memory: 270kB
+   Buffers: shared hit=22600
+   ->  Hash Join  (cost=625.89..693.78 rows=512 width=429) (actual time=670.055..670.799 rows=1286 loops=1)
+         Output: p.id, p.user_id, p.full_name, p.display_name, p.headline, p.short_bio, p.specialties, p.certifications, p.coaching_style, p.profile_photo_url, p.banner_image_url, p.social_links, p.created_at, p.updated_at, p.slug, p.searchable_headline, p.coaching_modes, p.availability_modes, p.location_label, p.marketplace_visible, p.is_published, p.published_at, p.testimonials, p.transformations
+         Inner Unique: true
+         Hash Cond: (s.user_id = p.user_id)
+         Buffers: shared hit=22600
+         ->  Seq Scan on public.pt_hub_settings s  (cost=0.00..62.25 rows=2143 width=16) (actual time=0.011..0.355 rows=2143 loops=1)
+               Output: s.id, s.user_id, s.contact_email, s.support_email, s.phone, s.timezone, s.city, s.client_alerts, s.weekly_digest, s.product_updates, s.profile_visibility, s.subscription_plan, s.subscription_status, s.created_at, s.updated_at, s.full_name, s.country
+               Filter: (s.profile_visibility = 'listed'::text)
+               Rows Removed by Filter: 357
+               Buffers: shared hit=31
+         ->  Hash  (cost=618.43..618.43 rows=597 width=429) (actual time=670.035..670.036 rows=1500 loops=1)
+               Output: p.id, p.user_id, p.full_name, p.display_name, p.headline, p.short_bio, p.specialties, p.certifications, p.coaching_style, p.profile_photo_url, p.banner_image_url, p.social_links, p.created_at, p.updated_at, p.slug, p.searchable_headline, p.coaching_modes, p.availability_modes, p.location_label, p.marketplace_visible, p.is_published, p.published_at, p.testimonials, p.transformations
+               Buckets: 2048 (originally 1024)  Batches: 1 (originally 1)  Memory Usage: 289kB
+               Buffers: shared hit=22569
+               ->  Bitmap Heap Scan on public.pt_hub_profiles p  (cost=82.43..618.43 rows=597 width=429) (actual time=0.644..668.390 rows=1500 loops=1)
+                     Output: p.id, p.user_id, p.full_name, p.display_name, p.headline, p.short_bio, p.specialties, p.certifications, p.coaching_style, p.profile_photo_url, p.banner_image_url, p.social_links, p.created_at, p.updated_at, p.slug, p.searchable_headline, p.coaching_modes, p.availability_modes, p.location_label, p.marketplace_visible, p.is_published, p.published_at, p.testimonials, p.transformations
+                     Recheck Cond: (p.is_published AND p.marketplace_visible)
+                     Filter: ((p.slug IS NOT NULL) AND (btrim(p.slug) <> ''::text) AND is_coach_accepting_applications(p.user_id))
+                     Rows Removed by Filter: 500
+                     Heap Blocks: exact=59
+                     Buffers: shared hit=22569
+                     ->  Bitmap Index Scan on pt_hub_profiles_marketplace_idx  (cost=0.00..82.28 rows=1800 width=0) (actual time=0.072..0.072 rows=2000 loops=1)
+                           Index Cond: ((p.is_published = true) AND (p.marketplace_visible = true))
+                           Buffers: shared hit=10
+ Query Identifier: 8573976921470231781
+ Planning:
+   Buffers: shared hit=12
+ Planning Time: 0.259 ms
+ Execution Time: 671.447 ms
+(34 rows)
+
+                                                                                                                                                                         QUERY PLAN
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Function Scan on public.get_public_commercial_coach_profiles  (cost=0.25..10.25 rows=1000 width=602) (actual time=3.948..3.949 rows=1 loops=1)
+   Output: id, user_id, full_name, display_name, headline, short_bio, specialties, certifications, coaching_style, profile_photo_url, banner_image_url, social_links, created_at, updated_at, slug, searchable_headline, coaching_modes, availability_modes, location_label, marketplace_visible, is_published, published_at, testimonials, transformations
+   Function Call: get_public_commercial_coach_profiles('market-plan-1'::text)
+   Buffers: shared hit=113
+ Query Identifier: -2208364464885439006
+ Planning Time: 0.030 ms
+ Execution Time: 3.969 ms
+(7 rows)
+
+ROLLBACK
