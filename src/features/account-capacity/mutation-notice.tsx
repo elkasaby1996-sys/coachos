@@ -38,7 +38,11 @@ export function CapacityMutationNotice({
       </p>
       {audience === "owner" ? (
         <Link
-          to="/pt-hub/settings/billing"
+          to={
+            error.dimension === "coach_seats"
+              ? "/pt-hub/settings/billing#coach-seats"
+              : "/pt-hub/settings/billing"
+          }
           className="font-medium underline underline-offset-4"
         >
           View Billing

@@ -1,4 +1,9 @@
 /** Provider objects and PII never leave this adapter. No environment-selectable fake. */
+import {
+  parseSubscriptionItem,
+  subscriptionItemQuantityRequest,
+  type SubscriptionItemSnapshot,
+} from "./billing-seat-item.ts";
 export type Environment = "test" | "live";
 export class BillingError extends Error {
   constructor(
@@ -115,6 +120,12 @@ export type SubscriptionSnapshot = {
   updated_at: string;
 };
 export interface BillingProvider {
+  retrieveSubscriptionItem?(id: string): Promise<SubscriptionItemSnapshot>;
+  updateSubscriptionItemQuantity?(
+    id: string,
+    quantity: number,
+    timing: "immediate" | "period_end",
+  ): Promise<SubscriptionItemSnapshot>;
   createCheckout(
     operation: CheckoutOperation,
     returnUrl: string,
@@ -299,7 +310,8 @@ export function parseSubscription(
   const item = object(a.first_subscription_item);
   if (
     providerId(item.subscription_id) !== id ||
-    !Number.isInteger(item.quantity) ||
+    !Number.isSafeInteger(item.quantity) ||
+    item.quantity < 1 ||
     ![
       "active",
       "paused",
@@ -391,6 +403,35 @@ export function createLemonSqueezyProvider(
           throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 502);
         throw new BillingError(
           "BILLING_PLAN_CHANGE_PROVIDER_AMBIGUOUS",
+          503,
+          true,
+        );
+      }
+    },
+    async retrieveSubscriptionItem(id) {
+      return parseSubscriptionItem(
+        await request(`subscription-items/${providerId(id)}`),
+        id,
+      );
+    },
+    async updateSubscriptionItemQuantity(id, quantity, timing) {
+      const body = subscriptionItemQuantityRequest(id, quantity, timing);
+      try {
+        const item = parseSubscriptionItem(
+          await request(`subscription-items/${providerId(id)}`, body, "PATCH"),
+          id,
+        );
+        if (item.quantity !== quantity) throw new Error();
+        return item;
+      } catch (error) {
+        if (
+          error instanceof BillingError &&
+          !error.ambiguous &&
+          error.code === "BILLING_CHECKOUT_CREATION_FAILED"
+        )
+          throw new BillingError("BILLING_SEAT_QUANTITY_PROVIDER_FAILED", 502);
+        throw new BillingError(
+          "BILLING_SEAT_QUANTITY_PROVIDER_AMBIGUOUS",
           503,
           true,
         );

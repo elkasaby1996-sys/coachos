@@ -3,10 +3,12 @@ import { BillingError, createLemonSqueezyProvider } from "./lemon-squeezy.ts";
 import type { BillingDependencies, Rpc } from "./billing-handlers.ts";
 import { portalCodes } from "./billing-portal.ts";
 import { planChangeCodes } from "./billing-plan-change.ts";
+import { seatQuantityCodes } from "./billing-seat-quantity.ts";
 
 const safeDatabaseCodes = new Set([
   ...portalCodes,
   ...planChangeCodes,
+  ...seatQuantityCodes,
   "BILLING_FORBIDDEN",
   "BILLING_INVALID_INPUT",
   "BILLING_ALREADY_SUBSCRIBED",

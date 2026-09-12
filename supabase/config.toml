@@ -40,3 +40,15 @@ verify_jwt = false
 
 [functions.billing-create-customer-portal-link]
 verify_jwt = true
+
+[functions.billing-preview-coach-seat-change]
+verify_jwt = true
+
+[functions.billing-change-coach-seat-quantity]
+verify_jwt = true
+
+[functions.billing-cancel-scheduled-seat-change]
+verify_jwt = true
+
+[functions.billing-refresh-coach-seat-change]
+verify_jwt = true

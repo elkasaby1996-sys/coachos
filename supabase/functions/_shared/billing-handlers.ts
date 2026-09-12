@@ -231,9 +231,23 @@ export async function handleBillingWebhook(
           String(normalized.payload.subscription_id),
         )
       : null;
+    // Real adapters always retrieve the first item. Legacy base-only fixtures
+    // can omit the method; SQL requires item proof for every seat obligation.
+    const verifiedItem =
+      snapshot && config.provider.retrieveSubscriptionItem
+        ? await config.provider.retrieveSubscriptionItem(
+            snapshot.first_subscription_item_id,
+          )
+        : null;
     const status = await deps.serviceRpc(
       "reconcile_billing_provider_subscription",
-      { p_delivery: delivery, p_snapshot: snapshot },
+      {
+        p_delivery: delivery,
+        p_snapshot:
+          snapshot && verifiedItem
+            ? { ...snapshot, verified_item: verifiedItem }
+            : snapshot,
+      },
     );
     if (status === "failed") {
       // Reconciliation already persisted this failed attempt; do not count it twice.
