@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { setTimeout as delay } from "node:timers/promises";
 import { planChangeFixture } from "./utils/plan-change-fixture";
 test.describe.configure({ mode: "parallel" });
 test.afterEach(async ({ context }) => {
@@ -201,6 +202,17 @@ test("PayPal has support guidance without provider mutation", async ({
   page,
   context,
 }, info) => {
+  // Reproduce CI's late canonical-state arrival without changing its response.
+  // Fixture readiness must outlive the default five-second UI assertion window.
+  await context.route(
+    "**/rest/v1/rpc/get_my_billing_plan_change_state",
+    async (route) => {
+      const response = await route.fetch();
+      await delay(6_000);
+      await route.fulfill({ response });
+    },
+    { times: 1 },
+  );
   const f = await planChangeFixture(
     page,
     context,
