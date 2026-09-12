@@ -21,7 +21,7 @@ select results_eq(
   $$values ('growth'::text, 47::bigint), ('launch'::text, 29::bigint), ('scale'::text, 63::bigint)$$,
   'exact entitlement mapping counts'
 );
-select is((select count(*) from commercial_features where readiness_status = 'COMMERCIALLY_SALEABLE'), 0::bigint, 'no unsupported commercial-release claims');
+select is((select count(*) from commercial_features where readiness_status = 'COMMERCIALLY_SALEABLE'), 2::bigint, 'only reviewed PR-PRICE-10 commercial-release claims');
 
 -- Clone contract values into test-only versions without disabling any trigger.
 create function pg_temp.catalogue_plan(p_key text, p_version integer, p_status text default 'draft', p_public boolean default false, p_popular boolean default false, p_order integer default 90)
@@ -76,7 +76,7 @@ select lives_ok($$select public.get_public_commercial_catalogue()$$, 'anon can e
 select is(public.get_public_commercial_catalogue()->>'schemaVersion', '1', 'public schema version is 1');
 select is(jsonb_path_query_array(public.get_public_commercial_catalogue(), '$.plans[*].planKey'), '["launch","growth","scale"]'::jsonb, 'public plan order is deterministic and draft custom is hidden');
 select is(public.get_public_commercial_catalogue()#>'{plans,1,capacities,publishedPackages}', 'null'::jsonb, 'unlimited Growth package capacity remains JSON null');
-select is(jsonb_path_query_array(public.get_public_commercial_catalogue(), '$.plans[*].features[*]'), '[]'::jsonb, 'initial features are hidden');
+select is(jsonb_path_query_array(public.get_public_commercial_catalogue(), '$.plans[0].features[*].featureKey'), '["core.client_management","core.lifecycle_management"]'::jsonb, 'v1 preserves its dynamic reviewed feature projection');
 reset role;
 set local role authenticated;
 select throws_ok($$select * from public.commercial_features$$, '42501', null, 'authenticated cannot read features');
@@ -86,6 +86,8 @@ select throws_ok($$update public.commercial_features set visibility = 'public'$$
 select lives_ok($$select public.get_public_commercial_catalogue()$$, 'authenticated can execute public catalogue RPC');
 reset role;
 
+-- Isolate historical filter fixtures from later reviewed publications.
+update commercial_features set visibility = 'internal';
 -- Exercise both public filters independently, including an unmapped public feature.
 update commercial_features set readiness_status = 'DRAFT', visibility = 'public' where feature_key = 'core.client_management';
 update commercial_features set readiness_status = 'IMPLEMENTED', visibility = 'public' where feature_key = 'core.client_onboarding';

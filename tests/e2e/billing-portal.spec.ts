@@ -386,6 +386,9 @@ test("portal return polls only within its bound and offers manual refresh", asyn
     .click();
   await expect.poll(() => f.summaryReads()).toBeGreaterThan(count);
   await expect.poll(() => f.capacityReads()).toBeGreaterThan(capacityBefore);
+  // Request counters increment before route.fetch/fulfill completes. Drain the
+  // manual refresh before Playwright tears down its context and route handlers.
+  await f.waitForReads();
 });
 test("canonical cancellation, resume and recovery update without new checkout", async ({
   page,

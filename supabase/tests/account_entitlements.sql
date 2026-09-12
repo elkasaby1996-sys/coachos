@@ -65,7 +65,7 @@ select is(get_my_effective_account_entitlements()#>>'{subscription,effectiveStat
 select is(get_my_effective_account_entitlements()#>>'{limits,countedClients}','10','trial capacity overrides Growth');
 select is(get_my_effective_account_entitlements()#>>'{limits,maxCoachSeats}','2','trial maximum two seats');
 select is(jsonb_array_length(get_my_effective_account_entitlements()->'targetFeatureKeys'),47,'all exact Growth mappings returned');
-select is(get_my_effective_account_entitlements()->'enabledFeatureKeys','[]'::jsonb,'non-saleable features excluded');
+select is(get_my_effective_account_entitlements()->'enabledFeatureKeys','["core.client_management","core.lifecycle_management"]'::jsonb,'only reviewed saleable features enabled');
 reset role;
 select ok((select trial_started_at=transaction_timestamp() and trial_ends_at=trial_started_at+interval '14 days' and trial_recovery_ends_at=trial_ends_at+interval '7 days' from account_subscriptions s join billing_accounts a on a.id=s.billing_account_id where a.owner_user_id='a0200000-0000-4000-8000-000000000002'),'database transaction time with 14+7 day clock');
 -- A first workspace already exists; repeat the trial helper without growing usage.
@@ -120,7 +120,7 @@ select ok((select expired_at is not null and status_changed_at=now() from accoun
 select set_config('request.jwt.claim.sub','a0200000-0000-4000-8000-000000000002',true);
 insert into account_feature_entitlement_overrides(billing_account_id,feature_key,effect,reason,source)
 select a.id,f.feature_key,'enable','Commercial fixture','manual' from billing_accounts a cross join commercial_features f where a.owner_user_id='a0200000-0000-4000-8000-000000000002' and f.feature_key in ('core.workout_delivery','core.client_management');
-select is(get_my_effective_account_entitlements()->'enabledFeatureKeys','[]'::jsonb,'enable cannot bypass DRAFT or IMPLEMENTED');
+select is(get_my_effective_account_entitlements()->'enabledFeatureKeys','["core.client_management","core.lifecycle_management"]'::jsonb,'enable cannot bypass DRAFT or IMPLEMENTED');
 update commercial_features set readiness_status='COMMERCIALLY_SALEABLE' where feature_key in ('core.messaging','core.workout_delivery','support.migration_assistance');
 select ok(get_my_effective_account_entitlements()->'enabledFeatureKeys' ? 'core.messaging','saleable mapping enabled');
 insert into account_feature_entitlement_overrides(billing_account_id,feature_key,effect,reason,source)

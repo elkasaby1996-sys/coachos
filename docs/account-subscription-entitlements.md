@@ -104,3 +104,7 @@ See [verification record](pr-price-02-verification.md) for the captured baseline
 See [Lemon Squeezy billing foundation](lemon-squeezy-billing-provider.md) for PR-PRICE-05 hosted Checkout and webhook reconciliation.
 
 See [commercial access modes](commercial-access-modes.md) for PR-PRICE-08 access enforcement and recovery.
+
+## Public catalogue follow-up
+
+PR-PRICE-10 publication dispositions and v1/v2 compatibility are recorded in [public pricing catalogue v2](public-pricing-catalogue-v2.md) and the [complete readiness audit](commercial-readiness-audit.md). Historical implementation evidence above does not itself establish public saleability.

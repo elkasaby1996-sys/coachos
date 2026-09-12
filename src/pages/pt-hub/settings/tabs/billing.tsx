@@ -182,7 +182,7 @@ export function PtHubSettingsBillingTab() {
       {entitlementsQuery.data?.billingAccount.canManageBilling ? (
         <SettingsSectionCard
           title="Billing management"
-          description="Manage payment details and your subscription securely with our billing provider."
+          description="Open subscription recovery options when a provider connection is available."
         >
           <CustomerPortalPanel
             owner={entitlementsQuery.data.billingAccount.canManageBilling}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { COMMERCIAL_FEATURE_KEYS, PUBLIC_PLAN_KEYS } from "./contracts";
+import { publicCommercialCatalogueV2Schema } from "./catalogue-v2";
 
 const positiveInteger = z.number().int().positive();
 const publicPlanSchema = z.object({
@@ -73,6 +74,28 @@ export async function fetchPublicCommercialCatalogue(
     if (error)
       return { data: null, error: new CommercialCatalogueError("UNAVAILABLE") };
     const parsed = publicCommercialCatalogueSchema.safeParse(data);
+    return parsed.success
+      ? { data: parsed.data, error: null }
+      : { data: null, error: new CommercialCatalogueError("INVALID_PAYLOAD") };
+  } catch {
+    return { data: null, error: new CommercialCatalogueError("UNAVAILABLE") };
+  }
+}
+
+/** Explicit diagnostic/API use only; public pages consume the static snapshot. */
+export async function fetchPublicCommercialCatalogueV2(client?: {
+  rpc: (
+    name: "get_public_commercial_catalogue_v2",
+  ) => PromiseLike<{ data: unknown; error: unknown }>;
+}) {
+  try {
+    const source = client ?? (await import("../../lib/supabase")).supabase;
+    const { data, error } = await source.rpc(
+      "get_public_commercial_catalogue_v2",
+    );
+    if (error)
+      return { data: null, error: new CommercialCatalogueError("UNAVAILABLE") };
+    const parsed = publicCommercialCatalogueV2Schema.safeParse(data);
     return parsed.success
       ? { data: parsed.data, error: null }
       : { data: null, error: new CommercialCatalogueError("INVALID_PAYLOAD") };

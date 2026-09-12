@@ -81,72 +81,72 @@ export const marketingFeatureAvailability: Record<
   coachClientAccounts: {
     key: "coachClientAccounts",
     label: "Coach and client accounts",
-    status: "available",
+    status: "beta",
   },
   coachingWorkspaces: {
     key: "coachingWorkspaces",
     label: "Coaching workspaces",
-    status: "available",
+    status: "beta",
   },
   publicCoachProfiles: {
     key: "publicCoachProfiles",
     label: "Public coach profiles",
-    status: "available",
+    status: "beta",
   },
   publicApplications: {
     key: "publicApplications",
     label: "Public applications",
-    status: "available",
+    status: "beta",
   },
   leadWorkflow: {
     key: "leadWorkflow",
     label: "Lead workflow",
-    status: "available",
+    status: "beta",
   },
   programs: {
     key: "programs",
     label: "Programs",
-    status: "available",
+    status: "beta",
   },
   nutritionAssignments: {
     key: "nutritionAssignments",
     label: "Nutrition assignments",
-    status: "available",
+    status: "beta",
   },
   habits: {
     key: "habits",
     label: "Habits",
-    status: "available",
+    status: "beta",
   },
   recurringCheckins: {
     key: "recurringCheckins",
     label: "Recurring check-ins",
-    status: "available",
+    status: "beta",
   },
   messaging: {
     key: "messaging",
     label: "Messaging",
-    status: "available",
+    status: "beta",
   },
   lifecycle: {
     key: "lifecycle",
     label: "Lifecycle",
-    status: "available",
+    status: "beta",
   },
   clientAttentionSignals: {
     key: "clientAttentionSignals",
     label: "Client attention signals",
-    status: "available",
+    status: "beta",
   },
   ptHubAnalytics: {
     key: "ptHubAnalytics",
     label: "PT Hub analytics",
-    status: "available",
+    status: "beta",
   },
   teamRolesPermissions: {
     key: "teamRolesPermissions",
     label: "Team roles and permissions",
-    status: "available",
+    status: "beta",
   },
   whoopData: {
     key: "whoopData",
@@ -1008,7 +1008,7 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "What is RepSync?",
-        a: "RepSync is a coaching operating system for public profiles, applications, onboarding, delivery, check-ins, messages, client attention, and workspace visibility.",
+        a: "Preview RepSync beta workflows for public profiles, applications, onboarding, delivery, check-ins, messages, client attention, and workspace visibility.",
         href: "/product",
       },
       {
@@ -1022,11 +1022,11 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "What does RepSync manage?",
-        a: "RepSync manages public profiles, applications, leads, workspaces, clients, programs, nutrition assignments, habits, check-ins, messages, lifecycle state, attention signals, and PT Hub visibility.",
+        a: "Approved plan inclusions cover client browsing/filtering and lifecycle edits. The product tour also contains beta workflow previews that are not included feature promises.",
       },
       {
         q: "Does RepSync replace every tool?",
-        a: "No. RepSync does not currently include automated billing, native mobile apps, Garmin, message attachments, program commerce, or fully automated migration.",
+        a: "No. Only the pricing comparison lists approved plan inclusions. Other product examples are evaluation previews. Client payments, provider integrations, managed migration and support service-level commitments are not included.",
       },
     ],
   },
@@ -1060,7 +1060,7 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "What does a client see?",
-        a: "Clients see their own coaching plan, workouts, nutrition guidance, habits, check-ins, messages, progress, and supported wearable context.",
+        a: "The beta client tour previews assigned coaching and progress views. Wearable integrations are not included; consult pricing for approved plan inclusions.",
         href: "/for-clients",
       },
       {
@@ -1086,12 +1086,12 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "Can I move from TrueCoach?",
-        a: "RepSync can help assess a move from TrueCoach, but it does not promise a one-click or complete historical migration.",
+        a: "Use the switch checklist to assess your own move from TrueCoach. Managed migration assistance is not included.",
         href: "/compare/truecoach",
       },
       {
         q: "Can I move from FITR?",
-        a: "RepSync can help assess active-client delivery moved from FITR, while payment, commerce, and historical records may need separate planning.",
+        a: "Use the self-service switch checklist for FITR. Managed migration, payment transfer and historical import are not included.",
         href: "/compare/fitr",
       },
       {
@@ -1113,12 +1113,12 @@ export const publicFaqGroups: FaqGroup[] = [
     items: [
       {
         q: "Is RepSync available now?",
-        a: "Yes. Coaches can start with the full Growth workflow for 14 days, with no card required, then choose the plan that fits their operation.",
+        a: "Coaches can evaluate Growth for 14 calendar days with no card and no automatic conversion. Trial capacity is 10 clients, 2 coach seats, 1 workspace and 3 published packages. Pricing lists approved inclusions.",
         href: "/start-trial",
       },
       {
         q: "How does the trial work?",
-        a: "Create a coach account, configure the first workspace, and use Growth access for 14 calendar days before choosing a plan.",
+        a: "The 14-calendar-day Growth trial starts with the first workspace: 10 clients, 2 coach seats, 1 workspace and 3 published packages. No card is required and there is no automatic conversion.",
         href: "/start-trial",
       },
       {
@@ -1132,7 +1132,7 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "Does RepSync have a marketplace?",
-        a: "Yes. Published coach profiles can appear in the public coach directory when the coach enables marketplace visibility.",
+        a: "The beta directory previews published coach profiles. Marketplace eligibility is not an approved plan inclusion.",
       },
     ],
   },
@@ -1661,7 +1661,7 @@ const repSyncComparisonBase: Array<
     label: "Analytics",
     repSync: {
       availability: "included",
-      note: "PT Hub analytics and workspace performance are marketed as available.",
+      note: "Analytics examples are evaluation previews, not approved plan inclusions.",
     },
     competitorByPage: {
       truecoach: {
@@ -1722,7 +1722,7 @@ const repSyncComparisonBase: Array<
     label: "Migration support",
     repSync: {
       availability: "included",
-      note: "RepSync supports deliberate switch planning without promising full automated migration.",
+      note: "A self-service switch checklist is available; managed migration assistance is not included.",
     },
     competitorByPage: {
       truecoach: {
@@ -1862,25 +1862,25 @@ export const marketingRouteMetadata: Record<string, MarketingRouteMetadata> = {
   "/": {
     title: "RepSync | Run the whole coaching business",
     description:
-      "RepSync is a coaching operating system for public profiles, applications, client delivery, attention cues, and workspace visibility.",
+      "Preview RepSync beta workflows for public profiles, applications, client delivery, attention cues, and workspace visibility.",
     canonicalPath: "/",
   },
   "/product": {
     title: "RepSync Product | The Whole Coaching Relationship",
     description:
-      "Explore how RepSync connects public profiles, leads, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, integrations, and the client experience.",
+      "Preview beta RepSync workflows for public profiles, leads, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, integrations, and the client experience.",
     canonicalPath: "/product",
   },
   "/for-coaches": {
     title: "RepSync for Personal Trainers and Online Coaches",
     description:
-      "Manage leads, onboard clients, deliver coaching, run check-ins, collaborate with your team, and see who needs attention.",
+      "Preview beta coaching workflows. Compare approved plan inclusions on the pricing page.",
     canonicalPath: "/for-coaches",
   },
   "/for-clients": {
     title: "RepSync for Coaching Clients",
     description:
-      "View workouts, nutrition guidance, habits, check-ins, messages, and coaching progress in one clear client experience.",
+      "Preview the beta client experience. Availability depends on the current workflow and your coaching relationship.",
     canonicalPath: "/for-clients",
   },
   "/switch": {

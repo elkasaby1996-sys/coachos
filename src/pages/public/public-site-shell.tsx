@@ -45,44 +45,63 @@ export function PublicHeader() {
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
   return (
-    <header className="rs-stitch-header">
-      <Link className="rs-stitch-brand" to="/" aria-label="RepSync home">
-        <span>R E P S Y N C</span>
-      </Link>
-      <button
-        className="rs-stitch-menu"
-        type="button"
-        aria-controls="rs-stitch-nav"
-        aria-expanded={menuOpen}
-        aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-        onClick={() => setMenuOpen((open) => !open)}
-      >
-        <span />
-        <span />
-      </button>
-      <nav
-        className={`rs-stitch-nav ${menuOpen ? "is-open" : ""}`}
-        id="rs-stitch-nav"
-        aria-label="Public navigation"
-      >
-        {navItems.map((item) => (
-          <Link
-            key={item.to}
-            aria-current={location.pathname === item.to ? "page" : undefined}
-            className={location.pathname === item.to ? "is-active" : ""}
-            to={item.to}
-          >
-            {item.label}
+    <>
+      <header className="rs-stitch-header">
+        <Link className="rs-stitch-brand" to="/" aria-label="RepSync home">
+          <span>R E P S Y N C</span>
+        </Link>
+        <button
+          className="rs-stitch-menu"
+          type="button"
+          aria-controls="rs-stitch-nav"
+          aria-expanded={menuOpen}
+          aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span />
+          <span />
+        </button>
+        <nav
+          className={`rs-stitch-nav ${menuOpen ? "is-open" : ""}`}
+          id="rs-stitch-nav"
+          aria-label="Public navigation"
+        >
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              aria-current={location.pathname === item.to ? "page" : undefined}
+              className={location.pathname === item.to ? "is-active" : ""}
+              to={item.to}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <div className={`rs-stitch-actions ${menuOpen ? "is-open" : ""}`}>
+          <PublicSiteLink to="/login" variant="text">
+            Log in
+          </PublicSiteLink>
+          <PublicSiteLink to="/start-trial">Start 14-day trial</PublicSiteLink>
+        </div>
+      </header>
+      {!["/pricing", "/privacy", "/terms", "/cookies", "/security"].includes(
+        location.pathname,
+      ) && (
+        <aside
+          className="rs-commercial-preview-note"
+          aria-label="Product preview status"
+        >
+          <strong>Evaluation previews</strong> � The workflows and examples on
+          this page include beta capabilities under review. They are not
+          promises of included plan features.{" "}
+          <Link to="/pricing#plan-comparison">
+            See approved plan inclusions
           </Link>
-        ))}
-      </nav>
-      <div className={`rs-stitch-actions ${menuOpen ? "is-open" : ""}`}>
-        <PublicSiteLink to="/login" variant="text">
-          Log in
-        </PublicSiteLink>
-        <PublicSiteLink to="/start-trial">Start 14-day trial</PublicSiteLink>
-      </div>
-    </header>
+          . Provider integrations, client payments and managed migration are not
+          offered here.
+        </aside>
+      )}
+    </>
   );
 }
 

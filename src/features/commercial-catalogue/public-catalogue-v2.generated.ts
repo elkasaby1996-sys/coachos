@@ -1,0 +1,107 @@
+export default {
+  plans: [
+    {
+      planKey: "launch",
+      features: [
+        {
+          domain: "core",
+          featureKey: "core.client_management",
+          displayName: "Client management",
+          marketingLabel: "Browse and filter your coaching clients",
+        },
+        {
+          domain: "core",
+          featureKey: "core.lifecycle_management",
+          displayName: "Lifecycle management",
+          marketingLabel: "Manage client lifecycle states",
+        },
+      ],
+      capacities: {
+        maxCoachSeats: 2,
+        countedClients: 10,
+        activeWorkspaces: 1,
+        publishedPackages: 3,
+        includedCoachSeats: 1,
+      },
+      displayName: "Launch",
+      planVersion: 1,
+      currencyCode: "USD",
+      isMostPopular: false,
+      annualPriceMinor: 19000,
+      monthlyPriceMinor: 1900,
+    },
+    {
+      planKey: "growth",
+      features: [
+        {
+          domain: "core",
+          featureKey: "core.client_management",
+          displayName: "Client management",
+          marketingLabel: "Browse and filter your coaching clients",
+        },
+        {
+          domain: "core",
+          featureKey: "core.lifecycle_management",
+          displayName: "Lifecycle management",
+          marketingLabel: "Manage client lifecycle states",
+        },
+      ],
+      capacities: {
+        maxCoachSeats: 5,
+        countedClients: 50,
+        activeWorkspaces: 3,
+        publishedPackages: null,
+        includedCoachSeats: 2,
+      },
+      displayName: "Growth",
+      planVersion: 1,
+      currencyCode: "USD",
+      isMostPopular: true,
+      annualPriceMinor: 59000,
+      monthlyPriceMinor: 5900,
+    },
+    {
+      planKey: "scale",
+      features: [
+        {
+          domain: "core",
+          featureKey: "core.client_management",
+          displayName: "Client management",
+          marketingLabel: "Browse and filter your coaching clients",
+        },
+        {
+          domain: "core",
+          featureKey: "core.lifecycle_management",
+          displayName: "Lifecycle management",
+          marketingLabel: "Manage client lifecycle states",
+        },
+      ],
+      capacities: {
+        maxCoachSeats: 10,
+        countedClients: 100,
+        activeWorkspaces: 5,
+        publishedPackages: null,
+        includedCoachSeats: 5,
+      },
+      displayName: "Scale",
+      planVersion: 1,
+      currencyCode: "USD",
+      isMostPopular: false,
+      annualPriceMinor: 119000,
+      monthlyPriceMinor: 11900,
+    },
+  ],
+  trial: {
+    capacities: {
+      coachSeats: 2,
+      countedClients: 10,
+      activeWorkspaces: 1,
+      publishedPackages: 3,
+    },
+    cardRequired: false,
+    durationDays: 14,
+    experiencePlanKey: "growth",
+  },
+  addons: [],
+  schemaVersion: 2,
+} as const;

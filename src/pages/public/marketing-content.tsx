@@ -1,5 +1,6 @@
+import { PUBLIC_CATALOGUE_V2 } from "../../features/commercial-catalogue/public-catalogue-snapshot";
+import { PricingComparison, PublicSeatAddons } from "./pricing-comparison";
 import {
-  PUBLIC_PLAN_SNAPSHOT_V1,
   formatCommercialPrice,
   formatPublishedPackageCapacity,
 } from "../../features/commercial-catalogue/public-plan-snapshot";
@@ -145,23 +146,21 @@ const switchingSteps = [
 const pricingPlanCopy = {
   launch: {
     audience: "For new and part-time coaches building their first client base.",
-    summary:
-      "Everything required to coach professionally, for up to 10 clients.",
+    summary: "Capacity for up to 10 coaching clients.",
   },
   growth: {
     audience:
       "For full-time independent coaches and coaches beginning to work with an assistant.",
-    summary: "Run a full-time coaching operation with room for an assistant.",
+    summary: "Capacity for up to 50 coaching clients and two included seats.",
   },
   scale: {
     audience:
       "For established coaches, small coaching companies, and multi-coach delivery teams.",
-    summary:
-      "A coaching-business operating system for teams managing up to 100 clients.",
+    summary: "Capacity for up to 100 coaching clients and five included seats.",
   },
 };
 
-const pricingPlans = PUBLIC_PLAN_SNAPSHOT_V1.map((plan) => ({
+const pricingPlans = PUBLIC_CATALOGUE_V2.plans.map((plan) => ({
   id: plan.planKey,
   name: plan.displayName,
   ...pricingPlanCopy[plan.planKey],
@@ -172,31 +171,17 @@ const pricingPlans = PUBLIC_PLAN_SNAPSHOT_V1.map((plan) => ({
   annualPrice: formatCommercialPrice(plan.annualPriceMinor, plan.currencyCode),
   limits: [
     `Client capacity: ${plan.capacities.countedClients}`,
+    `Maximum ${plan.capacities.maxCoachSeats} total coach seats`,
     `${plan.capacities.includedCoachSeats} included coach ${plan.capacities.includedCoachSeats === 1 ? "seat" : "seats"}`,
     `${plan.capacities.activeWorkspaces} ${plan.capacities.activeWorkspaces === 1 ? "workspace" : "workspaces"}`,
     formatPublishedPackageCapacity(plan.capacities.publishedPackages),
   ],
   featured: plan.isMostPopular,
+  highlights: plan.features
+    .slice(0, 3)
+    .map((feature) => feature.marketingLabel),
 }));
-// Legacy feature copy is not catalogue readiness evidence. PR-PRICE-10 gates final public feature rendering.
-
-const pricingCoreFeatures = [
-  "Public coach profile",
-  "Marketplace presence",
-  "Public packages",
-  "Lead applications",
-  "Lead conversations",
-  "Client onboarding",
-  "Workouts and programs",
-  "Nutrition guidance",
-  "Habits",
-  "Check-ins and reviews",
-  "Messaging",
-  "Progress tracking and photos",
-  "Client lifecycle",
-  "Client attention indicators",
-  "Standard analytics",
-];
+// PR-PRICE-10: feature claims come only from the reviewed catalogue.
 
 const pricingDefinitions = [
   {
@@ -545,7 +530,7 @@ export function MarketingHomePage() {
   usePublicSeo({
     title: "RepSync | Connected coaching operations",
     description:
-      "RepSync connects lead management, onboarding, coaching delivery, communication, and client attention in one operating system.",
+      "Explore beta RepSync workflow previews and compare approved plan inclusions.",
   });
 
   return (
@@ -1977,7 +1962,7 @@ export function ForCoachesPage() {
   usePublicSeo({
     title: "For coaches | RepSync",
     description:
-      "Run the business around your coaching with RepSync lead continuity, delivery workflows, attention signals, and team workspaces.",
+      "Explore beta coaching workflow previews and compare approved plan capacities.",
   });
 
   const audienceTypes = [
@@ -2446,7 +2431,7 @@ export function ForCoachesPage() {
       </section>
 
       <FinalCta
-        title="Start with the full coaching workflow."
+        title="Evaluate Growth for 14 days."
         body="Use Growth access for 14 days, configure your operation, and choose a plan after you understand how RepSync fits the way you coach."
       />
     </PublicLayout>
@@ -2457,7 +2442,7 @@ export function ForClientsPage() {
   usePublicSeo({
     title: "For clients | RepSync",
     description:
-      "RepSync gives coaching clients a focused daily view for workouts, nutrition, habits, messages, check-ins, and progress.",
+      "Explore the beta RepSync client experience. Preview workflows are separate from approved plan inclusions.",
   });
 
   const todayItems = [
@@ -3095,7 +3080,7 @@ export function SwitchPage() {
         <p className="rs-stitch-kicker">Start deliberately</p>
         <h2>Prepare the workflow, then start with a controlled first group.</h2>
         <p>
-          Use the seven-day Growth trial to configure your workspace, verify
+          Use the 14-day Growth trial to configure your workspace, verify
           access, and understand what should move before inviting active
           clients.
         </p>
@@ -3121,7 +3106,7 @@ export function PricingPage() {
   usePublicSeo({
     title: "Plans | RepSync",
     description:
-      "Compare RepSync plans for independent coaches and coaching teams, with every plan including the core coaching workflow.",
+      "Compare RepSync plan capacities, approved features and the 14-day no-card Growth trial.",
   });
 
   return (
@@ -3134,9 +3119,8 @@ export function PricingPage() {
             does.
           </h1>
           <p>
-            Every RepSync plan includes the core coaching workflow. Choose based
-            on client capacity, team size, and workspace needs - not by giving
-            up the tools required to coach properly.
+            Compare client capacity, included seats and workspace limits. The
+            comparison below lists the features approved for plan inclusion.
           </p>
           <div
             className="rs-pricing-hero__assurances"
@@ -3152,6 +3136,7 @@ export function PricingPage() {
               Choose your capacity after the Growth trial.
             </p>
             <SiteLink to="/start-trial">Start 14-day trial</SiteLink>
+            <a href="#plan-comparison">Compare all capacities and features</a>
           </div>
         </div>
       </section>
@@ -3177,7 +3162,7 @@ export function PricingPage() {
             onClick={() => setBillingPeriod("annual")}
           >
             Annual
-            <span>Two months free</span>
+            <span>Save two months versus monthly billing</span>
           </button>
         </div>
         <div className="rs-pricing-plan-grid">
@@ -3210,6 +3195,11 @@ export function PricingPage() {
                 ))}
               </ul>
               <p className="rs-pricing-plan__summary">{plan.summary}</p>
+              <ul className="rs-pricing-plan__limits">
+                {plan.highlights.map((label) => (
+                  <li key={label}>{label}</li>
+                ))}
+              </ul>
               <SiteLink
                 to={buildTrialPath(plan.id)}
                 variant={plan.featured ? "primary" : "secondary"}
@@ -3221,49 +3211,8 @@ export function PricingPage() {
         </div>
       </section>
 
-      <section className="rs-pricing-core">
-        <div className="rs-pricing-section-heading rs-stitch-reveal">
-          <p className="rs-stitch-kicker">All plans include</p>
-          <h2>The coaching core is included on every plan.</h2>
-          <p>
-            Launch is not a restricted starter tier. Every coach receives the
-            core workflows required to manage leads and deliver coaching
-            professionally.
-          </p>
-        </div>
-        <ul className="rs-pricing-core__grid rs-stitch-reveal">
-          {pricingCoreFeatures.map((feature) => (
-            <li key={feature}>
-              <CheckCircle2 size={16} aria-hidden="true" />
-              <span>{feature}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="rs-pricing-core__note rs-stitch-reveal">
-          Plans differ mainly by capacity, team structure, workspace needs,
-          advanced reporting, and operating controls.
-        </p>
-      </section>
-
-      <section className="rs-pricing-seats">
-        <div className="rs-pricing-seats__intro rs-stitch-reveal">
-          <p className="rs-stitch-kicker">Additional coach seats</p>
-          <h2>Add support without changing the client limit.</h2>
-          <p>
-            Additional coach seats are priced at $12 monthly or $120 annually.
-            An additional seat adds team access but does not increase the client
-            capacity.
-          </p>
-        </div>
-        <div className="rs-pricing-seats__limits rs-stitch-reveal">
-          {PUBLIC_PLAN_SNAPSHOT_V1.map((plan) => (
-            <p key={plan.planKey}>
-              <strong>{plan.displayName}</strong>
-              <span>Maximum {plan.capacities.maxCoachSeats} total seats</span>
-            </p>
-          ))}
-        </div>
-      </section>
+      <PricingComparison />
+      <PublicSeatAddons period={billingPeriod} />
 
       <section className="rs-pricing-counts">
         <div className="rs-pricing-section-heading rs-stitch-reveal">
@@ -3288,9 +3237,8 @@ export function PricingPage() {
         </div>
         <div className="rs-stitch-reveal">
           <p>
-            Clients do not pay RepSync to view their coaching, complete
-            workouts, follow nutrition guidance, track habits, submit check-ins,
-            or message their coach.
+            Client accounts have no RepSync subscription charge. Coaching
+            services are agreed separately with the coach.
           </p>
           <p>
             Any fee a client pays for coaching is set by the coach and is
@@ -3302,7 +3250,7 @@ export function PricingPage() {
       <section className="rs-pricing-trial">
         <div className="rs-pricing-trial__copy rs-stitch-reveal">
           <p className="rs-stitch-kicker">14-day Growth trial</p>
-          <h2>Use the full Growth workflow before choosing a plan.</h2>
+          <h2>Evaluate Growth for 14 calendar days.</h2>
           <p>
             Try Growth features for 14 days with capacity for 10 clients, two
             coach seats, one workspace, and three published packages. Explore a
@@ -3332,8 +3280,8 @@ export function PricingPage() {
         <p className="rs-stitch-kicker">Get started</p>
         <h2>Start with Growth access for 14 days.</h2>
         <p>
-          Explore the full coaching workflow, then choose the capacity that fits
-          your client base, team, and workspace structure.
+          Evaluate the trial, then choose the capacity that fits your client
+          base, team, and workspace structure.
         </p>
         <div className="rs-stitch-cta__actions">
           <SiteLink to="/start-trial">Start 14-day trial</SiteLink>
