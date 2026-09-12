@@ -91,7 +91,8 @@ describe("capacity mutation error boundary", () => {
     );
     expect(source).toContain('role="alert"');
     expect(source).toContain('audience === "owner"');
-    expect(source).toContain('to="/pt-hub/settings/billing"');
+    expect(source).toContain('"/pt-hub/settings/billing#coach-seats"');
+    expect(source).toContain('error.dimension === "coach_seats"');
     expect(source).not.toMatch(/upgrade|checkout|payment|rawEmail/);
   });
 });

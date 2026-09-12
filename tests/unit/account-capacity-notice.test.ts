@@ -35,7 +35,7 @@ describe("capacity denial notice", () => {
     const html = render("owner");
     expect(html).toContain('role="alert"');
     expect(html).toContain("7 committed of 5");
-    expect(html).toContain('href="/pt-hub/settings/billing"');
+    expect(html).toContain('href="/pt-hub/settings/billing#coach-seats"');
   });
   it.each(["team", "client"] as const)(
     "does not expose cached owner quantities to %s",

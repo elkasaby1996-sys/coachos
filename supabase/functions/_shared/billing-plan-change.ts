@@ -104,7 +104,15 @@ export async function handlePlanChange(
       p_environment: config.environment,
     });
     const id = ctx.subscription.provider_subscription_id;
-    const current = await config.provider.retrieveSubscription(id);
+    const subscription = await config.provider.retrieveSubscription(id);
+    const firstItem = config.provider.retrieveSubscriptionItem
+      ? await config.provider.retrieveSubscriptionItem(
+          subscription.first_subscription_item_id,
+        )
+      : null;
+    const current = firstItem
+      ? { ...subscription, verified_item: firstItem }
+      : subscription;
     if (current.payment_processor === "paypal")
       throw new BillingError("BILLING_PLAN_CHANGE_PAYPAL_UNSUPPORTED", 409);
     if (current.payment_processor !== "card")
@@ -176,7 +184,8 @@ export async function handlePlanChange(
           snapshot.order_item_id !== current.order_item_id ||
           snapshot.first_subscription_item_id !==
             current.first_subscription_item_id ||
-          snapshot.quantity !== 1 ||
+          snapshot.quantity !==
+            1 + (ctx.subscription.approved_additional_coach_seats ?? 0) ||
           snapshot.payment_processor !== "card" ||
           snapshot.variant_id !== operation!.variant ||
           snapshot.product_id !== operation!.product ||
@@ -202,9 +211,16 @@ export async function handlePlanChange(
       // GET confirms state after PATCH, especially source restoration on cancel.
       const updated = await config.provider.retrieveSubscription(id);
       validate(updated);
+      const verifiedItem = config.provider.retrieveSubscriptionItem
+        ? await config.provider.retrieveSubscriptionItem(
+            updated.first_subscription_item_id,
+          )
+        : null;
       const result = await deps.serviceRpc("finish_billing_plan_change", {
         ...base,
-        p_snapshot: updated,
+        p_snapshot: verifiedItem
+          ? { ...updated, verified_item: verifiedItem }
+          : updated,
       });
       if (!["processed", "replayed"].includes(result))
         throw new BillingError(

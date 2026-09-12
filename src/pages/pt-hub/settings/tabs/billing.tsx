@@ -7,9 +7,11 @@ import {
   SettingsSectionCard,
 } from "../../../../features/settings/components/settings-primitives";
 import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { BillingCheckoutPanel } from "../../../../features/billing/checkout-panel";
 import { CustomerPortalPanel } from "../../../../features/billing/customer-portal-panel";
 import { PlanChangePanel } from "../../../../features/billing/plan-change-panel";
+import { SeatQuantityPanel } from "../../../../features/billing/seat-quantity-panel";
 import {
   useMyEffectiveAccountEntitlements,
   AccountEntitlementError,
@@ -22,14 +24,19 @@ import {
 import { CapacityMeters } from "../../../../features/account-capacity/capacity-meters";
 
 export function PtHubSettingsBillingTab() {
+  const queryClient = useQueryClient();
   const entitlementsQuery = useMyEffectiveAccountEntitlements();
   const capacityQuery = useMyAccountCapacitySnapshot();
   const subscription = entitlementsQuery.data?.subscription;
   const refetchEntitlements = entitlementsQuery.refetch;
   const refetchCapacity = capacityQuery.refetch;
   const refreshBilling = useCallback(async () => {
-    await Promise.all([refetchEntitlements(), refetchCapacity()]);
-  }, [refetchEntitlements, refetchCapacity]);
+    await Promise.all([
+      refetchEntitlements(),
+      refetchCapacity(),
+      queryClient.invalidateQueries({ queryKey: ["billing"] }),
+    ]);
+  }, [refetchEntitlements, refetchCapacity, queryClient]);
   const dateLabel = (value: string) =>
     new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
       new Date(value),
@@ -149,6 +156,18 @@ export function PtHubSettingsBillingTab() {
           />
         ) : null}
       </SettingsSectionCard>
+
+      {entitlementsQuery.data?.billingAccount.canManageBilling &&
+      subscription?.kind === "paid" ? (
+        <div id="coach-seats">
+          <SettingsSectionCard
+            title="Coach seats"
+            description="Review included seats, additional seats and team capacity before confirming a change."
+          >
+            <SeatQuantityPanel owner={true} refresh={refreshBilling} />
+          </SettingsSectionCard>
+        </div>
+      ) : null}
 
       {entitlementsQuery.data?.billingAccount.canManageBilling &&
       subscription?.kind === "paid" ? (

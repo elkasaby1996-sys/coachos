@@ -49,3 +49,5 @@ Billing retains Checkout, Customer Portal, payment recovery, entitlement display
 See [security](lemon-squeezy-plan-change-security.md), [test runbook](lemon-squeezy-plan-change-test-runbook.md), and [verification](pr-price-07-verification.md). Seats, quantity billing, refunds, coupons, client payments, general feature enforcement and deployment remain deferred.
 
 See [commercial access modes](commercial-access-modes.md) for PR-PRICE-08 access enforcement and recovery.
+
+Additional coach-seat quantities and plan compatibility are extended in [PR-PRICE-09](lemon-squeezy-coach-seat-billing.md).

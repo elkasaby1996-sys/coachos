@@ -1,4 +1,5 @@
 import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
@@ -96,7 +97,11 @@ describe("Billing capacity", () => {
   });
   it("keeps entitlement and checkout when capacity fails", () => {
     const html = renderToStaticMarkup(
-      React.createElement(PtHubSettingsBillingTab),
+      React.createElement(
+        QueryClientProvider,
+        { client: new QueryClient() },
+        React.createElement(PtHubSettingsBillingTab),
+      ),
     );
     expect(html).toContain("Complimentary beta access");
     expect(html).toContain("Account capacity unavailable");
