@@ -20,12 +20,16 @@ describe("workspace header pill wiring", () => {
     expect(ptLayout).toContain("switchWorkspace(routeWorkspaceId);");
   });
 
-  it("uses the unified full-height rail and compact utility dock across PT routes", () => {
+  it("reserves the shared footer below the unified rail and compact utility dock across PT routes", () => {
     const ptLayout = readSource("src/components/layouts/pt-layout.tsx");
     const shellCss = readSource("src/styles/pt-workspace-shell.css");
 
     expect(ptLayout).toContain("pt-workspace-rail-desktop");
-    expect(ptLayout).toContain("lg:inset-y-0");
+    expect(ptLayout).toContain(
+      "lg:top-0 lg:bottom-[var(--pt-workspace-footer-height)]",
+    );
+    expect(shellCss).toContain("--pt-workspace-footer-height: 48px;");
+    expect(shellCss).toContain("height: var(--pt-workspace-footer-height);");
     expect(ptLayout).not.toContain("lg:bottom-[72px]");
     expect(ptLayout).toContain("R E P S Y N C");
     expect(ptLayout).not.toContain("Repsync PT\n");

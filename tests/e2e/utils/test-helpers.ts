@@ -120,7 +120,21 @@ export async function signInWithEmail(
   if ((await sessionReady.count()) === 0) {
     await emailInput.fill(email);
     await page.getByLabel("Password", { exact: true }).fill(password);
-    await clickVisibleEnabledSignInButton(page);
+    // Wait for the real sign-in response before starting the rendered-session
+    // budget. A slow successful request is different from missing auth state.
+    const [response] = await Promise.all([
+      page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          response.request().method() === "POST" &&
+          url.pathname.endsWith("/auth/v1/token") &&
+          url.searchParams.get("grant_type") === "password"
+        );
+      }),
+      clickVisibleEnabledSignInButton(page),
+    ]);
+    expect(response.ok(), "Sign-in request must succeed").toBe(true);
+    await response.finished();
   }
   await waitForAuthSessionReady(page);
   await waitForBootstrapResolved(page);

@@ -30,16 +30,12 @@ test("Growth purchase waits for payment, then reduction and cancellation retain 
   ).toBeVisible();
   expect(f.patches()).toBe(1);
   await f.payment();
-  await page
-    .getByRole("button", { name: "Refresh coach seats", exact: true })
-    .click();
+  await f.refreshSeats();
   await expect(
     seats.getByText("Effective limit: 3", { exact: false }),
   ).toBeVisible();
   await f.previewSeats(0);
-  await page
-    .getByRole("button", { name: "Confirm scheduled reduction", exact: true })
-    .click();
+  await f.scheduleSeatReduction();
   await expect(
     seats.getByText("New invitations must fit the scheduled limit of 2", {
       exact: false,
@@ -49,9 +45,7 @@ test("Growth purchase waits for payment, then reduction and cancellation retain 
     seats.getByText("Effective limit: 3", { exact: false }),
   ).toBeVisible();
   expect((await f.reserveSeats(2)).granted).toBe(false);
-  await page
-    .getByRole("button", { name: "Cancel scheduled reduction", exact: true })
-    .click();
+  await f.cancelSeatReduction();
   await expect(
     seats.getByText("New invitations must fit", { exact: false }),
   ).toHaveCount(0);
@@ -74,18 +68,14 @@ test("failed payment preserves seats and recovery completes the same purchase", 
   );
   await f.buySeats(1);
   await f.payment(false);
-  await page
-    .getByRole("button", { name: "Refresh coach seats", exact: true })
-    .click();
+  await f.refreshSeats();
   await expect(
     page
       .locator("#coach-seats")
       .getByText("Effective limit: 2", { exact: false }),
   ).toBeVisible();
   await f.payment(true);
-  await page
-    .getByRole("button", { name: "Refresh coach seats", exact: true })
-    .click();
+  await f.refreshSeats();
   await expect(
     page
       .locator("#coach-seats")
@@ -108,9 +98,7 @@ test("maximum seat purchase blocks an incompatible plan and committed-seat reduc
   );
   await f.buySeats(3);
   await f.payment();
-  await page
-    .getByRole("button", { name: "Refresh coach seats", exact: true })
-    .click();
+  await f.refreshSeats();
   await expect(
     page
       .locator("#coach-seats")
@@ -153,9 +141,7 @@ test("unapproved provider quantity preserves approved capacity in manual review"
   );
   f.snapshot().quantity = 3;
   await f.payment();
-  await page
-    .getByRole("button", { name: "Refresh coach seats", exact: true })
-    .click();
+  await f.refreshSeats();
   await expect(
     page
       .locator("#coach-seats")
@@ -185,9 +171,7 @@ for (const kind of ["active", "pending"] as const)
     );
     await f.buySeats(1);
     await f.payment();
-    await page
-      .getByRole("button", { name: "Refresh coach seats", exact: true })
-      .click();
+    await f.refreshSeats();
     await f.addSeatCommitments(kind, 2);
     await f.previewSeats(0);
     await expect(
@@ -205,12 +189,7 @@ for (const kind of ["active", "pending"] as const)
     if (kind === "pending") {
       await f.revokeSeatInvites();
       await f.previewSeats(0);
-      await page
-        .getByRole("button", {
-          name: "Confirm scheduled reduction",
-          exact: true,
-        })
-        .click();
+      await f.scheduleSeatReduction();
       await expect(
         page.getByRole("button", {
           name: "Cancel scheduled reduction",
@@ -234,18 +213,14 @@ test("compatible plan upgrade retains purchased seats", async ({
   );
   await f.buySeats(1);
   await f.payment();
-  await page
-    .getByRole("button", { name: "Refresh coach seats", exact: true })
-    .click();
+  await f.refreshSeats();
   await f.preview("scale");
   await f.apply();
   await expect(
     page.getByText("Waiting for verified payment.", { exact: false }),
   ).toBeVisible();
   await f.payment();
-  await page
-    .getByRole("button", { name: "Refresh coach seats", exact: true })
-    .click();
+  await f.refreshSeats();
   await expect(
     page
       .locator("#coach-seats")

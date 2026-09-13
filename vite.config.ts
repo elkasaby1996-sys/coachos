@@ -5,6 +5,8 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 const sentrySourceMapsEnabled = Boolean(process.env.SENTRY_AUTH_TOKEN);
 
 export default defineConfig({
+  // Generated browser reports are evidence, not application entry points.
+  optimizeDeps: { entries: ["index.html"] },
   plugins: [
     react(),
     ...(sentrySourceMapsEnabled

@@ -1,0 +1,1508 @@
+{
+  "parentCommit": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+  "candidateBase": "1b95cb34835dd0021f4af8d739998cb4478e55f2",
+  "workers": 4,
+  "retries": 0,
+  "failures": [
+    {
+      "id": "B01",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "trial hosted checkout waits for verified confirmation",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:175:3",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:94:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-checkout",
+          "decisionBeforeEdit": "All four fail in fixture at Start subscription after page.goto, before their billing assertions. Final bootstrap/auth markers are absent; canonical entitlement/access reads remain unfinished and checkout-state has not arrived. The fixture asserts on document navigation completion rather than canonical checkout readiness. No page errors. Wait for the real checkout-state response and post-navigation bootstrap, then retain the existing visible-action assertion. Drain outstanding routed callbacks during teardown."
+        },
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke fails Finalizing your subscription immediately after return navigation while canonical checkout/entitlement reads remain unfinished. Reuse explicit checkout-state response readiness on return, preserving the finalizing/payment-proof assertions."
+        }
+      ]
+    },
+    {
+      "id": "B02",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "complimentary hosted checkout waits for verified confirmation",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:175:3",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:94:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-checkout",
+          "decisionBeforeEdit": "All four fail in fixture at Start subscription after page.goto, before their billing assertions. Final bootstrap/auth markers are absent; canonical entitlement/access reads remain unfinished and checkout-state has not arrived. The fixture asserts on document navigation completion rather than canonical checkout readiness. No page errors. Wait for the real checkout-state response and post-navigation bootstrap, then retain the existing visible-action assertion. Drain outstanding routed callbacks during teardown."
+        }
+      ]
+    },
+    {
+      "id": "B03",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "unavailable provider retains selected plan and cadence",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:220:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:94:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-checkout.spec.ts:220:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Start subscription', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:100:5)"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-checkout",
+          "decisionBeforeEdit": "All four fail in fixture at Start subscription after page.goto, before their billing assertions. Final bootstrap/auth markers are absent; canonical entitlement/access reads remain unfinished and checkout-state has not arrived. The fixture asserts on document navigation completion rather than canonical checkout readiness. No page errors. Wait for the real checkout-state response and post-navigation bootstrap, then retain the existing visible-action assertion. Drain outstanding routed callbacks during teardown."
+        }
+      ]
+    },
+    {
+      "id": "B04",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "return query is not payment proof",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:244:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 20000ms exceeded.",
+            "at waitForBootstrapResolved (tests\\e2e\\utils\\test-helpers.ts:84:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:126:9)",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:94:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-checkout",
+          "decisionBeforeEdit": "All four fail in fixture at Start subscription after page.goto, before their billing assertions. Final bootstrap/auth markers are absent; canonical entitlement/access reads remain unfinished and checkout-state has not arrived. The fixture asserts on document navigation completion rather than canonical checkout readiness. No page errors. Wait for the real checkout-state response and post-navigation bootstrap, then retain the existing visible-action assertion. Drain outstanding routed callbacks during teardown."
+        }
+      ]
+    },
+    {
+      "id": "B05",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "double activation dispatches one Checkout request",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:253:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Start subscription', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:100:5)"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke fails initial Start subscription while canonical capacity/access/provider reads are unfinished. The initial checkout-state readiness correction covers this same fixture defect."
+        }
+      ]
+    },
+    {
+      "id": "B06",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "second tab reports an existing open Checkout",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:270:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Start subscription', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:100:5)"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-checkout.spec.ts:270:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:94:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B07",
+      "file": "tests/e2e/billing-coach-seats.spec.ts",
+      "fullTestName": "Growth purchase waits for payment, then reduction and cancellation retain the correct limits",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:7:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:7:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-coach-seats",
+          "decisionBeforeEdit": "Failure is at login before billing UI. Local Auth logs show /token HTTP 504 context deadlines and a Docker DNS lookup supabase_db_coachos on 127.0.0.11:53 i/o timeout. Another token took 18.24 seconds. This attributes this reproduction to local service unavailability, not to memory or a billing contract. No product/test correction made on this evidence."
+        },
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke fails Effective limit: 3 after immediate refresh click. Real refresh completed 200 in 4919ms, followed by invalidation reads. Source seat-quantity-panel.run awaits these reads before clearing busy. Wait for action and canonical seat-state response, then retain ready-control and exact limit assertions."
+        }
+      ]
+    },
+    {
+      "id": "B08",
+      "file": "tests/e2e/billing-coach-seats.spec.ts",
+      "fullTestName": "failed payment preserves seats and recovery completes the same purchase",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:62:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:62:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "ENVIRONMENTAL_FLAKE",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-coach-seats",
+          "decisionBeforeEdit": "Failure is at login before billing UI. Local Auth logs show /token HTTP 504 context deadlines and a Docker DNS lookup supabase_db_coachos on 127.0.0.11:53 i/o timeout. Another token took 18.24 seconds. This attributes this reproduction to local service unavailability, not to memory or a billing contract. No product/test correction made on this evidence."
+        }
+      ]
+    },
+    {
+      "id": "B09",
+      "file": "tests/e2e/billing-coach-seats.spec.ts",
+      "fullTestName": "maximum seat purchase blocks an incompatible plan and committed-seat reduction",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:96:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-coach-seats",
+          "decisionBeforeEdit": "Failure is at login before billing UI. Local Auth logs show /token HTTP 504 context deadlines and a Docker DNS lookup supabase_db_coachos on 127.0.0.11:53 i/o timeout. Another token took 18.24 seconds. This attributes this reproduction to local service unavailability, not to memory or a billing contract. No product/test correction made on this evidence."
+        },
+        {
+          "run": "parent-observed-billing-coach-seats",
+          "decisionBeforeEdit": "This specific login returned HTTP 200 after 18.238 seconds; the fixture started its 15-second auth-marker budget immediately after clicking, before token response completion. Await the exact successful password-token response before checking rendered auth/bootstrap readiness. This does not retry or accept the separate HTTP 504 cases."
+        },
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke fails Effective limit: 5 while refresh completes 200 in 9522ms. Same run/refresh canonical-readiness defect, independent of the earlier slow successful authentication occurrence."
+        }
+      ]
+    },
+    {
+      "id": "B10",
+      "file": "tests/e2e/billing-coach-seats.spec.ts",
+      "fullTestName": "pending team commitments block reduction before provider mutation",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Cancel scheduled reduction', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: locator('#coach-seats').getByText('Target limit: 2')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Cancel scheduled reduction', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke fails Cancel scheduled reduction while apply finishes 200 after 29431ms. Source run(apply) then invalidates canonical state. Synchronize seat action and canonical refetch; preserve disabled reduction, exact target limits and provider mutation count assertions."
+        }
+      ]
+    },
+    {
+      "id": "B11",
+      "file": "tests/e2e/billing-coach-seats.spec.ts",
+      "fullTestName": "compatible plan upgrade retains purchased seats",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1",
+          "assertionEvidence": [
+            "Error: locator.selectOption: Test timeout of 90000ms exceeded."
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Waiting for verified payment.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1",
+          "assertionEvidence": [
+            "Error: locator.selectOption: Test timeout of 90000ms exceeded."
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "ENVIRONMENTAL_FLAKE",
+      "evidence": [
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Password token returned HTTP 504 (35839ms / 17635ms respectively). No commercial assertion was reached. Preserve explicit successful-response requirement; do not suppress the service failure."
+        }
+      ]
+    },
+    {
+      "id": "B12",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "renewal invoice is not upgrade payment proof",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-plan-change.spec.ts:103:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Waiting for verified payment.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:103:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Waiting for verified payment.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "ENVIRONMENTAL_FLAKE",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-selection",
+          "decisionBeforeEdit": "Password token returned HTTP 504 (35839ms / 17635ms respectively). No commercial assertion was reached. Preserve explicit successful-response requirement; do not suppress the service failure."
+        }
+      ]
+    },
+    {
+      "id": "B13",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "Scale downgrade blocks commitments then schedules after remediation",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-plan-change.spec.ts:118:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('51 committed')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-plan-change.spec.ts:118:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toHaveAttribute(expected) failed",
+            "Locator: getByRole('progressbar', { name: 'Clients committed capacity' })",
+            "Timeout: 5000ms"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:118:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('The target plan limits new capacity commitments.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B14",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "monthly to annual shows full annual amount",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-plan-change.spec.ts:169:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Target: $190.00 USD charged annually', { exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B15",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "higher tier and annual to monthly is unsupported",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-plan-change.spec.ts:184:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('alert').filter({ hasText: 'not supported' })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B16",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "forged provider identifiers are rejected at browser boundary",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-plan-change.spec.ts:230:1",
+          "assertionEvidence": [
+            "Error: page.waitForResponse: Test timeout of 90000ms exceeded."
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B17",
+      "file": "tests/e2e/billing-portal.spec.ts",
+      "fullTestName": "canonical cancellation, resume and recovery update without new checkout",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-portal.spec.ts:393:1",
+          "assertionEvidence": [
+            "Error: route.fulfill: Route is already handled!"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-portal.spec.ts:393:1",
+          "assertionEvidence": [
+            "Error: route.fulfill: Route is already handled!"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-portal.spec.ts:393:1",
+          "assertionEvidence": [
+            "Error: route.fulfill: Route is already handled!"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-portal",
+          "decisionBeforeEdit": "Cancellation assertion starts after document goto, before canonical summary arrives. Failure screenshot later contains the correct Cancellation scheduled message. The assertion failure prevents releaseAccess(), leaving the deliberately held RPC unresolved and causing afterEach unrouteAll to time out at 90 seconds. Wait for canonical provider summary on initial/return navigation and always release held fixture requests before draining teardown. Preserve assertions while commercial access is held."
+        },
+        {
+          "run": "candidate-observed-r2-smoke",
+          "decisionBeforeEdit": "Manual summary refresh resolves before its capacity/entitlement refetches. The test mutates the same fixture summary for the next transition, and ends after the disappearing payment action while routed reads remain in flight; route.fulfill then reports already handled. Drain existing tracked reads between each mutable summary phase and before final teardown. Keep all UI assertions and route errors; no catch/ignore bypass."
+        }
+      ]
+    },
+    {
+      "id": "B18",
+      "file": "tests/e2e/account-capacity.spec.ts",
+      "fullTestName": "complimentary overage preserves access and unlimited packages",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/account-capacity.spec.ts:113:1",
+          "assertionEvidence": [
+            "Error: page.waitForResponse: Test timeout of 90000ms exceeded.",
+            "at openBilling (tests\\e2e\\account-capacity.spec.ts:20:33)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B19",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "Launch upgrade waits for verified updated invoice",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-plan-change.spec.ts:61:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Waiting for verified payment.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:61:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toHaveAttribute(expected) failed",
+            "Locator: getByRole('progressbar', { name: 'Clients committed capacity' })",
+            "Timeout: 5000ms"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-plan-change",
+          "decisionBeforeEdit": "Parent fails Immediate change while the successful preview response takes 11.817 seconds. Merged Phase A commit f5c7bfb already waits for preview response, apply response/dialog detach, and payment refresh completion. Retain that correction; compare candidate before considering any further change."
+        }
+      ]
+    },
+    {
+      "id": "B20",
+      "file": "tests/e2e/billing-portal.spec.ts",
+      "fullTestName": "portal return polls only within its bound and offers manual refresh",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-portal.spec.ts:349:1",
+          "assertionEvidence": [
+            "Error: expect(received).toBe(expected) // Object.is equality",
+            "Expected: true",
+            "Received: false"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-portal.spec.ts:349:1",
+          "assertionEvidence": [
+            "Error: expect(received).toBe(expected) // Object.is equality",
+            "Expected: true",
+            "Received: false"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-selection",
+          "decisionBeforeEdit": "waitForReads used the 5-second assertion poll to await transport completion; capacity read completed successfully in 7416ms. Drain tracked request response bodies first, then retain the existing 500ms quiescence assertion. Keep exact polling bound and request-count assertions."
+        }
+      ]
+    },
+    {
+      "id": "B21",
+      "file": "tests/e2e/commercial-access.spec.ts",
+      "fullTestName": "grace preserves existing delivery and blocks business edits",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/commercial-access.spec.ts:55:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toHaveCount(expected) failed",
+            "Locator:  locator('fieldset[disabled]')",
+            "Expected: 1",
+            "Received: 0",
+            "Timeout:  5000ms"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "TEST_ISOLATION_DEFECT",
+      "evidence": []
+    },
+    {
+      "id": "B22",
+      "file": "tests/e2e/commercial-access.spec.ts",
+      "fullTestName": "read only permits browsing and denies direct mutation without data loss",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/commercial-access.spec.ts:73:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 20000ms exceeded.",
+            "at waitForBootstrapResolved (tests\\e2e\\utils\\test-helpers.ts:84:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:126:9)",
+            "at fixture (tests\\e2e\\commercial-access.spec.ts:31:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B23",
+      "file": "tests/e2e/commercial-catalogue-v2.spec.ts",
+      "fullTestName": "client list and lifecycle save persist through reload",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/commercial-catalogue-v2.spec.ts:79:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Catalogue review client').first()",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/commercial-catalogue-v2.spec.ts:79:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Catalogue review client').first()",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-selection",
+          "decisionBeforeEdit": "Database state is completed and update RPC returned 200. The reload assertion starts at document load; pt_clients_summary finishes after 5364ms, beyond the 5-second assertion window. Wait for that canonical POST response on reload, retain exact Completed and database assertions."
+        }
+      ]
+    },
+    {
+      "id": "B24",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "unauthorized provider mapping remains manual review",
+      "originalOccurrences": [
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:43:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "candidate-observed-r2-smoke",
+          "decisionBeforeEdit": "Final reload navigation committed at 1789298135006; provider summary request dispatched at 1789298143102 and completed 97ms later, 8193ms after navigation. Assertion starts at reload completion with a 5-second window. Await the real provider-summary response and preserve all manual-review/capacity/hidden-action assertions."
+        }
+      ]
+    },
+    {
+      "id": "B25",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "failed payment preserves Launch and recovery completes",
+      "originalOccurrences": [
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:83:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Waiting for verified payment.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke asserts Waiting for verified payment before successful apply response completes at 12382ms. Already corrected by merged f5c7bfb plan fixture response wait and dialog teardown."
+        }
+      ]
+    },
+    {
+      "id": "B26",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "annual to monthly schedules and shows full monthly list price",
+      "originalOccurrences": [
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:149:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Cancel scheduled change', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
+        }
+      ],
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-selection",
+          "decisionBeforeEdit": "Parent recorded selection asserts Current: $590.00 USD charged annually before preview response completes at 6568ms. Already corrected by merged f5c7bfb preview response wait."
+        }
+      ]
+    }
+  ],
+  "comparisonNotes": [
+    "Initial parent-billing-portal experiment invalid: shared node_modules junction caused Vite font allow-list errors. Stopped its owned process tree. This run is not product regression evidence.",
+    "Clean comparison uses separate npm ci on parent, identical local-only environment variables, local database reset and owned Vite server per run.",
+    "Identical external observer captures request timings, route, worker/parallel slot, hashed fixture identity, console/page errors and final auth/bootstrap DOM markers; it does not intercept or modify requests.",
+    "Initial parent-clean startup attempts invalid: NODE_OPTIONS Windows backslashes were interpreted as escapes. No browser results were produced. Runner was stopped; the observer path now uses forward slashes and passed a standalone browser self-check before the observed comparison.",
+    "Parent coach-seat run additionally failed unapproved provider quantity preserves approved capacity in manual review at the same local Auth HTTP 504 boundary; this is a new observed failure, absent from the original 26-title list. Active-team, pending-team and compatible-upgrade total-deadline failures remain UNKNOWN pending comparison."
+  ],
+  "setupFailures": [
+    {
+      "run": "candidate-observed-account-capacity",
+      "commit": "6e125ca00a2157350f7d35d9b08987bfaed30a84",
+      "classification": "TEST_ISOLATION_DEFECT",
+      "decisionBeforeEdit": "No test executed. Vite default **/*.html dependency discovery scans retained redacted playwright-report and playwright-report-configured HTML, reports invalid assignment target, and the warm-up evaluate context is destroyed by navigation. Local installed Vite computeEntries confirms this discovery default. Declare index.html as the application dependency entry so generated evidence cannot become application input; preserve all reports."
+    },
+    {
+      "run": "candidate-observed-billing-checkout",
+      "classification": "UNKNOWN",
+      "decisionBeforeEdit": "No browser test executed. Local db reset failed at initial schema with LegacyDbSetupError / container exit 1. DB later reports healthy and OOMKilled=false, which does not explain the initialization failure. Retain log; inspect local recovery before restarting matrix."
+    },
+    {
+      "run": "parent-billing-portal",
+      "classification": "TEST_ISOLATION_DEFECT",
+      "testExecutionStarted": false,
+      "evidence": "The shared node_modules junction resolves font requests outside the parent worktree Vite serving allow-list. The failed attempt has no executed reporter result and was stopped. Retained browser.log and metadata.json.",
+      "correction": "Use a separate parent checkout with its own npm ci, preserving the failed checkout and logs."
+    },
+    {
+      "run": "parent-clean-account-capacity",
+      "classification": "FIXTURE_DEFECT",
+      "testExecutionStarted": false,
+      "evidence": "Error: Cannot find module; NODE_OPTIONS removed the Windows path backslashes while parsing the diagnostic preload. Retained browser.log.",
+      "correction": "Use forward slashes in the quoted absolute preload path; no application or test assertion changed."
+    },
+    {
+      "run": "parent-clean-billing-checkout",
+      "classification": "FIXTURE_DEFECT",
+      "testExecutionStarted": false,
+      "evidence": "Error: Cannot find module; NODE_OPTIONS removed the Windows path backslashes while parsing the diagnostic preload. Retained browser.log.",
+      "correction": "Use forward slashes in the quoted absolute preload path; no application or test assertion changed."
+    }
+  ],
+  "additionalObservedDecisions": [
+    {
+      "recordedAt": "2026-09-13T11:25:16.282085+00:00",
+      "run": "candidate-observed-r2-smoke",
+      "commit": "1e09860",
+      "cases": [
+        {
+          "fullTestName": "unauthorized provider mapping remains manual review",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "Final reload navigation committed at 1789298135006; provider summary request dispatched at 1789298143102 and completed 97ms later, 8193ms after navigation. Assertion starts at reload completion with a 5-second window. Await the real provider-summary response and preserve all manual-review/capacity/hidden-action assertions."
+        },
+        {
+          "fullTestName": "client history and independent nutrition remain available after coach expiry",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "Final home navigation committed at 1789298292669; get_client_coaching_access dispatched at 1789298295744 and completed 1483ms later. The exact notice assertion starts before this canonical access read/render. Await the matching client access response after navigation, then retain every notice, historical-read, independent-nutrition and denied-coaching-mutation assertion."
+        },
+        {
+          "fullTestName": "canonical cancellation, resume and recovery update without new checkout",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "Manual summary refresh resolves before its capacity/entitlement refetches. The test mutates the same fixture summary for the next transition, and ends after the disappearing payment action while routed reads remain in flight; route.fulfill then reports already handled. Drain existing tracked reads between each mutable summary phase and before final teardown. Keep all UI assertions and route errors; no catch/ignore bypass."
+        }
+      ]
+    },
+    {
+      "run": "candidate-observed-r2-commercial-access",
+      "fullTestName": "grace preserves existing delivery and blocks business edits",
+      "classification": "TEST_ISOLATION_DEFECT",
+      "decisionBeforeChange": "The failing profile navigation loaded React chunk PWPD3MW7 under b5d32af3 and e9f60d3d through Radix Tabs b9d08c4a. Installed React and renderer both resolve solely to 18.3.1. Preserve the shared generated Vite cache, then test unchanged committed source with a cold cache.",
+      "unchangedCodeColdResult": {
+        "run": "candidate-observed-cold-commercial-access",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0
+      },
+      "memoryAttribution": false
+    },
+    {
+      "run": "candidate-observed-r3-billing-selection",
+      "recordedAt": "2026-09-13T11:47:47.902544+00:00",
+      "cases": [
+        {
+          "fullTestName": "complimentary hosted checkout waits for verified confirmation",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "Post-confirmation entitlement/capacity/provider refetches take about 12.3 seconds while the UI has already confirmed payment. A routed entitlement callback outlives test-body completion and throws already handled. Reuse the portal RPC drain in checkout setup and after final confirmation assertions, retaining context.unrouteAll(wait), all assertions and all route errors."
+        },
+        {
+          "fullTestName": "pricing compares reviewed features offline at desktop and 375px",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The pricing page has no auth/RPC error or page error, but its /src/pages/public/pricing.tsx request remains unfinished at the plan-count assertion. Vite cache browserHash is unchanged (3cb2731c), excluding another optimizer-generation change. Pricing is absent from the existing owned-server lazy-module warm-up. Add that module before workers start; retain the exact three-plan, prices, offline-network and mobile assertions."
+        }
+      ]
+    },
+    {
+      "recordedAt": "2026-09-13T12:12:21.614346+00:00",
+      "run": "candidate-observed-r4-billing-selection",
+      "commit": "92dd6d9bb2f68f38d3373902872264498a84b8a8",
+      "cases": [
+        {
+          "fullTestName": "portal return polls only within its bound and offers manual refresh",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The failed baseline count was 4 (navigation reads plus first refresh); the later count was 6, with the second refresh pair and its entitlement/capacity reads dispatched about 1.1 seconds after the first pair. A 500ms transport-quiet window can finish before a clock-dispatched refresh has emitted its requests. Source CustomerPortalPanel clears the interval at its cutoff, and unchanged-code timer diagnostics alone and in the full recorded selection show the 31-second advance firing the interval then cutoff/clear at the same virtual time, with no timer firing or restart during the subsequent 60 seconds. This supports a fixture readiness race, not extending the polling contract. Explicitly await the provider-summary, entitlement and capacity responses from the final clock-dispatched refresh before recording the no-further-reads baseline. Preserve exact equality, cutoff, manual-refresh and capacity assertions. Instrumentation adds observation overhead; its green runs are diagnostic evidence, not final release qualification."
+        }
+      ],
+      "timerObservations": [
+        {
+          "run": "candidate-observed-clock-billing-portal",
+          "events": [
+            {
+              "phase": "before",
+              "advanceMs": 2000,
+              "realTime": 1789301069646,
+              "virtualTime": 1789301069644,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 2000,
+              "realTime": 1789301069698,
+              "virtualTime": 1789301071658,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301071644
+                }
+              ]
+            },
+            {
+              "phase": "before",
+              "advanceMs": 31000,
+              "realTime": 1789301071207,
+              "virtualTime": 1789301072892,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301071644
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 31000,
+              "realTime": 1789301071654,
+              "virtualTime": 1789301104432,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301071644
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                }
+              ]
+            },
+            {
+              "phase": "before",
+              "advanceMs": 60000,
+              "realTime": 1789301073652,
+              "virtualTime": 1789301106565,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301071644
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 60000,
+              "realTime": 1789301074219,
+              "virtualTime": 1789301166885,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301071644
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "run": "candidate-observed-clock-billing-selection",
+          "events": [
+            {
+              "phase": "before",
+              "advanceMs": 2000,
+              "realTime": 1789301455796,
+              "virtualTime": 1789301455784,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 2000,
+              "realTime": 1789301455952,
+              "virtualTime": 1789301457874,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301457808
+                }
+              ]
+            },
+            {
+              "phase": "before",
+              "advanceMs": 31000,
+              "realTime": 1789301457152,
+              "virtualTime": 1789301459128,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301457808
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 31000,
+              "realTime": 1789301457199,
+              "virtualTime": 1789301490152,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301457808
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                }
+              ]
+            },
+            {
+              "phase": "before",
+              "advanceMs": 60000,
+              "realTime": 1789301458188,
+              "virtualTime": 1789301491127,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301457808
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 60000,
+              "realTime": 1789301458254,
+              "virtualTime": 1789301551171,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301457808
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "recordedAt": "2026-09-13T12:46:40.155746+00:00",
+      "run": "release-final-b",
+      "commit": "126d5b7db12dd639f5c6f9c9ca91378e78ab7824",
+      "cases": [
+        {
+          "fullTestName": "unauthorized provider mapping remains manual review",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The plan refresh endpoint returned 200 in 4220ms. Its canonical entitlement request then returned 200 only after 7653ms, while the fixture had already started a 5000ms Refresh plan change enabled assertion. PlanChangePanel keeps busy true until state.refetch and refresh resolve. Await the action plus plan-state, entitlement and capacity responses, drain other dispatched RPCs and retain the enabled assertion. Apply the same canonical readiness to the shared successful plan-action path."
+        },
+        {
+          "fullTestName": "Scale downgrade blocks commitments then schedules after remediation",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "After the bare Cancel scheduled change click, the cancellation endpoint returned 200 in 6170ms (trace 6156ms), followed by the plan/entitlement/capacity reads. The exact capacity=100 assertion had already exhausted its 5000ms window and still showed 50. Use the same plan-action helper for cancellation and retain all capacity/reservation assertions."
+        },
+        {
+          "fullTestName": "client list and lifecycle save persist through reload",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The lifecycle mutation returned 200 in 4698ms, then its canonical pt_clients_summary refetch took 7910ms. The fixture awaited only the mutation response before starting the 5000ms dialog-count assertion. Await the mutation body and post-save summary body before preserving the exact closed-dialog, persisted completed state and reload assertions."
+        }
+      ]
+    },
+    {
+      "recordedAt": "2026-09-13T13:42:30.102083+00:00",
+      "run": "release-final-r2-b",
+      "commit": "016030a53b6056c56dcb797b6b3605002bffc74d",
+      "cases": [
+        {
+          "fullTestName": "renders /coaches without mobile overflow",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The exact H1 assertion exhausted its unchanged 5000ms window while the cold coaches module took 4539.837ms (200, started 2026-09-13T13:32:50.643Z). The final observer snapshot contains the exact expected heading and no console/page errors. CoachesPage renders that heading independently of the directory query; the observer records the subsequent public profiles RPC returning 200 in 758ms. Complete the existing owned-server startup warm-up for the 14 public routes explicitly covered by public-marketing.spec.ts. Preserve all heading, overflow and catalogue assertions, four workers, zero retries and timeouts."
+        }
+      ]
+    },
+    {
+      "recordedAt": "2026-09-13T14:06:50.978463+00:00",
+      "run": "release-final-r3-a",
+      "commit": "ed2f7bd6ca12e4e7a31c8d12b8f918f53cce73e0",
+      "cases": [
+        {
+          "fullTestName": "complimentary hosted checkout waits for verified confirmation",
+          "classification": "ENVIRONMENTAL_FLAKE",
+          "decisionBeforeEdit": "Chromium failed the return document dependency /src/components/common/theme-provider.tsx with net::ERR_NO_BUFFER_SPACE at 2026-09-13T13:57:56.596Z. Initial token, checkout state and fake checkout creation succeeded; no return checkout RPC was dispatched and the final document had no auth/bootstrap marker or headings. Preserve the failure without a checkout code change, retry policy or memory-causation claim. The fresh owned browser in the next qualification attempt must still pass the original test."
+        },
+        {
+          "fullTestName": "client list and lifecycle save persist through reload",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The initial client-name assertion began at trace time 338171.291ms, before pt_hub_clients_page started at 339839.017ms. Its successful response took 2300.135ms, then the dependent client URL-key read took 1171.764ms, completing after the five-second assertion deadline. usePtHubClientsPage awaits both workspace-slug and client-key reads after its RPC before publishing data. Await this initial canonical RPC and both identity-matched hydration responses before retaining the exact client-name assertion. Existing search, lifecycle save, database and reload assertions remain."
+        }
+      ]
+    },
+    {
+      "recordedAt": "2026-09-13T14:35:55.688581+00:00",
+      "run": "release-final-r4-a",
+      "commit": "3ecd9392698c36c828793ff3154e9796ca73feca",
+      "cases": [
+        {
+          "fullTestName": "unapproved change keeps capacity and exposes only review message",
+          "classification": "TEST_ISOLATION_DEFECT",
+          "decisionBeforeEdit": "The commercial-access lifecycle seed executed shared ALTER TABLE DISABLE/ENABLE TRIGGER at 14:32:32.769 UTC. PostgREST received the schema reload at 14:32:33, then its pg_timezone_names query timed out at 14:32:45.980, producing PGRST002 and HTTP 503s across the other worker portal requests until 14:32:48. The portal fixture then tried to mutate an error body with no billingAccount. Replace shared trigger DDL with a normal constrained insert followed by a transaction-local replica-role update of only the isolated row compatibility status, restore origin before commit, and verify the exact legacy tuple. All application HTTP assertions and triggers outside that admin fixture transaction remain active. The reason the reload query timed out is not attributed to memory."
+        },
+        {
+          "fullTestName": "trend graph supports pointer and keyboard inspection at 1602px",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The dialog assertion started at trace 402047.853ms immediately after document load. The dynamically imported synthetic fixture module started at 401992.241ms and took 3911.760ms, then loaded the chart/dialog/styles dependencies for another 454-486ms before React initialization. The failure snapshot contains the exact dialog, slider and values; no console/page errors. Mark completion after the awaited fixture import and await that initialization before starting the unchanged dialog assertion. Preserve pointer, keyboard, exact values, axis bounds and responsive assertions."
+        }
+      ]
+    }
+  ],
+  "excludedAttempts": [
+    {
+      "run": "parent-clean-billing-coach-seats",
+      "disposition": "Stopped during the queued local reset after the two preceding malformed-preload failures; browser never launched. Only partial db-reset.log exists. Not counted as another observed browser or preload failure."
+    }
+  ],
+  "readinessAuditDecisions": [
+    {
+      "recordedAt": "2026-09-13T12:57:18.615437+00:00",
+      "scope": "Readiness audit of the already-classified seat-action fixture defects",
+      "classification": "FIXTURE_DEFECT",
+      "newObservedFailure": false,
+      "sourceEvidence": [
+        "src/features/billing/seat-quantity-panel.tsx: run awaits billing, account-capacity and account-entitlements invalidations plus refresh before clearing busy",
+        "tests/e2e/utils/plan-change-fixture.ts: seatAction currently awaits only the action and seat-state bodies before starting its 5000ms ready-control assertion",
+        "release-final-b: the same shared entitlement RPC took 7653ms after an action succeeded; parent observed seat failures already establish premature action/capacity assertions"
+      ],
+      "decisionBeforeEdit": "Complete the existing seat-action readiness correction by explicitly awaiting entitlement and capacity responses and draining remaining RPCs before the unchanged enabled assertion. This closes the shared refetch gap identified by source audit; it is not counted as a new failed occurrence and does not claim a new seat failure was observed."
+    }
+  ]
+}

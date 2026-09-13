@@ -47,7 +47,16 @@ test("unauthorized provider mapping remains manual review", async ({
   const f = await planChangeFixture(page, context, info.testId);
   f.snapshot().variant_id = "99999999";
   await f.payment();
+  const providerSummary = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        "/rest/v1/rpc/get_my_billing_provider_summary",
+  );
   await page.reload();
+  const response = await providerSummary;
+  expect(response.ok()).toBe(true);
+  await response.finished();
   await expect(
     page.getByText("Your billing needs manual review.", { exact: false }),
   ).toBeVisible();
@@ -139,9 +148,7 @@ test("Scale downgrade blocks commitments then schedules after remediation", asyn
     page.getByRole("progressbar", { name: "Clients committed capacity" }),
   ).toHaveAttribute("aria-valuetext", /committed of 50;/);
   expect((await f.reserve(51)).granted).toBe(false);
-  await page
-    .getByRole("button", { name: "Cancel scheduled change", exact: true })
-    .click();
+  await f.cancelScheduledPlanChange();
   await expect(
     page.getByRole("progressbar", { name: "Clients committed capacity" }),
   ).toHaveAttribute("aria-valuetext", /committed of 100;/);

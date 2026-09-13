@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from "node:crypto";
 import { expect, type Page, type BrowserContext } from "@playwright/test";
 import { seedEntitlementCoach } from "./account-entitlement-seeds";
 import { pgQuery } from "./auth-seeds";
+import { trackRpcReads } from "./rpc-readiness";
 import {
   signInWithEmail,
   waitForAuthSessionReady,
@@ -44,6 +45,7 @@ export async function planChangeFixture(
   processor: "card" | "paypal" = "card",
   seatCapable = false,
 ) {
+  const waitForReads = trackRpcReads(page);
   const coach = await seedEntitlementCoach(`plan-${scope}`, true);
   await pgQuery(`insert into public.billing_provider_variant_mappings(plan_version_id,cadence,environment,provider_store_id,provider_product_id,provider_variant_id,provider_price_id,currency_code,unit_amount_minor,renewal_interval_unit,renewal_interval_quantity,status,verified_at)
     select p.id,c.cadence,'test','99001','99002',(99010+row_number() over(order by p.plan_key,c.cadence))::text,(99110+row_number() over(order by p.plan_key,c.cadence))::text,'USD',case c.cadence when 'annual' then p.annual_price_minor else p.monthly_price_minor end,case c.cadence when 'annual' then 'year' else 'month' end,1,'active',now()
@@ -263,28 +265,121 @@ export async function planChangeFixture(
   await expect(
     page.getByRole("button", { name: "Change plan", exact: true }),
   ).toBeVisible();
+  await waitForReads();
+  const planAction = async (
+    action: "apply" | "refresh" | "cancel",
+    buttonName: string,
+  ) => {
+    const endpoint = {
+      apply: "billing-change-subscription-plan",
+      refresh: "billing-refresh-plan-change",
+      cancel: "billing-cancel-scheduled-plan-change",
+    }[action];
+    // The action response precedes the panel's canonical refetches. Await each
+    // domain response before starting the existing ready-control assertion.
+    await Promise.all([
+      ...[
+        `/functions/v1/${endpoint}`,
+        "/rest/v1/rpc/get_my_billing_plan_change_state",
+        "/rest/v1/rpc/get_my_effective_account_entitlements",
+        "/rest/v1/rpc/get_my_account_capacity_snapshot",
+      ].map(async (path) => {
+        const response = await page.waitForResponse(
+          (response) =>
+            response.request().method() === "POST" &&
+            new URL(response.url()).pathname === path,
+        );
+        expect(response.ok()).toBe(true);
+        await response.finished();
+      }),
+      page.getByRole("button", { name: buttonName, exact: true }).click(),
+    ]);
+    await waitForReads();
+    if (action === "apply") {
+      // The closing Radix dialog keeps the page aria-hidden until teardown.
+      // Await it before querying page controls, even after canonical refetches.
+      await page.locator('[data-ui="dialog"]').waitFor({ state: "detached" });
+    }
+    await expect(
+      page.getByRole("button", { name: "Refresh plan change", exact: true }),
+    ).toBeEnabled();
+  };
+  const seatAction = async (
+    action: "apply" | "refresh" | "cancel",
+    buttonName: string,
+  ) => {
+    const endpoint = {
+      apply: "billing-change-coach-seat-quantity",
+      refresh: "billing-refresh-coach-seat-change",
+      cancel: "billing-cancel-scheduled-seat-change",
+    }[action];
+    const submitted = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === `/functions/v1/${endpoint}`,
+    );
+    const canonical = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname ===
+          "/rest/v1/rpc/get_my_billing_seat_quantity_state",
+    );
+    await Promise.all([
+      submitted.then(async (response) => {
+        expect(response.ok()).toBe(true);
+        await response.finished();
+      }),
+      canonical.then(async (response) => {
+        expect(response.ok()).toBe(true);
+        await response.finished();
+      }),
+      ...[
+        "get_my_effective_account_entitlements",
+        "get_my_account_capacity_snapshot",
+      ].map(async (name) => {
+        const response = await page.waitForResponse(
+          (response) =>
+            response.request().method() === "POST" &&
+            new URL(response.url()).pathname === `/rest/v1/rpc/${name}`,
+        );
+        expect(response.ok()).toBe(true);
+        await response.finished();
+      }),
+      page.getByRole("button", { name: buttonName, exact: true }).click(),
+    ]);
+    await waitForReads();
+    // Check the ready control after all canonical transport has settled.
+    await expect(
+      page.getByRole("button", { name: "Refresh coach seats", exact: true }),
+    ).toBeEnabled();
+  };
   return {
     coach,
+    cancelScheduledPlanChange: () =>
+      planAction("cancel", "Cancel scheduled change"),
+    refreshSeats: () => seatAction("refresh", "Refresh coach seats"),
+    scheduleSeatReduction: () =>
+      seatAction("apply", "Confirm scheduled reduction"),
+    cancelSeatReduction: () =>
+      seatAction("cancel", "Cancel scheduled reduction"),
     async previewSeats(target: number) {
       await page
         .getByLabel("Additional coach seats", { exact: true })
         .selectOption(String(target));
+      const previewed = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).pathname ===
+            "/functions/v1/billing-preview-coach-seat-change",
+      );
       await page
         .getByRole("button", { name: "Preview seat change", exact: true })
         .click();
+      await (await previewed).finished();
     },
     async buySeats(target: number) {
       await this.previewSeats(target);
-      const response = page.waitForResponse(
-        (r) =>
-          new URL(r.url()).pathname.endsWith(
-            "/billing-change-coach-seat-quantity",
-          ) && r.request().method() === "POST",
-      );
-      await page
-        .getByRole("button", { name: "Confirm seat purchase", exact: true })
-        .click();
-      expect((await response).ok()).toBe(true);
+      await seatAction("apply", "Confirm seat purchase");
       await expect(
         page
           .locator("#coach-seats")
@@ -351,22 +446,7 @@ export async function planChangeFixture(
       await page
         .getByRole("button", { name: "Review and confirm", exact: true })
         .click();
-      const submitted = page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          new URL(response.url()).pathname ===
-            "/functions/v1/billing-change-subscription-plan",
-      );
-      await page
-        .getByRole("button", { name: "Confirm plan change", exact: true })
-        .click();
-      const response = await submitted;
-      expect(response.ok()).toBe(true);
-      await response.finished();
-      // A closed Radix dialog stays mounted through its exit animation and
-      // keeps the page aria-hidden. Wait for modal teardown before callers
-      // inspect the capacity meters outside it; payment state can render first.
-      await page.locator('[data-ui="dialog"]').waitFor({ state: "detached" });
+      await planAction("apply", "Confirm plan change");
     },
     async payment(paid = true, reason = "updated") {
       snapshot = {
@@ -408,23 +488,7 @@ export async function planChangeFixture(
         deps,
       );
       expect(response.status).toBe(200);
-      const refreshed = page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          new URL(response.url()).pathname ===
-            "/functions/v1/billing-refresh-plan-change",
-      );
-      const refresh = page.getByRole("button", {
-        name: "Refresh plan change",
-        exact: true,
-      });
-      await refresh.click();
-      const refreshResponse = await refreshed;
-      expect(refreshResponse.ok()).toBe(true);
-      await refreshResponse.finished();
-      // The panel re-enables this action after its canonical state and
-      // capacity reads settle, so payment assertions observe the refreshed UI.
-      await expect(refresh).toBeEnabled();
+      await planAction("refresh", "Refresh plan change");
     },
     async reserve(quantity: number) {
       const op = randomUUID();

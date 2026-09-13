@@ -85,7 +85,39 @@ test("client list and lifecycle save persist through reload", async ({
   await pgQuery(`insert into auth.users(id,email) values('${user}','${user}@catalogue.test');
     insert into public.clients(id,user_id,workspace_id,display_name,lifecycle_state) values('${client}','${user}','${coach.workspaceId}','Catalogue review client','active');`);
   await signInWithEmail(page, coach.email, coach.password);
-  await page.goto("/pt-hub/clients");
+  // The directory query hydrates route keys after its paginated RPC. Bootstrap
+  // completion alone does not mean this client's row is ready to render.
+  await Promise.all([
+    ...[
+      { path: "/rest/v1/rpc/pt_hub_clients_page", method: "POST" },
+      {
+        path: "/rest/v1/workspaces",
+        method: "GET",
+        select: "id,slug",
+        id: coach.workspaceId,
+      },
+      {
+        path: "/rest/v1/clients",
+        method: "GET",
+        select: "id,url_key",
+        id: client,
+      },
+    ].map(async (expected) => {
+      const response = await page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          response.request().method() === expected.method &&
+          url.pathname === expected.path &&
+          (!expected.select ||
+            (url.searchParams.get("select") === expected.select &&
+              url.searchParams.get("id") === `in.(${expected.id})`))
+        );
+      });
+      expect(response.ok()).toBe(true);
+      await response.finished();
+    }),
+    page.goto("/pt-hub/clients"),
+  ]);
   await waitForBootstrapResolved(page);
   await expect(page.getByText("Catalogue review client").first()).toBeVisible();
   await page
@@ -104,18 +136,36 @@ test("client list and lifecycle save persist through reload", async ({
   const saved = page.waitForResponse((response) =>
     response.url().endsWith("/rpc/pt_update_client_lifecycle"),
   );
+  const refreshed = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/rest/v1/rpc/pt_clients_summary",
+  );
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Save lifecycle", exact: true })
     .click();
-  expect((await saved).ok()).toBe(true);
+  const savedResponse = await saved;
+  expect(savedResponse.ok()).toBe(true);
+  await savedResponse.finished();
+  const refreshedResponse = await refreshed;
+  expect(refreshedResponse.ok()).toBe(true);
+  await refreshedResponse.finished();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(
     await pgQuery(
       `select lifecycle_state from public.clients where id='${client}'`,
     ),
   ).toEqual([{ lifecycle_state: "completed" }]);
+  const reloaded = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/rest/v1/rpc/pt_clients_summary",
+  );
   await page.reload();
+  const summaryResponse = await reloaded;
+  expect(summaryResponse.ok()).toBe(true);
+  await summaryResponse.finished();
   await expect(
     page.getByText("Completed", { exact: true }).first(),
   ).toBeVisible();

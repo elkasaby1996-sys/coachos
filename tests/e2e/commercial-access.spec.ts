@@ -245,7 +245,18 @@ test("client history and independent nutrition remain available after coach expi
   await signInWithEmail(page, identity.email, identity.password);
   await waitForAuthSessionReady(page);
   await waitForBootstrapResolved(page);
+  const coachingAccess = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        "/rest/v1/rpc/get_client_coaching_access" &&
+      response.request().postDataJSON()?.p_client_id === clientId,
+  );
   await page.goto("/app/home");
+  const accessResponse = await coachingAccess;
+  expect(accessResponse.ok()).toBe(true);
+  await accessResponse.finished();
+  await waitForBootstrapResolved(page);
   await expect(
     page.getByText("Coaching interaction is currently unavailable.", {
       exact: false,
@@ -388,11 +399,26 @@ test.describe("review correction regressions", () => {
       ).clientNoWorkspace;
       const userId = await ensureUser(identity);
       const clientId = randomUUID();
+      // Insert through the normal constraints/triggers, then seed only this
+      // row's historical compatibility status in an admin-local transaction.
+      // Shared trigger DDL reloads PostgREST's schema cache for other workers.
       await pgQuery(`begin;
-      alter table public.clients disable trigger clients_normalize_lifecycle_transition_trigger;
       insert into public.clients(id,workspace_id,user_id,display_name,status,lifecycle_state,relationship_status,paused_reason,churn_reason,account_onboarding_completed_at)
       values('${clientId}','${coach.workspaceId}','${userId}','Lifecycle client','${scenario.status}','${scenario.lifecycle}','${scenario.relationship}',${scenario.lifecycle === "paused" ? "'travel'" : "null"},${scenario.lifecycle === "churned" ? "'ended'" : "null"},now());
-      alter table public.clients enable trigger clients_normalize_lifecycle_transition_trigger; commit;`);
+      set local session_replication_role=replica;
+      update public.clients set status='${scenario.status}' where id='${clientId}';
+      set local session_replication_role=origin;
+      commit;`);
+      expect(
+        await pgQuery(`select status::text, lifecycle_state, relationship_status
+          from public.clients where id='${clientId}'`),
+      ).toEqual([
+        {
+          status: scenario.status,
+          lifecycle_state: scenario.lifecycle,
+          relationship_status: scenario.relationship,
+        },
+      ]);
       await signInWithEmail(page, identity.email, identity.password);
       await waitForAuthSessionReady(page);
       await waitForBootstrapResolved(page);

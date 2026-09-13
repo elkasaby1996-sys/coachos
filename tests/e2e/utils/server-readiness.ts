@@ -38,7 +38,22 @@ export default async function prepareOwnedServer(config: FullConfig) {
         "/src/pages/pt-hub/overview.tsx",
         "/src/components/layouts/client-layout.tsx",
         "/src/pages/client/home.tsx",
+        // The public smoke routes assert rendered content after navigation.
+        // Prepare their lazy modules before those rendering windows begin.
+        "/src/pages/public/marketing-home.tsx",
         "/src/pages/public/product.tsx",
+        "/src/pages/public/pricing.tsx",
+        "/src/pages/public/coaches.tsx",
+        "/src/pages/public/for-coaches.tsx",
+        "/src/pages/public/for-clients.tsx",
+        "/src/pages/public/switch.tsx",
+        "/src/pages/public/compare-truecoach.tsx",
+        "/src/pages/public/compare-fitr.tsx",
+        "/src/pages/public/faq.tsx",
+        "/src/pages/public/security.tsx",
+        "/src/pages/public/privacy.tsx",
+        "/src/pages/public/terms.tsx",
+        "/src/pages/public/cookies.tsx",
       ],
     );
   } finally {

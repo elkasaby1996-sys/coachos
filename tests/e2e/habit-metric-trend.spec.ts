@@ -11,10 +11,15 @@ async function openFixture(page: Page, mode = "normal") {
       window.$RefreshSig$ = () => (type) => type;
       window.__vite_plugin_react_preamble_installed__ = true;
       await import('/tests/e2e/fixtures/habit-metric-trend.tsx');
+      document.documentElement.dataset.habitTrendFixtureReady = 'true';
     </script></body></html>`,
     }),
   );
   await page.goto(`/__habit-trend-fixture?mode=${mode}`);
+  // Document load does not await the synthetic page's dynamic module import.
+  await page.waitForFunction(
+    () => document.documentElement.dataset.habitTrendFixtureReady === "true",
+  );
   await expect(page.getByRole("dialog")).toBeVisible();
 }
 

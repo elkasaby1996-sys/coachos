@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_EXERCISE_BROWSER_FILTERS } from "../../src/lib/exercise-browser";
 import {
   ANATOMICAL_REGION_DEFINITIONS,
   ANATOMY_SURFACES,
@@ -267,12 +268,24 @@ describe("controlled anatomical selector source contract", () => {
     expect(listSource).toContain("const selected = value === muscle.key");
   });
 
-  it("emits only MuscleKey values from map and list, and null from Clear", () => {
+  it("emits only MuscleKey values while the owning toolbar clears the muscle filter", () => {
     expect(figureSource).toContain("onValueChange(definition.muscleKey)");
     expect(figureSource).not.toContain("onValueChange(definition.id)");
     expect(figureSource).not.toContain("id={shape.id}");
     expect(listSource).toContain("onValueChange(muscle.key)");
-    expect(selectorSource).toContain("onValueChange(null)");
+    const settingsSource = readSource(
+      "src",
+      "pages",
+      "pt",
+      "settings-exercises.tsx",
+    );
+    expect(browserSource).toContain("onClick={onClear}");
+    expect(browserSource).toContain("Clear filters");
+    expect(settingsSource).toContain("onClear={clearFilters}");
+    expect(settingsSource).toMatch(
+      /const clearFilters = \(\) =>\s*updateSearchState\(\(current\) => \(\{\s*\.\.\.current,\s*filters: DEFAULT_EXERCISE_BROWSER_FILTERS,/,
+    );
+    expect(DEFAULT_EXERCISE_BROWSER_FILTERS.muscleKey).toBeNull();
   });
 
   it("uses one anatomy surface at a time and preserves controlled selection", () => {
@@ -343,7 +356,7 @@ describe("controlled anatomical selector source contract", () => {
 
   it("uses selector-local theme tokens without a selected glow", () => {
     for (const token of [
-      "--anatomy-canvas-surface",
+      "--ui-surface-inset",
       "--anatomy-body-fill",
       "--anatomy-passive-fill",
       "--anatomy-passive-seam",

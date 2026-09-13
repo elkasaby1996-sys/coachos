@@ -2,6 +2,7 @@ import { randomUUID, createHmac } from "node:crypto";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { seedEntitlementCoach } from "./utils/account-entitlement-seeds";
 import { pgQuery } from "./utils/auth-seeds";
+import { trackRpcReads } from "./utils/rpc-readiness";
 import {
   signInWithEmail,
   waitForAuthSessionReady,
@@ -13,6 +14,9 @@ import {
 } from "../../supabase/functions/_shared/billing-handlers";
 
 test.describe.configure({ mode: "parallel" });
+test.afterEach(async ({ context }) => {
+  await context.unrouteAll({ behavior: "wait" });
+});
 // Browser boundary fixtures are worker-isolated. Actual SQL transitions/locks are
 // verified in pgTAP; no fake mappings are committed or enabled in the application.
 async function fixture(
@@ -21,6 +25,7 @@ async function fixture(
   scope: string,
   complimentary = false,
 ) {
+  const waitForReads = trackRpcReads(page);
   const coach = await seedEntitlementCoach(scope, complimentary);
   if (!complimentary)
     await pgQuery(
@@ -94,13 +99,44 @@ async function fixture(
   await signInWithEmail(page, coach.email, coach.password);
   await waitForAuthSessionReady(page);
   await waitForBootstrapResolved(page);
+  // A new document must resolve its own billing state; the previous route's
+  // auth markers and document load event do not establish checkout readiness.
+  const checkoutState = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        "/rest/v1/rpc/get_my_billing_checkout_state",
+  );
   await page.goto("/pt-hub/settings/billing");
+  const response = await checkoutState;
+  expect(response.ok()).toBe(true);
+  await response.finished();
+  await waitForBootstrapResolved(page);
   await expect(
     page.getByRole("button", { name: "Start subscription", exact: true }),
   ).toBeVisible();
+  await waitForReads();
   return {
+    waitForReads,
     attempt,
     calls: () => calls,
+    async returnFromCheckout(checkoutAttempt = attempt) {
+      const canonical = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).pathname ===
+            "/rest/v1/rpc/get_my_billing_checkout_state",
+      );
+      const [response] = await Promise.all([
+        canonical,
+        page.goto(
+          `/pt-hub/settings/billing?checkout=return&attempt=${checkoutAttempt}`,
+        ),
+      ]);
+      expect(response.ok()).toBe(true);
+      await response.finished();
+      await waitForBootstrapResolved(page);
+    },
     confirm: async () => {
       const snapshot = {
         provider: "lemonsqueezy" as const,
@@ -192,9 +228,7 @@ for (const complimentary of [false, true])
       page.getByRole("heading", { name: "Deterministic hosted checkout" }),
     ).toBeVisible();
     expect(f.calls()).toBe(1);
-    await page.goto(
-      `/pt-hub/settings/billing?checkout=return&attempt=${f.attempt}`,
-    );
+    await f.returnFromCheckout();
     await expect(page.getByText(/Finalizing your subscription/)).toBeVisible();
     await page
       .getByRole("button", { name: "Refresh subscription", exact: true })
@@ -216,6 +250,7 @@ for (const complimentary of [false, true])
       path: info.outputPath("billing-confirmed.png"),
       fullPage: true,
     });
+    await f.waitForReads();
   });
 test("unavailable provider retains selected plan and cadence", async ({
   page,
@@ -242,10 +277,8 @@ test("unavailable provider retains selected plan and cadence", async ({
   await expect(page.getByLabel("Billing frequency")).toHaveValue("annual");
 });
 test("return query is not payment proof", async ({ page, context }, info) => {
-  await fixture(page, context, info.testId);
-  await page.goto(
-    `/pt-hub/settings/billing?checkout=return&attempt=${randomUUID()}`,
-  );
+  const f = await fixture(page, context, info.testId);
+  await f.returnFromCheckout(randomUUID());
   await expect(page.getByText(/Finalizing your subscription/)).toBeVisible();
   await expect(page.getByText(/Paid subscription confirmed/)).toHaveCount(0);
 });
