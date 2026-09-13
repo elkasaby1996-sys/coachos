@@ -1,0 +1,18 @@
+{
+  "pr": "https://github.com/elkasaby1996-sys/coachos/pull/198",
+  "failedCommit": "8f6d0ce4f0a5435e4b9bb5596d18cc64bb28b960",
+  "job": "https://github.com/elkasaby1996-sys/coachos/actions/runs/34772189072/job/103763893582",
+  "file": "tests/e2e/billing-coach-seats.spec.ts",
+  "test": "compatible plan upgrade retains purchased seats",
+  "classification": "FIXTURE_DEFECT",
+  "assertion": "tests/e2e/utils/plan-change-fixture.ts:300: Refresh plan change toBeEnabled: element(s) not found within 5000ms",
+  "evidenceRecordedBeforeCorrection": [
+    "The apply action and canonical refetch response checks completed before the failed assertion.",
+    "CI trace before@call@2430 at 254229.949ms has the enabled Refresh plan change button rendered beneath #root[aria-hidden=true].",
+    "That snapshot also has a mounted [data-ui=dialog][data-state=closed] and body pointer-events:none. after@call@2430 at 259240.921ms retains the same modal and accessibility lock.",
+    "The final error-context snapshot subsequently exposes Refresh plan change and the expected awaiting-payment state.",
+    "The existing apply helper waits for dialog detachment only after planAction returns; planAction added the page-level button assertion before that prerequisite."
+  ],
+  "plannedCorrection": "Move the existing dialog-detachment wait into planAction for apply, before the existing enabled-button assertion. Preserve all commercial assertions and test configuration.",
+  "validation": "Pending correction and validation; historical green results at 553eab0 remain unchanged."
+}

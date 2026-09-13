@@ -295,6 +295,11 @@ export async function planChangeFixture(
       page.getByRole("button", { name: buttonName, exact: true }).click(),
     ]);
     await waitForReads();
+    if (action === "apply") {
+      // The closing Radix dialog keeps the page aria-hidden until teardown.
+      // Await it before querying page controls, even after canonical refetches.
+      await page.locator('[data-ui="dialog"]').waitFor({ state: "detached" });
+    }
     await expect(
       page.getByRole("button", { name: "Refresh plan change", exact: true }),
     ).toBeEnabled();
@@ -442,10 +447,6 @@ export async function planChangeFixture(
         .getByRole("button", { name: "Review and confirm", exact: true })
         .click();
       await planAction("apply", "Confirm plan change");
-      // A closed Radix dialog stays mounted through its exit animation and
-      // keeps the page aria-hidden. Wait for modal teardown before callers
-      // inspect the capacity meters outside it; payment state can render first.
-      await page.locator('[data-ui="dialog"]').waitFor({ state: "detached" });
     },
     async payment(paid = true, reason = "updated") {
       snapshot = {
