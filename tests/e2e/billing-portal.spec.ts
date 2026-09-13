@@ -375,7 +375,25 @@ test("portal return polls only within its bound and offers manual refresh", asyn
   await page.clock.fastForward(2_000);
   await expect.poll(() => f.summaryReads()).toBeGreaterThan(initialReads);
   await f.waitForReads();
-  await page.clock.fastForward(31_000);
+  // The final interval callback can start just before the cutoff callback.
+  // A quiet transport window does not prove that callback has dispatched its
+  // reads. Await its canonical refresh before recording the stopped baseline.
+  await Promise.all([
+    ...[
+      "get_my_billing_provider_summary",
+      "get_my_effective_account_entitlements",
+      "get_my_account_capacity_snapshot",
+    ].map(async (name) => {
+      const response = await page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).pathname === `/rest/v1/rpc/${name}`,
+      );
+      expect(response.ok()).toBe(true);
+      await response.finished();
+    }),
+    page.clock.fastForward(31_000),
+  ]);
   await expect(
     page.getByRole("button", { name: "Refresh billing", exact: true }),
   ).toBeVisible();

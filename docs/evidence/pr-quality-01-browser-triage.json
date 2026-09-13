@@ -916,6 +916,484 @@
           "decisionBeforeEdit": "The pricing page has no auth/RPC error or page error, but its /src/pages/public/pricing.tsx request remains unfinished at the plan-count assertion. Vite cache browserHash is unchanged (3cb2731c), excluding another optimizer-generation change. Pricing is absent from the existing owned-server lazy-module warm-up. Add that module before workers start; retain the exact three-plan, prices, offline-network and mobile assertions."
         }
       ]
+    },
+    {
+      "recordedAt": "2026-09-13T12:12:21.614346+00:00",
+      "run": "candidate-observed-r4-billing-selection",
+      "commit": "92dd6d9bb2f68f38d3373902872264498a84b8a8",
+      "cases": [
+        {
+          "fullTestName": "portal return polls only within its bound and offers manual refresh",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The failed baseline count was 4 (navigation reads plus first refresh); the later count was 6, with the second refresh pair and its entitlement/capacity reads dispatched about 1.1 seconds after the first pair. A 500ms transport-quiet window can finish before a clock-dispatched refresh has emitted its requests. Source CustomerPortalPanel clears the interval at its cutoff, and unchanged-code timer diagnostics alone and in the full recorded selection show the 31-second advance firing the interval then cutoff/clear at the same virtual time, with no timer firing or restart during the subsequent 60 seconds. This supports a fixture readiness race, not extending the polling contract. Explicitly await the provider-summary, entitlement and capacity responses from the final clock-dispatched refresh before recording the no-further-reads baseline. Preserve exact equality, cutoff, manual-refresh and capacity assertions. Instrumentation adds observation overhead; its green runs are diagnostic evidence, not final release qualification."
+        }
+      ],
+      "timerObservations": [
+        {
+          "run": "candidate-observed-clock-billing-portal",
+          "events": [
+            {
+              "phase": "before",
+              "advanceMs": 2000,
+              "realTime": 1789301069646,
+              "virtualTime": 1789301069644,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 2000,
+              "realTime": 1789301069698,
+              "virtualTime": 1789301071658,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301071644
+                }
+              ]
+            },
+            {
+              "phase": "before",
+              "advanceMs": 31000,
+              "realTime": 1789301071207,
+              "virtualTime": 1789301072892,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301071644
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 31000,
+              "realTime": 1789301071654,
+              "virtualTime": 1789301104432,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301071644
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                }
+              ]
+            },
+            {
+              "phase": "before",
+              "advanceMs": 60000,
+              "realTime": 1789301073652,
+              "virtualTime": 1789301106565,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301071644
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 60000,
+              "realTime": 1789301074219,
+              "virtualTime": 1789301166885,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301068708
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301071644
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000130,
+                  "time": 1789301104424
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000129,
+                  "time": 1789301104424
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "run": "candidate-observed-clock-billing-selection",
+          "events": [
+            {
+              "phase": "before",
+              "advanceMs": 2000,
+              "realTime": 1789301455796,
+              "virtualTime": 1789301455784,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 2000,
+              "realTime": 1789301455952,
+              "virtualTime": 1789301457874,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301457808
+                }
+              ]
+            },
+            {
+              "phase": "before",
+              "advanceMs": 31000,
+              "realTime": 1789301457152,
+              "virtualTime": 1789301459128,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301457808
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 31000,
+              "realTime": 1789301457199,
+              "virtualTime": 1789301490152,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301457808
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                }
+              ]
+            },
+            {
+              "phase": "before",
+              "advanceMs": 60000,
+              "realTime": 1789301458188,
+              "virtualTime": 1789301491127,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301457808
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                }
+              ]
+            },
+            {
+              "phase": "after",
+              "advanceMs": 60000,
+              "realTime": 1789301458254,
+              "virtualTime": 1789301551171,
+              "timers": [
+                {
+                  "kind": "set",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "set",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301455031
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301457808
+                },
+                {
+                  "kind": "fire",
+                  "name": "setInterval",
+                  "delay": 2000,
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "fire",
+                  "name": "setTimeout",
+                  "delay": 30000,
+                  "id": 1000000000133,
+                  "time": 1789301490135
+                },
+                {
+                  "kind": "clear",
+                  "name": "clearInterval",
+                  "id": 1000000000132,
+                  "time": 1789301490135
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }
