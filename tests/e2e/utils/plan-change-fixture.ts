@@ -334,17 +334,39 @@ export async function planChangeFixture(
       await page
         .getByLabel("Target billing frequency", { exact: true })
         .selectOption(frequency);
+      const previewed = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).pathname ===
+            "/functions/v1/billing-preview-plan-change",
+      );
       await page
         .getByRole("button", { name: "Preview plan change", exact: true })
         .click();
+      // Both successful previews and expected denials have UI assertions in
+      // callers. Start those assertions after the response body arrives.
+      await (await previewed).finished();
     },
     async apply() {
       await page
         .getByRole("button", { name: "Review and confirm", exact: true })
         .click();
+      const submitted = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).pathname ===
+            "/functions/v1/billing-change-subscription-plan",
+      );
       await page
         .getByRole("button", { name: "Confirm plan change", exact: true })
         .click();
+      const response = await submitted;
+      expect(response.ok()).toBe(true);
+      await response.finished();
+      // A closed Radix dialog stays mounted through its exit animation and
+      // keeps the page aria-hidden. Wait for modal teardown before callers
+      // inspect the capacity meters outside it; payment state can render first.
+      await page.locator('[data-ui="dialog"]').waitFor({ state: "detached" });
     },
     async payment(paid = true, reason = "updated") {
       snapshot = {
@@ -386,9 +408,23 @@ export async function planChangeFixture(
         deps,
       );
       expect(response.status).toBe(200);
-      await page
-        .getByRole("button", { name: "Refresh plan change", exact: true })
-        .click();
+      const refreshed = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).pathname ===
+            "/functions/v1/billing-refresh-plan-change",
+      );
+      const refresh = page.getByRole("button", {
+        name: "Refresh plan change",
+        exact: true,
+      });
+      await refresh.click();
+      const refreshResponse = await refreshed;
+      expect(refreshResponse.ok()).toBe(true);
+      await refreshResponse.finished();
+      // The panel re-enables this action after its canonical state and
+      // capacity reads settle, so payment assertions observe the refreshed UI.
+      await expect(refresh).toBeEnabled();
     },
     async reserve(quantity: number) {
       const op = randomUUID();
