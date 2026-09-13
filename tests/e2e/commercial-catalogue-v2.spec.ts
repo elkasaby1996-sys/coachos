@@ -104,11 +104,21 @@ test("client list and lifecycle save persist through reload", async ({
   const saved = page.waitForResponse((response) =>
     response.url().endsWith("/rpc/pt_update_client_lifecycle"),
   );
+  const refreshed = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/rest/v1/rpc/pt_clients_summary",
+  );
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Save lifecycle", exact: true })
     .click();
-  expect((await saved).ok()).toBe(true);
+  const savedResponse = await saved;
+  expect(savedResponse.ok()).toBe(true);
+  await savedResponse.finished();
+  const refreshedResponse = await refreshed;
+  expect(refreshedResponse.ok()).toBe(true);
+  await refreshedResponse.finished();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(
     await pgQuery(

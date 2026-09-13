@@ -1394,6 +1394,28 @@
           ]
         }
       ]
+    },
+    {
+      "recordedAt": "2026-09-13T12:46:40.155746+00:00",
+      "run": "release-final-b",
+      "commit": "126d5b7db12dd639f5c6f9c9ca91378e78ab7824",
+      "cases": [
+        {
+          "fullTestName": "unauthorized provider mapping remains manual review",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The plan refresh endpoint returned 200 in 4220ms. Its canonical entitlement request then returned 200 only after 7653ms, while the fixture had already started a 5000ms Refresh plan change enabled assertion. PlanChangePanel keeps busy true until state.refetch and refresh resolve. Await the action plus plan-state, entitlement and capacity responses, drain other dispatched RPCs and retain the enabled assertion. Apply the same canonical readiness to the shared successful plan-action path."
+        },
+        {
+          "fullTestName": "Scale downgrade blocks commitments then schedules after remediation",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "After the bare Cancel scheduled change click, the cancellation endpoint returned 200 in 6170ms (trace 6156ms), followed by the plan/entitlement/capacity reads. The exact capacity=100 assertion had already exhausted its 5000ms window and still showed 50. Use the same plan-action helper for cancellation and retain all capacity/reservation assertions."
+        },
+        {
+          "fullTestName": "client list and lifecycle save persist through reload",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The lifecycle mutation returned 200 in 4698ms, then its canonical pt_clients_summary refetch took 7910ms. The fixture awaited only the mutation response before starting the 5000ms dialog-count assertion. Await the mutation body and post-save summary body before preserving the exact closed-dialog, persisted completed state and reload assertions."
+        }
+      ]
     }
   ]
 }

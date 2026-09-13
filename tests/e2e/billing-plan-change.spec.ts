@@ -148,9 +148,7 @@ test("Scale downgrade blocks commitments then schedules after remediation", asyn
     page.getByRole("progressbar", { name: "Clients committed capacity" }),
   ).toHaveAttribute("aria-valuetext", /committed of 50;/);
   expect((await f.reserve(51)).granted).toBe(false);
-  await page
-    .getByRole("button", { name: "Cancel scheduled change", exact: true })
-    .click();
+  await f.cancelScheduledPlanChange();
   await expect(
     page.getByRole("progressbar", { name: "Clients committed capacity" }),
   ).toHaveAttribute("aria-valuetext", /committed of 100;/);
