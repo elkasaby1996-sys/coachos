@@ -1445,6 +1445,23 @@
           "decisionBeforeEdit": "The initial client-name assertion began at trace time 338171.291ms, before pt_hub_clients_page started at 339839.017ms. Its successful response took 2300.135ms, then the dependent client URL-key read took 1171.764ms, completing after the five-second assertion deadline. usePtHubClientsPage awaits both workspace-slug and client-key reads after its RPC before publishing data. Await this initial canonical RPC and both identity-matched hydration responses before retaining the exact client-name assertion. Existing search, lifecycle save, database and reload assertions remain."
         }
       ]
+    },
+    {
+      "recordedAt": "2026-09-13T14:35:55.688581+00:00",
+      "run": "release-final-r4-a",
+      "commit": "3ecd9392698c36c828793ff3154e9796ca73feca",
+      "cases": [
+        {
+          "fullTestName": "unapproved change keeps capacity and exposes only review message",
+          "classification": "TEST_ISOLATION_DEFECT",
+          "decisionBeforeEdit": "The commercial-access lifecycle seed executed shared ALTER TABLE DISABLE/ENABLE TRIGGER at 14:32:32.769 UTC. PostgREST received the schema reload at 14:32:33, then its pg_timezone_names query timed out at 14:32:45.980, producing PGRST002 and HTTP 503s across the other worker portal requests until 14:32:48. The portal fixture then tried to mutate an error body with no billingAccount. Replace shared trigger DDL with a normal constrained insert followed by a transaction-local replica-role update of only the isolated row compatibility status, restore origin before commit, and verify the exact legacy tuple. All application HTTP assertions and triggers outside that admin fixture transaction remain active. The reason the reload query timed out is not attributed to memory."
+        },
+        {
+          "fullTestName": "trend graph supports pointer and keyboard inspection at 1602px",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The dialog assertion started at trace 402047.853ms immediately after document load. The dynamically imported synthetic fixture module started at 401992.241ms and took 3911.760ms, then loaded the chart/dialog/styles dependencies for another 454-486ms before React initialization. The failure snapshot contains the exact dialog, slider and values; no console/page errors. Mark completion after the awaited fixture import and await that initialization before starting the unchanged dialog assertion. Preserve pointer, keyboard, exact values, axis bounds and responsive assertions."
+        }
+      ]
     }
   ],
   "readinessAuditDecisions": [
