@@ -100,3 +100,5 @@ where proname in ('pt_dashboard_summary', 'pt_clients_summary', 'assign_workout_
 ## Migration History
 
 Do not delete historical migration files from `supabase/migrations` once they are part of the repository history and deployed environments. If the project needs a cleaner baseline later, plan a dedicated squash/re-baseline migration and coordinate it across environments.
+
+See [PR-PRICE-11 staging certification preparation](staging-commercial-certification.md) for the separately authorized staging plan/apply boundary.

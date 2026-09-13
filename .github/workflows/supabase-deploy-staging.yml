@@ -1,30 +1,55 @@
-name: Supabase Deploy Staging
+name: Supabase Staging Commercial Certification
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [plan, apply]
+        default: plan
+        required: true
+      confirm_commit_sha:
+        type: string
+        required: true
+      confirm_project_ref:
+        type: string
+        required: true
+      confirm_app_origin:
+        type: string
+        required: true
+      evidence_label:
+        type: string
+        required: true
+        default: phase-b-reviewed
 
 permissions:
   contents: read
 
 concurrency:
-  group: supabase-deploy-staging-${{ github.ref }}
-  cancel-in-progress: true
+  group: supabase-staging-commercial
+  cancel-in-progress: false
 
 jobs:
-  deploy-staging:
+  certification:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     environment: supabase-staging
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      CONFIRM_COMMIT_SHA: ${{ inputs.confirm_commit_sha }}
+      CONFIRM_PROJECT_REF: ${{ inputs.confirm_project_ref }}
+      CONFIRM_APP_ORIGIN: ${{ inputs.confirm_app_origin }}
+      EVIDENCE_LABEL: ${{ inputs.evidence_label }}
+      STAGING_SUPABASE_PROJECT_REF: ${{ vars.STAGING_SUPABASE_PROJECT_REF }}
+      STAGING_APPLICATION_ORIGIN: ${{ vars.STAGING_APPLICATION_ORIGIN }}
+      PRODUCTION_SUPABASE_PROJECT_REF: ${{ vars.PRODUCTION_SUPABASE_PROJECT_REF }}
+      PRODUCTION_APPLICATION_ORIGIN: ${{ vars.PRODUCTION_APPLICATION_ORIGIN }}
 
     steps:
-      - name: Checkout
+      - name: Checkout dispatched main commit
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -35,71 +60,50 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Validate local contracts
+        run: npm run staging:commercial:validate
 
-      - name: Build
-        run: npm run build
+      - name: Test harness
+        run: npm run staging:commercial:test
 
-      - name: Unit tests
-        run: npm run test:unit
+      - name: Produce local-only sanitized plan
+        id: plan
+        run: npm run staging:commercial:plan
 
-      - name: Setup Supabase CLI
+      - name: Upload sanitized plan
+        if: always() && (steps.plan.outcome == 'success' || steps.plan.outcome == 'failure')
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: staging-commercial-plan-${{ github.run_id }}
+          path: output/staging-commercial/plan/
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Apply quality prerequisites
+        if: inputs.mode == 'apply'
+        run: npm run lint && npm run format && npm run build
+
+      - name: Setup pinned Supabase CLI for apply only
+        if: inputs.mode == 'apply'
         uses: supabase/setup-cli@v1
         with:
           version: v2.109.1
 
-      - name: Validate deploy secrets
-        run: |
-          required=(
-            SUPABASE_ACCESS_TOKEN
-            SUPABASE_PROJECT_ID
-            SUPABASE_DB_PASSWORD
-            VITE_SUPABASE_URL
-            VITE_SUPABASE_ANON_KEY
-          )
+      - name: Authorized apply with blocking full unit suite
+        if: inputs.mode == 'apply'
+        env:
+          ALLOW_REMOTE_SUPABASE: I_UNDERSTAND_THIS_TOUCHES_REMOTE
+          SUPABASE_PROJECT_REF: ${{ vars.STAGING_SUPABASE_PROJECT_REF }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          STAGING_COMMERCIAL_AUTHORIZATION: ${{ secrets.STAGING_COMMERCIAL_AUTHORIZATION }}
+        run: npm run staging:commercial:apply
 
-          missing=0
-          for key in "${required[@]}"; do
-            if [ -z "${!key}" ]; then
-              echo "Missing required secret: $key"
-              missing=1
-            fi
-          done
-
-          if [ "$missing" -eq 1 ]; then
-            echo "Supabase staging deploy secrets are incomplete."
-            exit 1
-          fi
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
-
-      - name: Unit tests
-        run: npm run test:unit
-
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+      - name: Upload structured deployment evidence
+        if: always() && inputs.mode == 'apply'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          version: v2.109.1
-
-      - name: Link staging project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
-
-      - name: Confirm hosted migration deployment
-        run: echo "Manual workflow dispatch confirmed. The next step applies pending migrations to the hosted staging Supabase project."
-
-      - name: Push migrations to staging
-        run: supabase db push --linked --password "$SUPABASE_DB_PASSWORD"
-
-      - name: Deploy Open Wearables function to staging
-        run: supabase functions deploy open-wearables --project-ref "$SUPABASE_PROJECT_ID"
-
-      - name: Deploy exercise dataset gateway to staging
-        run: supabase functions deploy exercise-dataset-search --project-ref "$SUPABASE_PROJECT_ID"
+          name: staging-commercial-deployment-${{ github.run_id }}
+          path: output/staging-commercial/apply/deployment-evidence.json
+          retention-days: 7
+          if-no-files-found: ignore

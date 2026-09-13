@@ -33,3 +33,5 @@ No remote Supabase or live Lemon Squeezy operation is part of this runbook's nor
 See [Customer Portal test runbook](lemon-squeezy-portal-test-runbook.md) for PR-PRICE-06.
 
 Plan-change proof requirements are recorded separately in the [PR-PRICE-07 runbook](lemon-squeezy-plan-change-test-runbook.md).
+
+See [PR-PRICE-11 staging certification preparation](staging-commercial-certification.md) for the separately authorized staging plan/apply boundary.

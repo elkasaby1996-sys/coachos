@@ -1,0 +1,200 @@
+[
+  {
+    "id": "application",
+    "trigger": "Application regression",
+    "owner": "input:release_owner",
+    "prerequisites": [
+      "Record previous compatible reviewed app SHA and hosting rollback procedure",
+      "Separate authorization naming resources"
+    ],
+    "steps": [
+      "Restore approved prior app build",
+      "verify signup, historical delivery and recovery"
+    ],
+    "verification": [
+      "Record safe rollback assertion and commit",
+      "Confirm existing commercial and provider history remains intact"
+    ],
+    "preservesCommercialHistory": true,
+    "requiresSeparateAuthorization": true
+  },
+  {
+    "id": "edge-functions",
+    "trigger": "Handler regression",
+    "owner": "input:release_owner",
+    "prerequisites": [
+      "Record previous reviewed function SHA and approved allowlist",
+      "Separate authorization naming resources"
+    ],
+    "steps": [
+      "Redeploy named functions from previous compatible revision",
+      "verify JWT and signature rejection"
+    ],
+    "verification": [
+      "Record safe rollback assertion and commit",
+      "Confirm existing commercial and provider history remains intact"
+    ],
+    "preservesCommercialHistory": true,
+    "requiresSeparateAuthorization": true
+  },
+  {
+    "id": "compensating-migration",
+    "trigger": "Schema or policy regression",
+    "owner": "input:release_owner",
+    "prerequisites": [
+      "Privately verified recoverable backup and reviewed new migration",
+      "Separate authorization naming resources"
+    ],
+    "steps": [
+      "Author and locally test a compensating forward migration",
+      "obtain separate target approval",
+      "preserve all original migrations"
+    ],
+    "verification": [
+      "Record safe rollback assertion and commit",
+      "Confirm existing commercial and provider history remains intact"
+    ],
+    "preservesCommercialHistory": true,
+    "requiresSeparateAuthorization": true
+  },
+  {
+    "id": "mapping-retirement",
+    "trigger": "Mapping mismatch",
+    "owner": "input:release_owner",
+    "prerequisites": [
+      "Identify mapping using private operator reference and reconcile existing obligations",
+      "Separate authorization naming resources"
+    ],
+    "steps": [
+      "Retire mapping for new sales",
+      "retain contracts for historical subscription reconciliation"
+    ],
+    "verification": [
+      "Record safe rollback assertion and commit",
+      "Confirm existing commercial and provider history remains intact"
+    ],
+    "preservesCommercialHistory": true,
+    "requiresSeparateAuthorization": true
+  },
+  {
+    "id": "webhook-disablement",
+    "trigger": "Unsafe delivery processing",
+    "owner": "input:release_owner",
+    "prerequisites": [
+      "Review retry queues and recovery plan before disabling delivery",
+      "Separate authorization naming resources"
+    ],
+    "steps": [
+      "Disable approved test webhook through separately authorized provider action",
+      "record missed window",
+      "restore and reconcile pending deliveries"
+    ],
+    "verification": [
+      "Record safe rollback assertion and commit",
+      "Confirm existing commercial and provider history remains intact"
+    ],
+    "preservesCommercialHistory": true,
+    "requiresSeparateAuthorization": true
+  },
+  {
+    "id": "secret-rotation",
+    "trigger": "Credential exposure",
+    "owner": "input:release_owner",
+    "prerequisites": [
+      "Identify secret names and consumers; approve rotation order",
+      "Separate authorization naming resources"
+    ],
+    "steps": [
+      "Rotate upstream credential privately",
+      "update named staging consumer under separate authorization",
+      "verify before revoking old credential"
+    ],
+    "verification": [
+      "Record safe rollback assertion and commit",
+      "Confirm existing commercial and provider history remains intact"
+    ],
+    "preservesCommercialHistory": true,
+    "requiresSeparateAuthorization": true
+  },
+  {
+    "id": "pending-retries",
+    "trigger": "Deferred or ambiguous obligations",
+    "owner": "input:release_owner",
+    "prerequisites": [
+      "Private inventory of unresolved operations and delivery leases",
+      "Separate authorization naming resources"
+    ],
+    "steps": [
+      "Pause new synthetic actions",
+      "wait for leases",
+      "reconcile authoritative provider state",
+      "route unresolved obligations to manual review"
+    ],
+    "verification": [
+      "Record safe rollback assertion and commit",
+      "Confirm existing commercial and provider history remains intact"
+    ],
+    "preservesCommercialHistory": true,
+    "requiresSeparateAuthorization": true
+  },
+  {
+    "id": "synthetic-users",
+    "trigger": "Scenario completion",
+    "owner": "input:release_owner",
+    "prerequisites": [
+      "Verify isolated synthetic identity and absence of unresolved obligations",
+      "Separate authorization naming resources"
+    ],
+    "steps": [
+      "Revoke sessions and disable synthetic login",
+      "remove only approved disposable domain fixtures",
+      "retain billing-linked audit references"
+    ],
+    "verification": [
+      "Record safe rollback assertion and commit",
+      "Confirm existing commercial and provider history remains intact"
+    ],
+    "preservesCommercialHistory": true,
+    "requiresSeparateAuthorization": true
+  },
+  {
+    "id": "provider-test-resources",
+    "trigger": "Test scenario completion",
+    "owner": "input:release_owner",
+    "prerequisites": [
+      "Confirm test Store and all pending subscription or invoice obligations",
+      "Separate authorization naming resources"
+    ],
+    "steps": [
+      "Cancel approved test subscriptions",
+      "archive test customer access when supported",
+      "preserve commercial and provider history"
+    ],
+    "verification": [
+      "Record safe rollback assertion and commit",
+      "Confirm existing commercial and provider history remains intact"
+    ],
+    "preservesCommercialHistory": true,
+    "requiresSeparateAuthorization": true
+  },
+  {
+    "id": "evidence-retention",
+    "trigger": "Seven-day retention reached or privacy incident",
+    "owner": "input:release_owner",
+    "prerequisites": [
+      "Record private evidence custodian and approved deletion scope",
+      "Separate authorization naming resources"
+    ],
+    "steps": [
+      "Delete transient raw captures immediately",
+      "delete expired sanitized artifacts after seven days",
+      "retain approved aggregate sign-off without identities"
+    ],
+    "verification": [
+      "Record safe rollback assertion and commit",
+      "Confirm existing commercial and provider history remains intact"
+    ],
+    "preservesCommercialHistory": true,
+    "requiresSeparateAuthorization": true
+  }
+]

@@ -27,7 +27,13 @@
     "verify:release": "npm run lint && npm run format && npm run build && npm run test:e2e:smoke",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:smoke": "playwright test tests/e2e"
+    "test:e2e:smoke": "playwright test tests/e2e",
+    "staging:commercial:validate": "node scripts/staging-commercial-plan.mjs --validate",
+    "staging:commercial:plan": "node scripts/staging-commercial-plan.mjs",
+    "staging:commercial:evidence": "node scripts/staging-commercial-evidence.mjs",
+    "staging:commercial:catalogue": "node scripts/staging-commercial-catalogue.mjs",
+    "staging:commercial:apply": "node scripts/staging-commercial-apply.mjs",
+    "staging:commercial:test": "vitest run tests/unit/staging-commercial-certification.test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
