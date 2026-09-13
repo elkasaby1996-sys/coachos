@@ -1,0 +1,606 @@
+[
+  {
+    "id": "CERT-DEPLOY-001",
+    "title": "Migration history",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Review private backup and authorized remote ledger prefix"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "List migrations",
+      "compare exact prefix",
+      "apply reviewed pending suffix",
+      "list again"
+    ],
+    "expectedLocalOutcome": "Full approved history, no divergent or extra versions",
+    "expectedProviderOutcome": "No provider request",
+    "requiredEvidence": [
+      "MIGRATION_HISTORY_MATCH",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Retain ledger; use compensating forward migration on drift"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-DEPLOY-002",
+    "title": "Function allowlist",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Migration verification passed"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Deploy the thirteen named entries",
+      "check JWT configuration",
+      "probe owner and webhook auth boundaries"
+    ],
+    "expectedLocalOutcome": "Only approved functions deployed; owner calls reject anonymous access",
+    "expectedProviderOutcome": "Webhook rejects invalid signature",
+    "requiredEvidence": [
+      "FUNCTION_DEPLOYED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Redeploy previously reviewed function revision when required"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-AUTH-001",
+    "title": "Signup and callback redirect",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Auth settings and staging application origin approved"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Validate site URL and exact callback allowlist",
+      "sign up synthetic owner",
+      "follow confirmation",
+      "test malicious redirect"
+    ],
+    "expectedLocalOutcome": "Confirmed owner returns to staging; unapproved redirect rejected",
+    "expectedProviderOutcome": "No provider request",
+    "requiredEvidence": [
+      "AUTH_REDIRECT_MATCH",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Disable synthetic identity after preserving audit references"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-CATALOGUE-001",
+    "title": "Anonymous v2 parity",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Approved staging anon read and migration history"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Call anonymous v2 RPC",
+      "validate schema",
+      "compare all fields with frozen snapshot"
+    ],
+    "expectedLocalOutcome": "Three plans; two public features; zero public add-ons; exact fourteen-day trial",
+    "expectedProviderOutcome": "No provider request",
+    "requiredEvidence": [
+      "CATALOGUE_MATCH",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Retain only diff paths and assertion outcome"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-CHECKOUT-001",
+    "title": "Monthly activation",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Six verified test mappings; synthetic unconverted owner; separately approved test purchase"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Select each monthly plan at quantity one",
+      "use hosted test Checkout",
+      "deliver signed creation",
+      "refresh canonical summary"
+    ],
+    "expectedLocalOutcome": "One active paid row with correct monthly price and included capacity",
+    "expectedProviderOutcome": "Test monthly subscription active; no provider trial or setup fee",
+    "requiredEvidence": [
+      "SUBSCRIPTION_ACTIVE",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": [
+      "Cancel test subscription through approved operator flow; preserve history"
+    ],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-CHECKOUT-002",
+    "title": "Annual activation",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Annual mappings verified; isolated synthetic owner; separately approved test purchase"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Repeat activation for each annual plan",
+      "verify renewal interval and amount"
+    ],
+    "expectedLocalOutcome": "One active paid row with correct annual price and capacity",
+    "expectedProviderOutcome": "Test annual subscription active with twelve-month cadence",
+    "requiredEvidence": [
+      "SUBSCRIPTION_ACTIVE",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": [
+      "Cancel test subscription through approved operator flow; preserve history"
+    ],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-WEBHOOK-001",
+    "title": "Signature rejection",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Deployed test webhook; synthetic malformed signature"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Send invalid and missing signatures with harmless synthetic body",
+      "check no ledger or access change"
+    ],
+    "expectedLocalOutcome": "Request rejected before parsing or mutation",
+    "expectedProviderOutcome": "No provider subscription retrieval",
+    "requiredEvidence": [
+      "INVALID_SIGNATURE_REJECTED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Discard synthetic request bytes; retain safe code"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-WEBHOOK-002",
+    "title": "Duplicate replay",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Authorized valid test delivery already reconciled"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Replay identical delivery twice",
+      "compare paid row, entitlement and operation counts"
+    ],
+    "expectedLocalOutcome": "Idempotent final state with no double grant or extra paid row",
+    "expectedProviderOutcome": "No additional purchase or quantity mutation",
+    "requiredEvidence": [
+      "REPLAY_IDEMPOTENT",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Retain replay audit history"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-WEBHOOK-003",
+    "title": "Delayed creation",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Isolated test subscription; approved delivery-order drill"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Deliver invoice before creation linkage",
+      "then deliver creation and retry deferred event"
+    ],
+    "expectedLocalOutcome": "Deferred invoice converges once after creation; no early access grant",
+    "expectedProviderOutcome": "Current subscription state agrees after reconciliation",
+    "requiredEvidence": [
+      "CREATION_RECONCILED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Drain deferred deliveries without deleting their history"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-PORTAL-001",
+    "title": "Portal URL security",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Exact approved test portal hosts; paid synthetic owner"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Retrieve portal URL",
+      "consume privately",
+      "inject expired, wrong-host and duplicate-signature fixtures"
+    ],
+    "expectedLocalOutcome": "Only valid purpose and host accepted; no URL in logs or evidence",
+    "expectedProviderOutcome": "Test portal exposes only reviewed capabilities",
+    "requiredEvidence": [
+      "PORTAL_URL_VALIDATED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Close sessions; discard signed capabilities"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-PORTAL-002",
+    "title": "Cancellation and resume",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Active test subscription; cancellation and resume enabled"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Cancel for period end",
+      "verify ends_at and retained access",
+      "resume before expiry"
+    ],
+    "expectedLocalOutcome": "Future cancellation and resumed state preserve plan and capacity",
+    "expectedProviderOutcome": "Test provider cancellation and resumption match",
+    "requiredEvidence": [
+      "CANCELLATION_RESUMED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Return synthetic subscription to approved cleanup state"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-RECOVERY-001",
+    "title": "Payment failure and recovery",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Approved test payment-failure method; no live card data"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Cause approved test failure",
+      "verify grace and recovery link",
+      "recover payment",
+      "deliver signed recovered event"
+    ],
+    "expectedLocalOutcome": "Recovery restores paid access once; no unrelated capacity expansion",
+    "expectedProviderOutcome": "Test invoice transitions failed to recovered",
+    "requiredEvidence": [
+      "PAYMENT_RECOVERED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": [
+      "Resolve all pending invoices and cancel test subscription as approved"
+    ],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-PLAN-001",
+    "title": "Immediate upgrade",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Active test card subscription; target mapping; no pending operation"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Preview and apply upgrade",
+      "observe invoice failure and success fixtures",
+      "reconcile real test success"
+    ],
+    "expectedLocalOutcome": "Target entitlement waits for matching successful payment; ambiguous state blocks retries",
+    "expectedProviderOutcome": "Approved target variant and invoice agree",
+    "requiredEvidence": [
+      "PLAN_UPGRADED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Resolve pending operation before subscription cleanup"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-PLAN-002",
+    "title": "Scheduled downgrade",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Lower-capacity commitments validated; no pending operation"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Preview and schedule downgrade",
+      "verify effective date, reservations and renewal cadence"
+    ],
+    "expectedLocalOutcome": "Existing entitlement retained until effective date; lower admission ceiling enforced",
+    "expectedProviderOutcome": "Future test change matches target and renewal date",
+    "requiredEvidence": [
+      "PLAN_SCHEDULED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": [
+      "Cancel pending downgrade or complete approved period-end drill"
+    ],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-PLAN-003",
+    "title": "Cancel scheduled downgrade",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Scheduled synthetic downgrade"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": ["Cancel through owner endpoint", "refresh", "replay response"],
+    "expectedLocalOutcome": "Pending change cancelled once; original capacity admission restored",
+    "expectedProviderOutcome": "Provider future change removed",
+    "requiredEvidence": [
+      "PLAN_SCHEDULE_CANCELLED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Retain cancelled operation history"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-SEAT-001",
+    "title": "Seat increase and payment",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "All six graduated contracts verified; active card subscription"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Increase quantity",
+      "inspect failed then successful invoice fixtures",
+      "reconcile approved test payment"
+    ],
+    "expectedLocalOutcome": "Approved additional seats change only after matching payment; maximum enforced",
+    "expectedProviderOutcome": "Quantity equals one plus additional seats; incremental price exact",
+    "requiredEvidence": [
+      "SEAT_PAYMENT_APPLIED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Reduce synthetic commitments before cleanup"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-SEAT-002",
+    "title": "Seat reduction",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Synthetic seats with no blocking commitments"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Preview and schedule reduction",
+      "inspect admission ceiling",
+      "observe authorized effective date"
+    ],
+    "expectedLocalOutcome": "Current paid seats persist until effective date; new admissions respect scheduled ceiling",
+    "expectedProviderOutcome": "Scheduled quantity matches approved reduction",
+    "requiredEvidence": [
+      "SEAT_REDUCTION_SCHEDULED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Cancel or complete reduction before customer cleanup"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-SEAT-003",
+    "title": "Cancel reduction",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Scheduled synthetic seat reduction"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Cancel reduction",
+      "refresh provider state and capacity",
+      "replay cancellation"
+    ],
+    "expectedLocalOutcome": "Original admission restored without duplicate operation",
+    "expectedProviderOutcome": "Scheduled quantity reduction removed",
+    "requiredEvidence": [
+      "SEAT_REDUCTION_CANCELLED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Preserve cancellation history"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-ACCESS-001",
+    "title": "Active full access",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Active synthetic subscription and eligible owner"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Exercise create, update and delivery operations",
+      "verify other account isolation"
+    ],
+    "expectedLocalOutcome": "Full authorized access; cross-owner writes denied",
+    "expectedProviderOutcome": "Active test subscription agrees",
+    "requiredEvidence": [
+      "ACCESS_FULL",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Remove synthetic domain content only under reviewed cleanup"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-ACCESS-002",
+    "title": "Grace existing delivery",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Approved payment failure and synthetic existing assignments"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Exercise existing delivery updates",
+      "attempt new growth operations"
+    ],
+    "expectedLocalOutcome": "Existing delivery permitted; expansion blocked according to access policy",
+    "expectedProviderOutcome": "Test past-due state reconciles to grace",
+    "requiredEvidence": [
+      "ACCESS_EXISTING_DELIVERY",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": [
+      "Recover or close synthetic obligation; retain payment history"
+    ],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-ACCESS-003",
+    "title": "Expired recovery access",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Expired synthetic subscription; recovery portal configured"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Try protected writes and recovery action",
+      "preserve historical reads"
+    ],
+    "expectedLocalOutcome": "Protected writes rejected; recovery remains reachable",
+    "expectedProviderOutcome": "Expired test subscription and recovery state agree",
+    "requiredEvidence": [
+      "ACCESS_RECOVERY_ONLY",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": ["Preserve historical content and close identity access"],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-SECURITY-001",
+    "title": "Log redaction",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Private raw observations available to authorized operator only"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Project safe assertions",
+      "scan signed URLs, headers, JWTs, identifiers and nested objects",
+      "review any screenshots privately"
+    ],
+    "expectedLocalOutcome": "Only strict sanitized evidence uploaded; scanner rejects contamination",
+    "expectedProviderOutcome": "No provider payload or capability retained in artifacts",
+    "requiredEvidence": [
+      "REDACTION_PASSED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": [
+      "Delete transient raw captures; expire approved evidence after seven days"
+    ],
+    "status": "not_run"
+  },
+  {
+    "id": "CERT-ROLLBACK-001",
+    "title": "Rollback drill",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate named staging authorization; test provider environment only",
+      "Reviewed prior app/function revision; private backup restore proof; separately authorized drill"
+    ],
+    "safeInputs": [
+      "Synthetic isolated owner alias; no PII in artifacts",
+      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+    ],
+    "steps": [
+      "Exercise approved rollback templates",
+      "check pending retries and compensating migration",
+      "recheck auth, catalogue and existing delivery"
+    ],
+    "expectedLocalOutcome": "Known compatible state restored with all commercial audit history preserved",
+    "expectedProviderOutcome": "Test obligations drained or explicitly owned for follow-up",
+    "requiredEvidence": [
+      "ROLLBACK_VERIFIED",
+      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+    ],
+    "cleanup": [
+      "Complete all ten cleanup templates and retain signed-off safe assertions"
+    ],
+    "status": "not_run"
+  }
+]

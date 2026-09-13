@@ -38,3 +38,5 @@ Only after explicit approval naming the remote resources, an operator should ver
 Code cannot prove dashboard settings until this real test-mode workflow is exercised. Live Store configuration and deployment require separate approval even after successful test-mode proof. No live-enabled verdict is warranted from deterministic tests alone.
 
 Rollback preserves commercial history: revert the application and use a reviewed compensating migration for the new/changed RPCs. Do not delete provider history or edit deployed historical migrations. PR-PRICE-07 must supply approved plan-change operations before the disabled plan/cadence capabilities can be considered.
+
+See [PR-PRICE-11 staging certification preparation](staging-commercial-certification.md) for the separately authorized staging plan/apply boundary.

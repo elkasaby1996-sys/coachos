@@ -27,3 +27,5 @@ Verify owner full/grace/read-only/expired behavior, workspace-owner isolation, d
 Run lint, format, build, full units, relevant Billing regressions and the original auth pair with four workers and zero retries. Deno-check any changed Edge Functions; none are required solely for SQL policy changes. Then run `npm run verify:release` twice consecutively on unchanged implementation/test code. Record file hashes around the pair, exact totals and inherited skips. Finalize only evidence documentation after the pair.
 
 Deterministic status changes and provider fixtures prove local policy behavior, not real payment recovery or live enforcement. Real Lemon Squeezy test-mode card subscriptions, invoices and signed recovery webhooks require separate explicit authorization and PR-PRICE-05/06/07 provider proof. Deployment, remote mappings and production configuration remain separate. Do not claim live billing or live access enforcement from local fixtures.
+
+See [PR-PRICE-11 staging certification preparation](staging-commercial-certification.md) for the separately authorized staging plan/apply boundary.

@@ -32,3 +32,5 @@ No real-provider proof is supplied by deterministic tests. Before any production
 7. Portal/Store quantity controls disabled, PayPal limitation, no provider IDs or signed URLs in frontend/log evidence.
 
 Do not perform these remote steps under this PR's local-only authorization. Deployment and live Store configuration require separate approval. Refunds, coupons, invoice-list UI, client payments and usage billing remain deferred.
+
+See [PR-PRICE-11 staging certification preparation](staging-commercial-certification.md) for the separately authorized staging plan/apply boundary.

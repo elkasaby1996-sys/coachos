@@ -1,0 +1,216 @@
+{
+  "environment": "test",
+  "liveReferences": [],
+  "mappings": [
+    {
+      "environment": "test",
+      "testMode": true,
+      "storeRef": "fake:store:test",
+      "productRef": "fake:product:subscription",
+      "variantRef": "fake:variant:launch:monthly",
+      "priceRef": "fake:price:launch:monthly",
+      "planKey": "launch",
+      "planVersion": 1,
+      "cadence": "monthly",
+      "currency": "USD",
+      "amountMinor": 1900,
+      "interval": "month",
+      "intervalCount": 1,
+      "trial": null,
+      "setupFeeMinor": 0,
+      "seatCapable": true,
+      "category": "subscription",
+      "scheme": "graduated",
+      "packageSize": 1,
+      "usageAggregation": null,
+      "decimalPrice": null,
+      "tiers": [
+        {
+          "lastUnit": 1,
+          "unitAmountMinor": 1900,
+          "fixedFeeMinor": 0
+        },
+        {
+          "lastUnit": "inf",
+          "unitAmountMinor": 1200,
+          "fixedFeeMinor": 0
+        }
+      ]
+    },
+    {
+      "environment": "test",
+      "testMode": true,
+      "storeRef": "fake:store:test",
+      "productRef": "fake:product:subscription",
+      "variantRef": "fake:variant:launch:annual",
+      "priceRef": "fake:price:launch:annual",
+      "planKey": "launch",
+      "planVersion": 1,
+      "cadence": "annual",
+      "currency": "USD",
+      "amountMinor": 19000,
+      "interval": "year",
+      "intervalCount": 1,
+      "trial": null,
+      "setupFeeMinor": 0,
+      "seatCapable": true,
+      "category": "subscription",
+      "scheme": "graduated",
+      "packageSize": 1,
+      "usageAggregation": null,
+      "decimalPrice": null,
+      "tiers": [
+        {
+          "lastUnit": 1,
+          "unitAmountMinor": 19000,
+          "fixedFeeMinor": 0
+        },
+        {
+          "lastUnit": "inf",
+          "unitAmountMinor": 12000,
+          "fixedFeeMinor": 0
+        }
+      ]
+    },
+    {
+      "environment": "test",
+      "testMode": true,
+      "storeRef": "fake:store:test",
+      "productRef": "fake:product:subscription",
+      "variantRef": "fake:variant:growth:monthly",
+      "priceRef": "fake:price:growth:monthly",
+      "planKey": "growth",
+      "planVersion": 1,
+      "cadence": "monthly",
+      "currency": "USD",
+      "amountMinor": 5900,
+      "interval": "month",
+      "intervalCount": 1,
+      "trial": null,
+      "setupFeeMinor": 0,
+      "seatCapable": true,
+      "category": "subscription",
+      "scheme": "graduated",
+      "packageSize": 1,
+      "usageAggregation": null,
+      "decimalPrice": null,
+      "tiers": [
+        {
+          "lastUnit": 1,
+          "unitAmountMinor": 5900,
+          "fixedFeeMinor": 0
+        },
+        {
+          "lastUnit": "inf",
+          "unitAmountMinor": 1200,
+          "fixedFeeMinor": 0
+        }
+      ]
+    },
+    {
+      "environment": "test",
+      "testMode": true,
+      "storeRef": "fake:store:test",
+      "productRef": "fake:product:subscription",
+      "variantRef": "fake:variant:growth:annual",
+      "priceRef": "fake:price:growth:annual",
+      "planKey": "growth",
+      "planVersion": 1,
+      "cadence": "annual",
+      "currency": "USD",
+      "amountMinor": 59000,
+      "interval": "year",
+      "intervalCount": 1,
+      "trial": null,
+      "setupFeeMinor": 0,
+      "seatCapable": true,
+      "category": "subscription",
+      "scheme": "graduated",
+      "packageSize": 1,
+      "usageAggregation": null,
+      "decimalPrice": null,
+      "tiers": [
+        {
+          "lastUnit": 1,
+          "unitAmountMinor": 59000,
+          "fixedFeeMinor": 0
+        },
+        {
+          "lastUnit": "inf",
+          "unitAmountMinor": 12000,
+          "fixedFeeMinor": 0
+        }
+      ]
+    },
+    {
+      "environment": "test",
+      "testMode": true,
+      "storeRef": "fake:store:test",
+      "productRef": "fake:product:subscription",
+      "variantRef": "fake:variant:scale:monthly",
+      "priceRef": "fake:price:scale:monthly",
+      "planKey": "scale",
+      "planVersion": 1,
+      "cadence": "monthly",
+      "currency": "USD",
+      "amountMinor": 11900,
+      "interval": "month",
+      "intervalCount": 1,
+      "trial": null,
+      "setupFeeMinor": 0,
+      "seatCapable": true,
+      "category": "subscription",
+      "scheme": "graduated",
+      "packageSize": 1,
+      "usageAggregation": null,
+      "decimalPrice": null,
+      "tiers": [
+        {
+          "lastUnit": 1,
+          "unitAmountMinor": 11900,
+          "fixedFeeMinor": 0
+        },
+        {
+          "lastUnit": "inf",
+          "unitAmountMinor": 1200,
+          "fixedFeeMinor": 0
+        }
+      ]
+    },
+    {
+      "environment": "test",
+      "testMode": true,
+      "storeRef": "fake:store:test",
+      "productRef": "fake:product:subscription",
+      "variantRef": "fake:variant:scale:annual",
+      "priceRef": "fake:price:scale:annual",
+      "planKey": "scale",
+      "planVersion": 1,
+      "cadence": "annual",
+      "currency": "USD",
+      "amountMinor": 119000,
+      "interval": "year",
+      "intervalCount": 1,
+      "trial": null,
+      "setupFeeMinor": 0,
+      "seatCapable": true,
+      "category": "subscription",
+      "scheme": "graduated",
+      "packageSize": 1,
+      "usageAggregation": null,
+      "decimalPrice": null,
+      "tiers": [
+        {
+          "lastUnit": 1,
+          "unitAmountMinor": 119000,
+          "fixedFeeMinor": 0
+        },
+        {
+          "lastUnit": "inf",
+          "unitAmountMinor": 12000,
+          "fixedFeeMinor": 0
+        }
+      ]
+    }
+  ]
+}

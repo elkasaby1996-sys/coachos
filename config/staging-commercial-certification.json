@@ -1,0 +1,746 @@
+{
+  "schemaVersion": 1,
+  "environment": "staging",
+  "providerEnvironment": "test",
+  "requiredBaseCommit": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+  "reviewedCommit": "input:confirm_commit_sha",
+  "requiredApplicationOrigin": "input:STAGING_APPLICATION_ORIGIN",
+  "requiredSupabaseProjectRef": "input:STAGING_SUPABASE_PROJECT_REF",
+  "migrations": {
+    "directory": "supabase/migrations",
+    "approved": [
+      {
+        "filename": "20260326084615_baseline_schema.sql",
+        "sha256": "d2bb09a01c64d33f847bdc7f99492e50001ef302eab7ebad8dccc23afb7f8455"
+      },
+      {
+        "filename": "20260326090000_fix_baseline_lint_functions.sql",
+        "sha256": "9de600c65c7ccfb02c1ed5ed1c28fe92072cc1c30a400ef147a6e2f8f8336333"
+      },
+      {
+        "filename": "20260326091000_fix_pt_update_client_admin_fields_tags.sql",
+        "sha256": "71f3f413c36fa24d4047b59ebf9e8abe8729c172f7c2bcf2de7670db13a05309"
+      },
+      {
+        "filename": "20260326093612_pipeline_smoke_test.sql",
+        "sha256": "3c7929e40ae6ab76d70be7fa34f901005a3720778e2bd1064bb151503eac4bc0"
+      },
+      {
+        "filename": "20260326101559_optimize_db_advisors_pass_1.sql",
+        "sha256": "f25a1ea4b81f3c7aa9ef727d4218d59b9078fd2df8c133f2db92b3c442098911"
+      },
+      {
+        "filename": "20260326104232_optimize_db_advisors_pass_2a.sql",
+        "sha256": "1f8faf64409f79bd028055889238c52de6d7bfd184705d8cb6e95ff6ddf406a0"
+      },
+      {
+        "filename": "20260326105115_optimize_db_advisors_pass_2b.sql",
+        "sha256": "c578e9d8ed957146bcc625401a33f67f6a3deb6172aa57a387f428e27f84f0a8"
+      },
+      {
+        "filename": "20260326105902_optimize_db_advisors_pass_2c.sql",
+        "sha256": "6a3fd8e598e500789ed84eb6999d7338e10a0b71c97ad11562a8406bea7fdf31"
+      },
+      {
+        "filename": "20260326111049_optimize_db_advisors_pass_2d.sql",
+        "sha256": "ed646d616526928a5235f52827af6fcb1c72347d86b34ab47a0e41896fe22e34"
+      },
+      {
+        "filename": "20260326123000_onboarding_baseline_mvp.sql",
+        "sha256": "de4ca81a01898fcd246881bf6cf3a0cdc368b926061c514e5bae5e39a4ca1039"
+      },
+      {
+        "filename": "20260328114000_onboarding_final_integration.sql",
+        "sha256": "203901d0e2ae24fb6d3e93de4f3cf549cb9a61cfc02c94de087fbe3ea644ebd1"
+      },
+      {
+        "filename": "20260328161500_baseline_photo_storage_bucket.sql",
+        "sha256": "4df6f7cdbb0703a30c1be1271ae811d7d5aea52c022c55640c80a8e044d5c5f7"
+      },
+      {
+        "filename": "20260328174000_require_program_and_checkin_for_onboarding_completion.sql",
+        "sha256": "e12b40f1a0588b6b1928d01f880e571456f90853c5441722dfb5678ee4850b90"
+      },
+      {
+        "filename": "20260328181500_relax_onboarding_completion_activation_requirements.sql",
+        "sha256": "997c9b614a820f11fbae06db8f41909ace00457e16dfe4091819491c2998ac15"
+      },
+      {
+        "filename": "20260328184500_decouple_program_and_checkin_from_onboarding.sql",
+        "sha256": "69ac8ec9b8bceab651ac9c4cd71955212e8a9c8ce455f7edd0af529adf65af73"
+      },
+      {
+        "filename": "20260328193000_remove_partially_activated_onboarding_status_usage.sql",
+        "sha256": "b94b989a857620302d7c1adcd81abdb8ba8330a9acdffd9a21bedf81684e712a"
+      },
+      {
+        "filename": "20260329103000_checkin_engine_hardening.sql",
+        "sha256": "7561fdedf9e7846953a423e7b360de3eb97808dcac0e44449172c01711391b58"
+      },
+      {
+        "filename": "20260329121500_checkin_template_builder_safety.sql",
+        "sha256": "46c457d190c14c0a1d89cdaaf6ec71d371d1f74c62fab91d536a39177132a175"
+      },
+      {
+        "filename": "20260329130000_checkin_review_workflow.sql",
+        "sha256": "ae4844f5b20f7a05cf6b3a1302c0b10348a7a11b8ff7b63ad8858cf0cb794ed6"
+      },
+      {
+        "filename": "20260329143000_checkin_visibility_unification.sql",
+        "sha256": "a9e199ff1fe251b2da373e1817acf43a0ebd94718015713a3fcf2fb1d333e99a"
+      },
+      {
+        "filename": "20260329172000_pt_update_client_checkin_settings.sql",
+        "sha256": "341f3a326a95202f0250a872d26b9dc2f74b2a45fcde632e5f43acae921f1138"
+      },
+      {
+        "filename": "20260329183000_fix_pt_checkin_settings_role_check.sql",
+        "sha256": "7571579a2c98af4e8567eb0126ff05fa70023030f8ae1ec05d1728bd20bdb2fe"
+      },
+      {
+        "filename": "20260329184500_fix_workspace_role_like_casts.sql",
+        "sha256": "a4fb6eac869c3079273cf73efe933a7b887d83204199a75937d8f113a9ae11b1"
+      },
+      {
+        "filename": "20260329193000_exact_date_checkin_cadence.sql",
+        "sha256": "30f2cc2e936870ae2334e7952fa5e16a7109705ef4a18d968b9f9781bb053751"
+      },
+      {
+        "filename": "20260329195500_add_checkin_photos_bucket.sql",
+        "sha256": "1fb31902e1bfea9c5c47919f7cde5650488cf083e0085ab018cb4fce6ed920ed"
+      },
+      {
+        "filename": "20260329204000_require_review_notes_for_completion.sql",
+        "sha256": "b87d77c19defd12ef58bc1f7d0e5460ecdbabe21d510276d994c4299b9f624b6"
+      },
+      {
+        "filename": "20260330113000_client_lifecycle_risk_flags.sql",
+        "sha256": "1d5d146c62091cf9cc5deec7d475439a38c933cc131f3b16297798a31b16e742"
+      },
+      {
+        "filename": "20260401120000_owner_scoped_exercise_library_and_dataset_import.sql",
+        "sha256": "35b0aca755caf317c107c9d4681dd41d2685e2dfde9834a17f1306f8f6936371"
+      },
+      {
+        "filename": "20260401133000_normalize_imported_exercise_labels.sql",
+        "sha256": "f9e9ab797638541765a0bf9fc435ad34b59361e7571fc00391b24eb5ef90251b"
+      },
+      {
+        "filename": "20260402110000_add_client_medical_records.sql",
+        "sha256": "6b7efb7f6cb9ccaf385488cb2abdcfd9b54f44c2e6da8d78fb1afcd31a4c3bf8"
+      },
+      {
+        "filename": "20260405120000_account_profiles_and_standalone_clients.sql",
+        "sha256": "1ba0ae534b99a3dcc93434a7fad99a2ae99cbc49ceb4efbe80ce497e95a4055d"
+      },
+      {
+        "filename": "20260405163000_normalize_legacy_pt_profiles.sql",
+        "sha256": "736caf71b0ffc985733a53c882bf6db1fc094244cae892da2250e197628343ec"
+      },
+      {
+        "filename": "20260405201500_add_pt_profile_media_bucket.sql",
+        "sha256": "5718073bee99f0de6b51a692f8a78fd94209f65375c35c952b64a913770d2deb"
+      },
+      {
+        "filename": "20260406113000_fix_advisor_security_and_performance_warnings.sql",
+        "sha256": "1b63df804efe61904df624581da90141095f3a20db578082b8adba22f48294c2"
+      },
+      {
+        "filename": "20260407133000_pt_hub_clients_pagination.sql",
+        "sha256": "768a271dc315ab4a3821e9e4580fd2ca5149740b294086064b84b99d3c0e09ba"
+      },
+      {
+        "filename": "20260407153000_add_rate_limit_guards.sql",
+        "sha256": "1fc0bff3ff660a656642dfaea9a31fbc460d2ee13dcd92b28dae18fdafa65312"
+      },
+      {
+        "filename": "20260408120000_client_lifecycle_health_separation.sql",
+        "sha256": "9a24cbc043d355907c73d0f7048cb0cf84330cc916fe87c487e2c0022ea7b9bd"
+      },
+      {
+        "filename": "20260409101500_add_pt_hub_settings_identity_fields.sql",
+        "sha256": "d2317568f38da3117efff2b4a1b37a5922e64461bfadeacd924be6b89982e86a"
+      },
+      {
+        "filename": "20260409113000_pt_hub_lead_lifecycle_refactor.sql",
+        "sha256": "e3977987ee053fd722b979de0518da9289ce07d9898eee6a1ca216a852a3921e"
+      },
+      {
+        "filename": "20260409160000_add_lead_chat_architecture.sql",
+        "sha256": "9081364918bfe176cbd5fed835ad67bfea10263adbdaac9619b43c09ac20ef86"
+      },
+      {
+        "filename": "20260409193000_harden_lead_chat_permissions.sql",
+        "sha256": "7ebe8d438c81a979281ee9f74b8a17238704fec070734745bc77d7255d222aa3"
+      },
+      {
+        "filename": "20260410100000_add_pt_packages_canonical_model.sql",
+        "sha256": "5e3bb4a52ccac7552e832bf981a7df60c7adf0877fa700a484ffa3e0cbd97cb1"
+      },
+      {
+        "filename": "20260411140000_add_guarded_pt_package_delete.sql",
+        "sha256": "f12195ec60e7cc9ca9f002224e3019f799e8e23e82df5715d7544efdcc35529a"
+      },
+      {
+        "filename": "20260411152000_fix_public_profile_rls_visibility.sql",
+        "sha256": "68aba1250d61721f4d0517f5f08a9a23da1525b20c878e4e1d02446e0b697ad7"
+      },
+      {
+        "filename": "20260411193000_workspace_owner_membership_consistency.sql",
+        "sha256": "07ebcc1cafc91c96bbbf36eb5f44c96557630d8bf5cc9e289b4742f39bb97217"
+      },
+      {
+        "filename": "20260411200000_fix_pt_hub_approve_lead_workspace_reassignment.sql",
+        "sha256": "913beb2c818d0efc418bae5d8c4116e0fde2bb152705c29fa2050d92e572848e"
+      },
+      {
+        "filename": "20260411213000_enforce_single_workspace_client_on_reassign.sql",
+        "sha256": "757360066b0d4d60764e8cf7fd1052913f659722ac5f75ffec85a9f98491237d"
+      },
+      {
+        "filename": "20260412113000_align_pt_summary_auth_with_workspace_membership_helper.sql",
+        "sha256": "6f7e038a535ac38b0f47665ec0bd3da3f2883cb486a8d9150d733fc3f0a9cbca"
+      },
+      {
+        "filename": "20260412121500_align_pt_hub_clients_scope_with_pt_membership.sql",
+        "sha256": "d73ab9062b77c238718591662c20a0098a245c71bfae008194a2111a29f5a0ac"
+      },
+      {
+        "filename": "20260412133000_guard_pt_hub_lead_transfer_confirmation.sql",
+        "sha256": "f8fd295a2fcd05dbedf0d4ea129cd0bee9e470c021ec5ca7be19c4eb851ca083"
+      },
+      {
+        "filename": "20260412152000_transfer_lead_sets_client_lifecycle_active.sql",
+        "sha256": "c2dbee5a3473fbf4dcba332e65d560a0a68eb81362ef1c2f6135f718c3763749"
+      },
+      {
+        "filename": "20260412153000_backfill_converted_clients_active_lifecycle.sql",
+        "sha256": "a6dbb67fec736ca7a0cc18171ef914b52c37f277bd98271f446047c2a5d95b9b"
+      },
+      {
+        "filename": "20260412170000_fix_client_personal_workout_insert_rls.sql",
+        "sha256": "f5a3e02448141a48be4c1deee5c6256599a9087e28edd47cd9ad52a179ff4d72"
+      },
+      {
+        "filename": "20260412173500_add_workout_name_to_assigned_workouts.sql",
+        "sha256": "1fceceeae6c91c4b1730c3dd819e614b3ae1ae8e1dea190b58a7cfaa725d2829"
+      },
+      {
+        "filename": "20260412191000_enable_client_personal_workout_creation_chain.sql",
+        "sha256": "7c8eda192b9615288eb5117af0f765875ba05927f2e82aa6f37b029ce76568b4"
+      },
+      {
+        "filename": "20260412193000_fix_personal_workout_awe_insert_policy_recursion.sql",
+        "sha256": "613d3b2760fb1b4aacd6bc6c2ad2445c79d27e12925056f32182bfc233153f5d"
+      },
+      {
+        "filename": "20260412203000_enable_client_personal_workout_manage_policies.sql",
+        "sha256": "4c522b61cb2f451cef5155914c034d5c27ad37d400e6c487f54323a9c5200458"
+      },
+      {
+        "filename": "20260413110000_unified_client_nutrition_personal_ownership.sql",
+        "sha256": "a12ded10e635a705e81d2adadcf203fc6da1d17d91782e7dcab53d61c849b0b8"
+      },
+      {
+        "filename": "20260414164000_add_baseline_entry_marker_assignments.sql",
+        "sha256": "ee8639318fb842253706ac45e87446125c81a937a0b356a8432cf461abac0fcf"
+      },
+      {
+        "filename": "20260414183000_fix_pt_baseline_marker_assignment_rpc.sql",
+        "sha256": "2fb80daf3641529d1f01e695e509833c87609670e41b7e2dcc7d48d67f3cd612"
+      },
+      {
+        "filename": "20260414184500_fix_pt_assign_baseline_markers_conflict.sql",
+        "sha256": "313e1340a7c812a54a9963b155316d73279a529d41ade5e53b1a762f7866d876"
+      },
+      {
+        "filename": "20260414193000_support_pt_baseline_assignment_for_onboarding_clients.sql",
+        "sha256": "e3def16a13c39105af89ea305769d73fcc1e6e9b348060761021c6945666c6c5"
+      },
+      {
+        "filename": "20260414194500_fix_pt_assign_baseline_markers_uuid_lint.sql",
+        "sha256": "e3def16a13c39105af89ea305769d73fcc1e6e9b348060761021c6945666c6c5"
+      },
+      {
+        "filename": "20260414210000_pt_assign_baseline_markers_with_workspace_context.sql",
+        "sha256": "04b5b9fd1eb41c97661fbd969b927cf7da801940bb9cd891255798163ab02081"
+      },
+      {
+        "filename": "20260415103000_shared_performance_markers_library.sql",
+        "sha256": "197439a00e6d56379ddaccbd8cb69782d7eb013564531f992795177d4bbdc47e"
+      },
+      {
+        "filename": "20260415121221_fix_advisor_warnings_cleanup.sql",
+        "sha256": "7fb4d2f780d94edd65be4e2155506c6cb2775b80d3ccfe9c9245411c7b69bfb0"
+      },
+      {
+        "filename": "20260415122016_tighten_storage_public_bucket_policies.sql",
+        "sha256": "f0623510b7603f233f5a0c0818e570b78f855f8e3105aaeb5e3fdad3792fa2d2"
+      },
+      {
+        "filename": "20260415123000_limit_public_pt_applications_per_coach.sql",
+        "sha256": "ba40b586530068c1b4c1e07a0e8a271258d9fdc4071d2120df1db43ce2b61650"
+      },
+      {
+        "filename": "20260415133000_add_client_visible_performance_markers_rpc.sql",
+        "sha256": "44537425e0824ba61723cf4ac04546d150702969ad118a25e1f75ae55017c363"
+      },
+      {
+        "filename": "20260415143000_add_missing_fk_covering_indexes.sql",
+        "sha256": "5d2581e03be111ee1677a05d3c4fad30015b74244ae56d53c73e8b1ade241ecc"
+      },
+      {
+        "filename": "20260415150000_archive_pk_and_redundant_index_cleanup.sql",
+        "sha256": "4f6828f2e549eeb04715e1e92796c13725895aeda7f1c736fc7ef6588909c2c3"
+      },
+      {
+        "filename": "20260415154000_drop_redundant_duplicate_nonunique_indexes.sql",
+        "sha256": "c5aa251e0a7c71e5158d1589c1e52f3b7e8c0065ffb28ef495e66d27651f1059"
+      },
+      {
+        "filename": "20260416113000_add_program_and_nutrition_type_tags.sql",
+        "sha256": "5748263bb526f1ca1568d36ff606669570fa7f85b9e8147e46b3a735973b69b2"
+      },
+      {
+        "filename": "20260426120000_copy_program_day_notes_to_assigned_workouts.sql",
+        "sha256": "7e1aafaafc1f66faeee8c89be443d5cd008a92b3db4eaccc9945af28f0a0e750"
+      },
+      {
+        "filename": "20260426123000_backfill_assigned_nutrition_components.sql",
+        "sha256": "cb61815814bbb105bb6048e001c54aa4b957360e36a4ee4525514a90a5e21145"
+      },
+      {
+        "filename": "20260426124500_client_workspace_coach_identities.sql",
+        "sha256": "4e2a06a4f954d73161a037e5a2d5c748ed1b1bae30a26e0e147285fe3d801f89"
+      },
+      {
+        "filename": "20260502131500_name_inactive_client_notifications.sql",
+        "sha256": "3396e8e169df26eec28668caa02ec5d148a09de00c5cb1ab5e6023a8ca8cc91d"
+      },
+      {
+        "filename": "20260502163000_add_workspace_operating_defaults.sql",
+        "sha256": "58b0dc2d47097089198d5e2814d7a8edba3192c4d0b35044d67f101dff88f9c4"
+      },
+      {
+        "filename": "20260502170000_add_workspace_client_welcome_message.sql",
+        "sha256": "c3b77cd030a806e8b176c05f00a0df43c2fb7ab26b33539c685e9345852ea236"
+      },
+      {
+        "filename": "20260507153000_auth_notifications_delivery.sql",
+        "sha256": "b2dc10d363fea7c2b1408034a8836162b3b9a3acf77d801f92a35556dce233de"
+      },
+      {
+        "filename": "20260507154500_auth_notification_delivery_hardening.sql",
+        "sha256": "858e5586b4834966bcb73a14cd5dc6f190eb1bff6d59f8c60e12bc3ef91422a7"
+      },
+      {
+        "filename": "20260507162000_auth_notification_privilege_hardening.sql",
+        "sha256": "4abff08e753e7b856de467922de0fa6003b8bc28a4f3562dfe942b146d31ff8f"
+      },
+      {
+        "filename": "20260509110000_notification_center_in_app_inbox.sql",
+        "sha256": "3211bc4309cbbf42c6c650c2e88a0957e424c0425103a8f05182fe82f45ad7eb"
+      },
+      {
+        "filename": "20260509123000_email_notification_delivery_channel.sql",
+        "sha256": "2ddbc40c9317f768786fec360c0cbad6bac34e965b47054dd632753ee2b928b2"
+      },
+      {
+        "filename": "20260509133000_legacy_notify_user_event_bridge.sql",
+        "sha256": "3310feaa79b175887ce601c8103688cbfed5fdc05f084d427761a0c0db798da3"
+      },
+      {
+        "filename": "20260509134500_notification_events_updated_at.sql",
+        "sha256": "58dbd8785e20816f776729d3132c5d1e06286c5cd07391ecdd0e27122fbec0dd"
+      },
+      {
+        "filename": "20260509170000_workspace_team_management.sql",
+        "sha256": "c33fb7b6958b59608eb70dcf1688b40387e7a54beed84a62e5acdc73e0eaf3cd"
+      },
+      {
+        "filename": "20260509173000_workspace_team_access_permissions.sql",
+        "sha256": "03b9417ca8b2afffb223559e4b728090c2ab61c3d46d3a4d4c9b230c51bab574"
+      },
+      {
+        "filename": "20260509180000_workspace_team_invite_apis.sql",
+        "sha256": "c008f846dcb81c7777a389b0ca6e974da3e322e4bcf79a12ffa1ac48faffb0c7"
+      },
+      {
+        "filename": "20260509183000_workspace_team_settings_apis.sql",
+        "sha256": "972103888964a0e34e226469ca4fac37e6b2e09f8ee5ff1af327432e46bc6d28"
+      },
+      {
+        "filename": "20260509190000_workspace_team_client_access_hardening.sql",
+        "sha256": "5fed802d57d5df69763fef0544100a07f08f2146b7399152da4ad73f7d042afc"
+      },
+      {
+        "filename": "20260509193000_workspace_team_operational_hardening.sql",
+        "sha256": "bcab0dd5c2986219f558e95aacf35e24b7908f7fa6167f6cfc5bcc397d0b1da4"
+      },
+      {
+        "filename": "20260509194000_workspace_team_conversation_lint_fix.sql",
+        "sha256": "08cd4a46be9cfc03ffdd94ec73f6333f1c05d2d601d1210e98f0814fc27cb12e"
+      },
+      {
+        "filename": "20260509210000_slug_based_routes.sql",
+        "sha256": "ab3677c368bbb99e8c2266aa1895d36f2e2d71ef4c950aa63db044822c51e998"
+      },
+      {
+        "filename": "20260509213000_workspace_team_invite_notifications.sql",
+        "sha256": "e3d3a5b4d1c8b6908814e94ed5e014ab14939acd29c86182af947d2db64cd991"
+      },
+      {
+        "filename": "20260509214500_workspace_team_delivery_read_access.sql",
+        "sha256": "d1cd9d10e88dd715de87c104f5993a2101f02072ed8f58a23974e223f6caa27c"
+      },
+      {
+        "filename": "20260509223000_coach_activity_log_note_edit_delete.sql",
+        "sha256": "64b8c184a3abdf33da077b2a7f4788d8dbc869e27553efc014dc941cce8d38d8"
+      },
+      {
+        "filename": "20260510120000_add_wearables_module.sql",
+        "sha256": "0c442c0802fdf137ee5da4559babfcc479a8d819e611e8e9259a60af60858d38"
+      },
+      {
+        "filename": "20260511100000_restore_pt_profile_media_select_policy.sql",
+        "sha256": "5aa1c94f9c73ebae256fc014e386b99ee210f5b0902df24cfe62abe229fc0b39"
+      },
+      {
+        "filename": "20260511205000_calendar_event_mentions.sql",
+        "sha256": "638e372ee9a434425ae5332dcb293a27472bb8892bc2d75047e5248db4a8e6c6"
+      },
+      {
+        "filename": "20260629150000_harden_workspace_team_invite_preview.sql",
+        "sha256": "543e1efc92ba1c9c9f96ad5127b7ed48dd92a5bf928f41ff550a76170f837ea5"
+      },
+      {
+        "filename": "20260630120000_workspace_permission_audit_hardening.sql",
+        "sha256": "2ba18f38757611a9bf1c5070bc9feeb2018ecd7863c2f6d2ee0ae4e53a3592e7"
+      },
+      {
+        "filename": "20260630123000_workspace_team_invite_acceptance_regression.sql",
+        "sha256": "7886227c922a9a7d8de85c58f98bfed02325fc490ec6638152d2d7088049898b"
+      },
+      {
+        "filename": "20260630130000_workspace_viewer_readonly_hardening.sql",
+        "sha256": "f7e0b8322393323d2eddd9b9194a452cbe9b1bae20aa1e5e5ac7ddb7b59784df"
+      },
+      {
+        "filename": "20260701120000_client_conversation_discoverability.sql",
+        "sha256": "884c99d2b23335c324f5c0d545cb9c07ade0fcde86b0ef537cce9ed61b730e6a"
+      },
+      {
+        "filename": "20260701123000_lead_conversion_conversation_link.sql",
+        "sha256": "d2e270160793535e42efdc934ffe057d4e9fbab58f85b059e383d035d9981f9e"
+      },
+      {
+        "filename": "20260701130000_converted_lead_history_for_active_conversation.sql",
+        "sha256": "0d2594c70efe32de960d66155e96c465dd8bc6d7f211245e3fc53fcc4f6aa6f4"
+      },
+      {
+        "filename": "20260701133000_enable_messages_realtime.sql",
+        "sha256": "0f987d33b6f3e8853c2dffadf65245e2d1d510ac32248d5d9aaf7154c0d85b33"
+      },
+      {
+        "filename": "20260702100000_co_coach_messaging_permissions.sql",
+        "sha256": "8a47982708c6921e26c91c55cccd5b4dab69488b56fdafde0e36f7269e3b82d3"
+      },
+      {
+        "filename": "20260702103000_message_sender_attribution.sql",
+        "sha256": "9fb8ae8ae2cab0f0c270e8021dbcbc9aa466347370aa8d55cb16e6fdcd86e6b2"
+      },
+      {
+        "filename": "20260702120000_pt_hub_activation_summary.sql",
+        "sha256": "1f0ece0f64490e746c4997f265f34558738ae6fe81c5f16a1a536c10e833a556"
+      },
+      {
+        "filename": "20260702123000_public_pt_profile_slug_validation.sql",
+        "sha256": "52ff3a79788efc37886a59731a3309985d885df012494b7c126364be39072628"
+      },
+      {
+        "filename": "20260702133000_nutrition_replacement_parity.sql",
+        "sha256": "dce25f9b8659f10929219f754a97ad15998687354ae8e5b46c69e2c93b7f4556"
+      },
+      {
+        "filename": "20260702140000_co_coach_delivery_library_access.sql",
+        "sha256": "5935cc7be84878cd1dc3e9b2934816af61d30e30e597e41e441843e1a2d81895"
+      },
+      {
+        "filename": "20260703100000_workout_nutrition_unassign_flows.sql",
+        "sha256": "f4565c41feccbe986cc55acf436c7c019778c5d36a1be8b4a2655d4eb9142b4d"
+      },
+      {
+        "filename": "20260703103000_co_coach_individual_workout_assignment.sql",
+        "sha256": "386bcc6cfab16bbb6801cb75f4324dbfdbac4ea7b779ec6dad22f1d4a0a15cd4"
+      },
+      {
+        "filename": "20260703104000_fix_workout_assignment_template_active_mismatch.sql",
+        "sha256": "066608c214cb675d3bb463128e4c981e20d4b12caecca73bab4e469e91509b08"
+      },
+      {
+        "filename": "20260703110000_one_day_workout_override_persistence.sql",
+        "sha256": "58a84c8bd923fc2ad6b60a0d460183bf4017d51b739222c5ed1774e509c162fd"
+      },
+      {
+        "filename": "20260703112000_individual_workout_same_day_replacement.sql",
+        "sha256": "62e2e6a4c209f333bea1a80ff05489896e0cffde42cf0cd4b9194a43f586594a"
+      },
+      {
+        "filename": "20260703113000_client_assignment_realtime_refresh.sql",
+        "sha256": "b903377fc79b76f939e4ae7adabde8002cce9d17546d123b16b9f91e318940fe"
+      },
+      {
+        "filename": "20260703115000_checkin_client_assignment_resolution.sql",
+        "sha256": "a5250ff40e0e25a28ad908d4f0a7f9a1588bd0622bc1bf8abf401528435675c7"
+      },
+      {
+        "filename": "20260703120000_checkin_template_question_realtime.sql",
+        "sha256": "38b0d08863143cf4a7b6697632fcefb3f410fb4789fd208c1712eea2ee832cf4"
+      },
+      {
+        "filename": "20260704100000_checkin_review_client_notification.sql",
+        "sha256": "cea85253eeb3d7dc2b81c18a2ac94c5a86ceae6648e3bf711fcdd8bf0387811d"
+      },
+      {
+        "filename": "20260704103000_client_continuity_disable_destructive_lead_transfer.sql",
+        "sha256": "dde40bda8695a47282736bb26b1a726454c8476c5907cc3c2ce4e84f1db99160"
+      },
+      {
+        "filename": "20260704110000_account_level_onboarding_continuity.sql",
+        "sha256": "e06e29bc445f80da39f2826bf48cd295618e357ad57fbb5f83c0d1f99443d1db"
+      },
+      {
+        "filename": "20260704113000_client_relationship_archive_semantics.sql",
+        "sha256": "c6d1b212ce3d5f232c11233526d78b70b214d39c69140d0ee7789240acf95a85"
+      },
+      {
+        "filename": "20260704114500_client_relationship_transfer_compatibility.sql",
+        "sha256": "2c34365c0905132947421cf0c6a2980a557fee95c6d5cf0c7ea1b5692a1cb57b"
+      },
+      {
+        "filename": "20260704120000_removed_client_bootstrap_identity.sql",
+        "sha256": "3e5ce0038452abdaa15ff64838b975300db896f72bfd9de75dbafc414a8c7815"
+      },
+      {
+        "filename": "20260704121500_reactivate_removed_client_relationships.sql",
+        "sha256": "ef4b96a8444dc046b9710255b7ff9fcc65caebe29ac1e9b7c819b6729c7eacee"
+      },
+      {
+        "filename": "20260704123000_safe_beta_workspace_transfer.sql",
+        "sha256": "f1647ed004ea7448c0695b642d36e02ade8122a760119f9ddaf0200dfc18048d"
+      },
+      {
+        "filename": "20260704124500_safe_transfer_bootstrap_regression.sql",
+        "sha256": "ce0111e524c3c5880c82bf89b9cfc882b3e90aa50085e1d5c7ea398234c752c3"
+      },
+      {
+        "filename": "20260704130000_post_transfer_client_detail_resolution.sql",
+        "sha256": "baa2ff736e2f38811f0462935c19bd5d51f9c2a4001b434ebce9844451246005"
+      },
+      {
+        "filename": "20260704131500_universal_baseline_transfer_continuity.sql",
+        "sha256": "3e06a9436ab2bd0df365229690b2977dfc8053b069fc13c0e35b95789bc8865f"
+      },
+      {
+        "filename": "20260704133000_universal_onboarding_transfer_continuity.sql",
+        "sha256": "4a41d0cf29583a679ab7e94ed799a1f06927a4ff146ed59e8d1fa16d01e1e8f3"
+      },
+      {
+        "filename": "20260704134500_universal_baseline_photo_storage_access.sql",
+        "sha256": "a8935ce9a2f1a39300424c2833da8a5ab14d8b513f1fd60b0c24f5d0f33b23d9"
+      },
+      {
+        "filename": "20260705110000_archived_client_history_navigation.sql",
+        "sha256": "dcec9f8fe6a5ee7e2c2957331ef26d4b51b7b3bb2dc1834ac504315068409b8a"
+      },
+      {
+        "filename": "20260705123000_archived_reinvite_email_claim.sql",
+        "sha256": "da0dd09f67ca1970ee6d9255cc62697189610b6f36941ec5e42275cc87c91f7d"
+      },
+      {
+        "filename": "20260705124500_protect_assigned_template_deletes.sql",
+        "sha256": "60a2283f2153e67f15a1df487b1c4deeef99616f7af76785789ccb89d4a53c56"
+      },
+      {
+        "filename": "20260705133000_client_operational_inactive_threshold.sql",
+        "sha256": "3e46704decb3808e9f4899c02bb069b8112d58f7f2b7d35b56c63899f0b3e027"
+      },
+      {
+        "filename": "20260706100000_fix_mark_all_notifications_read_updated_at_trigger.sql",
+        "sha256": "8a9d63fa440a1fefb8cd585b8bf56c44406cb81a735f3a48c332eb5fb2610ce5"
+      },
+      {
+        "filename": "20260707111500_pt_hub_clients_page_all_relationship_scope.sql",
+        "sha256": "8866a9851ab6123bae252753014e74ac3dc8e9839259bdce8e953c8730c5ade8"
+      },
+      {
+        "filename": "20260710120000_create_marketing_leads.sql",
+        "sha256": "dec8d3dc8022cd81ea85baed144414690689855c38f6b85b292d1758044dcbb4"
+      },
+      {
+        "filename": "20260711130000_expand_marketing_leads.sql",
+        "sha256": "b7c08e7ac270921f1a10b190e2d9524c3da974eaa1ce2c692815b190bba63894"
+      },
+      {
+        "filename": "20260712120000_marketing_switch_funnel_hardening.sql",
+        "sha256": "d11454b8406cb65b1dc6ca9512ba86dc308de6a9b59ec06b6e06fbd018e28912"
+      },
+      {
+        "filename": "20260830120000_exercise_canonical_muscle_taxonomy.sql",
+        "sha256": "c950b4d1dce96d5e479e234ee0cbb63e74410e68d2da2103f743c16e7cf31e26"
+      },
+      {
+        "filename": "20260901160000_workout_template_exercise_persistence_repair.sql",
+        "sha256": "047b75e939e5a84f41f2c061c7c6ff91d3a2e7c2de7aa14dd373dc849337dcae"
+      },
+      {
+        "filename": "20260903120000_persist_client_coach_tasks.sql",
+        "sha256": "1e6715ad59ffc213b13214db75343851efe113320ebf4af88b8a581b82904780"
+      },
+      {
+        "filename": "20260906110000_notification_inbox_delete.sql",
+        "sha256": "b6f226cd7e09f36278b101f813f3ebf7349d3867b6c071b68ea6f6084ea20094"
+      },
+      {
+        "filename": "20260908150000_client_portal_assignment_context.sql",
+        "sha256": "2d678cbb301f8eed48216843e0c322941ab1b6243e19e7037bfeb23b0e9bccc3"
+      },
+      {
+        "filename": "20260909120000_workspace_branding.sql",
+        "sha256": "59e9017afa0bad739b24cba3d0b7d003ef9224c742bab50b8a4ccdcb431fb639"
+      },
+      {
+        "filename": "20260909150000_support_requests.sql",
+        "sha256": "629a8fa938f56ab3a0bb65caab54c003cdb7c56bcc0711be1b1bd12b2b612291"
+      },
+      {
+        "filename": "20260909160000_commercial_catalogue_foundation.sql",
+        "sha256": "0821b2d83afb6c2424df464db323d0d3df242fa2ef147ab42e89fd8dd14cce85"
+      },
+      {
+        "filename": "20260910120000_account_subscription_entitlements_foundation.sql",
+        "sha256": "193bffbea592d549e1a401ae32c623a467d71c214b8df1a0de785fdbbd33e74e"
+      },
+      {
+        "filename": "20260910140000_account_capacity_metering_reservations.sql",
+        "sha256": "66cfb5adc16425be92b91302dadbcacd18ddb840d6c03dd9f264ca39093749d3"
+      },
+      {
+        "filename": "20260910160000_atomic_capacity_enforcement.sql",
+        "sha256": "263987404078eac701d1d4022ff1798e6e54ff6c2bed0e768ca8f7f9cde2dceb"
+      },
+      {
+        "filename": "20260911010000_lemon_squeezy_billing_foundation.sql",
+        "sha256": "b794d8f8c250f0d06cc3a0ccba84c57c8f6513d5f6fb15e05ebf79dbcd766672"
+      },
+      {
+        "filename": "20260911020000_billing_customer_portal.sql",
+        "sha256": "cac02b2c455151dd8e714e8944222b0465fec473e138493c44331e6a3dd6f589"
+      },
+      {
+        "filename": "20260911030000_controlled_plan_changes.sql",
+        "sha256": "403c23f451089be09918e7de5fa90a97695a8e0d68971821048df41d7178c00c"
+      },
+      {
+        "filename": "20260912010000_commercial_access_enforcement.sql",
+        "sha256": "d54fa60b6484b3605d9ffb34fd20ef2581de54aae0e6db075879fefaa57c3510"
+      },
+      {
+        "filename": "20260912020000_additional_coach_seats.sql",
+        "sha256": "bb4b4d844dc5da4e967e6b673c8bfa72488f9c8fcba1081fa604066ab5b4144e"
+      },
+      {
+        "filename": "20260913010000_public_commercial_catalogue_v2.sql",
+        "sha256": "66061d71f079c239e3a66e5715d2bee42065c9da95dd49ff9e4e009027dbb24d"
+      }
+    ],
+    "expectedLatestMigration": "20260913010000_public_commercial_catalogue_v2.sql"
+  },
+  "functions": {
+    "billing": [
+      "billing-create-lemon-squeezy-checkout",
+      "billing-lemon-squeezy-webhook",
+      "billing-create-customer-portal-link",
+      "billing-preview-plan-change",
+      "billing-change-subscription-plan",
+      "billing-cancel-scheduled-plan-change",
+      "billing-refresh-plan-change",
+      "billing-preview-coach-seat-change",
+      "billing-change-coach-seat-quantity",
+      "billing-cancel-scheduled-seat-change",
+      "billing-refresh-coach-seat-change"
+    ],
+    "nonbilling": ["open-wearables", "exercise-dataset-search"]
+  },
+  "jwtContracts": {
+    "billing-create-lemon-squeezy-checkout": true,
+    "billing-lemon-squeezy-webhook": false,
+    "billing-create-customer-portal-link": true,
+    "billing-preview-plan-change": true,
+    "billing-change-subscription-plan": true,
+    "billing-cancel-scheduled-plan-change": true,
+    "billing-refresh-plan-change": true,
+    "billing-preview-coach-seat-change": true,
+    "billing-change-coach-seat-quantity": true,
+    "billing-cancel-scheduled-seat-change": true,
+    "billing-refresh-coach-seat-change": true,
+    "open-wearables": true,
+    "exercise-dataset-search": true
+  },
+  "requiredSecretNames": [
+    "SUPABASE_ACCESS_TOKEN",
+    "SUPABASE_DB_PASSWORD",
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "LEMONSQUEEZY_API_KEY",
+    "LEMONSQUEEZY_WEBHOOK_SECRET",
+    "BILLING_PROVIDER_ENVIRONMENT",
+    "BILLING_APP_BASE_URL",
+    "BILLING_PORTAL_ALLOWED_HOSTS",
+    "OPEN_WEARABLES_API_URL",
+    "OPEN_WEARABLES_API_KEY",
+    "ALLOWED_WEARABLE_REDIRECT_ORIGINS",
+    "EXERCISE_DATASET_BASE_URL",
+    "EXERCISE_DATASET_API_KEY",
+    "EXERCISE_DATASET_API_KEY_HEADER"
+  ],
+  "publicCatalogue": {
+    "expectedSchemaVersion": 2,
+    "expectedPlanCount": 3,
+    "expectedPublicFeatureCount": 2,
+    "expectedPublicAddonCount": 0
+  },
+  "scenarioIds": [
+    "CERT-DEPLOY-001",
+    "CERT-DEPLOY-002",
+    "CERT-AUTH-001",
+    "CERT-CATALOGUE-001",
+    "CERT-CHECKOUT-001",
+    "CERT-CHECKOUT-002",
+    "CERT-WEBHOOK-001",
+    "CERT-WEBHOOK-002",
+    "CERT-WEBHOOK-003",
+    "CERT-PORTAL-001",
+    "CERT-PORTAL-002",
+    "CERT-RECOVERY-001",
+    "CERT-PLAN-001",
+    "CERT-PLAN-002",
+    "CERT-PLAN-003",
+    "CERT-SEAT-001",
+    "CERT-SEAT-002",
+    "CERT-SEAT-003",
+    "CERT-ACCESS-001",
+    "CERT-ACCESS-002",
+    "CERT-ACCESS-003",
+    "CERT-SECURITY-001",
+    "CERT-ROLLBACK-001"
+  ],
+  "evidence": {
+    "format": "allowlisted-json",
+    "retentionDays": 7,
+    "rawArtifacts": false,
+    "identifierPolicy": "sha256-with-private-run-salt"
+  },
+  "unitGate": "full-suite-green-before-apply"
+}

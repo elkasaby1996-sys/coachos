@@ -1,5 +1,8 @@
 project_id = "coachos"
 
+[functions.open-wearables]
+verify_jwt = true
+
 [functions.billing-preview-plan-change]
 verify_jwt = true
 [functions.billing-change-subscription-plan]
