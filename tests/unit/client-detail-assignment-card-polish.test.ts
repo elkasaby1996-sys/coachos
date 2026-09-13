@@ -18,7 +18,9 @@ describe("client detail assignment card polish", () => {
   it("surfaces snapshot copy near workout, program, and nutrition assignment controls", () => {
     expect(clientDetailPage).toContain("ASSIGNMENT_SNAPSHOT_WARNING_TITLE");
     expect(clientDetailPage).toContain("ASSIGNMENT_SNAPSHOT_NOTICE");
-    expect(clientDetailPage).toContain("Template source");
+    expect(clientDetailPage).toMatch(
+      /label: "Workout",\s*value:\s*templatesQuery.data\?\.find\([\s\S]*?\)\?\.name \?\? "No template selected",\s*helper: "Template edits affect future assignments only\."/,
+    );
     expect(clientDetailPage).toContain(
       "Template edits affect future assignments only.",
     );
@@ -51,13 +53,12 @@ describe("client detail assignment card polish", () => {
 
   it("uses cadence settings language for check-in assignment cards", () => {
     expect(clientDetailPage).toContain(
-      "Check-ins use cadence settings. Future check-ins",
+      "Cadence-based delivery settings for this client.",
     );
-    expect(clientDetailPage).toContain(
-      "follow the selected template, frequency, and start",
-    );
+    expect(clientDetailPage).toContain('label: "Cadence"');
     expect(clientDetailPage).toContain("Current check-in assignment");
-    expect(clientDetailPage).toContain("Edit check-in settings");
+    expect(clientDetailPage).toContain('label: "Start date"');
+    expect(clientDetailPage).toContain('"Assign template"');
   });
 
   it("keeps the check-in template form free of override/debug summary chrome", () => {

@@ -138,9 +138,11 @@ describe("client continuity beta contract", () => {
 
   it("removed-only clients get a safe no-active-workspace home state", () => {
     expect(clientHomePage).toContain(
-      "You do not currently have an active coaching workspace.",
+      "You are not currently linked to a coach.",
     );
-    expect(clientHomePage).toContain("Your client account is still active.");
+    expect(clientHomePage).toContain(
+      "You can still use your account. Accept a coach invitation to receive assigned plans.",
+    );
     expect(clientHomePage).toContain("!hasWorkspaceMembership");
   });
 

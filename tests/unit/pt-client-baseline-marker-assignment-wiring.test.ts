@@ -35,7 +35,7 @@ describe("PT performance marker baseline wiring", () => {
       '"client_visible_performance_markers"',
     );
     expect(clientBaselinePage).toContain(
-      "No active performance markers are enabled for your coaching space yet.",
+      "Your coach has not added performance markers yet. You can continue to the photos.",
     );
     expect(clientBaselinePage).not.toContain("baseline_entry_marker_templates");
   });

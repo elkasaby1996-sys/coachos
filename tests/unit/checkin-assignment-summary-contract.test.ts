@@ -12,8 +12,12 @@ describe("coach check-in assignment summary contract", () => {
     expect(clientDetailPage).toContain("Current check-in assignment");
     expect(clientDetailPage).toContain("checkinAssignmentState");
     expect(clientDetailPage).toContain("resolveClientCheckinPageState");
-    expect(clientDetailPage).toContain('label: "Not assigned"');
-    expect(clientDetailPage).toContain('label: "Assigned"');
+    expect(clientDetailPage).toMatch(
+      /label: "Template",\s*value: checkinAssignmentTemplateName/,
+    );
+    expect(clientDetailPage).toMatch(
+      /label: "Cadence",\s*value: checkinAssignmentTemplate\s*\? checkinAssignmentFrequencyLabel\s*: "Not set"/,
+    );
   });
 
   it("shows assigned template, cadence, start date, and next due", () => {
@@ -31,10 +35,13 @@ describe("coach check-in assignment summary contract", () => {
   });
 
   it("gates the edit CTA to existing delivery-write permission", () => {
-    expect(clientDetailPage).toContain("Edit check-in settings");
+    expect(clientDetailPage).toContain('"Assign template"');
     expect(clientDetailPage).toContain("canManageDelivery");
     expect(clientDetailPage).toContain("isHistoricalClientRelationship");
     expect(clientDetailPage).toContain("canManageDelivery &&");
     expect(clientDetailPage).toContain("!isHistoricalClientRelationship");
+    expect(clientDetailPage).toMatch(
+      /\{canManageDelivery &&\s*!isHistoricalClientRelationship \? \(\s*<Button\s*size="sm"\s*onClick=\{handleSaveCheckinTemplate\}\s*disabled=\{checkinTemplateStatus === "saving"\}/,
+    );
   });
 });

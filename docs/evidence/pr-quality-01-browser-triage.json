@@ -1,0 +1,416 @@
+{
+  "parentCommit": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+  "candidateBase": "1b95cb34835dd0021f4af8d739998cb4478e55f2",
+  "workers": 4,
+  "retries": 0,
+  "failures": [
+    {
+      "id": "B01",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "trial hosted checkout waits for verified confirmation",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:175:3"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B02",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "complimentary hosted checkout waits for verified confirmation",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:175:3"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B03",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "unavailable provider retains selected plan and cadence",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:220:1"
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-checkout.spec.ts:220:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B04",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "return query is not payment proof",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:244:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B05",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "double activation dispatches one Checkout request",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:253:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B06",
+      "file": "tests/e2e/billing-checkout.spec.ts",
+      "fullTestName": "second tab reports an existing open Checkout",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-checkout.spec.ts:270:1"
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-checkout.spec.ts:270:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B07",
+      "file": "tests/e2e/billing-coach-seats.spec.ts",
+      "fullTestName": "Growth purchase waits for payment, then reduction and cancellation retain the correct limits",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:7:1"
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:7:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B08",
+      "file": "tests/e2e/billing-coach-seats.spec.ts",
+      "fullTestName": "failed payment preserves seats and recovery completes the same purchase",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:62:1"
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:62:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B09",
+      "file": "tests/e2e/billing-coach-seats.spec.ts",
+      "fullTestName": "maximum seat purchase blocks an incompatible plan and committed-seat reduction",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:96:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B10",
+      "file": "tests/e2e/billing-coach-seats.spec.ts",
+      "fullTestName": "pending team commitments block reduction before provider mutation",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3"
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3"
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B11",
+      "file": "tests/e2e/billing-coach-seats.spec.ts",
+      "fullTestName": "compatible plan upgrade retains purchased seats",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1"
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1"
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B12",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "renewal invoice is not upgrade payment proof",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-plan-change.spec.ts:103:1"
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:103:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B13",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "Scale downgrade blocks commitments then schedules after remediation",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-plan-change.spec.ts:118:1"
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-plan-change.spec.ts:118:1"
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:118:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B14",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "monthly to annual shows full annual amount",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-plan-change.spec.ts:169:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B15",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "higher tier and annual to monthly is unsupported",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-plan-change.spec.ts:184:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B16",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "forged provider identifiers are rejected at browser boundary",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-plan-change.spec.ts:230:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B17",
+      "file": "tests/e2e/billing-portal.spec.ts",
+      "fullTestName": "canonical cancellation, resume and recovery update without new checkout",
+      "originalOccurrences": [
+        {
+          "run": "browser-billing",
+          "location": "tests/e2e/billing-portal.spec.ts:393:1"
+        },
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-portal.spec.ts:393:1"
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-portal.spec.ts:393:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B18",
+      "file": "tests/e2e/account-capacity.spec.ts",
+      "fullTestName": "complimentary overage preserves access and unlimited packages",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/account-capacity.spec.ts:113:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B19",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "Launch upgrade waits for verified updated invoice",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-plan-change.spec.ts:61:1"
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:61:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B20",
+      "file": "tests/e2e/billing-portal.spec.ts",
+      "fullTestName": "portal return polls only within its bound and offers manual refresh",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/billing-portal.spec.ts:349:1"
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-portal.spec.ts:349:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B21",
+      "file": "tests/e2e/commercial-access.spec.ts",
+      "fullTestName": "grace preserves existing delivery and blocks business edits",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/commercial-access.spec.ts:55:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B22",
+      "file": "tests/e2e/commercial-access.spec.ts",
+      "fullTestName": "read only permits browsing and denies direct mutation without data loss",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/commercial-access.spec.ts:73:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B23",
+      "file": "tests/e2e/commercial-catalogue-v2.spec.ts",
+      "fullTestName": "client list and lifecycle save persist through reload",
+      "originalOccurrences": [
+        {
+          "run": "release-a",
+          "location": "tests/e2e/commercial-catalogue-v2.spec.ts:79:1"
+        },
+        {
+          "run": "release-b",
+          "location": "tests/e2e/commercial-catalogue-v2.spec.ts:79:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B24",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "unauthorized provider mapping remains manual review",
+      "originalOccurrences": [
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:43:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B25",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "failed payment preserves Launch and recovery completes",
+      "originalOccurrences": [
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:83:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    },
+    {
+      "id": "B26",
+      "file": "tests/e2e/billing-plan-change.spec.ts",
+      "fullTestName": "annual to monthly schedules and shows full monthly list price",
+      "originalOccurrences": [
+        {
+          "run": "release-b",
+          "location": "tests/e2e/billing-plan-change.spec.ts:149:1"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "evidence": []
+    }
+  ],
+  "comparisonNotes": [
+    "Initial parent-billing-portal experiment invalid: shared node_modules junction caused Vite font allow-list errors. Stopped its owned process tree. This run is not product regression evidence.",
+    "Clean comparison uses separate npm ci on parent, identical local-only environment variables, local database reset and owned Vite server per run.",
+    "Identical external observer captures request timings, route, worker/parallel slot, hashed fixture identity, console/page errors and final auth/bootstrap DOM markers; it does not intercept or modify requests.",
+    "Initial parent-clean startup attempts invalid: NODE_OPTIONS Windows backslashes were interpreted as escapes. No browser results were produced. Runner was stopped; the observer path now uses forward slashes and passed a standalone browser self-check before the observed comparison."
+  ]
+}

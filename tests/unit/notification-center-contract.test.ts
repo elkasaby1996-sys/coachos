@@ -79,9 +79,7 @@ describe("delivery-backed notification center contract", () => {
     expect(pageSource).toContain('showActionLabel={audience !== "pt"}');
     expect(pageSource).toContain("showTitle");
     expect(pageSource).toContain("showTypeLabel");
-    expect(pageSource).toContain(
-      'surface={audience === "pt" ? "embedded" : "card"}',
-    );
+    expect(pageSource).toContain('surface="embedded"');
     expect(pageSource).toContain("sm:grid-cols-[minmax(0,1fr)_auto]");
     expect(pageSource).not.toContain(
       "Track the latest workspace activity and open anything that needs attention.",

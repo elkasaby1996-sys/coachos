@@ -97,9 +97,7 @@ describe("final badge and status regression", () => {
     expect(clientPortalSource).toContain(
       "Your coach has not assigned a workout plan yet.",
     );
-    expect(clientPortalSource).toContain(
-      "Your coach has not assigned a nutrition plan yet.",
-    );
+    expect(clientPortalSource).toContain("No nutrition plan assigned yet.");
     expect(clientPortalSource).toContain(
       "Your coach has not assigned a check-in schedule yet.",
     );

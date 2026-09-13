@@ -50,10 +50,13 @@ describe("client portal tag minimization", () => {
       "Your coach has not assigned a workout plan yet.",
     );
     expect(combinedClientSurfaceSource).toContain(
-      "Your coach has not assigned a nutrition plan yet.",
+      "No nutrition plan assigned yet.",
     );
     expect(clientSurfaceSources.checkin).toContain(
       "Your coach has not assigned a check-in schedule yet.",
+    );
+    expect(clientSurfaceSources.home).toMatch(
+      /todayNutritionTemplate\?\.name \?\?\s*\(todayNutrition\s*\? "Your nutrition plan"\s*: clientProfile\?\.workspace_id\s*\? "No nutrition plan assigned yet\."\s*: "Create a personal nutrition plan to get started\."\)/,
     );
 
     expect(combinedClientSurfaceSource).not.toContain("Nutrition plan pending");
@@ -116,7 +119,7 @@ describe("client portal tag minimization", () => {
 
     expect(agendaSource).toContain('aria-label="Today\'s agenda"');
     expect(clientSurfaceSources.home).toContain("Today&apos;s workout");
-    expect(clientSurfaceSources.home).toContain("Today&apos;s nutrition");
+    expect(clientSurfaceSources.home).toContain("Recorded nutrition today");
     expect(
       clientSurfaceSources.home.indexOf("{calendarSection}"),
     ).toBeGreaterThan(agendaStart);
@@ -147,7 +150,14 @@ describe("client portal tag minimization", () => {
       "Discovery and application status in one place.",
     );
     expect(agendaSource).toContain("summaryTrainingBadgeLabel");
-    expect(agendaSource).toContain("primaryAction.onClick");
+    const nextActionStart = clientSurfaceSources.home.indexOf(
+      'aria-label="Next action"',
+    );
+    expect(nextActionStart).toBeGreaterThan(-1);
+    expect(nextActionStart).toBeLessThan(agendaStart);
+    expect(
+      clientSurfaceSources.home.slice(nextActionStart, agendaStart),
+    ).toContain("primaryAction.onClick");
     expect(agendaSource).not.toContain("Message your coach");
     expect(clientSurfaceSources.home).toContain("client-habit-logs");
     expect(clientSurfaceSources.home).toContain("quickHabitCompletedCount");
