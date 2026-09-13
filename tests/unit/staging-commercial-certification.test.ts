@@ -228,7 +228,12 @@ describe("staging commercial manifest and local planner", () => {
       throw new Error("NETWORK_FORBIDDEN");
     });
     vi.stubGlobal("fetch", network);
-    const plan = makePlan(manifest, inputs, state);
+    const plan = makePlan(manifest, inputs, state, "fixture-review");
+    expect(plan.evidenceLabel).toBe("fixture-review");
+    expect(plan.authorization.inputs.evidence_label).toBe("fixture-review");
+    expect(() =>
+      makePlan(manifest, inputs, state, "invalid/private-label"),
+    ).toThrow("EVIDENCE_LABEL_INVALID");
     expect(plan.planValidation).toBe("pass");
     expect(plan.verdict).toBe("blocked");
     expect(JSON.stringify(plan)).not.toContain(project);

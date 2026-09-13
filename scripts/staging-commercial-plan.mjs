@@ -72,7 +72,11 @@ export function proposedCommands(manifest) {
     "WRITE allowlisted deployment evidence; commercial scenarios remain not_run",
   ];
 }
-export function authorizationRequest(manifest, commit) {
+export function authorizationRequest(
+  manifest,
+  commit,
+  label = "phase-b-reviewed",
+) {
   return {
     schemaVersion: 1,
     status: "authorization_required",
@@ -96,7 +100,7 @@ export function authorizationRequest(manifest, commit) {
       confirm_commit_sha: commit,
       confirm_project_ref: "<STAGING_PROJECT_REF>",
       confirm_app_origin: "<STAGING_APPLICATION_ORIGIN>",
-      evidence_label: "phase-b-reviewed",
+      evidence_label: label,
     },
     commands: proposedCommands(manifest),
     prerequisites: [
@@ -112,14 +116,19 @@ export function authorizationRequest(manifest, commit) {
       "No provider operation is automated here. Name and approve Store configuration, webhook registration, mapping activation and test purchases separately before the scenario run.",
   };
 }
-export function makePlan(manifest, input, state) {
+export function makePlan(manifest, input, state, label = "phase-a") {
   parseSafe(manifestSchema, manifest, "MANIFEST_INVALID");
   validateConfirmations(input, state);
+  requireCheck(
+    /^[a-z0-9][a-z0-9-]{0,47}$/.test(label),
+    "EVIDENCE_LABEL_INVALID",
+  );
   return {
     schemaVersion: 1,
     environment: "staging",
     providerEnvironment: "test",
     commitSha: state.commit,
+    evidenceLabel: label,
     verdict: "blocked",
     planValidation: "pass",
     remoteExecuted: false,
@@ -128,7 +137,7 @@ export function makePlan(manifest, input, state) {
       "PHASE_B_AUTHORIZATION_REQUIRED",
       "REMOTE_PREREQUISITES_UNVERIFIED",
     ],
-    authorization: authorizationRequest(manifest, state.commit),
+    authorization: authorizationRequest(manifest, state.commit, label),
   };
 }
 export function validateBundle(root, path = DEFAULT_MANIFEST) {
@@ -180,6 +189,7 @@ export function runPlan(
       manifest,
       confirmationInputs(env, values),
       gitState(root, manifest.requiredBaseCommit),
+      label,
     );
   } catch (error) {
     // Never print Zod input, raw git/OS errors, command arguments or env values.

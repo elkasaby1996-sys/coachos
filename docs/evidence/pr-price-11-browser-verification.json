@@ -1,0 +1,96 @@
+{
+  "testedCommit": "6b26ced983fb5f4ae72c11dd26ae9b7f2c534b55",
+  "browserRuns": {
+    "browser-billing": {
+      "passed": 23,
+      "failed": 17,
+      "skipped": 0,
+      "failureTitles": [
+        "tests/e2e/billing-checkout.spec.ts:175:3 \u203a trial hosted checkout waits for verified confirmation",
+        "tests/e2e/billing-checkout.spec.ts:175:3 \u203a complimentary hosted checkout waits for verified confirmation",
+        "tests/e2e/billing-checkout.spec.ts:220:1 \u203a unavailable provider retains selected plan and cadence",
+        "tests/e2e/billing-checkout.spec.ts:244:1 \u203a return query is not payment proof",
+        "tests/e2e/billing-checkout.spec.ts:253:1 \u203a double activation dispatches one Checkout request",
+        "tests/e2e/billing-checkout.spec.ts:270:1 \u203a second tab reports an existing open Checkout",
+        "tests/e2e/billing-coach-seats.spec.ts:7:1 \u203a Growth purchase waits for payment, then reduction and cancellation retain the correct limits",
+        "tests/e2e/billing-coach-seats.spec.ts:62:1 \u203a failed payment preserves seats and recovery completes the same purchase",
+        "tests/e2e/billing-coach-seats.spec.ts:96:1 \u203a maximum seat purchase blocks an incompatible plan and committed-seat reduction",
+        "tests/e2e/billing-coach-seats.spec.ts:173:3 \u203a pending team commitments block reduction before provider mutation",
+        "tests/e2e/billing-coach-seats.spec.ts:222:1 \u203a compatible plan upgrade retains purchased seats",
+        "tests/e2e/billing-plan-change.spec.ts:103:1 \u203a renewal invoice is not upgrade payment proof",
+        "tests/e2e/billing-plan-change.spec.ts:118:1 \u203a Scale downgrade blocks commitments then schedules after remediation",
+        "tests/e2e/billing-plan-change.spec.ts:169:1 \u203a monthly to annual shows full annual amount",
+        "tests/e2e/billing-plan-change.spec.ts:184:1 \u203a higher tier and annual to monthly is unsupported",
+        "tests/e2e/billing-plan-change.spec.ts:230:1 \u203a forged provider identifiers are rejected at browser boundary",
+        "tests/e2e/billing-portal.spec.ts:393:1 \u203a canonical cancellation, resume and recovery update without new checkout"
+      ]
+    },
+    "release-a": {
+      "passed": 110,
+      "failed": 14,
+      "skipped": 10,
+      "failureTitles": [
+        "tests/e2e/account-capacity.spec.ts:113:1 \u203a complimentary overage preserves access and unlimited packages",
+        "tests/e2e/billing-checkout.spec.ts:220:1 \u203a unavailable provider retains selected plan and cadence",
+        "tests/e2e/billing-checkout.spec.ts:270:1 \u203a second tab reports an existing open Checkout",
+        "tests/e2e/billing-coach-seats.spec.ts:7:1 \u203a Growth purchase waits for payment, then reduction and cancellation retain the correct limits",
+        "tests/e2e/billing-coach-seats.spec.ts:62:1 \u203a failed payment preserves seats and recovery completes the same purchase",
+        "tests/e2e/billing-coach-seats.spec.ts:173:3 \u203a pending team commitments block reduction before provider mutation",
+        "tests/e2e/billing-coach-seats.spec.ts:222:1 \u203a compatible plan upgrade retains purchased seats",
+        "tests/e2e/billing-plan-change.spec.ts:61:1 \u203a Launch upgrade waits for verified updated invoice",
+        "tests/e2e/billing-plan-change.spec.ts:118:1 \u203a Scale downgrade blocks commitments then schedules after remediation",
+        "tests/e2e/billing-portal.spec.ts:349:1 \u203a portal return polls only within its bound and offers manual refresh",
+        "tests/e2e/billing-portal.spec.ts:393:1 \u203a canonical cancellation, resume and recovery update without new checkout",
+        "tests/e2e/commercial-access.spec.ts:55:1 \u203a grace preserves existing delivery and blocks business edits",
+        "tests/e2e/commercial-access.spec.ts:73:1 \u203a read only permits browsing and denies direct mutation without data loss",
+        "tests/e2e/commercial-catalogue-v2.spec.ts:79:1 \u203a client list and lifecycle save persist through reload"
+      ]
+    },
+    "release-b": {
+      "passed": 113,
+      "failed": 11,
+      "skipped": 10,
+      "failureTitles": [
+        "tests/e2e/billing-coach-seats.spec.ts:173:3 \u203a pending team commitments block reduction before provider mutation",
+        "tests/e2e/billing-coach-seats.spec.ts:222:1 \u203a compatible plan upgrade retains purchased seats",
+        "tests/e2e/billing-plan-change.spec.ts:43:1 \u203a unauthorized provider mapping remains manual review",
+        "tests/e2e/billing-plan-change.spec.ts:61:1 \u203a Launch upgrade waits for verified updated invoice",
+        "tests/e2e/billing-plan-change.spec.ts:83:1 \u203a failed payment preserves Launch and recovery completes",
+        "tests/e2e/billing-plan-change.spec.ts:103:1 \u203a renewal invoice is not upgrade payment proof",
+        "tests/e2e/billing-plan-change.spec.ts:118:1 \u203a Scale downgrade blocks commitments then schedules after remediation",
+        "tests/e2e/billing-plan-change.spec.ts:149:1 \u203a annual to monthly schedules and shows full monthly list price",
+        "tests/e2e/billing-portal.spec.ts:349:1 \u203a portal return polls only within its bound and offers manual refresh",
+        "tests/e2e/billing-portal.spec.ts:393:1 \u203a canonical cancellation, resume and recovery update without new checkout",
+        "tests/e2e/commercial-catalogue-v2.spec.ts:79:1 \u203a client list and lifecycle save persist through reload"
+      ]
+    },
+    "auth-stress": {
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "failureTitles": []
+    },
+    "auth-stress-full": {
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "failureTitles": []
+    }
+  },
+  "releaseExitCodes": {
+    "a": 1,
+    "b": 1
+  },
+  "workers": 4,
+  "retries": 0,
+  "authStressRepeatEach": 2,
+  "hostMemoryObservation": {
+    "freeGB": 0.33,
+    "totalGB": 7.79
+  },
+  "environmentIntervention": "Temporarily stopped local Supabase Studio and analytics during release A; remained stopped for release B; restored after the pair. No implementation changes during pair.",
+  "failureCauseEstablished": false,
+  "productionUntouched": true,
+  "remoteSupabaseOperations": 0,
+  "lemonSqueezyApiOperations": 0
+}
