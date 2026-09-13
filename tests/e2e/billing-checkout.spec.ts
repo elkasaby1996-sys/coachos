@@ -116,6 +116,23 @@ async function fixture(
   return {
     attempt,
     calls: () => calls,
+    async returnFromCheckout(checkoutAttempt = attempt) {
+      const canonical = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).pathname ===
+            "/rest/v1/rpc/get_my_billing_checkout_state",
+      );
+      const [response] = await Promise.all([
+        canonical,
+        page.goto(
+          `/pt-hub/settings/billing?checkout=return&attempt=${checkoutAttempt}`,
+        ),
+      ]);
+      expect(response.ok()).toBe(true);
+      await response.finished();
+      await waitForBootstrapResolved(page);
+    },
     confirm: async () => {
       const snapshot = {
         provider: "lemonsqueezy" as const,
@@ -207,9 +224,7 @@ for (const complimentary of [false, true])
       page.getByRole("heading", { name: "Deterministic hosted checkout" }),
     ).toBeVisible();
     expect(f.calls()).toBe(1);
-    await page.goto(
-      `/pt-hub/settings/billing?checkout=return&attempt=${f.attempt}`,
-    );
+    await f.returnFromCheckout();
     await expect(page.getByText(/Finalizing your subscription/)).toBeVisible();
     await page
       .getByRole("button", { name: "Refresh subscription", exact: true })
@@ -257,10 +272,8 @@ test("unavailable provider retains selected plan and cadence", async ({
   await expect(page.getByLabel("Billing frequency")).toHaveValue("annual");
 });
 test("return query is not payment proof", async ({ page, context }, info) => {
-  await fixture(page, context, info.testId);
-  await page.goto(
-    `/pt-hub/settings/billing?checkout=return&attempt=${randomUUID()}`,
-  );
+  const f = await fixture(page, context, info.testId);
+  await f.returnFromCheckout(randomUUID());
   await expect(page.getByText(/Finalizing your subscription/)).toBeVisible();
   await expect(page.getByText(/Paid subscription confirmed/)).toHaveCount(0);
 });

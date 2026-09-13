@@ -263,28 +263,68 @@ export async function planChangeFixture(
   await expect(
     page.getByRole("button", { name: "Change plan", exact: true }),
   ).toBeVisible();
+  const seatAction = async (
+    action: "apply" | "refresh" | "cancel",
+    buttonName: string,
+  ) => {
+    const endpoint = {
+      apply: "billing-change-coach-seat-quantity",
+      refresh: "billing-refresh-coach-seat-change",
+      cancel: "billing-cancel-scheduled-seat-change",
+    }[action];
+    const submitted = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === `/functions/v1/${endpoint}`,
+    );
+    const canonical = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname ===
+          "/rest/v1/rpc/get_my_billing_seat_quantity_state",
+    );
+    await Promise.all([
+      submitted.then(async (response) => {
+        expect(response.ok()).toBe(true);
+        await response.finished();
+      }),
+      canonical.then(async (response) => {
+        expect(response.ok()).toBe(true);
+        await response.finished();
+      }),
+      page.getByRole("button", { name: buttonName, exact: true }).click(),
+    ]);
+    // The action also invalidates capacity and entitlements. Its ready control
+    // confirms those reads settled before callers inspect exact seat limits.
+    await expect(
+      page.getByRole("button", { name: "Refresh coach seats", exact: true }),
+    ).toBeEnabled();
+  };
   return {
     coach,
+    refreshSeats: () => seatAction("refresh", "Refresh coach seats"),
+    scheduleSeatReduction: () =>
+      seatAction("apply", "Confirm scheduled reduction"),
+    cancelSeatReduction: () =>
+      seatAction("cancel", "Cancel scheduled reduction"),
     async previewSeats(target: number) {
       await page
         .getByLabel("Additional coach seats", { exact: true })
         .selectOption(String(target));
+      const previewed = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).pathname ===
+            "/functions/v1/billing-preview-coach-seat-change",
+      );
       await page
         .getByRole("button", { name: "Preview seat change", exact: true })
         .click();
+      await (await previewed).finished();
     },
     async buySeats(target: number) {
       await this.previewSeats(target);
-      const response = page.waitForResponse(
-        (r) =>
-          new URL(r.url()).pathname.endsWith(
-            "/billing-change-coach-seat-quantity",
-          ) && r.request().method() === "POST",
-      );
-      await page
-        .getByRole("button", { name: "Confirm seat purchase", exact: true })
-        .click();
-      expect((await response).ok()).toBe(true);
+      await seatAction("apply", "Confirm seat purchase");
       await expect(
         page
           .locator("#coach-seats")

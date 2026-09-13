@@ -27,6 +27,10 @@
         {
           "run": "parent-observed-billing-checkout",
           "decisionBeforeEdit": "All four fail in fixture at Start subscription after page.goto, before their billing assertions. Final bootstrap/auth markers are absent; canonical entitlement/access reads remain unfinished and checkout-state has not arrived. The fixture asserts on document navigation completion rather than canonical checkout readiness. No page errors. Wait for the real checkout-state response and post-navigation bootstrap, then retain the existing visible-action assertion. Drain outstanding routed callbacks during teardown."
+        },
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke fails Finalizing your subscription immediately after return navigation while canonical checkout/entitlement reads remain unfinished. Reuse explicit checkout-state response readiness on return, preserving the finalizing/payment-proof assertions."
         }
       ]
     },
@@ -142,8 +146,13 @@
           "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke fails initial Start subscription while canonical capacity/access/provider reads are unfinished. The initial checkout-state readiness correction covers this same fixture defect."
+        }
+      ]
     },
     {
       "id": "B06",
@@ -208,11 +217,15 @@
           "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "ENVIRONMENTAL_FLAKE",
+      "classification": "FIXTURE_DEFECT",
       "evidence": [
         {
           "run": "parent-observed-billing-coach-seats",
           "decisionBeforeEdit": "Failure is at login before billing UI. Local Auth logs show /token HTTP 504 context deadlines and a Docker DNS lookup supabase_db_coachos on 127.0.0.11:53 i/o timeout. Another token took 18.24 seconds. This attributes this reproduction to local service unavailability, not to memory or a billing contract. No product/test correction made on this evidence."
+        },
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke fails Effective limit: 3 after immediate refresh click. Real refresh completed 200 in 4919ms, followed by invalidation reads. Source seat-quantity-panel.run awaits these reads before clearing busy. Wait for action and canonical seat-state response, then retain ready-control and exact limit assertions."
         }
       ]
     },
@@ -278,6 +291,10 @@
         {
           "run": "parent-observed-billing-coach-seats",
           "decisionBeforeEdit": "This specific login returned HTTP 200 after 18.238 seconds; the fixture started its 15-second auth-marker budget immediately after clicking, before token response completion. Await the exact successful password-token response before checking rendered auth/bootstrap readiness. This does not retry or accept the separate HTTP 504 cases."
+        },
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke fails Effective limit: 5 while refresh completes 200 in 9522ms. Same run/refresh canonical-readiness defect, independent of the earlier slow successful authentication occurrence."
         }
       ]
     },
@@ -326,8 +343,13 @@
           "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke fails Cancel scheduled reduction while apply finishes 200 after 29431ms. Source run(apply) then invalidates canonical state. Synchronize seat action and canonical refetch; preserve disabled reduction, exact target limits and provider mutation count assertions."
+        }
+      ]
     },
     {
       "id": "B11",
@@ -366,8 +388,13 @@
           "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "ENVIRONMENTAL_FLAKE",
+      "evidence": [
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Password token returned HTTP 504 (35839ms / 17635ms respectively). No commercial assertion was reached. Preserve explicit successful-response requirement; do not suppress the service failure."
+        }
+      ]
     },
     {
       "id": "B12",
@@ -401,8 +428,13 @@
           "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "ENVIRONMENTAL_FLAKE",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-selection",
+          "decisionBeforeEdit": "Password token returned HTTP 504 (35839ms / 17635ms respectively). No commercial assertion was reached. Preserve explicit successful-response requirement; do not suppress the service failure."
+        }
+      ]
     },
     {
       "id": "B13",
@@ -768,8 +800,13 @@
           "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-smoke",
+          "decisionBeforeEdit": "Parent smoke asserts Waiting for verified payment before successful apply response completes at 12382ms. Already corrected by merged f5c7bfb plan fixture response wait and dialog teardown."
+        }
+      ]
     },
     {
       "id": "B26",
@@ -790,8 +827,13 @@
           "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-selection",
+          "decisionBeforeEdit": "Parent recorded selection asserts Current: $590.00 USD charged annually before preview response completes at 6568ms. Already corrected by merged f5c7bfb preview response wait."
+        }
+      ]
     }
   ],
   "comparisonNotes": [
@@ -800,5 +842,18 @@
     "Identical external observer captures request timings, route, worker/parallel slot, hashed fixture identity, console/page errors and final auth/bootstrap DOM markers; it does not intercept or modify requests.",
     "Initial parent-clean startup attempts invalid: NODE_OPTIONS Windows backslashes were interpreted as escapes. No browser results were produced. Runner was stopped; the observer path now uses forward slashes and passed a standalone browser self-check before the observed comparison.",
     "Parent coach-seat run additionally failed unapproved provider quantity preserves approved capacity in manual review at the same local Auth HTTP 504 boundary; this is a new observed failure, absent from the original 26-title list. Active-team, pending-team and compatible-upgrade total-deadline failures remain UNKNOWN pending comparison."
+  ],
+  "setupFailures": [
+    {
+      "run": "candidate-observed-account-capacity",
+      "commit": "6e125ca00a2157350f7d35d9b08987bfaed30a84",
+      "classification": "TEST_ISOLATION_DEFECT",
+      "decisionBeforeEdit": "No test executed. Vite default **/*.html dependency discovery scans retained redacted playwright-report and playwright-report-configured HTML, reports invalid assignment target, and the warm-up evaluate context is destroyed by navigation. Local installed Vite computeEntries confirms this discovery default. Declare index.html as the application dependency entry so generated evidence cannot become application input; preserve all reports."
+    },
+    {
+      "run": "candidate-observed-billing-checkout",
+      "classification": "UNKNOWN",
+      "decisionBeforeEdit": "No browser test executed. Local db reset failed at initial schema with LegacyDbSetupError / container exit 1. DB later reports healthy and OOMKilled=false, which does not explain the initialization failure. Retain log; inspect local recovery before restarting matrix."
+    }
   ]
 }

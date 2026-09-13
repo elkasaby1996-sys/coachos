@@ -33,6 +33,12 @@ Separately, local authentication returned HTTP 504. The corresponding auth-conta
 
 Invalid attempts are retained separately: an initial parent checkout used a node_modules junction rejected by Vite's asset allow-list, and three later launches had an incorrectly escaped Windows observer preload path and never started tests. They are excluded from comparison. The valid parent has its own `npm ci` installation and uses the same observer as the candidate.
 
+The full parent smoke suite completed with 112 passed, 12 failed and 10 pre-existing skipped tests (13.5 minutes).
+
+The initial candidate (`6e125ca`) did not reach browser tests: Vite's default all-HTML dependency discovery scanned retained, redacted Playwright reports, encountered invalid JavaScript and reloaded during global warm-up. This is a TEST_ISOLATION_DEFECT. The correction explicitly selects the application `index.html` for dependency discovery; reports remain intact. This changes development dependency scanning, not product behavior. The following local reset failed during initial schema creation with `LegacyDbSetupError`; its cause remains UNKNOWN and the matrix stopped. Subsequent healthy container status and `OOMKilled=false` are observations, not a diagnosis.
+
+The completed parent smoke also establishes seat-action readiness defects: a refresh returned 200 after 9.522 seconds, and a scheduled-reduction apply returned 200 after 29.431 seconds, while assertions had already begun. The fixture now awaits the specific action and canonical seat-state refetch before checking the ready control and the original exact capacity/payment assertions. Checkout return similarly waits for its canonical checkout state before asserting finalization. No retries or timeout changes were introduced.
+
 ## Unit correction result
 
 After the nine test-file corrections, the full suite passed: 257 files, 1,855 tests, zero failed, zero skipped (23.01 seconds). No production file changed. Each obsolete assertion was replaced with the current exact contract; additional assertions bind the check-in permission to its actual save button, the muscle reset to its owning toolbar/default filter, and the separate next-action section to its position before the agenda.
