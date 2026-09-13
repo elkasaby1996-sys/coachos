@@ -863,6 +863,27 @@
       "run": "candidate-observed-billing-checkout",
       "classification": "UNKNOWN",
       "decisionBeforeEdit": "No browser test executed. Local db reset failed at initial schema with LegacyDbSetupError / container exit 1. DB later reports healthy and OOMKilled=false, which does not explain the initialization failure. Retain log; inspect local recovery before restarting matrix."
+    },
+    {
+      "run": "parent-billing-portal",
+      "classification": "TEST_ISOLATION_DEFECT",
+      "testExecutionStarted": false,
+      "evidence": "The shared node_modules junction resolves font requests outside the parent worktree Vite serving allow-list. The failed attempt has no executed reporter result and was stopped. Retained browser.log and metadata.json.",
+      "correction": "Use a separate parent checkout with its own npm ci, preserving the failed checkout and logs."
+    },
+    {
+      "run": "parent-clean-account-capacity",
+      "classification": "FIXTURE_DEFECT",
+      "testExecutionStarted": false,
+      "evidence": "Error: Cannot find module; NODE_OPTIONS removed the Windows path backslashes while parsing the diagnostic preload. Retained browser.log.",
+      "correction": "Use forward slashes in the quoted absolute preload path; no application or test assertion changed."
+    },
+    {
+      "run": "parent-clean-billing-checkout",
+      "classification": "FIXTURE_DEFECT",
+      "testExecutionStarted": false,
+      "evidence": "Error: Cannot find module; NODE_OPTIONS removed the Windows path backslashes while parsing the diagnostic preload. Retained browser.log.",
+      "correction": "Use forward slashes in the quoted absolute preload path; no application or test assertion changed."
     }
   ],
   "additionalObservedDecisions": [
@@ -1462,6 +1483,12 @@
           "decisionBeforeEdit": "The dialog assertion started at trace 402047.853ms immediately after document load. The dynamically imported synthetic fixture module started at 401992.241ms and took 3911.760ms, then loaded the chart/dialog/styles dependencies for another 454-486ms before React initialization. The failure snapshot contains the exact dialog, slider and values; no console/page errors. Mark completion after the awaited fixture import and await that initialization before starting the unchanged dialog assertion. Preserve pointer, keyboard, exact values, axis bounds and responsive assertions."
         }
       ]
+    }
+  ],
+  "excludedAttempts": [
+    {
+      "run": "parent-clean-billing-coach-seats",
+      "disposition": "Stopped during the queued local reset after the two preceding malformed-preload failures; browser never launched. Only partial db-reset.log exists. Not counted as another observed browser or preload failure."
     }
   ],
   "readinessAuditDecisions": [

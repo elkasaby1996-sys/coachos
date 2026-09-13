@@ -1,0 +1,323 @@
+{
+  "verdict": "Local gates green; Phase B unauthorized; staging not certified",
+  "base": "1b95cb34835dd0021f4af8d739998cb4478e55f2",
+  "branch": "fix/pr-quality-01-commercial-certification-gates",
+  "frozenCodeCommit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c",
+  "unitResult": {
+    "numTotalTestSuites": 562,
+    "numPassedTestSuites": 562,
+    "numTotalTests": 1855,
+    "numPassedTests": 1855,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "testFiles": 257
+  },
+  "unitReportSha256": "b401e4f77632fc16e702f44f79535806519e7e1357d3f14277873bab1d2dc645",
+  "localGates": [
+    {
+      "name": "db-start",
+      "command": ["npm", "run", "supabase:start"],
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "started": "2026-09-13T14:46:49.3924136Z",
+      "ended": "2026-09-13T14:46:53.8334243Z",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c"
+    },
+    {
+      "name": "db-reset",
+      "command": ["npm", "run", "supabase:db:reset"],
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "started": "2026-09-13T14:46:53.9192018Z",
+      "ended": "2026-09-13T14:47:41.1169682Z",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c"
+    },
+    {
+      "name": "db-lint",
+      "command": ["npm", "run", "supabase:db:lint"],
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "started": "2026-09-13T14:47:41.1989439Z",
+      "ended": "2026-09-13T14:47:45.1655268Z",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c"
+    },
+    {
+      "name": "db-test",
+      "command": ["npm", "run", "supabase:db:test"],
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "started": "2026-09-13T14:47:45.2265155Z",
+      "ended": "2026-09-13T14:47:54.8777694Z",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c"
+    },
+    {
+      "name": "units",
+      "command": [
+        "npm",
+        "run",
+        "test:unit",
+        "--",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=C:\\Users\\ahmed\\OneDrive\\Documents\\Syslab\\Projects\\COACHos\\coachos\\output\\staging-commercial\\quality-01\\local-gates-final-r5\\units.json"
+      ],
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "started": "2026-09-13T14:47:54.9426803Z",
+      "ended": "2026-09-13T14:48:22.4843210Z",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c"
+    },
+    {
+      "name": "harness",
+      "command": ["npm", "run", "staging:commercial:test"],
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "started": "2026-09-13T14:48:22.5453081Z",
+      "ended": "2026-09-13T14:48:25.7396368Z",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c"
+    },
+    {
+      "name": "manifest",
+      "command": ["npm", "run", "staging:commercial:validate"],
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "started": "2026-09-13T14:48:25.7995597Z",
+      "ended": "2026-09-13T14:48:26.5240151Z",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c"
+    },
+    {
+      "name": "catalogue-local",
+      "command": [
+        "npm",
+        "run",
+        "staging:commercial:catalogue",
+        "--",
+        "--local"
+      ],
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "started": "2026-09-13T14:48:26.5843376Z",
+      "ended": "2026-09-13T14:48:27.4701393Z",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c"
+    },
+    {
+      "name": "lint",
+      "command": ["npm", "run", "lint"],
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "started": "2026-09-13T14:48:27.5285592Z",
+      "ended": "2026-09-13T14:48:39.5208706Z",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c"
+    },
+    {
+      "name": "format",
+      "command": ["npm", "run", "format"],
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "started": "2026-09-13T14:48:39.5795517Z",
+      "ended": "2026-09-13T14:49:01.3542455Z",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c"
+    },
+    {
+      "name": "build",
+      "command": ["npm", "run", "build"],
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "started": "2026-09-13T14:49:01.4186547Z",
+      "ended": "2026-09-13T14:49:50.7836163Z",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c"
+    }
+  ],
+  "harness": {
+    "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c",
+    "fullUnitGate": "accepted",
+    "total": 1855,
+    "passed": 1855,
+    "failed": 0,
+    "skipped": 0,
+    "unitReportSha256": "b401e4f77632fc16e702f44f79535806519e7e1357d3f14277873bab1d2dc645",
+    "defaultPlan": {
+      "validation": "fail",
+      "errorCode": "COMMIT_REQUIRED"
+    },
+    "featureBranchPlan": {
+      "validation": "fail",
+      "errorCode": "COMMIT_SOURCE_MISMATCH"
+    },
+    "placeholderConfirmedPlan": {
+      "validation": "pass",
+      "verdict": "blocked",
+      "context": "Local detached checkout of the identical commit; simulated refs/heads/main input; no remote operation"
+    },
+    "evidenceTemplateVerdict": "blocked",
+    "fetchCalls": 0,
+    "applyEntryPointCalled": false,
+    "phaseBAuthorized": false,
+    "stagingCertified": false
+  },
+  "releasePair": [
+    {
+      "command": "npm run verify:release",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c",
+      "sourceObjects": [
+        "040000 tree b9d21d60be8805d8efafb1ab3db8c7be8a2ad621\tconfig",
+        "100644 blob 850f821e0578312071380bdb47667c385f153d45\tpackage-lock.json",
+        "100644 blob 9a70849cb9806f933c1d5996663eef4acf2a0d7d\tpackage.json",
+        "100644 blob 50eed61ff699681279430f973102939421c09c9e\tplaywright.config.ts",
+        "040000 tree 71fa2dc977d9495795db512399eae5eb20244e5c\tscripts",
+        "040000 tree 175666a2391c78edd8ac9be7702adf2f260a5cc2\tsrc",
+        "040000 tree 603e71057bad5c79def07a8cfd0928846ccd252d\tsupabase",
+        "040000 tree 2c3d6823c55d5bcece136d7880ffb9271793d96f\ttests",
+        "100644 blob 0934f93c4a77d69acb894bafcfc7dd63a4e90fff\tvite.config.ts"
+      ],
+      "started": "2026-09-13T14:50:00.2629822Z",
+      "ended": "2026-09-13T15:00:38.5483183Z",
+      "exitCode": 0,
+      "workers": 4,
+      "retries": 0,
+      "freeMemoryBeforeKB": 1346572,
+      "freeMemoryAfterKB": 2175728,
+      "totalMemoryKB": 8165316,
+      "cleanAfter": true,
+      "commitAfter": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c",
+      "apiOrigin": "http://127.0.0.1:54321",
+      "browserStats": {
+        "total": 134,
+        "expected": 124,
+        "unexpected": 0,
+        "flaky": 0,
+        "skipped": 10,
+        "ok": true,
+        "startTime": "2026-09-13T14:51:21.652000+00:00",
+        "duration": 552421.456
+      }
+    },
+    {
+      "command": "npm run verify:release",
+      "commit": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c",
+      "sourceObjects": [
+        "040000 tree b9d21d60be8805d8efafb1ab3db8c7be8a2ad621\tconfig",
+        "100644 blob 850f821e0578312071380bdb47667c385f153d45\tpackage-lock.json",
+        "100644 blob 9a70849cb9806f933c1d5996663eef4acf2a0d7d\tpackage.json",
+        "100644 blob 50eed61ff699681279430f973102939421c09c9e\tplaywright.config.ts",
+        "040000 tree 71fa2dc977d9495795db512399eae5eb20244e5c\tscripts",
+        "040000 tree 175666a2391c78edd8ac9be7702adf2f260a5cc2\tsrc",
+        "040000 tree 603e71057bad5c79def07a8cfd0928846ccd252d\tsupabase",
+        "040000 tree 2c3d6823c55d5bcece136d7880ffb9271793d96f\ttests",
+        "100644 blob 0934f93c4a77d69acb894bafcfc7dd63a4e90fff\tvite.config.ts"
+      ],
+      "started": "2026-09-13T15:00:38.8490235Z",
+      "ended": "2026-09-13T15:11:53.5445416Z",
+      "exitCode": 0,
+      "workers": 4,
+      "retries": 0,
+      "freeMemoryBeforeKB": 1981220,
+      "freeMemoryAfterKB": 1886864,
+      "totalMemoryKB": 8165316,
+      "cleanAfter": true,
+      "commitAfter": "553eab0c5ca46a3b3e0e143cc349b3b2b07b714c",
+      "apiOrigin": "http://127.0.0.1:54321",
+      "browserStats": {
+        "total": 134,
+        "expected": 124,
+        "unexpected": 0,
+        "flaky": 0,
+        "skipped": 10,
+        "ok": true,
+        "startTime": "2026-09-13T15:02:09.567000+00:00",
+        "duration": 581362.03
+      }
+    }
+  ],
+  "oldEvidenceSha256": {
+    "pr-price-11-browser-verification.json": "9817914a0ab395bd20e3addd18c0aaa1e035d7acfd07d6826ea66ead473b0d5d",
+    "pr-price-11-unit-comparison.json": "2b2efe9eff10014f877f98498a0cba6142624b4730e901e14d58ae003259e970"
+  },
+  "viteCacheControl": {
+    "sameConfigHash": true,
+    "sameLockfileHash": true,
+    "before": {
+      "hash": "617bb3fa",
+      "configHash": "470081fc",
+      "lockfileHash": "31289cf2",
+      "browserHash": "e9f60d3d"
+    },
+    "after": {
+      "hash": "617bb3fa",
+      "configHash": "470081fc",
+      "lockfileHash": "31289cf2",
+      "browserHash": "3cb2731c"
+    },
+    "beforeDependencyCount": 146,
+    "afterDependencyCount": 152,
+    "missingAfterCold": [],
+    "additionalColdScanDependencies": [
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+      "@dnd-kit/utilities",
+      "@radix-ui/react-switch",
+      "@radix-ui/react-tooltip",
+      "recharts"
+    ],
+    "coldResult": {
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0
+    },
+    "sourceChangedForColdCheck": false
+  },
+  "normalObserverSha256": "7758bd717078ab54f124d8db9a9198563169e474fee9a478fe28643527ece524",
+  "schemaIsolationEvidence": [
+    {
+      "label": "candidate-observed-r10-commercial-access",
+      "browserStarted": "2026-09-13T14:39:16.050000+00:00",
+      "browserEnded": "2026-09-13T14:40:32.589369+00:00",
+      "parsedServiceMessages": 487,
+      "parsedAccessMessagesDuringBrowser": 0,
+      "schemaReloadOrFailureMessagesDuringBrowser": [
+        "13/Sep/2026:14:39:33 +0000: Received a schema cache reload message on the \"pgrst\" channel",
+        "13/Sep/2026:14:39:33 +0000: Received a schema cache reload message on the \"pgrst\" channel",
+        "13/Sep/2026:14:39:33 +0000: Received a schema cache reload message on the \"pgrst\" channel",
+        "13/Sep/2026:14:39:33 +0000: Received a schema cache reload message on the \"pgrst\" channel",
+        "13/Sep/2026:14:39:33 +0000: Received a schema cache reload message on the \"pgrst\" channel"
+      ],
+      "lifecycleCasesStarted": "2026-09-13T14:40:13.566000+00:00",
+      "schemaReloadOrFailureMessagesDuringLifecycleCases": []
+    },
+    {
+      "label": "release-final-r5-a",
+      "browserStarted": "2026-09-13T14:51:21.652000+00:00",
+      "browserEnded": "2026-09-13T15:00:34.073456+00:00",
+      "parsedServiceMessages": 17,
+      "parsedAccessMessagesDuringBrowser": 0,
+      "schemaReloadOrFailureMessagesDuringBrowser": [
+        "13/Sep/2026:14:51:46 +0000: Received a schema cache reload message on the \"pgrst\" channel",
+        "13/Sep/2026:14:51:46 +0000: Received a schema cache reload message on the \"pgrst\" channel",
+        "13/Sep/2026:14:51:46 +0000: Received a schema cache reload message on the \"pgrst\" channel",
+        "13/Sep/2026:14:51:46 +0000: Received a schema cache reload message on the \"pgrst\" channel",
+        "13/Sep/2026:14:51:46 +0000: Received a schema cache reload message on the \"pgrst\" channel"
+      ],
+      "lifecycleCasesStarted": "2026-09-13T14:59:56.892000+00:00",
+      "schemaReloadOrFailureMessagesDuringLifecycleCases": []
+    },
+    {
+      "label": "release-final-r5-b",
+      "browserStarted": "2026-09-13T15:02:09.567000+00:00",
+      "browserEnded": "2026-09-13T15:11:50.929030+00:00",
+      "parsedServiceMessages": 0,
+      "parsedAccessMessagesDuringBrowser": 0,
+      "schemaReloadOrFailureMessagesDuringBrowser": [],
+      "lifecycleCasesStarted": "2026-09-13T15:11:17.347000+00:00",
+      "schemaReloadOrFailureMessagesDuringLifecycleCases": []
+    }
+  ],
+  "remoteBoundary": {
+    "remoteSupabase": false,
+    "lemonSqueezyRequests": false,
+    "deployment": false,
+    "pushOrMerge": false,
+    "phaseB": false,
+    "gitFetchAndReadOnlyBaseReview": true
+  },
+  "privateEvidenceRoot": "output/staging-commercial/quality-01"
+}

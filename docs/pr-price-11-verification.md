@@ -1,5 +1,7 @@
 # PR-PRICE-11 Phase A verification
 
+Current local gate status: PR-QUALITY-01 restored the full unit suite and two consecutive four-worker release gates to green. See [PR-QUALITY-01 verification](pr-quality-01-verification.md) for frozen hashes, classifications and remaining skips. The historical conditional result and red evidence below remain preserved. Phase B remains unauthorized; staging billing is not certified.
+
 **Phase A implementation complete; local verification is conditional. Phase B and real staging certification are blocked.** The full unit suite and both release checks are not green. No remote Supabase operation, Lemon Squeezy API request, deployment, secret update, webhook registration, provider mapping insertion or purchase is permitted by this task.
 
 Base: `7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7`. Branch: `feat/pr-price-11-staging-commercial-certification`. The base was fetched from origin/main and contains PR-PRICE-10, -09 and -08. Initial worktree was clean.
