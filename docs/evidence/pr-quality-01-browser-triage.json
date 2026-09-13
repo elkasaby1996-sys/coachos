@@ -582,6 +582,10 @@
         {
           "run": "parent-observed-billing-portal",
           "decisionBeforeEdit": "Cancellation assertion starts after document goto, before canonical summary arrives. Failure screenshot later contains the correct Cancellation scheduled message. The assertion failure prevents releaseAccess(), leaving the deliberately held RPC unresolved and causing afterEach unrouteAll to time out at 90 seconds. Wait for canonical provider summary on initial/return navigation and always release held fixture requests before draining teardown. Preserve assertions while commercial access is held."
+        },
+        {
+          "run": "candidate-observed-r2-smoke",
+          "decisionBeforeEdit": "Manual summary refresh resolves before its capacity/entitlement refetches. The test mutates the same fixture summary for the next transition, and ends after the disappearing payment action while routed reads remain in flight; route.fulfill then reports already handled. Drain existing tracked reads between each mutable summary phase and before final teardown. Keep all UI assertions and route errors; no catch/ignore bypass."
         }
       ]
     },
@@ -697,7 +701,7 @@
           "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
+      "classification": "TEST_ISOLATION_DEFECT",
       "evidence": []
     },
     {
@@ -778,8 +782,13 @@
           "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "candidate-observed-r2-smoke",
+          "decisionBeforeEdit": "Final reload navigation committed at 1789298135006; provider summary request dispatched at 1789298143102 and completed 97ms later, 8193ms after navigation. Assertion starts at reload completion with a 5-second window. Await the real provider-summary response and preserve all manual-review/capacity/hidden-action assertions."
+        }
+      ]
     },
     {
       "id": "B25",
@@ -854,6 +863,43 @@
       "run": "candidate-observed-billing-checkout",
       "classification": "UNKNOWN",
       "decisionBeforeEdit": "No browser test executed. Local db reset failed at initial schema with LegacyDbSetupError / container exit 1. DB later reports healthy and OOMKilled=false, which does not explain the initialization failure. Retain log; inspect local recovery before restarting matrix."
+    }
+  ],
+  "additionalObservedDecisions": [
+    {
+      "recordedAt": "2026-09-13T11:25:16.282085+00:00",
+      "run": "candidate-observed-r2-smoke",
+      "commit": "1e09860",
+      "cases": [
+        {
+          "fullTestName": "unauthorized provider mapping remains manual review",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "Final reload navigation committed at 1789298135006; provider summary request dispatched at 1789298143102 and completed 97ms later, 8193ms after navigation. Assertion starts at reload completion with a 5-second window. Await the real provider-summary response and preserve all manual-review/capacity/hidden-action assertions."
+        },
+        {
+          "fullTestName": "client history and independent nutrition remain available after coach expiry",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "Final home navigation committed at 1789298292669; get_client_coaching_access dispatched at 1789298295744 and completed 1483ms later. The exact notice assertion starts before this canonical access read/render. Await the matching client access response after navigation, then retain every notice, historical-read, independent-nutrition and denied-coaching-mutation assertion."
+        },
+        {
+          "fullTestName": "canonical cancellation, resume and recovery update without new checkout",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "Manual summary refresh resolves before its capacity/entitlement refetches. The test mutates the same fixture summary for the next transition, and ends after the disappearing payment action while routed reads remain in flight; route.fulfill then reports already handled. Drain existing tracked reads between each mutable summary phase and before final teardown. Keep all UI assertions and route errors; no catch/ignore bypass."
+        }
+      ]
+    },
+    {
+      "run": "candidate-observed-r2-commercial-access",
+      "fullTestName": "grace preserves existing delivery and blocks business edits",
+      "classification": "TEST_ISOLATION_DEFECT",
+      "decisionBeforeChange": "The failing profile navigation loaded React chunk PWPD3MW7 under b5d32af3 and e9f60d3d through Radix Tabs b9d08c4a. Installed React and renderer both resolve solely to 18.3.1. Preserve the shared generated Vite cache, then test unchanged committed source with a cold cache.",
+      "unchangedCodeColdResult": {
+        "run": "candidate-observed-cold-commercial-access",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0
+      },
+      "memoryAttribution": false
     }
   ]
 }

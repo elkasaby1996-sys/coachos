@@ -457,6 +457,7 @@ test("canonical cancellation, resume and recovery update without new checkout", 
   await expect(
     page.getByText("Your subscription is active again."),
   ).toBeVisible();
+  await f.waitForReads();
   f.summary.status = "past_due";
   f.summary.revision = "failed";
   await page
@@ -465,6 +466,7 @@ test("canonical cancellation, resume and recovery update without new checkout", 
   await expect(
     page.getByRole("button", { name: "Update payment method", exact: true }),
   ).toBeVisible();
+  await f.waitForReads();
   f.summary.status = "active";
   f.summary.revision = "recovered";
   await page
@@ -473,6 +475,7 @@ test("canonical cancellation, resume and recovery update without new checkout", 
   await expect(
     page.getByRole("button", { name: "Update payment method", exact: true }),
   ).toHaveCount(0);
+  await f.waitForReads();
 });
 test("unapproved change keeps capacity and exposes only review message", async ({
   page,

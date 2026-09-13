@@ -245,7 +245,18 @@ test("client history and independent nutrition remain available after coach expi
   await signInWithEmail(page, identity.email, identity.password);
   await waitForAuthSessionReady(page);
   await waitForBootstrapResolved(page);
+  const coachingAccess = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        "/rest/v1/rpc/get_client_coaching_access" &&
+      response.request().postDataJSON()?.p_client_id === clientId,
+  );
   await page.goto("/app/home");
+  const accessResponse = await coachingAccess;
+  expect(accessResponse.ok()).toBe(true);
+  await accessResponse.finished();
+  await waitForBootstrapResolved(page);
   await expect(
     page.getByText("Coaching interaction is currently unavailable.", {
       exact: false,

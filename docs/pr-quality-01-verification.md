@@ -41,6 +41,10 @@ The completed parent smoke also establishes seat-action readiness defects: a ref
 
 ## Unit correction result
 
+Candidate `1e09860` passed the seven individual files except one commercial-access occurrence (60 passed, 1 failed), then passed all 40 tests in the recorded billing selection. Its full smoke run finished with 121 passed, 3 failed and the same 10 skips. These red runs remain retained. The profile failure loaded React under two Vite cache generations through Radix Tabs; the installed React/React DOM versions were both 18.3.1. After preserving the old generated cache, all 17 commercial-access tests passed from a cold cache on unchanged code. This is TEST_ISOLATION_DEFECT, not a memory attribution.
+
+The three full-smoke failures are separately classified FIXTURE_DEFECT: manual-review reload asserted before the provider-summary response (8.193 seconds after navigation); client expiry asserted before the matching coaching-access read/render; portal lifecycle transitions changed the shared fixture summary or ended while preceding refresh reads were still in flight. The additional corrections await those exact canonical reads and drain portal reads between transitions and before teardown. Every existing assertion remains.
+
 After the nine test-file corrections, the full suite passed: 257 files, 1,855 tests, zero failed, zero skipped (23.01 seconds). No production file changed. Each obsolete assertion was replaced with the current exact contract; additional assertions bind the check-in permission to its actual save button, the muscle reset to its owning toolbar/default filter, and the separate next-action section to its position before the agenda.
 
 The existing `requireGreenUnits` validator accepted this complete reporter result locally. The apply entry point was not called, and the validator made no remote request. Final frozen-candidate revalidation is still pending.
