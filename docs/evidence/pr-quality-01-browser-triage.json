@@ -1417,5 +1417,19 @@
         }
       ]
     }
+  ],
+  "readinessAuditDecisions": [
+    {
+      "recordedAt": "2026-09-13T12:57:18.615437+00:00",
+      "scope": "Readiness audit of the already-classified seat-action fixture defects",
+      "classification": "FIXTURE_DEFECT",
+      "newObservedFailure": false,
+      "sourceEvidence": [
+        "src/features/billing/seat-quantity-panel.tsx: run awaits billing, account-capacity and account-entitlements invalidations plus refresh before clearing busy",
+        "tests/e2e/utils/plan-change-fixture.ts: seatAction currently awaits only the action and seat-state bodies before starting its 5000ms ready-control assertion",
+        "release-final-b: the same shared entitlement RPC took 7653ms after an action succeeded; parent observed seat failures already establish premature action/capacity assertions"
+      ],
+      "decisionBeforeEdit": "Complete the existing seat-action readiness correction by explicitly awaiting entitlement and capacity responses and draining remaining RPCs before the unchanged enabled assertion. This closes the shared refetch gap identified by source audit; it is not counted as a new failed occurrence and does not claim a new seat failure was observed."
+    }
   ]
 }

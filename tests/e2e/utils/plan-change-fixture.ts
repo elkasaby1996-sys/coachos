@@ -328,10 +328,22 @@ export async function planChangeFixture(
         expect(response.ok()).toBe(true);
         await response.finished();
       }),
+      ...[
+        "get_my_effective_account_entitlements",
+        "get_my_account_capacity_snapshot",
+      ].map(async (name) => {
+        const response = await page.waitForResponse(
+          (response) =>
+            response.request().method() === "POST" &&
+            new URL(response.url()).pathname === `/rest/v1/rpc/${name}`,
+        );
+        expect(response.ok()).toBe(true);
+        await response.finished();
+      }),
       page.getByRole("button", { name: buttonName, exact: true }).click(),
     ]);
-    // The action also invalidates capacity and entitlements. Its ready control
-    // confirms those reads settled before callers inspect exact seat limits.
+    await waitForReads();
+    // Check the ready control after all canonical transport has settled.
     await expect(
       page.getByRole("button", { name: "Refresh coach seats", exact: true }),
     ).toBeEnabled();
