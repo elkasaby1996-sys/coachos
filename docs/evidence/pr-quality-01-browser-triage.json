@@ -11,11 +11,24 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-checkout.spec.ts:175:3"
+          "location": "tests/e2e/billing-checkout.spec.ts:175:3",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:94:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-checkout",
+          "decisionBeforeEdit": "All four fail in fixture at Start subscription after page.goto, before their billing assertions. Final bootstrap/auth markers are absent; canonical entitlement/access reads remain unfinished and checkout-state has not arrived. The fixture asserts on document navigation completion rather than canonical checkout readiness. No page errors. Wait for the real checkout-state response and post-navigation bootstrap, then retain the existing visible-action assertion. Drain outstanding routed callbacks during teardown."
+        }
+      ]
     },
     {
       "id": "B02",
@@ -24,11 +37,24 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-checkout.spec.ts:175:3"
+          "location": "tests/e2e/billing-checkout.spec.ts:175:3",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:94:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-checkout",
+          "decisionBeforeEdit": "All four fail in fixture at Start subscription after page.goto, before their billing assertions. Final bootstrap/auth markers are absent; canonical entitlement/access reads remain unfinished and checkout-state has not arrived. The fixture asserts on document navigation completion rather than canonical checkout readiness. No page errors. Wait for the real checkout-state response and post-navigation bootstrap, then retain the existing visible-action assertion. Drain outstanding routed callbacks during teardown."
+        }
+      ]
     },
     {
       "id": "B03",
@@ -37,15 +63,38 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-checkout.spec.ts:220:1"
+          "location": "tests/e2e/billing-checkout.spec.ts:220:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:94:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-a",
-          "location": "tests/e2e/billing-checkout.spec.ts:220:1"
+          "location": "tests/e2e/billing-checkout.spec.ts:220:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Start subscription', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:100:5)"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-checkout",
+          "decisionBeforeEdit": "All four fail in fixture at Start subscription after page.goto, before their billing assertions. Final bootstrap/auth markers are absent; canonical entitlement/access reads remain unfinished and checkout-state has not arrived. The fixture asserts on document navigation completion rather than canonical checkout readiness. No page errors. Wait for the real checkout-state response and post-navigation bootstrap, then retain the existing visible-action assertion. Drain outstanding routed callbacks during teardown."
+        }
+      ]
     },
     {
       "id": "B04",
@@ -54,11 +103,24 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-checkout.spec.ts:244:1"
+          "location": "tests/e2e/billing-checkout.spec.ts:244:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 20000ms exceeded.",
+            "at waitForBootstrapResolved (tests\\e2e\\utils\\test-helpers.ts:84:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:126:9)",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:94:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-checkout",
+          "decisionBeforeEdit": "All four fail in fixture at Start subscription after page.goto, before their billing assertions. Final bootstrap/auth markers are absent; canonical entitlement/access reads remain unfinished and checkout-state has not arrived. The fixture asserts on document navigation completion rather than canonical checkout readiness. No page errors. Wait for the real checkout-state response and post-navigation bootstrap, then retain the existing visible-action assertion. Drain outstanding routed callbacks during teardown."
+        }
+      ]
     },
     {
       "id": "B05",
@@ -67,7 +129,17 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-checkout.spec.ts:253:1"
+          "location": "tests/e2e/billing-checkout.spec.ts:253:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Start subscription', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:100:5)"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -80,11 +152,29 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-checkout.spec.ts:270:1"
+          "location": "tests/e2e/billing-checkout.spec.ts:270:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Start subscription', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:100:5)"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-a",
-          "location": "tests/e2e/billing-checkout.spec.ts:270:1"
+          "location": "tests/e2e/billing-checkout.spec.ts:270:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)",
+            "at fixture (tests\\e2e\\billing-checkout.spec.ts:94:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -97,15 +187,34 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-coach-seats.spec.ts:7:1"
+          "location": "tests/e2e/billing-coach-seats.spec.ts:7:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-a",
-          "location": "tests/e2e/billing-coach-seats.spec.ts:7:1"
+          "location": "tests/e2e/billing-coach-seats.spec.ts:7:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "ENVIRONMENTAL_FLAKE",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-coach-seats",
+          "decisionBeforeEdit": "Failure is at login before billing UI. Local Auth logs show /token HTTP 504 context deadlines and a Docker DNS lookup supabase_db_coachos on 127.0.0.11:53 i/o timeout. Another token took 18.24 seconds. This attributes this reproduction to local service unavailability, not to memory or a billing contract. No product/test correction made on this evidence."
+        }
+      ]
     },
     {
       "id": "B08",
@@ -114,15 +223,34 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-coach-seats.spec.ts:62:1"
+          "location": "tests/e2e/billing-coach-seats.spec.ts:62:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-a",
-          "location": "tests/e2e/billing-coach-seats.spec.ts:62:1"
+          "location": "tests/e2e/billing-coach-seats.spec.ts:62:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "ENVIRONMENTAL_FLAKE",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-coach-seats",
+          "decisionBeforeEdit": "Failure is at login before billing UI. Local Auth logs show /token HTTP 504 context deadlines and a Docker DNS lookup supabase_db_coachos on 127.0.0.11:53 i/o timeout. Another token took 18.24 seconds. This attributes this reproduction to local service unavailability, not to memory or a billing contract. No product/test correction made on this evidence."
+        }
+      ]
     },
     {
       "id": "B09",
@@ -131,11 +259,27 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-coach-seats.spec.ts:96:1"
+          "location": "tests/e2e/billing-coach-seats.spec.ts:96:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-coach-seats",
+          "decisionBeforeEdit": "Failure is at login before billing UI. Local Auth logs show /token HTTP 504 context deadlines and a Docker DNS lookup supabase_db_coachos on 127.0.0.11:53 i/o timeout. Another token took 18.24 seconds. This attributes this reproduction to local service unavailability, not to memory or a billing contract. No product/test correction made on this evidence."
+        },
+        {
+          "run": "parent-observed-billing-coach-seats",
+          "decisionBeforeEdit": "This specific login returned HTTP 200 after 18.238 seconds; the fixture started its 15-second auth-marker budget immediately after clicking, before token response completion. Await the exact successful password-token response before checking rendered auth/bootstrap readiness. This does not retry or accept the separate HTTP 504 cases."
+        }
+      ]
     },
     {
       "id": "B10",
@@ -144,15 +288,42 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3"
+          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Cancel scheduled reduction', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-a",
-          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3"
+          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: locator('#coach-seats').getByText('Target limit: 2')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-b",
-          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3"
+          "location": "tests/e2e/billing-coach-seats.spec.ts:173:3",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Cancel scheduled reduction', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -165,15 +336,34 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1"
+          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1",
+          "assertionEvidence": [
+            "Error: locator.selectOption: Test timeout of 90000ms exceeded."
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-a",
-          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1"
+          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Waiting for verified payment.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-b",
-          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1"
+          "location": "tests/e2e/billing-coach-seats.spec.ts:222:1",
+          "assertionEvidence": [
+            "Error: locator.selectOption: Test timeout of 90000ms exceeded."
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -186,11 +376,29 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-plan-change.spec.ts:103:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:103:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Waiting for verified payment.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-b",
-          "location": "tests/e2e/billing-plan-change.spec.ts:103:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:103:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Waiting for verified payment.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -203,15 +411,40 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-plan-change.spec.ts:118:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:118:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('51 committed')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-a",
-          "location": "tests/e2e/billing-plan-change.spec.ts:118:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:118:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toHaveAttribute(expected) failed",
+            "Locator: getByRole('progressbar', { name: 'Clients committed capacity' })",
+            "Timeout: 5000ms"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-b",
-          "location": "tests/e2e/billing-plan-change.spec.ts:118:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:118:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('The target plan limits new capacity commitments.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -224,7 +457,16 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-plan-change.spec.ts:169:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:169:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Target: $190.00 USD charged annually', { exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -237,7 +479,16 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-plan-change.spec.ts:184:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:184:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('alert').filter({ hasText: 'not supported' })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -250,7 +501,12 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-plan-change.spec.ts:230:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:230:1",
+          "assertionEvidence": [
+            "Error: page.waitForResponse: Test timeout of 90000ms exceeded."
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -263,19 +519,39 @@
       "originalOccurrences": [
         {
           "run": "browser-billing",
-          "location": "tests/e2e/billing-portal.spec.ts:393:1"
+          "location": "tests/e2e/billing-portal.spec.ts:393:1",
+          "assertionEvidence": [
+            "Error: route.fulfill: Route is already handled!"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-a",
-          "location": "tests/e2e/billing-portal.spec.ts:393:1"
+          "location": "tests/e2e/billing-portal.spec.ts:393:1",
+          "assertionEvidence": [
+            "Error: route.fulfill: Route is already handled!"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-b",
-          "location": "tests/e2e/billing-portal.spec.ts:393:1"
+          "location": "tests/e2e/billing-portal.spec.ts:393:1",
+          "assertionEvidence": [
+            "Error: route.fulfill: Route is already handled!"
+          ],
+          "classification": "FIXTURE_DEFECT",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-portal",
+          "decisionBeforeEdit": "Cancellation assertion starts after document goto, before canonical summary arrives. Failure screenshot later contains the correct Cancellation scheduled message. The assertion failure prevents releaseAccess(), leaving the deliberately held RPC unresolved and causing afterEach unrouteAll to time out at 90 seconds. Wait for canonical provider summary on initial/return navigation and always release held fixture requests before draining teardown. Preserve assertions while commercial access is held."
+        }
+      ]
     },
     {
       "id": "B18",
@@ -284,7 +560,13 @@
       "originalOccurrences": [
         {
           "run": "release-a",
-          "location": "tests/e2e/account-capacity.spec.ts:113:1"
+          "location": "tests/e2e/account-capacity.spec.ts:113:1",
+          "assertionEvidence": [
+            "Error: page.waitForResponse: Test timeout of 90000ms exceeded.",
+            "at openBilling (tests\\e2e\\account-capacity.spec.ts:20:33)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -297,15 +579,36 @@
       "originalOccurrences": [
         {
           "run": "release-a",
-          "location": "tests/e2e/billing-plan-change.spec.ts:61:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:61:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Waiting for verified payment.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-b",
-          "location": "tests/e2e/billing-plan-change.spec.ts:61:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:61:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toHaveAttribute(expected) failed",
+            "Locator: getByRole('progressbar', { name: 'Clients committed capacity' })",
+            "Timeout: 5000ms"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-plan-change",
+          "decisionBeforeEdit": "Parent fails Immediate change while the successful preview response takes 11.817 seconds. Merged Phase A commit f5c7bfb already waits for preview response, apply response/dialog detach, and payment refresh completion. Retain that correction; compare candidate before considering any further change."
+        }
+      ]
     },
     {
       "id": "B20",
@@ -314,15 +617,34 @@
       "originalOccurrences": [
         {
           "run": "release-a",
-          "location": "tests/e2e/billing-portal.spec.ts:349:1"
+          "location": "tests/e2e/billing-portal.spec.ts:349:1",
+          "assertionEvidence": [
+            "Error: expect(received).toBe(expected) // Object.is equality",
+            "Expected: true",
+            "Received: false"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-b",
-          "location": "tests/e2e/billing-portal.spec.ts:349:1"
+          "location": "tests/e2e/billing-portal.spec.ts:349:1",
+          "assertionEvidence": [
+            "Error: expect(received).toBe(expected) // Object.is equality",
+            "Expected: true",
+            "Received: false"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-selection",
+          "decisionBeforeEdit": "waitForReads used the 5-second assertion poll to await transport completion; capacity read completed successfully in 7416ms. Drain tracked request response bodies first, then retain the existing 500ms quiescence assertion. Keep exact polling bound and request-count assertions."
+        }
+      ]
     },
     {
       "id": "B21",
@@ -331,7 +653,16 @@
       "originalOccurrences": [
         {
           "run": "release-a",
-          "location": "tests/e2e/commercial-access.spec.ts:55:1"
+          "location": "tests/e2e/commercial-access.spec.ts:55:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toHaveCount(expected) failed",
+            "Locator:  locator('fieldset[disabled]')",
+            "Expected: 1",
+            "Received: 0",
+            "Timeout:  5000ms"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -344,7 +675,15 @@
       "originalOccurrences": [
         {
           "run": "release-a",
-          "location": "tests/e2e/commercial-access.spec.ts:73:1"
+          "location": "tests/e2e/commercial-access.spec.ts:73:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 20000ms exceeded.",
+            "at waitForBootstrapResolved (tests\\e2e\\utils\\test-helpers.ts:84:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:126:9)",
+            "at fixture (tests\\e2e\\commercial-access.spec.ts:31:3)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -357,15 +696,38 @@
       "originalOccurrences": [
         {
           "run": "release-a",
-          "location": "tests/e2e/commercial-catalogue-v2.spec.ts:79:1"
+          "location": "tests/e2e/commercial-catalogue-v2.spec.ts:79:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Catalogue review client').first()",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         },
         {
           "run": "release-b",
-          "location": "tests/e2e/commercial-catalogue-v2.spec.ts:79:1"
+          "location": "tests/e2e/commercial-catalogue-v2.spec.ts:79:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Catalogue review client').first()",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
-      "classification": "UNKNOWN",
-      "evidence": []
+      "classification": "FIXTURE_DEFECT",
+      "evidence": [
+        {
+          "run": "parent-observed-billing-selection",
+          "decisionBeforeEdit": "Database state is completed and update RPC returned 200. The reload assertion starts at document load; pt_clients_summary finishes after 5364ms, beyond the 5-second assertion window. Wait for that canonical POST response on reload, retain exact Completed and database assertions."
+        }
+      ]
     },
     {
       "id": "B24",
@@ -374,7 +736,14 @@
       "originalOccurrences": [
         {
           "run": "release-b",
-          "location": "tests/e2e/billing-plan-change.spec.ts:43:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:43:1",
+          "assertionEvidence": [
+            "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+            "at waitForAuthSessionReady (tests\\e2e\\utils\\test-helpers.ts:77:48)",
+            "at signInWithEmail (tests\\e2e\\utils\\test-helpers.ts:125:9)"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -387,7 +756,16 @@
       "originalOccurrences": [
         {
           "run": "release-b",
-          "location": "tests/e2e/billing-plan-change.spec.ts:83:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:83:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByText('Waiting for verified payment.')",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -400,7 +778,16 @@
       "originalOccurrences": [
         {
           "run": "release-b",
-          "location": "tests/e2e/billing-plan-change.spec.ts:149:1"
+          "location": "tests/e2e/billing-plan-change.spec.ts:149:1",
+          "assertionEvidence": [
+            "Error: expect(locator).toBeVisible() failed",
+            "Locator: getByRole('button', { name: 'Cancel scheduled change', exact: true })",
+            "Expected: visible",
+            "Timeout: 5000ms",
+            "Error: element(s) not found"
+          ],
+          "classification": "UNKNOWN",
+          "attributionNote": "Original assertion/stack retained. New observed-run classifications do not retroactively prove an original auth or total-timeout cause."
         }
       ],
       "classification": "UNKNOWN",
@@ -411,6 +798,7 @@
     "Initial parent-billing-portal experiment invalid: shared node_modules junction caused Vite font allow-list errors. Stopped its owned process tree. This run is not product regression evidence.",
     "Clean comparison uses separate npm ci on parent, identical local-only environment variables, local database reset and owned Vite server per run.",
     "Identical external observer captures request timings, route, worker/parallel slot, hashed fixture identity, console/page errors and final auth/bootstrap DOM markers; it does not intercept or modify requests.",
-    "Initial parent-clean startup attempts invalid: NODE_OPTIONS Windows backslashes were interpreted as escapes. No browser results were produced. Runner was stopped; the observer path now uses forward slashes and passed a standalone browser self-check before the observed comparison."
+    "Initial parent-clean startup attempts invalid: NODE_OPTIONS Windows backslashes were interpreted as escapes. No browser results were produced. Runner was stopped; the observer path now uses forward slashes and passed a standalone browser self-check before the observed comparison.",
+    "Parent coach-seat run additionally failed unapproved provider quantity preserves approved capacity in manual review at the same local Auth HTTP 504 boundary; this is a new observed failure, absent from the original 26-title list. Active-team, pending-team and compatible-upgrade total-deadline failures remain UNKNOWN pending comparison."
   ]
 }

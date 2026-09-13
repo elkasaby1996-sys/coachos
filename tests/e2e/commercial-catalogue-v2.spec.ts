@@ -115,7 +115,15 @@ test("client list and lifecycle save persist through reload", async ({
       `select lifecycle_state from public.clients where id='${client}'`,
     ),
   ).toEqual([{ lifecycle_state: "completed" }]);
+  const reloaded = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/rest/v1/rpc/pt_clients_summary",
+  );
   await page.reload();
+  const summaryResponse = await reloaded;
+  expect(summaryResponse.ok()).toBe(true);
+  await summaryResponse.finished();
   await expect(
     page.getByText("Completed", { exact: true }).first(),
   ).toBeVisible();

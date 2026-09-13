@@ -21,7 +21,11 @@ import { ACCESS_MODE_BY_STATUS } from "../../src/features/account-entitlements/c
 test.describe.configure({ mode: "parallel" });
 // Capability-bearing navigation must not be saved in Playwright traces/videos.
 test.use({ trace: "off", video: "off" });
+const heldAccessReleases = new WeakMap<BrowserContext, () => void>();
 test.afterEach(async ({ context }) => {
+  // A failed assertion must not leave a deliberately held RPC blocking drain.
+  heldAccessReleases.get(context)?.();
+  heldAccessReleases.delete(context);
   // Finish canonical refetch route callbacks before closing their context.
   await context.unrouteAll({ behavior: "wait" });
 });
@@ -30,9 +34,7 @@ async function holdCommercialAccess(page: Page, context: BrowserContext) {
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const response = page.waitForResponse((value) =>
-    value.url().endsWith("/rpc/get_my_commercial_access_summary"),
-  );
+  heldAccessReleases.set(context, release);
   await context.route(
     "**/rest/v1/rpc/get_my_commercial_access_summary",
     async (route) => {
@@ -42,8 +44,12 @@ async function holdCommercialAccess(page: Page, context: BrowserContext) {
     },
   );
   return async () => {
+    // Register only when releasing: no orphan waiter if an earlier assertion fails.
+    const response = page.waitForResponse((value) =>
+      value.url().endsWith("/rpc/get_my_commercial_access_summary"),
+    );
     release();
-    await response;
+    await (await response).finished();
     await page.waitForLoadState("networkidle");
   };
 }
@@ -83,12 +89,24 @@ async function fixture(
   page.on("requestfailed", finishRead);
   // Unlike the already-reached document load state, this observes new RPCs
   // dispatched by virtual-clock ticks and waits for actual network quiescence.
-  const waitForReads = () =>
-    expect
+  const waitForReads = async () => {
+    // Transport completion belongs to request readiness, not the UI assertion
+    // budget. Include reads dispatched while an earlier batch is completing.
+    while (pendingReads.size > 0) {
+      await Promise.all(
+        [...pendingReads].map(async (request) => {
+          const response = await request.response();
+          if (response) await response.finished();
+          finishRead(request);
+        }),
+      );
+    }
+    await expect
       .poll(
         () => pendingReads.size === 0 && Date.now() - lastReadActivity >= 500,
       )
       .toBe(true);
+  };
   page.on("console", (message) => telemetry.push(message.text()));
   page.on("pageerror", (error) => telemetry.push(error.message));
   await context.route(
@@ -209,11 +227,34 @@ async function fixture(
   await signInWithEmail(page, coach.email, coach.password);
   await waitForAuthSessionReady(page);
   await waitForBootstrapResolved(page);
+  const canonical = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        (owner
+          ? "/rest/v1/rpc/get_my_billing_provider_summary"
+          : "/rest/v1/rpc/get_my_effective_account_entitlements"),
+  );
   await page.goto("/pt-hub/settings/billing");
+  const initialResponse = await canonical;
+  expect(initialResponse.status()).toBe(owner ? 200 : 403);
+  await initialResponse.finished();
   // Finish the initial routed reads before a test navigates back from the portal.
   // Otherwise navigation can cancel a request while its route.fetch is pending.
   await waitForReads();
   return {
+    async returnFromPortal() {
+      const canonical = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).pathname ===
+            "/rest/v1/rpc/get_my_billing_provider_summary",
+      );
+      await page.goto("/pt-hub/settings/billing?portal=return");
+      const response = await canonical;
+      expect(response.ok()).toBe(true);
+      await response.finished();
+    },
     waitForReads,
     summary,
     telemetry,
@@ -353,7 +394,7 @@ test("portal return polls only within its bound and offers manual refresh", asyn
   const f = await fixture(page, context, "polling");
   const releaseAccess = await holdCommercialAccess(page, context);
   await page.clock.install();
-  await page.goto("/pt-hub/settings/billing?portal=return");
+  await f.returnFromPortal();
   await expect(
     page.getByText("Checking for billing changes.", { exact: false }),
   ).toBeVisible();
@@ -397,7 +438,7 @@ test("canonical cancellation, resume and recovery update without new checkout", 
   const f = await fixture(page, context, "lifecycle");
   const releaseAccess = await holdCommercialAccess(page, context);
   f.summary.cancelAtPeriodEnd = true;
-  await page.goto("/pt-hub/settings/billing?portal=return");
+  await f.returnFromPortal();
   await expect(
     page.getByText("Cancellation scheduled", { exact: false }),
   ).toBeVisible();

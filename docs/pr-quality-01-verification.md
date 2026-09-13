@@ -12,7 +12,26 @@ All 13 failures are classified STALE_TEST_CONTRACT after comparing their tests, 
 
 ## Browser baseline
 
-Pending controlled reproduction. Prior red evidence in PR-PRICE-11 remains intact. Historical failures have no new attribution yet. Memory is context only.
+Controlled reproduction is in progress. Prior red evidence in PR-PRICE-11 remains intact. [Browser triage](evidence/pr-quality-01-browser-triage.json) retains every exact historical failure occurrence and distinguishes its original evidence from a newly observed occurrence. An old authentication-marker timeout without network evidence remains UNKNOWN; a new HTTP 504 does not retroactively establish its cause. Memory is context only.
+
+The clean Phase A parent (`7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7`) has completed these identical four-worker, zero-retry selections, each after a local database reset:
+
+| Selection                            | Passed | Failed | Skipped |
+| ------------------------------------ | -----: | -----: | ------: |
+| account-capacity                     |      4 |      0 |       0 |
+| billing-checkout                     |      3 |      4 |       0 |
+| billing-coach-seats                  |      1 |      7 |       0 |
+| billing-plan-change                  |     11 |      1 |       0 |
+| billing-portal                       |      9 |      1 |       0 |
+| commercial-access                    |     17 |      0 |       0 |
+| commercial-catalogue-v2              |      3 |      0 |       0 |
+| Recorded five-file billing selection |     27 |     13 |       0 |
+
+Parent observations establish specific fixture defects: initial checkout assertions precede canonical checkout readiness; successful plan previews take 6.6–11.8 seconds while their UI assertions start immediately after clicks; lifecycle reload asserts before the successful client summary response (5.364 seconds); portal quiescence conflates transport completion (capacity response 7.416 seconds) with a five-second assertion budget; a failed assertion leaves deliberately held access requests blocking teardown. A successful password-token response taking 18.238 seconds also outlives the fixture's prematurely started 15-second rendered-session window.
+
+Separately, local authentication returned HTTP 504. The corresponding auth-container logs include database-host lookup timeouts from Docker DNS and request context deadlines. These observed service failures are ENVIRONMENTAL_FLAKE; the candidate still requires a successful real sign-in response and does not suppress them. No controlled memory experiment has established memory causation.
+
+Invalid attempts are retained separately: an initial parent checkout used a node_modules junction rejected by Vite's asset allow-list, and three later launches had an incorrectly escaped Windows observer preload path and never started tests. They are excluded from comparison. The valid parent has its own `npm ci` installation and uses the same observer as the candidate.
 
 ## Unit correction result
 

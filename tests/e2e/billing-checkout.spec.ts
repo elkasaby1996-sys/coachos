@@ -13,6 +13,9 @@ import {
 } from "../../supabase/functions/_shared/billing-handlers";
 
 test.describe.configure({ mode: "parallel" });
+test.afterEach(async ({ context }) => {
+  await context.unrouteAll({ behavior: "wait" });
+});
 // Browser boundary fixtures are worker-isolated. Actual SQL transitions/locks are
 // verified in pgTAP; no fake mappings are committed or enabled in the application.
 async function fixture(
@@ -94,7 +97,19 @@ async function fixture(
   await signInWithEmail(page, coach.email, coach.password);
   await waitForAuthSessionReady(page);
   await waitForBootstrapResolved(page);
+  // A new document must resolve its own billing state; the previous route's
+  // auth markers and document load event do not establish checkout readiness.
+  const checkoutState = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname ===
+        "/rest/v1/rpc/get_my_billing_checkout_state",
+  );
   await page.goto("/pt-hub/settings/billing");
+  const response = await checkoutState;
+  expect(response.ok()).toBe(true);
+  await response.finished();
+  await waitForBootstrapResolved(page);
   await expect(
     page.getByRole("button", { name: "Start subscription", exact: true }),
   ).toBeVisible();
