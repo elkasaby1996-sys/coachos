@@ -1416,6 +1416,18 @@
           "decisionBeforeEdit": "The lifecycle mutation returned 200 in 4698ms, then its canonical pt_clients_summary refetch took 7910ms. The fixture awaited only the mutation response before starting the 5000ms dialog-count assertion. Await the mutation body and post-save summary body before preserving the exact closed-dialog, persisted completed state and reload assertions."
         }
       ]
+    },
+    {
+      "recordedAt": "2026-09-13T13:42:30.102083+00:00",
+      "run": "release-final-r2-b",
+      "commit": "016030a53b6056c56dcb797b6b3605002bffc74d",
+      "cases": [
+        {
+          "fullTestName": "renders /coaches without mobile overflow",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The exact H1 assertion exhausted its unchanged 5000ms window while the cold coaches module took 4539.837ms (200, started 2026-09-13T13:32:50.643Z). The final observer snapshot contains the exact expected heading and no console/page errors. CoachesPage renders that heading independently of the directory query; the observer records the subsequent public profiles RPC returning 200 in 758ms. Complete the existing owned-server startup warm-up for the 14 public routes explicitly covered by public-marketing.spec.ts. Preserve all heading, overflow and catalogue assertions, four workers, zero retries and timeouts."
+        }
+      ]
     }
   ],
   "readinessAuditDecisions": [
