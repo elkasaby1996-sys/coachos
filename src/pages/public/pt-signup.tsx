@@ -223,7 +223,7 @@ export function PtSignupPage() {
       brandName="R E P S Y N C"
       brandHref={getMarketingSiteUrl()}
       title={`Start your ${TRIAL_DURATION_DAYS}-day Growth trial`}
-      subtitle={`${selectedPlanLabel} is your intended paid plan. Your trial uses Growth features. No card required. No automatic conversion.`}
+      subtitle={`${selectedPlanLabel} is your intended paid plan. Your trial uses Growth features with 10 clients, 2 coach seats, 1 workspace and 3 published packages. No card required. No automatic conversion.`}
       primaryLabel="Start free trial"
       secondaryLinkHref={
         inviteRedirect

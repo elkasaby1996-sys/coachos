@@ -4,9 +4,9 @@ import { PUBLIC_PLAN_SNAPSHOT_V1 } from "../../src/features/commercial-catalogue
 
 const source = readFileSync("src/pages/public/marketing-content.tsx", "utf8");
 describe("commercial marketing compatibility", () => {
-  it("derives exactly three public cards from the v1 snapshot", () => {
+  it("derives exactly three public cards from the v2 snapshot", () => {
     expect(source).toContain(
-      "const pricingPlans = PUBLIC_PLAN_SNAPSHOT_V1.map",
+      "const pricingPlans = PUBLIC_CATALOGUE_V2.plans.map",
     );
     expect(source).toContain("pricingPlans.map((plan)");
     expect(source).toMatch(/formatCommercialPrice\(\s*plan\.monthlyPriceMinor/);

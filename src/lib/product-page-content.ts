@@ -181,17 +181,17 @@ export const productPageContent = {
   metadata: {
     title: "RepSync Product | The Whole Coaching Relationship",
     description:
-      "Explore how RepSync connects public profiles, leads, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, and the client experience.",
+      "Preview beta RepSync workflows for public profiles, leads, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, and the client experience.",
     canonicalPath: productPageRoutes.product,
     openGraphTitle: "The Whole Coaching Relationship, Connected | RepSync",
     openGraphDescription:
-      "Follow the RepSync product from first inquiry through coaching delivery, check-ins, communication, client attention, and team access.",
+      "Preview beta RepSync workflows from first inquiry through coaching delivery, check-ins, communication, client attention, and team access.",
   },
   hero: {
     eyebrow: "The product",
     heading: "The Whole Coaching Relationship, Connected.",
     emphasizedText: "Coaching Relationship",
-    body: "RepSync connects acquisition, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, and the client experience.",
+    body: "These evaluation previews explore acquisition, onboarding, training, nutrition, habits, messaging, check-ins, client attention, operations, team access, and the client experience.",
     supportingCopy:
       "One operating model from first inquiry to ongoing coaching.",
   },

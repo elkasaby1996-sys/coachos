@@ -317,13 +317,13 @@ export function CoachesPage() {
   usePublicSeo({
     title: "Coach marketplace | RepSync",
     description:
-      "Explore published coach profiles, compare coaching approaches and services, and apply directly through RepSync.",
+      "Explore the beta coach directory. Listings and application availability depend on each coach.",
     canonicalPath: "/coaches",
     structuredData: {
       "@context": "https://schema.org",
       "@type": "CollectionPage",
       name: "RepSync coach marketplace",
-      description: "Published coach profiles available through RepSync.",
+      description: "Beta coach directory preview.",
       url: `${window.location.origin}/coaches`,
     },
   });

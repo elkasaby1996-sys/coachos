@@ -7113,3 +7113,48 @@ body.rs-intro-active {
     padding-inline: 9px;
   }
 }
+
+/* Reviewed catalogue comparison: scroll stays within the page at 375px. */
+.rs-pricing-comparison {
+  padding: 48px clamp(16px, 5vw, 80px);
+  max-width: 1440px;
+  margin: auto;
+}
+.rs-pricing-comparison__scroll {
+  overflow-x: auto;
+  margin-top: 24px;
+}
+.rs-pricing-comparison table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 620px;
+  text-align: left;
+}
+.rs-pricing-comparison caption {
+  text-align: left;
+  padding: 12px 0;
+}
+.rs-pricing-comparison th[scope="row"],
+.rs-pricing-comparison thead th:first-child {
+  width: 40%;
+}
+.rs-pricing-comparison th,
+.rs-pricing-comparison td {
+  padding: 16px;
+  border-bottom: 1px solid #cbd5d1;
+}
+.rs-pricing-comparison th[scope="colgroup"] {
+  background: #edf3ef;
+  color: #17231d;
+}
+.rs-pricing-comparison__scroll:focus-visible {
+  outline: 2px solid #177c66;
+  outline-offset: 4px;
+}
+.rs-commercial-preview-note {
+  padding: 16px clamp(16px, 5vw, 80px);
+  background: #edf3ef;
+  color: #17231d;
+  font-size: 14px;
+  line-height: 1.5;
+}
