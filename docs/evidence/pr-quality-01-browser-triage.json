@@ -1428,6 +1428,23 @@
           "decisionBeforeEdit": "The exact H1 assertion exhausted its unchanged 5000ms window while the cold coaches module took 4539.837ms (200, started 2026-09-13T13:32:50.643Z). The final observer snapshot contains the exact expected heading and no console/page errors. CoachesPage renders that heading independently of the directory query; the observer records the subsequent public profiles RPC returning 200 in 758ms. Complete the existing owned-server startup warm-up for the 14 public routes explicitly covered by public-marketing.spec.ts. Preserve all heading, overflow and catalogue assertions, four workers, zero retries and timeouts."
         }
       ]
+    },
+    {
+      "recordedAt": "2026-09-13T14:06:50.978463+00:00",
+      "run": "release-final-r3-a",
+      "commit": "ed2f7bd6ca12e4e7a31c8d12b8f918f53cce73e0",
+      "cases": [
+        {
+          "fullTestName": "complimentary hosted checkout waits for verified confirmation",
+          "classification": "ENVIRONMENTAL_FLAKE",
+          "decisionBeforeEdit": "Chromium failed the return document dependency /src/components/common/theme-provider.tsx with net::ERR_NO_BUFFER_SPACE at 2026-09-13T13:57:56.596Z. Initial token, checkout state and fake checkout creation succeeded; no return checkout RPC was dispatched and the final document had no auth/bootstrap marker or headings. Preserve the failure without a checkout code change, retry policy or memory-causation claim. The fresh owned browser in the next qualification attempt must still pass the original test."
+        },
+        {
+          "fullTestName": "client list and lifecycle save persist through reload",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The initial client-name assertion began at trace time 338171.291ms, before pt_hub_clients_page started at 339839.017ms. Its successful response took 2300.135ms, then the dependent client URL-key read took 1171.764ms, completing after the five-second assertion deadline. usePtHubClientsPage awaits both workspace-slug and client-key reads after its RPC before publishing data. Await this initial canonical RPC and both identity-matched hydration responses before retaining the exact client-name assertion. Existing search, lifecycle save, database and reload assertions remain."
+        }
+      ]
     }
   ],
   "readinessAuditDecisions": [
