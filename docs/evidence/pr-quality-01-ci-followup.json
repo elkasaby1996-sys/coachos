@@ -13,6 +13,320 @@
     "The final error-context snapshot subsequently exposes Refresh plan change and the expected awaiting-payment state.",
     "The existing apply helper waits for dialog detachment only after planAction returns; planAction added the page-level button assertion before that prerequisite."
   ],
-  "plannedCorrection": "Move the existing dialog-detachment wait into planAction for apply, before the existing enabled-button assertion. Preserve all commercial assertions and test configuration.",
-  "validation": "Pending correction and validation; historical green results at 553eab0 remain unchanged."
+  "validation": {
+    "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3",
+    "gates": [
+      {
+        "name": "db-start",
+        "command": ["npm", "run", "supabase:start"],
+        "exitCode": 0,
+        "expectedExitCode": 0,
+        "started": "2026-09-13T18:59:17.0999605Z",
+        "ended": "2026-09-13T18:59:21.9826035Z",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3"
+      },
+      {
+        "name": "db-reset",
+        "command": ["npm", "run", "supabase:db:reset"],
+        "exitCode": 0,
+        "expectedExitCode": 0,
+        "started": "2026-09-13T18:59:22.0602300Z",
+        "ended": "2026-09-13T19:00:10.8894795Z",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3"
+      },
+      {
+        "name": "db-lint",
+        "command": ["npm", "run", "supabase:db:lint"],
+        "exitCode": 0,
+        "expectedExitCode": 0,
+        "started": "2026-09-13T19:00:10.9606547Z",
+        "ended": "2026-09-13T19:00:19.7497044Z",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3"
+      },
+      {
+        "name": "db-test",
+        "command": ["npm", "run", "supabase:db:test"],
+        "exitCode": 0,
+        "expectedExitCode": 0,
+        "started": "2026-09-13T19:00:19.8153552Z",
+        "ended": "2026-09-13T19:00:30.8360415Z",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3"
+      },
+      {
+        "name": "units",
+        "command": [
+          "npm",
+          "run",
+          "test:unit",
+          "--",
+          "--reporter=default",
+          "--reporter=json",
+          "--outputFile=C:\\Users\\ahmed\\OneDrive\\Documents\\Syslab\\Projects\\COACHos\\coachos\\output\\staging-commercial\\quality-01\\local-gates-final-r6\\units.json"
+        ],
+        "exitCode": 0,
+        "expectedExitCode": 0,
+        "started": "2026-09-13T19:00:30.9028559Z",
+        "ended": "2026-09-13T19:01:06.9012015Z",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3"
+      },
+      {
+        "name": "harness",
+        "command": ["npm", "run", "staging:commercial:test"],
+        "exitCode": 0,
+        "expectedExitCode": 0,
+        "started": "2026-09-13T19:01:06.9627825Z",
+        "ended": "2026-09-13T19:01:10.3290292Z",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3"
+      },
+      {
+        "name": "manifest",
+        "command": ["npm", "run", "staging:commercial:validate"],
+        "exitCode": 0,
+        "expectedExitCode": 0,
+        "started": "2026-09-13T19:01:10.3903469Z",
+        "ended": "2026-09-13T19:01:11.1506899Z",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3"
+      },
+      {
+        "name": "catalogue-local",
+        "command": [
+          "npm",
+          "run",
+          "staging:commercial:catalogue",
+          "--",
+          "--local"
+        ],
+        "exitCode": 0,
+        "expectedExitCode": 0,
+        "started": "2026-09-13T19:01:11.2099430Z",
+        "ended": "2026-09-13T19:01:12.1102705Z",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3"
+      },
+      {
+        "name": "lint",
+        "command": ["npm", "run", "lint"],
+        "exitCode": 0,
+        "expectedExitCode": 0,
+        "started": "2026-09-13T19:01:12.1697753Z",
+        "ended": "2026-09-13T19:01:37.7243025Z",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3"
+      },
+      {
+        "name": "format",
+        "command": ["npm", "run", "format"],
+        "exitCode": 0,
+        "expectedExitCode": 0,
+        "started": "2026-09-13T19:01:37.7906515Z",
+        "ended": "2026-09-13T19:01:58.5785324Z",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3"
+      },
+      {
+        "name": "build",
+        "command": ["npm", "run", "build"],
+        "exitCode": 0,
+        "expectedExitCode": 0,
+        "started": "2026-09-13T19:01:58.6519042Z",
+        "ended": "2026-09-13T19:02:50.5708314Z",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3"
+      }
+    ],
+    "units": {
+      "total": 1855,
+      "passed": 1855,
+      "failed": 0,
+      "skipped": 0,
+      "reportSha256": "122bb3bc83a25652aa7f1bcc5d690bdf34640f370a0a266176bb05766a9e310d"
+    },
+    "billingSelection": {
+      "metadata": {
+        "label": "candidate-observed-r11-billing-selection",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3",
+        "started": "2026-09-13T18:51:10.0312459Z",
+        "ended": "2026-09-13T18:58:23.6675081Z",
+        "exitCode": 0,
+        "files": [
+          "tests/e2e/billing-checkout.spec.ts",
+          "tests/e2e/billing-coach-seats.spec.ts",
+          "tests/e2e/billing-plan-change.spec.ts",
+          "tests/e2e/billing-portal.spec.ts",
+          "tests/e2e/commercial-catalogue-v2.spec.ts"
+        ],
+        "workers": 4,
+        "retries": 0,
+        "freeMemoryBeforeKB": 993320,
+        "freeMemoryAfterKB": 2419880,
+        "totalMemoryKB": 8165316,
+        "apiOrigin": "http://127.0.0.1:54321"
+      },
+      "stats": {
+        "startTime": "2026-09-13T18:52:21.206Z",
+        "duration": 362100.25,
+        "expected": 40,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    "releases": [
+      {
+        "label": "release-final-r6-a",
+        "command": "npm run verify:release",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3",
+        "sourceObjects": [
+          "040000 tree b9d21d60be8805d8efafb1ab3db8c7be8a2ad621\tconfig",
+          "100644 blob 850f821e0578312071380bdb47667c385f153d45\tpackage-lock.json",
+          "100644 blob 9a70849cb9806f933c1d5996663eef4acf2a0d7d\tpackage.json",
+          "100644 blob 50eed61ff699681279430f973102939421c09c9e\tplaywright.config.ts",
+          "040000 tree 71fa2dc977d9495795db512399eae5eb20244e5c\tscripts",
+          "040000 tree 175666a2391c78edd8ac9be7702adf2f260a5cc2\tsrc",
+          "040000 tree 603e71057bad5c79def07a8cfd0928846ccd252d\tsupabase",
+          "040000 tree 83fab1e6ae6b01e5af5e68978e5fb7ec7a916772\ttests",
+          "100644 blob 0934f93c4a77d69acb894bafcfc7dd63a4e90fff\tvite.config.ts"
+        ],
+        "started": "2026-09-13T19:02:59.5145301Z",
+        "ended": "2026-09-13T19:13:34.2240160Z",
+        "exitCode": 0,
+        "workers": 4,
+        "retries": 0,
+        "freeMemoryBeforeKB": 1693860,
+        "freeMemoryAfterKB": 2374372,
+        "totalMemoryKB": 8165316,
+        "cleanAfter": true,
+        "commitAfter": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3",
+        "apiOrigin": "http://127.0.0.1:54321",
+        "stats": {
+          "total": 134,
+          "expected": 124,
+          "unexpected": 0,
+          "flaky": 0,
+          "skipped": 10,
+          "ok": true,
+          "startTime": "2026-09-13T19:04:23.158000+00:00",
+          "duration": 547758.955
+        }
+      },
+      {
+        "label": "release-final-r6-b",
+        "command": "npm run verify:release",
+        "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3",
+        "sourceObjects": [
+          "040000 tree b9d21d60be8805d8efafb1ab3db8c7be8a2ad621\tconfig",
+          "100644 blob 850f821e0578312071380bdb47667c385f153d45\tpackage-lock.json",
+          "100644 blob 9a70849cb9806f933c1d5996663eef4acf2a0d7d\tpackage.json",
+          "100644 blob 50eed61ff699681279430f973102939421c09c9e\tplaywright.config.ts",
+          "040000 tree 71fa2dc977d9495795db512399eae5eb20244e5c\tscripts",
+          "040000 tree 175666a2391c78edd8ac9be7702adf2f260a5cc2\tsrc",
+          "040000 tree 603e71057bad5c79def07a8cfd0928846ccd252d\tsupabase",
+          "040000 tree 83fab1e6ae6b01e5af5e68978e5fb7ec7a916772\ttests",
+          "100644 blob 0934f93c4a77d69acb894bafcfc7dd63a4e90fff\tvite.config.ts"
+        ],
+        "started": "2026-09-13T19:13:34.5618730Z",
+        "ended": "2026-09-13T19:23:55.8078165Z",
+        "exitCode": 0,
+        "workers": 4,
+        "retries": 0,
+        "freeMemoryBeforeKB": 2216932,
+        "freeMemoryAfterKB": 2398388,
+        "totalMemoryKB": 8165316,
+        "cleanAfter": true,
+        "commitAfter": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3",
+        "apiOrigin": "http://127.0.0.1:54321",
+        "stats": {
+          "total": 134,
+          "expected": 124,
+          "unexpected": 0,
+          "flaky": 0,
+          "skipped": 10,
+          "ok": true,
+          "startTime": "2026-09-13T19:15:01.392000+00:00",
+          "duration": 531779.974
+        }
+      }
+    ],
+    "harness": {
+      "commit": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3",
+      "fullUnitGate": "accepted",
+      "total": 1855,
+      "passed": 1855,
+      "failed": 0,
+      "skipped": 0,
+      "unitReportSha256": "122bb3bc83a25652aa7f1bcc5d690bdf34640f370a0a266176bb05766a9e310d",
+      "defaultPlan": {
+        "validation": "fail",
+        "errorCode": "COMMIT_REQUIRED"
+      },
+      "featureBranchPlan": {
+        "validation": "fail",
+        "errorCode": "COMMIT_SOURCE_MISMATCH"
+      },
+      "placeholderConfirmedPlan": {
+        "validation": "pass",
+        "verdict": "blocked",
+        "context": "Local detached checkout of the identical commit; simulated refs/heads/main input; no remote operation"
+      },
+      "evidenceTemplateVerdict": "blocked",
+      "fetchCalls": 0,
+      "applyEntryPointCalled": false,
+      "phaseBAuthorized": false,
+      "stagingCertified": false
+    },
+    "githubChecksAtCorrectedCommit": {
+      "headRefOid": "d405a9c7321ba5937886f37e11ab1cb69e7f57e3",
+      "mergeStateStatus": "CLEAN",
+      "mergeable": "MERGEABLE",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T19:00:54Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/elkasaby1996-sys/coachos/actions/runs/34776293541/job/103774914577",
+          "name": "quality",
+          "startedAt": "2026-09-13T18:59:23Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T19:02:13Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/elkasaby1996-sys/coachos/actions/runs/34776293499/job/103774914497",
+          "name": "Analyze",
+          "startedAt": "2026-09-13T18:59:23Z",
+          "status": "COMPLETED",
+          "workflowName": "CodeQL"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T19:01:18Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/elkasaby1996-sys/coachos/actions/runs/34776293508/job/103774914553",
+          "name": "db-checks",
+          "startedAt": "2026-09-13T18:59:23Z",
+          "status": "COMPLETED",
+          "workflowName": "Supabase CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T19:10:51Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/elkasaby1996-sys/coachos/actions/runs/34776293541/job/103775130028",
+          "name": "smoke-e2e",
+          "startedAt": "2026-09-13T19:00:55Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T19:02:08Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/elkasaby1996-sys/coachos/runs/103775295437",
+          "name": "CodeQL",
+          "startedAt": "2026-09-13T19:02:05Z",
+          "status": "COMPLETED",
+          "workflowName": ""
+        }
+      ]
+    }
+  },
+  "correction": "Move the existing dialog-detachment wait into planAction for apply, before the existing enabled-button assertion. Preserve all commercial assertions and test configuration."
 }
