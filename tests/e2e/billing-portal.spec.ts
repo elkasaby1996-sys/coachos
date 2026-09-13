@@ -1,12 +1,7 @@
-import {
-  expect,
-  test,
-  type Page,
-  type BrowserContext,
-  type Request as BrowserRequest,
-} from "@playwright/test";
+import { expect, test, type Page, type BrowserContext } from "@playwright/test";
 import { seedEntitlementCoach } from "./utils/account-entitlement-seeds";
 import { seedAuthSmokeStates } from "./utils/auth-seeds";
+import { trackRpcReads } from "./utils/rpc-readiness";
 import {
   signInWithEmail,
   waitForAuthSessionReady,
@@ -75,38 +70,7 @@ async function fixture(
     summaryReads = 0,
     capacityReads = 0;
   const telemetry: string[] = [];
-  const pendingReads = new Set<BrowserRequest>();
-  let lastReadActivity = Date.now();
-  page.on("request", (request) => {
-    if (!request.url().includes("/rest/v1/rpc/")) return;
-    pendingReads.add(request);
-    lastReadActivity = Date.now();
-  });
-  const finishRead = (request: BrowserRequest) => {
-    if (pendingReads.delete(request)) lastReadActivity = Date.now();
-  };
-  page.on("requestfinished", finishRead);
-  page.on("requestfailed", finishRead);
-  // Unlike the already-reached document load state, this observes new RPCs
-  // dispatched by virtual-clock ticks and waits for actual network quiescence.
-  const waitForReads = async () => {
-    // Transport completion belongs to request readiness, not the UI assertion
-    // budget. Include reads dispatched while an earlier batch is completing.
-    while (pendingReads.size > 0) {
-      await Promise.all(
-        [...pendingReads].map(async (request) => {
-          const response = await request.response();
-          if (response) await response.finished();
-          finishRead(request);
-        }),
-      );
-    }
-    await expect
-      .poll(
-        () => pendingReads.size === 0 && Date.now() - lastReadActivity >= 500,
-      )
-      .toBe(true);
-  };
+  const waitForReads = trackRpcReads(page);
   page.on("console", (message) => telemetry.push(message.text()));
   page.on("pageerror", (error) => telemetry.push(error.message));
   await context.route(

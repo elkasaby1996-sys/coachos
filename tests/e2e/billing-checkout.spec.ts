@@ -2,6 +2,7 @@ import { randomUUID, createHmac } from "node:crypto";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { seedEntitlementCoach } from "./utils/account-entitlement-seeds";
 import { pgQuery } from "./utils/auth-seeds";
+import { trackRpcReads } from "./utils/rpc-readiness";
 import {
   signInWithEmail,
   waitForAuthSessionReady,
@@ -24,6 +25,7 @@ async function fixture(
   scope: string,
   complimentary = false,
 ) {
+  const waitForReads = trackRpcReads(page);
   const coach = await seedEntitlementCoach(scope, complimentary);
   if (!complimentary)
     await pgQuery(
@@ -113,7 +115,9 @@ async function fixture(
   await expect(
     page.getByRole("button", { name: "Start subscription", exact: true }),
   ).toBeVisible();
+  await waitForReads();
   return {
+    waitForReads,
     attempt,
     calls: () => calls,
     async returnFromCheckout(checkoutAttempt = attempt) {
@@ -246,6 +250,7 @@ for (const complimentary of [false, true])
       path: info.outputPath("billing-confirmed.png"),
       fullPage: true,
     });
+    await f.waitForReads();
   });
 test("unavailable provider retains selected plan and cadence", async ({
   page,

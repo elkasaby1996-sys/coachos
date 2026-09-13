@@ -900,6 +900,22 @@
         "skipped": 0
       },
       "memoryAttribution": false
+    },
+    {
+      "run": "candidate-observed-r3-billing-selection",
+      "recordedAt": "2026-09-13T11:47:47.902544+00:00",
+      "cases": [
+        {
+          "fullTestName": "complimentary hosted checkout waits for verified confirmation",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "Post-confirmation entitlement/capacity/provider refetches take about 12.3 seconds while the UI has already confirmed payment. A routed entitlement callback outlives test-body completion and throws already handled. Reuse the portal RPC drain in checkout setup and after final confirmation assertions, retaining context.unrouteAll(wait), all assertions and all route errors."
+        },
+        {
+          "fullTestName": "pricing compares reviewed features offline at desktop and 375px",
+          "classification": "FIXTURE_DEFECT",
+          "decisionBeforeEdit": "The pricing page has no auth/RPC error or page error, but its /src/pages/public/pricing.tsx request remains unfinished at the plan-count assertion. Vite cache browserHash is unchanged (3cb2731c), excluding another optimizer-generation change. Pricing is absent from the existing owned-server lazy-module warm-up. Add that module before workers start; retain the exact three-plan, prices, offline-network and mobile assertions."
+        }
+      ]
     }
   ]
 }

@@ -39,6 +39,7 @@ export default async function prepareOwnedServer(config: FullConfig) {
         "/src/components/layouts/client-layout.tsx",
         "/src/pages/client/home.tsx",
         "/src/pages/public/product.tsx",
+        "/src/pages/public/pricing.tsx",
       ],
     );
   } finally {

@@ -51,6 +51,8 @@ The existing `requireGreenUnits` validator accepted this complete reporter resul
 
 ## Isolation/readiness audit in progress
 
+The next affected-file reruns passed (plan 12, portal 10, commercial access 17), but the `07e807c` combined selection retained two further failures: post-confirmation checkout callbacks outlived the test body, and pricing's lazy source module remained unfinished at the exact plan-count assertion. Checkout now reuses the same explicit RPC-drain implementation as portal recovery; pricing is added to the existing startup module warm-up. The old Vite cache is retained. The cold scan used the same config/lockfile hashes, contained all previous dependencies plus six previously missing entries, and passed commercial access without a code change. No error is ignored, and no assertion, retry policy, worker count or timeout is weakened.
+
 - `seedEntitlementCoach` combines run ID, parallel slot, test scope and UUID before deriving each commercial identity. `authSmokeFixtures` isolates run/parallel slot and reseeds replacement workers. Fixed fake provider IDs in checkout are used only by in-memory fake dependencies; plan/seat fixture mappings use deterministic shared insert-on-conflict catalogue data while subscription/operation/workspace records have unique identities.
 - Entitlement, capacity, commercial-access and billing query keys include their user and applicable workspace/client scope.
 - Playwright owns a strict-port Vite process with `reuseExistingServer: false`; its global setup pre-seeds per-worker auth identities and warms initial routes. Each comparison begins after a local database reset; no other database or browser test runs concurrently.
