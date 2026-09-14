@@ -2,7 +2,23 @@
 
 **Local commercial certification gates are green. Phase B remains unauthorized and staging billing is not certified.** The complete unit suite has 1,855 passes, zero failures and zero skips. Two consecutive unmodified `npm run verify:release` commands exited 0 with four workers, zero retries and the same ten existing browser skips.
 
-## Base, branch and evidence
+## PR #198 CI follow-up
+
+The first PR CI run failed one smoke test at `8f6d0ce`: `billing-coach-seats.spec.ts` → `compatible plan upgrade retains purchased seats`. Quality, CodeQL and database checks passed; GitHub reported no merge conflict. [Failed job](https://github.com/elkasaby1996-sys/coachos/actions/runs/34772189072/job/103763893582).
+
+Classification: **FIXTURE_DEFECT**, recorded before editing in [the CI follow-up evidence](evidence/pr-quality-01-ci-followup.json). The trace shows the enabled Refresh plan change button beneath `#root[aria-hidden=true]` while a closed Radix dialog remains mounted. The helper's existing dialog-detachment wait ran after the page-control assertion that failed. The correction moves that same wait before the assertion for apply actions. All commercial assertions, application code, timeouts, worker settings and retry settings are preserved.
+
+The corrected implementation/test commit is `d405a9c7321ba5937886f37e11ab1cb69e7f57e3`. Fresh validation on this commit:
+
+- Billing selection: 40 passed, zero failures or skips, four workers, zero retries.
+- Full unit suite: 1,855 passed, zero failures or skips. All 11 local gates passed, including local database start/reset/lint/tests, the 71 harness tests, manifest/catalogue checks, lint, format and build.
+- Consecutive unmodified `npm run verify:release` A and B: each 124 passed, zero failures, the same ten existing skips, four workers and zero retries. Both began and ended on the same clean commit, with no reset or edit between them. Browser durations: 9.13 and 8.86 minutes.
+- The harness accepted the new full-unit report locally; network calls remained zero and apply was not invoked. Branch/authorization and incomplete evidence gates remain closed.
+- GitHub quality, smoke-e2e, CodeQL and database checks all passed at this corrected commit. GitHub reported CLEAN and MERGEABLE. [Successful CI run](https://github.com/elkasaby1996-sys/coachos/actions/runs/34776293541).
+
+The follow-up evidence records the new frozen Git objects and report digest. The original qualification below remains historical evidence at `553eab0`; it is not relabeled as a test of this correction. Git push and PR operations were subsequently authorized by the user. No remote Supabase operation, Lemon Squeezy request, deployment or Phase B action ran during this follow-up. Remote CI results for the updated PR must be read separately from these local results.
+
+## Original qualification: base, branch and evidence
 
 Work began after PR #197 (PR-PRICE-11 Phase A) was reviewed, merged and green in GitHub CI/CodeQL. The base is `1b95cb34835dd0021f4af8d739998cb4478e55f2`; branch: `fix/pr-quality-01-commercial-certification-gates`. The clean Phase A parent comparison used `7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7` with its own installed dependencies.
 
