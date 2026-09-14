@@ -1,7 +1,15 @@
-name: Supabase Manual Backup
+name: Supabase Staging Logical Backup
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_project_ref:
+        required: true
+        type: string
+      evidence_label:
+        required: true
+        type: string
+        default: pre-commercial-apply
 
 permissions:
   contents: read
@@ -12,38 +20,50 @@ concurrency:
 
 jobs:
   logical-backup:
+    if: github.ref == 'refs/heads/main'
+    environment: supabase-staging
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      STAGING_SUPABASE_PROJECT_REF: ${{ vars.STAGING_SUPABASE_PROJECT_REF }}
+      PRODUCTION_SUPABASE_PROJECT_REF: ${{ vars.PRODUCTION_SUPABASE_PROJECT_REF }}
+      STAGING_SUPABASE_DB_URL: ${{ secrets.STAGING_SUPABASE_DB_URL }}
+      CONFIRM_PROJECT_REF: ${{ inputs.confirm_project_ref }}
+      EVIDENCE_LABEL: ${{ inputs.evidence_label }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Validate staging backup boundary
+        run: node scripts/staging-logical-backup.mjs validate
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
           version: v2.109.1
 
-      - name: Validate backup secret
-        run: |
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "Missing required secret: SUPABASE_DB_URL"
-            exit 1
-          fi
-
       - name: Create logical backup
+        shell: bash
         run: |
+          set +x
+          set -euo pipefail
+          umask 077
           mkdir -p backup
-          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/roles.sql --role-only
-          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/schema.sql
-          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only
+          trap 'echo "Logical dump failed; raw output suppressed."' ERR
+          supabase db dump --db-url "$STAGING_SUPABASE_DB_URL" -f backup/roles.sql --role-only > /dev/null 2>&1
+          supabase db dump --db-url "$STAGING_SUPABASE_DB_URL" -f backup/schema.sql > /dev/null 2>&1
+          supabase db dump --db-url "$STAGING_SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only > /dev/null 2>&1
+
+      - name: Generate sanitized evidence and hashes
+        run: node scripts/staging-logical-backup.mjs evidence
 
       - name: Upload backup artifact
         uses: actions/upload-artifact@v4
         with:
-          name: supabase-logical-backup-${{ github.run_id }}
+          name: supabase-staging-logical-backup-${{ github.run_id }}-${{ inputs.evidence_label }}
           path: backup/
           if-no-files-found: error
           retention-days: 7

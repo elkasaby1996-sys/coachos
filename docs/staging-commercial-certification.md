@@ -30,6 +30,8 @@ The planner accepts `--manifest`, `--confirm-commit-sha`, `--confirm-project-ref
 
 ## Separately authorized Phase B
 
+Before migration apply, follow the [staging logical backup runbook](staging-logical-backup.md) to obtain and review the staging-bound `backupEvidenceSha256`. Database dumps exclude Storage object bytes; restore and apply remain separately reviewed operations.
+
 Use `.github/workflows/supabase-deploy-staging.yml` only after authorization naming the exact resources. Required dispatch inputs: mode (default plan), confirm_commit_sha, confirm_project_ref, confirm_app_origin and evidence_label. The workflow is main-only, serializes all staging runs and uses protected environment `supabase-staging`; configure required reviewers on that environment. Branch protection and environment protection are operational prerequisites, not created by Phase A.
 
 Plan installs dependencies once, runs contract checks and writes sanitized commands. It receives no Supabase or provider credentials and installs no Supabase CLI. Apply adds quality checks, pinned CLI v2.109.1, explicit authorization preflight, a fresh blocking full-unit run, guarded link, exact remote-prefix validation, migration dry-run/push, thirteen explicit function deploys and final ledger verification. No provider API, remote secret write or auth-settings write is automated. Raw CLI stdout/stderr are captured privately and are never printed or uploaded.

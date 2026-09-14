@@ -19,3 +19,4 @@ supabase/snippets/
 __pycache__/
 /tmp/exercise-catalog/
 /output/staging-commercial/
+/backup/
