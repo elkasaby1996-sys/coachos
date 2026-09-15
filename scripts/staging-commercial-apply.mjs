@@ -2,6 +2,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { z } from "zod";
 import {
   requireCheck,
   validateRemoteHistory,
@@ -22,7 +23,55 @@ export {
   requireGreenUnits,
 } from "./staging-commercial-preflight.mjs";
 
+// Exact v2.109.1 object shape captured with piped stdout. Display metadata is
+// validated but never returned or included in errors/evidence.
+const jsonMigrationListSchema = z.strictObject({
+  migrations: z.array(
+    z.strictObject({
+      local: z.string().regex(/^\d{14}$/),
+      remote: z.string().regex(/^(\d{14})?$/),
+      time: z.string().regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/),
+    }),
+  ),
+  message: z.string(),
+});
+function parseJsonMigrationList(text) {
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    throw new Error("MIGRATION_LEDGER_UNREADABLE");
+  }
+  const result = jsonMigrationListSchema.safeParse(value);
+  requireCheck(result.success, "MIGRATION_LEDGER_UNREADABLE");
+  const remote = [];
+  const seen = new Set();
+  let previousLocal = null;
+  for (const row of result.data.migrations) {
+    requireCheck(
+      previousLocal === null || row.local > previousLocal,
+      "REMOTE_MIGRATION_DRIFT",
+    );
+    requireCheck(
+      !row.remote || row.local === row.remote,
+      "REMOTE_MIGRATION_DRIFT",
+    );
+    if (row.remote) {
+      requireCheck(!seen.has(row.remote), "REMOTE_MIGRATION_DRIFT");
+      seen.add(row.remote);
+      remote.push(row.remote);
+    }
+    previousLocal = row.local;
+  }
+  return remote;
+}
 export function parseMigrationList(text) {
+  requireCheck(typeof text === "string", "MIGRATION_LEDGER_UNREADABLE");
+  const trimmed = text.trim();
+  // Arrays are identified as JSON too, then rejected by the strict object
+  // schema. Malformed JSON must never fall through to legacy table parsing.
+  if (trimmed.startsWith("{") || trimmed.startsWith("["))
+    return parseJsonMigrationList(trimmed);
   const rows = text
     .split(/\r?\n/)
     .filter((line) => line.includes("|") && !/^[\s|+-]+$/.test(line));

@@ -29,8 +29,11 @@ occurred. The sequence remains:
 | `migration_list_after`      | `FINAL_MIGRATION_LIST_FAILED`      |
 | `history_validation_after`  | `FINAL_HISTORY_VALIDATION_FAILED`  |
 
-Ledger parsing is part of history validation. The table parser and history checks
-are unchanged. A successful list command with unreadable output therefore fails
+Ledger parsing is part of history validation. The parser accepts the strict
+v2.109.1 JSON object shape documented in the [sanitized fixtures](../tests/fixtures/staging-commercial/README.md)
+and the existing pipe-delimited table format. JSON display metadata is never
+returned or published. Unknown or malformed JSON fails closed without a table
+fallback; history checks are unchanged. A successful list command with unreadable output therefore fails
 at history validation, before any subsequent operation.
 
 Post-preflight failures emit `STAGING_APPLY_REMOTE_FAILED:<stage>:<code>`.

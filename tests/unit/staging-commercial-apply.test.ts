@@ -142,6 +142,36 @@ async function failure() {
 }
 
 describe("apply remote-stage evidence", () => {
+  it("advances from the pinned JSON empty ledger to the dry-run command", async () => {
+    const before = readFileSync(
+      "tests/fixtures/staging-commercial/supabase-2.109.1-migration-list-empty.json",
+      "utf8",
+    );
+    // Stop at a mocked dry-run failure: no actual Supabase process is possible.
+    configure({ before, commandFailure: 2 });
+    const error = await failure();
+    expect(attempted).toEqual(commands.slice(0, 3));
+    for (const stage of [
+      "link",
+      "migration_list_before",
+      "history_validation_before",
+    ])
+      expect(snapshots.some((e) => e.lastCompletedRemoteStage === stage)).toBe(
+        true,
+      );
+    expect(snapshots.at(-1)).toMatchObject({
+      lastCompletedRemoteStage: "history_validation_before",
+      failedRemoteStage: "db_push_dry_run",
+      remoteErrorCode: "DB_PUSH_DRY_RUN_FAILED",
+    });
+    expect(applyFailureLine(error)).toBe(
+      "STAGING_APPLY_REMOTE_FAILED:db_push_dry_run:DB_PUSH_DRY_RUN_FAILED",
+    );
+    expect(JSON.stringify(snapshots)).not.toContain(
+      "Sanitized migration-list display message",
+    );
+    expect(JSON.stringify(snapshots)).not.toContain('"migrations"');
+  });
   it.each([
     ["link", null, 0, 1, 0],
     ["migration_list_before", "link", 1, 2, 0],
