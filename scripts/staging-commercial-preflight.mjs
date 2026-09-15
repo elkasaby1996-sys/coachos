@@ -183,6 +183,24 @@ const countKeys = [
   "nonPassedFileCount",
   "nonPassedAssertionCount",
 ];
+const testFilePath = z
+  .string()
+  .regex(/^tests\/unit\/[a-zA-Z0-9_./-]+\.test\.tsx?$/)
+  .refine(
+    (v) =>
+      !v
+        .split("/")
+        .some((part) => part === ".." || part === "." || part === ""),
+  );
+const fileStatuses = ["failed", "pending", "skipped", "todo", "unknown"];
+const assertionStatuses = [
+  "passed",
+  "failed",
+  "pending",
+  "skipped",
+  "todo",
+  "disabled",
+];
 export const preflightEvidenceSchema = z.strictObject({
   schemaVersion: z.literal(1),
   environment: z.literal("staging"),
@@ -212,12 +230,22 @@ export const preflightEvidenceSchema = z.strictObject({
     reportSha256: digest.nullable(),
     greenValidated: z.boolean().nullable(),
     ...Object.fromEntries(countKeys.map((k) => [k, count])),
+    nonPassedFiles: z.array(
+      z.strictObject({
+        file: testFilePath,
+        status: z.enum(fileStatuses),
+        failureKind: z.enum([
+          "collection_error",
+          "module_load_error",
+          "hook_error",
+          "suite_error",
+          "unknown_suite_error",
+        ]),
+      }),
+    ),
     failingTests: z.array(
       z.strictObject({
-        file: z
-          .string()
-          .regex(/^tests\/unit\/[a-zA-Z0-9_./-]+\.test\.tsx?$/)
-          .refine((v) => !v.split("/").includes("..")),
+        file: testFilePath,
         fullName: z.string().min(1).max(500),
       }),
     ),
@@ -257,6 +285,58 @@ function packageVersion(path) {
   }
 }
 
+function repositoryTestPath(root, name) {
+  if (
+    typeof name !== "string" ||
+    name.replaceAll("\\", "/").split("/").includes("..")
+  )
+    return null;
+  const path = relative(
+    root,
+    resolve(root, name.replaceAll("\\", "/")),
+  ).replaceAll("\\", "/");
+  return testFilePath.safeParse(path).success &&
+    scanRedaction(path).length === 0
+    ? path
+    : null;
+}
+export function nonPassedFiles(root, files) {
+  const entries = new Map();
+  for (const file of files) {
+    if (file.status === "passed") continue;
+    const path = repositoryTestPath(root, file.name);
+    if (!path) continue;
+    const assertions = file.assertionResults;
+    let failureKind = "unknown_suite_error";
+    // Vitest's JSON reporter has no structured module/hook discriminator.
+    // Never inspect its free-form message, errors, stack or failureMessages.
+    if (file.status === "failed" && Array.isArray(assertions)) {
+      if (assertions.length === 0) failureKind = "collection_error";
+      else if (assertions.every((t) => t?.status === "passed"))
+        failureKind = "suite_error";
+    }
+    const entry = {
+      file: path,
+      status: fileStatuses.includes(file.status) ? file.status : "unknown",
+      failureKind,
+    };
+    const previous = entries.get(path);
+    if (!previous) entries.set(path, entry);
+    else if (
+      previous.status !== entry.status ||
+      previous.failureKind !== entry.failureKind
+    ) {
+      // Conflicting duplicates never acquire a more specific diagnosis.
+      entries.set(path, {
+        file: path,
+        status: "unknown",
+        failureKind: "unknown_suite_error",
+      });
+    }
+  }
+  return [...entries.values()].sort((a, b) => a.file.localeCompare(b.file));
+}
+
 // Never trust reporter names: parameterized titles may contain received values.
 // Only literal describe/it/test chains present in repository source are eligible.
 export function staticFailingTests(root, files) {
@@ -264,12 +344,8 @@ export function staticFailingTests(root, files) {
   for (const file of files) {
     if (typeof file.name !== "string" || !Array.isArray(file.assertionResults))
       continue;
-    const path = relative(root, resolve(root, file.name)).replaceAll("\\", "/");
-    if (
-      !/^tests\/unit\/[a-zA-Z0-9_./-]+\.test\.tsx?$/.test(path) ||
-      path.split("/").includes("..")
-    )
-      continue;
+    const path = repositoryTestPath(root, file.name);
+    if (!path) continue;
     const names = new Set();
     try {
       const source = ts.createSourceFile(
@@ -380,6 +456,7 @@ export function runPreflight(mode = "preflight", dependencies = {}) {
       greenValidated: null,
       ...Object.fromEntries(countKeys.map((k) => [k, null])),
       failingTests: [],
+      nonPassedFiles: [],
     },
   };
   const persist = () =>
@@ -465,8 +542,12 @@ export function runPreflight(mode = "preflight", dependencies = {}) {
       ? child.status
       : null;
     e.units.commandStarted = !child.error;
-    if (child.status === 0 && !child.error)
-      e.lastCompletedStage = "unit_command";
+    const completed =
+      !child.error &&
+      !child.signal &&
+      Number.isInteger(child.status) &&
+      child.status >= 0;
+    if (completed) e.lastCompletedStage = "unit_command";
     stage = "unit_report_validation";
     let result;
     try {
@@ -479,7 +560,7 @@ export function runPreflight(mode = "preflight", dependencies = {}) {
         throw new Error("UNIT_REPORT_UNREADABLE");
       }
     } catch (error) {
-      if (child.error) {
+      if (!completed) {
         stage = "unit_command";
         throw new Error("UNIT_COMMAND_FAILED");
       }
@@ -493,19 +574,28 @@ export function runPreflight(mode = "preflight", dependencies = {}) {
     }
     const files = result?.testResults;
     const structural =
+      typeof result?.success === "boolean" &&
       Array.isArray(files) &&
       files.every(
         (f) =>
           f &&
+          typeof f.name === "string" &&
+          ["passed", ...fileStatuses].includes(f.status) &&
           Array.isArray(f.assertionResults) &&
-          f.assertionResults.every((t) => t && typeof t === "object"),
+          f.assertionResults.every(
+            (t) => t && assertionStatuses.includes(t.status),
+          ),
       );
     if (structural) {
       const assertions = files.flatMap((f) => f.assertionResults);
       e.units.assertionResultCount = assertions.length;
-      e.units.nonPassedFileCount = files.filter(
-        (f) => f.status !== "passed",
-      ).length;
+      e.units.nonPassedFiles = nonPassedFiles(root, files);
+      // Deduplicate accepted identities, but retain counts for rejected paths.
+      e.units.nonPassedFileCount = new Set(
+        files
+          .filter((f) => f.status !== "passed")
+          .map((f) => repositoryTestPath(root, f.name) ?? f),
+      ).size;
       e.units.nonPassedAssertionCount = assertions.filter(
         (t) => t.status !== "passed",
       ).length;
@@ -517,23 +607,19 @@ export function runPreflight(mode = "preflight", dependencies = {}) {
     } catch {
       e.units.greenValidated = false;
     }
-    if (child.error || child.status !== 0) {
+    if (!completed) {
       stage = "unit_command";
       throw new Error("UNIT_COMMAND_FAILED");
     }
     requireCheck(
-      structural && countKeys.slice(0, 8).every((k) => e.units[k] !== null),
+      structural &&
+        countKeys.slice(0, 8).every((k) => e.units[k] !== null) &&
+        e.units.assertionResultCount === e.units.numTotalTests,
       "UNIT_REPORT_CONTRACT_FAILED",
     );
     requireCheck(
-      e.units.greenValidated,
-      e.units.nonPassedAssertionCount > 0 ||
-        e.units.nonPassedFileCount > 0 ||
-        e.units.numFailedTests > 0 ||
-        e.units.numPendingTests > 0 ||
-        e.units.numTodoTests > 0
-        ? "FULL_UNIT_SUITE_NOT_GREEN"
-        : "UNIT_REPORT_CONTRACT_FAILED",
+      e.units.greenValidated && child.status === 0,
+      "FULL_UNIT_SUITE_NOT_GREEN",
     );
     e.lastCompletedStage = "unit_report_validation";
     check("final_confirmation_validation", () =>
