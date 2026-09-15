@@ -2,6 +2,13 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
+export function guardedExitCode(result) {
+  // A signalled or unspawned CLI must never be reported as success.
+  return result.error || result.signal || !Number.isInteger(result.status)
+    ? 1
+    : result.status;
+}
+
 export function guardedArgs(args, env, linkedProject) {
   const project = env.SUPABASE_PROJECT_REF?.trim();
   if (
@@ -74,7 +81,7 @@ if (
       stdio: "inherit",
       shell: false,
     });
-    process.exitCode = result.status ?? 1;
+    process.exitCode = guardedExitCode(result);
   } catch {
     console.error("REMOTE_COMMAND_BLOCKED");
     process.exitCode = 1;

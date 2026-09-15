@@ -2,6 +2,12 @@ import { z } from "zod";
 import { pathToFileURL } from "node:url";
 import { writeFileSync } from "node:fs";
 import {
+  REMOTE_STAGES,
+  REMOTE_ERROR_CODES,
+  REMOTE_STAGE_ERRORS,
+  initialRemoteProgress,
+} from "./staging-commercial-remote-stages.mjs";
+import {
   BILLING_FUNCTIONS,
   NONBILLING_FUNCTIONS,
   SCENARIO_IDS,
@@ -83,6 +89,13 @@ const recordSchema = z
     )
       ctx.addIssue({ code: "custom", message: "PASS_REQUIRES_ASSERTIONS" });
   });
+export const remoteProgressSchema = z.strictObject({
+  remoteStarted: z.boolean(),
+  remoteStage: z.enum(REMOTE_STAGES).nullable(),
+  lastCompletedRemoteStage: z.enum(REMOTE_STAGES).nullable(),
+  failedRemoteStage: z.enum(REMOTE_STAGES).nullable(),
+  remoteErrorCode: z.enum(REMOTE_ERROR_CODES).nullable(),
+});
 export const evidenceSchema = z
   .strictObject({
     schemaVersion: z.literal(1),
@@ -91,8 +104,35 @@ export const evidenceSchema = z
     commitSha: sha,
     fullUnitSuiteGreen: z.boolean(),
     records: z.array(recordSchema),
+    // Legacy scenario bundles remain readable. New apply artifacts require all
+    // five fields through validateDeploymentEvidence below.
+    ...remoteProgressSchema.partial().shape,
   })
   .superRefine((v, ctx) => {
+    const keys = Object.keys(initialRemoteProgress());
+    if (keys.some((key) => key in v)) {
+      const p = remoteProgressSchema.safeParse(
+        Object.fromEntries(keys.map((key) => [key, v[key]])),
+      );
+      if (!p.success) {
+        ctx.addIssue({ code: "custom", message: "REMOTE_PROGRESS_INCOMPLETE" });
+      } else if (
+        (!v.remoteStarted && keys.slice(1).some((key) => v[key] !== null)) ||
+        (v.remoteStarted && v.remoteStage === null) ||
+        (v.failedRemoteStage === null) !== (v.remoteErrorCode === null) ||
+        (v.failedRemoteStage !== null &&
+          (v.failedRemoteStage !== v.remoteStage ||
+            v.remoteErrorCode !== REMOTE_STAGE_ERRORS[v.failedRemoteStage])) ||
+        (v.lastCompletedRemoteStage !== null &&
+          REMOTE_STAGES.indexOf(v.lastCompletedRemoteStage) >
+            REMOTE_STAGES.indexOf(v.remoteStage)) ||
+        (v.remoteStage === "deployment_complete" &&
+          v.failedRemoteStage === null &&
+          v.lastCompletedRemoteStage !== "deployment_complete")
+      ) {
+        ctx.addIssue({ code: "custom", message: "REMOTE_PROGRESS_INVALID" });
+      }
+    }
     if (
       new Set(v.records.map((r) => r.scenarioId)).size !== v.records.length ||
       v.records.some((r) => r.commitSha !== v.commitSha)
@@ -144,6 +184,14 @@ export function redact(value, privateRunSalt) {
 export function validateEvidence(value) {
   requireCheck(scanRedaction(value).length === 0, "EVIDENCE_REDACTION_FAILED");
   return parseSafe(evidenceSchema, value, "EVIDENCE_INVALID");
+}
+export function validateDeploymentEvidence(value) {
+  const evidence = validateEvidence(value);
+  requireCheck(
+    Object.keys(initialRemoteProgress()).every((key) => key in evidence),
+    "REMOTE_PROGRESS_REQUIRED",
+  );
+  return evidence;
 }
 export function verdict(input) {
   const value = validateEvidence(input);

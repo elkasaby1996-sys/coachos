@@ -658,7 +658,7 @@ describe("apply safety and workflow contract", () => {
     ]);
     const source = readFileSync("scripts/staging-commercial-apply.mjs", "utf8");
     expect(source.indexOf('runPreflight("apply")')).toBeLessThan(
-      source.indexOf('remote(["link"'),
+      source.indexOf('remote("link"'),
     );
     expect(source).not.toMatch(/readdir|continue-on-error|\|\| true/);
   });

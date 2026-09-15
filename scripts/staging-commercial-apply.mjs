@@ -6,7 +6,12 @@ import {
   requireCheck,
   validateRemoteHistory,
 } from "./staging-commercial-contracts.mjs";
-import { validateEvidence } from "./staging-commercial-evidence.mjs";
+import { validateDeploymentEvidence } from "./staging-commercial-evidence.mjs";
+import {
+  REMOTE_STAGES,
+  REMOTE_STAGE_ERRORS,
+  initialRemoteProgress,
+} from "./staging-commercial-remote-stages.mjs";
 import {
   runPreflight,
   preflightFailureLine,
@@ -39,23 +44,33 @@ export function parseMigrationList(text) {
   }
   return remote;
 }
-export async function apply() {
-  const { manifest, inputs, state, auth } = runPreflight("apply");
-  const output = "output/staging-commercial/apply";
-  mkdirSync(output, { recursive: true });
-  const records = [];
-  const deployedFunctions = [];
-  const evidence = () =>
-    validateEvidence({
-      schemaVersion: 1,
-      environment: "staging",
-      providerEnvironment: "test",
-      commitSha: state.commit,
-      fullUnitSuiteGreen: true,
-      records,
-    });
-  const remote = (args) =>
-    execFileSync(
+// Keep original child-process results private: Error inspection/serialization
+// must not expose command arguments, stdout, stderr, or nested causes.
+const remoteFailures = new WeakMap();
+function remoteFailure(stage, cause) {
+  if (remoteFailures.has(cause)) return cause;
+  const safeStage = REMOTE_STAGES.includes(stage) ? stage : null;
+  const error = new Error("REMOTE_EXECUTION_FAILED_USE_ROLLBACK_RUNBOOK");
+  error.stage = safeStage;
+  error.exitCode = Number.isInteger(cause?.status) ? cause.status : null;
+  error.signal = typeof cause?.signal === "string" ? cause.signal : null;
+  remoteFailures.set(error, {
+    cause,
+    stage: safeStage,
+    code: REMOTE_STAGE_ERRORS[safeStage] ?? "UNKNOWN_REMOTE_FAILURE",
+  });
+  return error;
+}
+export function applyFailureLine(error) {
+  const failure = remoteFailures.get(error);
+  if (!failure) return preflightFailureLine("apply", error);
+  return failure.stage === null
+    ? `STAGING_APPLY_LOCAL_FAILED:${failure.code}`
+    : `STAGING_APPLY_REMOTE_FAILED:${failure.stage}:${failure.code}`;
+}
+export function runRemote(stage, args) {
+  try {
+    return execFileSync(
       process.execPath,
       ["scripts/supabase-remote-guard.mjs", ...args],
       {
@@ -64,29 +79,90 @@ export async function apply() {
         maxBuffer: 8 * 1024 * 1024,
       },
     );
-  try {
-    remote(["link", "--project-ref", inputs.project]);
-    validateRemoteHistory(
-      manifest.migrations.approved,
-      parseMigrationList(remote(["migration", "list", "--linked"])),
-      auth.approvedRemoteVersions,
+  } catch (cause) {
+    // execFileSync throws for spawn failure, nonzero exit and termination by
+    // signal; a zero exit returns stdout solely for the existing ledger parser.
+    throw remoteFailure(stage, cause);
+  }
+}
+export async function apply() {
+  const { manifest, inputs, state, auth } = runPreflight("apply");
+  const output = "output/staging-commercial/apply";
+  const records = [];
+  const deployedFunctions = [];
+  const progress = initialRemoteProgress();
+  const evidence = () =>
+    validateDeploymentEvidence({
+      schemaVersion: 1,
+      environment: "staging",
+      providerEnvironment: "test",
+      commitSha: state.commit,
+      fullUnitSuiteGreen: true,
+      records,
+      ...progress,
+    });
+  const persist = () =>
+    writeFileSync(
+      `${output}/deployment-evidence.json`,
+      JSON.stringify(evidence(), null, 2) + "\n",
     );
-    remote(["db", "push", "--linked", "--dry-run"]);
-    remote(["db", "push", "--linked", "--yes"]);
+  const atStage = (stage, operation) => {
+    progress.remoteStarted = true;
+    progress.remoteStage = stage;
+    persist();
+    const result = operation();
+    progress.lastCompletedRemoteStage = stage;
+    persist();
+    return result;
+  };
+  const remote = (stage, args) => atStage(stage, () => runRemote(stage, args));
+  try {
+    mkdirSync(output, { recursive: true });
+    persist();
+    remote("link", ["link", "--project-ref", inputs.project]);
+    const before = remote("migration_list_before", [
+      "migration",
+      "list",
+      "--linked",
+    ]);
+    atStage("history_validation_before", () =>
+      validateRemoteHistory(
+        manifest.migrations.approved,
+        parseMigrationList(before),
+        auth.approvedRemoteVersions,
+      ),
+    );
+    remote("db_push_dry_run", ["db", "push", "--linked", "--dry-run"]);
+    remote("db_push_apply", ["db", "push", "--linked", "--yes"]);
     for (const name of [
       ...manifest.functions.billing,
       ...manifest.functions.nonbilling,
     ]) {
-      remote(["functions", "deploy", name, "--project-ref", inputs.project]);
-      deployedFunctions.push(name);
+      atStage("function_deploy", () => {
+        runRemote("function_deploy", [
+          "functions",
+          "deploy",
+          name,
+          "--project-ref",
+          inputs.project,
+        ]);
+        deployedFunctions.push(name);
+      });
     }
     const versions = manifest.migrations.approved.map((m) =>
       m.filename.slice(0, 14),
     );
-    validateRemoteHistory(
-      manifest.migrations.approved,
-      parseMigrationList(remote(["migration", "list", "--linked"])),
-      versions,
+    const after = remote("migration_list_after", [
+      "migration",
+      "list",
+      "--linked",
+    ]);
+    atStage("history_validation_after", () =>
+      validateRemoteHistory(
+        manifest.migrations.approved,
+        parseMigrationList(after),
+        versions,
+      ),
     );
     for (const [scenarioId, code] of [
       ["CERT-DEPLOY-001", "MIGRATION_HISTORY_MATCH"],
@@ -105,7 +181,15 @@ export async function apply() {
         ...(scenarioId === "CERT-DEPLOY-002" ? { deployedFunctions } : {}),
         assertions: [{ code, passed: true }],
       });
-  } catch {
+    progress.remoteStage = "deployment_complete";
+    progress.lastCompletedRemoteStage = "deployment_complete";
+    persist();
+  } catch (cause) {
+    const error = remoteFailure(progress.remoteStage, cause);
+    const failure = remoteFailures.get(error);
+    progress.failedRemoteStage = failure.stage;
+    progress.remoteErrorCode = failure.code;
+    records.length = 0;
     records.push({
       scenarioId: "CERT-DEPLOY-001",
       status: "fail",
@@ -117,12 +201,14 @@ export async function apply() {
       deployedFunctions,
       assertions: [],
     });
-    throw new Error("REMOTE_EXECUTION_FAILED_USE_ROLLBACK_RUNBOOK");
-  } finally {
-    writeFileSync(
-      `${output}/deployment-evidence.json`,
-      JSON.stringify(evidence(), null, 2) + "\n",
-    );
+    try {
+      // A local artifact-write failure must not replace the safe remote error
+      // with raw filesystem details or send it through the preflight formatter.
+      persist();
+    } catch {
+      /* Fail closed even when the evidence destination is unavailable. */
+    }
+    throw error;
   }
 }
 if (
@@ -133,7 +219,7 @@ if (
     await apply();
     console.log("DEPLOYMENT_COMMANDS_COMPLETE_CERTIFICATION_STILL_BLOCKED");
   } catch (error) {
-    console.error(preflightFailureLine("apply", error));
+    console.error(applyFailureLine(error));
     process.exitCode = 1;
   }
 }

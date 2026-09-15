@@ -1,5 +1,64 @@
 # Staging commercial evidence
 
+## Apply remote-stage evidence
+
+New apply artifacts require `remoteStarted`, `remoteStage`,
+`lastCompletedRemoteStage`, `failedRemoteStage`, and `remoteErrorCode`. Stages and
+error codes use the closed vocabulary in `scripts/staging-commercial-remote-stages.mjs`.
+Legacy scenario bundles can omit the entire group; omitted fields mean unknown
+remote progress. Partial groups, arbitrary strings, and inconsistent state are rejected.
+
+After the unchanged protected preflight, apply writes initial progress with
+`remoteStarted: false` and four null fields. Before each operation it records the
+attempted stage and sets `remoteStarted: true`; after success it records that stage
+as completed. This flag proves entry into the attempt, not that a remote mutation
+occurred. The sequence remains:
+
+`link` → `migration_list_before` → `history_validation_before` →
+`db_push_dry_run` → `db_push_apply` → `function_deploy` (13 commands) →
+`migration_list_after` → `history_validation_after` → `deployment_complete`.
+
+| Failed stage                | Safe error code                    |
+| --------------------------- | ---------------------------------- |
+| `link`                      | `SUPABASE_LINK_FAILED`             |
+| `migration_list_before`     | `MIGRATION_LIST_FAILED`            |
+| `history_validation_before` | `REMOTE_HISTORY_VALIDATION_FAILED` |
+| `db_push_dry_run`           | `DB_PUSH_DRY_RUN_FAILED`           |
+| `db_push_apply`             | `DB_PUSH_FAILED`                   |
+| `function_deploy`           | `FUNCTION_DEPLOY_FAILED`           |
+| `migration_list_after`      | `FINAL_MIGRATION_LIST_FAILED`      |
+| `history_validation_after`  | `FINAL_HISTORY_VALIDATION_FAILED`  |
+
+Ledger parsing is part of history validation. The table parser and history checks
+are unchanged. A successful list command with unreadable output therefore fails
+at history validation, before any subsequent operation.
+
+Post-preflight failures emit `STAGING_APPLY_REMOTE_FAILED:<stage>:<code>`.
+`STAGING_APPLY_LOCAL_FAILED:UNKNOWN_REMOTE_FAILURE` denotes a local setup/evidence failure before any
+remote stage. A final evidence-write failure uses
+`deployment_complete:UNKNOWN_REMOTE_FAILURE`. If evidence cannot be written,
+the process still fails with a sanitized summary. Preflight failures continue to
+use the existing preflight formatter.
+
+Child-process spawn failures, nonzero exits, and signals fail closed. Stage,
+nullable exit code, and nullable signal are available on the internal structured
+error; the original error is retained privately in a WeakMap. No CLI text, command
+arguments, or original exception text enters evidence or the workflow summary.
+There are no retries or automatic rollback actions. The existing rollback-runbook
+error and separately authorized [rollback procedure](staging-commercial-rollback.md)
+remain in effect.
+
+On failure, `deployedFunctions` includes only approved functions whose commands
+returned successfully. An empty array cannot exclude effects from a failed first
+deployment. A failed DB push likewise does not prove that no migration applied.
+An interrupted process may leave attempted-stage evidence without a failure code;
+this requires a separately authorized state audit, not an automatic retry.
+
+Complete command execution sets both current and completed stages to
+`deployment_complete` and leaves failure fields null. It still emits
+`DEPLOYMENT_COMMANDS_COMPLETE_CERTIFICATION_STILL_BLOCKED`; actual staging scenarios
+remain required for commercial certification.
+
 `config/staging-commercial-evidence.template.json` is deliberately not_run. The example timestamp and base SHA identify a template, not observed staging proof. Actual records must use their observed UTC timestamp and current reviewed commit.
 
 The strict schema in `scripts/staging-commercial-evidence.mjs` admits scenario ID, status, local_fixture/staging_test scope, UTC timestamp, commit, numeric workflow run ID, allowlisted function name, migration filename, enumerated error code, salted identifier hashes and enumerated Boolean assertions. Unknown fields and arbitrary assertion prose are rejected. All records must share the envelope commit; duplicate scenario IDs fail.
