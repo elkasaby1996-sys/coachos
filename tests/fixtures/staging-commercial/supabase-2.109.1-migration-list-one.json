@@ -1,0 +1,20 @@
+{
+  "migrations": [
+    {
+      "local": "20260326084615",
+      "remote": "20260326084615",
+      "time": "2026-03-26 08:46:15"
+    },
+    {
+      "local": "20260326090000",
+      "remote": "",
+      "time": "2026-03-26 09:00:00"
+    },
+    {
+      "local": "20260326091000",
+      "remote": "",
+      "time": "2026-03-26 09:10:00"
+    }
+  ],
+  "message": "Sanitized migration-list display message"
+}
