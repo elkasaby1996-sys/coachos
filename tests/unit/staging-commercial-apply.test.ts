@@ -20,7 +20,10 @@ import {
   REMOTE_STAGE_ERRORS,
   initialRemoteProgress,
 } from "../../scripts/staging-commercial-remote-stages.mjs";
-import { guardedExitCode } from "../../scripts/supabase-remote-guard.mjs";
+import {
+  guardedArgs,
+  guardedExitCode,
+} from "../../scripts/supabase-remote-guard.mjs";
 
 // Every process and write boundary is mocked, including the default unexpected
 // call. These tests cannot invoke Supabase or the actual protected apply entrypoint.
@@ -56,13 +59,17 @@ const cliError = () =>
     stderr: privateText,
   });
 const ledger = (applied: string[]) =>
-  "Local | Remote | Time\n" +
-  versions
-    .map((v: string) => `${v} | ${applied.includes(v) ? v : ""} | date`)
-    .join("\n");
+  JSON.stringify({
+    migrations: versions.map((v: string) => ({
+      local: v,
+      remote: applied.includes(v) ? v : "",
+      time: `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)} ${v.slice(8, 10)}:${v.slice(10, 12)}:${v.slice(12, 14)}`,
+    })),
+    message: "Synthetic JSON ledger display metadata",
+  });
 const commands = [
   ["link", "--project-ref", project],
-  ["migration", "list", "--linked"],
+  ["migration", "list", "--linked", "--output-format", "json"],
   ["db", "push", "--linked", "--dry-run"],
   ["db", "push", "--linked", "--yes"],
   ...functions.map((name: string) => [
@@ -72,7 +79,7 @@ const commands = [
     "--project-ref",
     project,
   ]),
-  ["migration", "list", "--linked"],
+  ["migration", "list", "--linked", "--output-format", "json"],
 ];
 let snapshots: any[], attempted: string[][];
 function configure({
@@ -233,10 +240,19 @@ describe("apply remote-stage evidence", () => {
       );
     },
   );
-  it("completes the exact 18-command sequence and remains uncertified", async () => {
+  it("completes the exact 18-command sequence with JSON empty/full ledgers and remains uncertified", async () => {
     await apply();
     expect(runPreflight).toHaveBeenCalledExactlyOnceWith("apply");
     expect(attempted).toEqual(commands);
+    expect(attempted.filter((args) => args[0] === "migration")).toEqual([
+      ["migration", "list", "--linked", "--output-format", "json"],
+      ["migration", "list", "--linked", "--output-format", "json"],
+    ]);
+    expect(
+      snapshots.some(
+        (e) => e.lastCompletedRemoteStage === "history_validation_after",
+      ),
+    ).toBe(true);
     const e = snapshots.at(-1);
     expect(e).toMatchObject({
       remoteStarted: true,
@@ -262,6 +278,10 @@ describe("apply remote-stage evidence", () => {
     for (const snapshot of snapshots)
       expect(() => validateDeploymentEvidence(snapshot)).not.toThrow();
     expect(JSON.stringify(snapshots)).not.toContain(privateText);
+    expect(JSON.stringify(snapshots)).not.toContain(
+      "Synthetic JSON ledger display metadata",
+    );
+    expect(JSON.stringify(snapshots)).not.toContain('"migrations"');
     expect(
       readFileSync("scripts/staging-commercial-apply.mjs", "utf8"),
     ).toContain("DEPLOYMENT_COMMANDS_COMPLETE_CERTIFICATION_STILL_BLOCKED");
@@ -269,7 +289,7 @@ describe("apply remote-stage evidence", () => {
   it.each(["before", "after"])(
     "keeps malformed %s ledger output in history validation",
     async (when) => {
-      configure({ [when]: privateText });
+      configure({ [when]: '{"migrations":' + privateText });
       const error = await failure();
       expect(snapshots.at(-1).failedRemoteStage).toBe(
         `history_validation_${when}`,
@@ -314,6 +334,29 @@ describe("apply remote-stage evidence", () => {
 });
 
 describe("child-process contract", () => {
+  it("accepts explicit JSON ledger arguments without bypassing guard boundaries", () => {
+    const args = ["migration", "list", "--linked", "--output-format", "json"];
+    const env = {
+      ALLOW_REMOTE_SUPABASE: "I_UNDERSTAND_THIS_TOUCHES_REMOTE",
+      SUPABASE_PROJECT_REF: project,
+    };
+    expect(guardedArgs(args, env, project)).toEqual(args);
+    expect(() => guardedArgs(args, {}, project)).toThrow(
+      "REMOTE_AUTHORIZATION_REQUIRED",
+    );
+    expect(() => guardedArgs(args, env, "p".repeat(20))).toThrow(
+      "REMOTE_LINK_MISMATCH",
+    );
+    expect(() => guardedArgs([...args, "--local"], env, project)).toThrow(
+      "REMOTE_LINK_MISMATCH",
+    );
+    expect(() =>
+      guardedArgs([...args, "--project-ref", project], env, project),
+    ).toThrow("REMOTE_LINK_MISMATCH");
+    expect(() =>
+      guardedArgs([...args, "--password", "synthetic"], env, project),
+    ).toThrow("REMOTE_ARGUMENT_REJECTED_USE_ENV_SECRET");
+  });
   it.each([
     [
       "spawn error",
