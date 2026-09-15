@@ -606,11 +606,9 @@ describe("preflight workflow and module boundaries", () => {
       /staging-commercial-apply|supabase-remote-guard|fetch\(|execFileSync\(|remote\(/,
     );
     expect(app).toContain('runPreflight("apply")');
-    expect(app).toContain(
-      'console.error(preflightFailureLine("apply", error))',
-    );
+    expect(app).toContain("console.error(applyFailureLine(error))");
     expect(app.indexOf('runPreflight("apply")')).toBeLessThan(
-      app.indexOf('remote(["link"'),
+      app.indexOf('remote("link"'),
     );
     expect(app).not.toMatch(
       /function requireGreenUnits|validateBundle\(|validateApplyAuthorization\(|spawnSync\(/,
