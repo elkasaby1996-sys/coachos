@@ -16,6 +16,7 @@ import {
   validatePreflightEvidence,
   preflightFailureLine,
   requireGreenUnits,
+  nonPassedFiles,
 } from "../../scripts/staging-commercial-preflight.mjs";
 import { apply } from "../../scripts/staging-commercial-apply.mjs";
 import { scanRedaction } from "../../scripts/staging-commercial-evidence.mjs";
@@ -262,7 +263,7 @@ describe("safe shared preflight", () => {
       received: "private-fixture",
     });
     child(r, 1);
-    const e = fail("UNIT_COMMAND_FAILED", "unit_command");
+    const e = fail("FULL_UNIT_SUITE_NOT_GREEN", "unit_report_validation");
     expect(e.units.numFailedTests).toBe(1);
     expect(e.units.greenValidated).toBe(false);
     expect(e.units.failingTests).toEqual([
@@ -280,7 +281,7 @@ describe("safe shared preflight", () => {
       fullName: "safe suite dynamic private-value",
     };
     child(r, 1);
-    expect(fail("UNIT_COMMAND_FAILED").units.failingTests).toEqual([]);
+    expect(fail("FULL_UNIT_SUITE_NOT_GREEN").units.failingTests).toEqual([]);
   });
   it("rejects unreadable reports without echoing contents", () => {
     child("private-unreadable-fixture");
@@ -379,6 +380,215 @@ describe("safe shared preflight", () => {
     await expect(apply()).rejects.toThrow();
     expect(evidence().failedStage).toBe("bundle_validation");
     expect(execFileSync).not.toHaveBeenCalled();
+  });
+});
+
+describe("suite-level preflight failures", () => {
+  function failedSuites() {
+    const r = green();
+    r.success = false;
+    r.numTotalTestSuites = 550;
+    r.numPassedTestSuites = 535;
+    r.numFailedTestSuites = 15;
+    r.numTotalTests = 1789;
+    r.numPassedTests = 1789;
+    r.testResults[0].assertionResults = Array.from({ length: 1789 }, () => ({
+      status: "passed",
+      fullName: "safe suite literal failure",
+    }));
+    for (let i = 0; i < 15; i++)
+      r.testResults.push({
+        name: `tests/unit/collection-${i}.test.ts`,
+        status: "failed",
+        assertionResults: [],
+      });
+    return r;
+  }
+  it("reports the prior-run shape as failed suites without inventing GitHub identities", () => {
+    child(failedSuites(), 1);
+    const e = fail("FULL_UNIT_SUITE_NOT_GREEN", "unit_report_validation");
+    expect(e.units.commandExitCode).toBe(1);
+    expect(e.lastCompletedStage).toBe("unit_command");
+    expect(e.units.numFailedTests).toBe(0);
+    expect(e.units.numFailedTestSuites).toBe(15);
+    expect(e.units.nonPassedFiles).toHaveLength(15);
+    expect(e.units.nonPassedFileCount).toBe(15);
+    expect(
+      e.units.nonPassedFiles.every(
+        (f: any) => f.failureKind === "collection_error",
+      ),
+    ).toBe(true);
+    expect(e.units.failingTests).toEqual([]);
+    expect(e.remoteExecuted).toBe(false);
+  });
+  it("reports exit one with unreadable JSON as a report parsing failure", () => {
+    child("private-unreadable-fixture", 1);
+    fail("UNIT_REPORT_UNREADABLE", "unit_report_validation");
+  });
+  it.each([null, -1])(
+    "keeps unusable completion %s distinct even with a green report",
+    (status) => {
+      child(green(), status);
+      fail("UNIT_COMMAND_FAILED", "unit_command");
+    },
+  );
+  it("keeps signal termination distinct from a failed report", () => {
+    child(failedSuites(), 1);
+    const run = deps.spawnSync.getMockImplementation();
+    deps.spawnSync.mockImplementation((...args: any[]) => ({
+      ...run(...args),
+      signal: "SIGTERM",
+    }));
+    fail("UNIT_COMMAND_FAILED", "unit_command");
+  });
+  it("blocks nonzero exit even when every report predicate is green", () => {
+    child(green(), 1);
+    const e = fail("FULL_UNIT_SUITE_NOT_GREEN", "unit_report_validation");
+    expect(e.units.greenValidated).toBe(true);
+    expect(e.units.commandExitCode).toBe(1);
+  });
+  it("classifies all-passed assertions in a failed file as suite_error without reading error text", () => {
+    const r = green();
+    r.success = false;
+    r.numFailedTestSuites = 1;
+    r.numPassedTestSuites = 0;
+    r.testResults[0].status = "failed";
+    Object.assign(r.testResults[0], {
+      message: "Bearer private-error-fixture",
+      stack: "private-stack-fixture",
+      errors: [{ message: "module hook failure private-fixture" }],
+      stdout: "private-stdout",
+      stderr: "private-stderr",
+    });
+    child(r, 1);
+    const e = fail("FULL_UNIT_SUITE_NOT_GREEN");
+    expect(e.units.nonPassedFiles).toEqual([
+      {
+        file: "tests/unit/static.test.ts",
+        status: "failed",
+        failureKind: "suite_error",
+      },
+    ]);
+    expect(JSON.stringify(e)).not.toMatch(
+      /private-|Bearer|stdout|stderr|failureMessages/,
+    );
+  });
+  it("deduplicates normalized absolute and relative names and keeps accepted counts equal", () => {
+    const r = failedSuites();
+    r.testResults.push({
+      ...r.testResults[1],
+      name: join(root, r.testResults[1].name),
+    });
+    child(r, 1);
+    const e = fail("FULL_UNIT_SUITE_NOT_GREEN");
+    expect(e.units.nonPassedFiles).toHaveLength(15);
+    expect(e.units.nonPassedFileCount).toBe(e.units.nonPassedFiles.length);
+    expect(
+      e.units.nonPassedFiles.every(
+        (f: any) => f.file.startsWith("tests/unit/") && !f.file.includes(root),
+      ),
+    ).toBe(true);
+  });
+  it.each([
+    "../outside.test.ts",
+    "tests/unit/../unit/static.test.ts",
+    "tests\\unit\\..\\unit\\static.test.ts",
+    "src/example.test.ts",
+    "tests/unit/example.txt",
+    "tests/unit/https://example.test.ts",
+  ])("excludes unsafe file identity %s", (name) => {
+    expect(
+      nonPassedFiles(root, [{ name, status: "failed", assertionResults: [] }]),
+    ).toEqual([]);
+  });
+  it("excludes absolute outside-repository paths while retaining non-passed counts", () => {
+    const r = failedSuites();
+    r.testResults[1].name = resolve(root, "../outside.test.ts");
+    child(r, 1);
+    const e = fail("FULL_UNIT_SUITE_NOT_GREEN");
+    expect(e.units.nonPassedFileCount).toBe(15);
+    expect(e.units.nonPassedFiles).toHaveLength(14);
+  });
+  it("uses unknown for failed assertions and conflicting duplicate file records", () => {
+    const file = {
+      name: "tests/unit/static.test.ts",
+      status: "failed",
+      assertionResults: [{ status: "failed" }],
+    };
+    expect(nonPassedFiles(root, [file])[0].failureKind).toBe(
+      "unknown_suite_error",
+    );
+    expect(
+      nonPassedFiles(root, [file, { ...file, assertionResults: [] }]),
+    ).toEqual([
+      {
+        file: file.name,
+        status: "unknown",
+        failureKind: "unknown_suite_error",
+      },
+    ]);
+  });
+  it("does not access free-form error fields when classifying", () => {
+    const file = {
+      name: "tests/unit/static.test.tsx",
+      status: "failed",
+      assertionResults: [],
+      get message() {
+        throw new Error("Must not read text");
+      },
+      get stack() {
+        throw new Error("Must not read stack");
+      },
+    };
+    expect(nonPassedFiles(root, [file])).toEqual([
+      { file: file.name, status: "failed", failureKind: "collection_error" },
+    ]);
+  });
+  it("strictly rejects unexpected evidence fields, kinds and absolute output paths", () => {
+    runPreflight("preflight", deps);
+    const e = evidence();
+    expect(e.units.nonPassedFiles).toEqual([]);
+    const entry = {
+      file: "tests/unit/static.test.ts",
+      status: "failed",
+      failureKind: "suite_error",
+    };
+    for (const change of [
+      { message: "private" },
+      { failureKind: "arbitrary" },
+      { file: join(root, entry.file) },
+      { status: "private" },
+    ]) {
+      e.units.nonPassedFiles = [{ ...entry, ...change }];
+      expect(() => validatePreflightEvidence(e)).toThrow();
+    }
+  });
+  it.each([
+    { success: "true" },
+    { numFailedTestSuites: "15" },
+    { numTodoTests: null },
+  ])("rejects malformed required report fields %#", (change) => {
+    child({ ...green(), ...change }, 1);
+    fail("UNIT_REPORT_CONTRACT_FAILED", "unit_report_validation");
+  });
+  it("apply cannot reach a remote call after a suite-level failure in its shared preflight", async () => {
+    child(failedSuites(), 1);
+    vi.stubEnv("ALLOW_REMOTE_SUPABASE", "I_UNDERSTAND_THIS_TOUCHES_REMOTE");
+    vi.stubEnv("SUPABASE_PROJECT_REF", project);
+    vi.resetModules();
+    vi.doMock("../../scripts/staging-commercial-preflight.mjs", () => ({
+      runPreflight: (mode: string) => runPreflight(mode, deps),
+    }));
+    try {
+      const module = await import("../../scripts/staging-commercial-apply.mjs");
+      await expect(module.apply()).rejects.toThrow("FULL_UNIT_SUITE_NOT_GREEN");
+      expect(evidence().failedStage).toBe("unit_report_validation");
+      expect(evidence().remoteExecuted).toBe(false);
+      expect(execFileSync).not.toHaveBeenCalled();
+    } finally {
+      vi.doUnmock("../../scripts/staging-commercial-preflight.mjs");
+      vi.resetModules();
+    }
   });
 });
 
