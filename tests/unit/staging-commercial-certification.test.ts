@@ -653,10 +653,11 @@ describe("apply safety and workflow contract", () => {
         .map((s: any) => s.with.path),
     ).toEqual([
       "output/staging-commercial/plan/",
+      "output/staging-commercial/preflight/preflight-evidence.json",
       "output/staging-commercial/apply/deployment-evidence.json",
     ]);
     const source = readFileSync("scripts/staging-commercial-apply.mjs", "utf8");
-    expect(source.indexOf("requireGreenUnits(readJson")).toBeLessThan(
+    expect(source.indexOf('runPreflight("apply")')).toBeLessThan(
       source.indexOf('remote(["link"'),
     );
     expect(source).not.toMatch(/readdir|continue-on-error|\|\| true/);

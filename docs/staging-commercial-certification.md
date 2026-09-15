@@ -34,7 +34,69 @@ Before migration apply, follow the [staging logical backup runbook](staging-logi
 
 Use `.github/workflows/supabase-deploy-staging.yml` only after authorization naming the exact resources. Required dispatch inputs: mode (default plan), confirm_commit_sha, confirm_project_ref, confirm_app_origin and evidence_label. The workflow is main-only, serializes all staging runs and uses protected environment `supabase-staging`; configure required reviewers on that environment. Branch protection and environment protection are operational prerequisites, not created by Phase A.
 
-Plan installs dependencies once, runs contract checks and writes sanitized commands. It receives no Supabase or provider credentials and installs no Supabase CLI. Apply adds quality checks, pinned CLI v2.109.1, explicit authorization preflight, a fresh blocking full-unit run, guarded link, exact remote-prefix validation, migration dry-run/push, thirteen explicit function deploys and final ledger verification. No provider API, remote secret write or auth-settings write is automated. Raw CLI stdout/stderr are captured privately and are never printed or uploaded.
+Plan installs dependencies once, runs contract checks and writes sanitized commands. It receives no Supabase or provider credentials and installs no Supabase CLI. Preflight adds quality checks and the shared protected authorization/full-unit gate described below. Apply runs that same gate before guarded link, exact remote-prefix validation, migration dry-run/push, thirteen explicit function deploys and final ledger verification. Only apply installs pinned CLI v2.109.1 and receives the remote enable flag. No provider API, remote secret write or auth-settings write is automated. Raw CLI stdout/stderr are captured privately and are never printed or uploaded.
+
+## Safe preflight observability (PR-QUALITY-02)
+
+| Mode        | Boundary                                                                                                                                | Result                                                                             |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `plan`      | Existing local-only planner; no deploy credentials or CLI                                                                               | Sanitized proposed operations; no remote execution                                 |
+| `preflight` | Protected `supabase-staging` environment, confirmed main commit, quality prerequisites, shared Phase B authorization and full-unit gate | Sanitized gate evidence; **no remote Supabase or provider operation**              |
+| `apply`     | Same shared preflight, plus explicit apply-only remote enable flag and target binding                                                   | Remote operations become reachable only after the shared gate returns successfully |
+
+`scripts/staging-commercial-preflight.mjs` owns the pre-remote implementation. It does not import the apply module or remote guard. Its only child command is the fixed full-unit command. The preflight workflow step has no CLI setup, remote enable flag or provider command. `scripts/staging-commercial-apply.mjs` calls this shared implementation before its first remote command; failed preflight throws and blocks apply. Existing production-target denials and the minimum 1,784-test/all-green gate are unchanged.
+
+Stages, in order:
+
+1. `bundle_validation`
+2. `confirmation_validation`
+3. `workflow_boundary_validation`
+4. `phase_b_authorization_validation`
+5. `deploy_secret_presence`
+6. `npm_context_validation`
+7. `unit_command`
+8. `unit_report_validation`
+9. `final_confirmation_validation`
+10. `ready_for_remote`
+
+Both modes write `output/staging-commercial/preflight/preflight-evidence.json`. The directory is created before bundle validation, and caught failures write evidence in `finally`, including failures before units. Filesystem failure or abrupt process termination can prevent evidence creation; artifact upload uses `if-no-files-found: error` so missing evidence cannot silently pass.
+
+The strict version-1 schema includes staging/test labels, mode/outcome, commit SHA, numeric workflow run ID, last completed/failed stage, allowlisted error code, runtime versions, `phaseBValidated`, and sanitized unit results. Commit/runtime fields are nullable when not yet known or valid. `phaseBValidated` is a boolean; this name allows the existing redaction scanner to reject authorization-bearing keys without exceptions. `remoteExecuted` is always false: this artifact describes the **pre-remote gate**, including in apply mode. It does not describe later deployment outcomes.
+
+Unit evidence includes explicit process exit status (nullable when unavailable), whether the process started, report presence and SHA-256, all suite/test counts, assertion totals, non-passed counts, and nullable `greenValidated`. Raw JSON is parsed even after a nonzero exit and checked by `requireGreenUnits`; its result is recorded independently of command status. A nonzero exit always blocks apply. The prior report is removed before starting units so stale results cannot satisfy a gate.
+
+Failing-test identities contain only repository-relative test paths and full names verified against literal `describe`/`it`/`test` declarations in source. Dynamic, parameterized, unverified or redaction-rejected names are omitted; counts still reflect those failures. No assertion messages, snapshots, expected/received values, absolute paths, child stdout/stderr, authorization documents, target identifiers, provider references or credentials enter the artifact. The complete artifact passes the existing evidence redaction scanner without relaxing it.
+
+### Error interpretation
+
+Console failures are bounded: `STAGING_PREFLIGHT_FAILED:<stage>:<allowlisted-code>` or `STAGING_APPLY_BLOCKED_OR_FAILED:<stage>:<allowlisted-code>`. Unexpected exceptions become `UNKNOWN_PRE_REMOTE_FAILURE`; original messages, stacks and child output are never printed. Apply failures after preflight use the bounded unknown fallback and must be interpreted with separate deployment evidence.
+
+| Code                                                      | Interpretation                                                                                                                    |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `PHASE_B_AUTHORIZATION_INVALID`                           | Missing, malformed or schema-invalid private envelope                                                                             |
+| `AUTHORIZATION_BINDING_MISMATCH`                          | Reviewed commit, manifest or target binding does not match                                                                        |
+| Other allowlisted authorization/provider validation codes | A specific existing authorization contract rejected the envelope                                                                  |
+| `DEPLOY_SECRET_MISSING`                                   | A required deploy credential is absent/blank; no value is reported                                                                |
+| `NPM_CONTEXT_REQUIRED`                                    | Entry point did not receive npm execution context                                                                                 |
+| `AUTHORIZED_STAGING_WORKFLOW_REQUIRED`                    | GitHub/main boundary or apply-only remote authorization rejected                                                                  |
+| `UNIT_COMMAND_FAILED`                                     | Child failed to start, terminated or exited nonzero; inspect exit status and sanitized counts to distinguish actual test failures |
+| `UNIT_REPORT_MISSING`                                     | Child returned without a report; inspect exit status                                                                              |
+| `UNIT_REPORT_UNREADABLE`                                  | Report cannot be read or parsed                                                                                                   |
+| `UNIT_REPORT_CONTRACT_FAILED`                             | Report shape/count contract rejected despite a zero child exit                                                                    |
+| `FULL_UNIT_SUITE_NOT_GREEN`                               | Non-passed suites/assertions or failed/pending/todo tests block the gate                                                          |
+| `UNKNOWN_PRE_REMOTE_FAILURE`                              | Unrecognized exception; no private exception details are published                                                                |
+
+Preflight success prints `STAGING_PREFLIGHT_PASS_REMOTE_NOT_EXECUTED`. It does not certify deployment or commercial scenarios. Apply retains `DEPLOYMENT_COMMANDS_COMPLETE_CERTIFICATION_STILL_BLOCKED` after command completion.
+
+### Operator sequence and retention
+
+1. Review and merge the change. Confirm the exact current main SHA and staging target, and verify required reviewers on `supabase-staging`.
+2. Run mode `plan` with the reviewed dispatch inputs and review its sanitized artifact.
+3. **Regenerate and review the private Phase B authorization whenever the reviewed commit changes**, including after this PR. Bind the validated manifest and reviewed targets again. Supply private material through the protected environment without logging it.
+4. After separate operator approval, dispatch mode `preflight` with the same exact commit/project/origin confirmations. Review the sanitized preflight artifact and all quality gates. This mode performs no remote operation.
+5. Only after separate explicit authorization for the named staging resources, dispatch mode `apply` with unchanged reviewed bindings. Apply reruns the entire shared preflight; a prior passing artifact is not an exemption. Complete the existing scenario certification afterward.
+
+The workflow uploads only the exact sanitized preflight evidence file with `if: always()` for preflight/apply and retains it for **7 days**, matching plan/deployment artifacts. Missing preflight evidence fails the upload. Raw `units.json` stays ignored on the runner/local disk and is never an uploaded artifact; it is replaced on the next invocation. Child stdout/stderr from the unit process are discarded. Remove private local reports when no longer needed; ephemeral GitHub runner data is not a retained diagnostic artifact.
 
 Supply `STAGING_COMMERCIAL_AUTHORIZATION` privately through the protected environment only after review. Its strict schema is exported by `scripts/staging-commercial-apply.mjs`. It binds reviewedCommit, canonical JSON manifest SHA-256, target project/origin SHA-256, approvedRemoteVersions, backupEvidenceSha256, exact auth site/callback settings, normalized provider mappings, required name-presence attestation, billing environment/origin, portal hosts, and portal/webhook/rollback review attestations. For the manifest hash use SHA-256 of JSON.stringify of the validated JSON object. Fake provider references are rejected at apply. The envelope must be reissued after any commit, migration, manifest or target change. Attestations are operator evidence; they do not query or configure hosted settings.
 
