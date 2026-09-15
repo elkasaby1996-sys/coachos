@@ -5,7 +5,7 @@ on:
     inputs:
       mode:
         type: choice
-        options: [plan, apply]
+        options: [plan, preflight, apply]
         default: plan
         required: true
       confirm_commit_sha:
@@ -79,8 +79,8 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-      - name: Apply quality prerequisites
-        if: inputs.mode == 'apply'
+      - name: Preflight and apply quality prerequisites
+        if: inputs.mode == 'preflight' || inputs.mode == 'apply'
         run: npm run lint && npm run format && npm run build
 
       - name: Setup pinned Supabase CLI for apply only
@@ -88,6 +88,14 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: v2.109.1
+
+      - name: Protected preflight with blocking full unit suite
+        if: inputs.mode == 'preflight'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          STAGING_COMMERCIAL_AUTHORIZATION: ${{ secrets.STAGING_COMMERCIAL_AUTHORIZATION }}
+        run: npm run staging:commercial:preflight
 
       - name: Authorized apply with blocking full unit suite
         if: inputs.mode == 'apply'
@@ -98,6 +106,15 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           STAGING_COMMERCIAL_AUTHORIZATION: ${{ secrets.STAGING_COMMERCIAL_AUTHORIZATION }}
         run: npm run staging:commercial:apply
+
+      - name: Upload sanitized preflight evidence
+        if: always() && (inputs.mode == 'preflight' || inputs.mode == 'apply')
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: staging-commercial-preflight-${{ github.run_id }}
+          path: output/staging-commercial/preflight/preflight-evidence.json
+          retention-days: 7
+          if-no-files-found: error
 
       - name: Upload structured deployment evidence
         if: always() && inputs.mode == 'apply'
