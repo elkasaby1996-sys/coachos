@@ -173,6 +173,8 @@ export async function apply() {
       "migration",
       "list",
       "--linked",
+      "--output-format",
+      "json",
     ]);
     atStage("history_validation_before", () =>
       validateRemoteHistory(
@@ -205,6 +207,8 @@ export async function apply() {
       "migration",
       "list",
       "--linked",
+      "--output-format",
+      "json",
     ]);
     atStage("history_validation_after", () =>
       validateRemoteHistory(
