@@ -159,8 +159,6 @@ export function PtSignupPage() {
           fullName,
           contactEmail: email.trim(),
           supportEmail: email.trim(),
-          subscriptionPlan: selectedPlanLabel,
-          subscriptionStatus: `${TRIAL_DURATION_DAYS}-day trial`,
         });
       }
 
