@@ -652,9 +652,13 @@
       {
         "filename": "20260913010000_public_commercial_catalogue_v2.sql",
         "sha256": "66061d71f079c239e3a66e5715d2bee42065c9da95dd49ff9e4e009027dbb24d"
+      },
+      {
+        "filename": "20260916100118_billing_checkout_expiry_precision.sql",
+        "sha256": "bcb9f564fa259c3f794c48a6a970e8e1165b5d90c4b9a1e7256571785327723d"
       }
     ],
-    "expectedLatestMigration": "20260913010000_public_commercial_catalogue_v2.sql"
+    "expectedLatestMigration": "20260916100118_billing_checkout_expiry_precision.sql"
   },
   "functions": {
     "billing": [

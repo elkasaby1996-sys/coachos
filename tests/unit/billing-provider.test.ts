@@ -185,6 +185,63 @@ describe("Lemon Squeezy adapter contracts", () => {
     });
   });
   it.each([
+    [877, 0],
+    [100, 999],
+    [999, 100],
+  ])(
+    "accepts same-second expiry precision %i -> %i and keeps provider expiry",
+    (expectedMs, providerMs) => {
+      const second = Math.floor(Date.parse(expiry) / 1000) * 1000;
+      const expectedExpiry = new Date(second + expectedMs).toISOString();
+      const providerExpiry = new Date(second + providerMs).toISOString();
+      const op = structuredClone(operation);
+      op.attempt.expected_expires_at = expectedExpiry;
+      const value = checkout();
+      value.data.attributes.expires_at = providerExpiry;
+      expect(parseCheckout(value, op).expiresAt).toBe(providerExpiry);
+      expect(op.attempt.expected_expires_at).toBe(expectedExpiry);
+    },
+  );
+  it.each([-1, 1000])(
+    "rejects an adjacent second at offset %i, even within 1,000 ms",
+    (providerOffset) => {
+      const second = Math.floor(Date.parse(expiry) / 1000) * 1000;
+      const op = structuredClone(operation);
+      op.attempt.expected_expires_at = new Date(second + 877).toISOString();
+      const value = checkout();
+      value.data.attributes.expires_at = new Date(
+        second + providerOffset,
+      ).toISOString();
+      expect(() => parseCheckout(value, op)).toThrow(
+        "BILLING_VARIANT_MAPPING_MISMATCH",
+      );
+    },
+  );
+  it.each(["provider", "expected"])("rejects malformed %s expiry", (side) => {
+    const value = checkout();
+    const op = structuredClone(operation);
+    if (side === "provider") value.data.attributes.expires_at = "not-a-date";
+    else op.attempt.expected_expires_at = "not-a-date";
+    expect(() => parseCheckout(value, op)).toThrow(
+      "BILLING_VARIANT_MAPPING_MISMATCH",
+    );
+  });
+  it("rejects an expired provider timestamp even when expected expiry is later in the same second", () => {
+    const second = Math.floor(Date.parse(expiry) / 1000) * 1000;
+    const clock = vi.spyOn(Date, "now").mockReturnValue(second + 500);
+    try {
+      const op = structuredClone(operation);
+      op.attempt.expected_expires_at = new Date(second + 877).toISOString();
+      const value = checkout();
+      value.data.attributes.expires_at = new Date(second).toISOString();
+      expect(() => parseCheckout(value, op)).toThrow(
+        "BILLING_VARIANT_MAPPING_MISMATCH",
+      );
+    } finally {
+      clock.mockRestore();
+    }
+  });
+  it.each([
     "price",
     "currency",
     "discount",
