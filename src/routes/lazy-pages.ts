@@ -76,6 +76,11 @@ export const AuthCallbackPage = lazy(() =>
     default: m.AuthCallbackPage,
   })),
 );
+export const ConfirmSignupPage = lazy(() =>
+  import("../pages/public/confirm-signup").then((m) => ({
+    default: m.ConfirmSignupPage,
+  })),
+);
 export const ForgotPasswordPage = lazy(() =>
   import("../pages/public/forgot-password").then((m) => ({
     default: m.ForgotPasswordPage,

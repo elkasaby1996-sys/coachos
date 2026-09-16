@@ -34,6 +34,7 @@ import {
   CompareTrueCoachPage,
   CookiesPage,
   AuthCallbackPage,
+  ConfirmSignupPage,
   FaqPage,
   ForClientsPage,
   ForCoachesPage,
@@ -695,6 +696,7 @@ export function App() {
           {/* Public */}
           <Route path="/login" element={<LoginGate />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route path="/confirm-signup" element={<ConfirmSignupPage />} />
           <Route
             path="/auth/forgot-password"
             element={<ForgotPasswordPage />}
