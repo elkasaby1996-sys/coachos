@@ -254,6 +254,12 @@ export function buildCheckout(
     },
   };
 }
+function sameEpochSecond(left: string, right: string): boolean {
+  return (
+    Math.floor(Date.parse(left) / 1000) === Math.floor(Date.parse(right) / 1000)
+  );
+}
+
 export function parseCheckout(
   value: unknown,
   operation: CheckoutOperation,
@@ -264,6 +270,8 @@ export function parseCheckout(
       p = object(a.preview),
       opts = object(a.product_options);
     const expected = operation.mapping;
+    const expiresAt = timestamp(a.expires_at)!;
+    const expectedExpiresAt = timestamp(operation.attempt.expected_expires_at)!;
     if (
       d.type !== "checkouts" ||
       typeof d.id !== "string" ||
@@ -271,9 +279,8 @@ export function parseCheckout(
       providerId(a.store_id) !== expected.provider_store_id ||
       providerId(a.variant_id) !== expected.provider_variant_id ||
       a.test_mode !== (operation.attempt.environment === "test") ||
-      timestamp(a.expires_at) !==
-        timestamp(operation.attempt.expected_expires_at) ||
-      Date.parse(a.expires_at) <= Date.now() ||
+      !sameEpochSecond(expiresAt, expectedExpiresAt) ||
+      Date.parse(expiresAt) <= Date.now() ||
       p.currency !== "USD" ||
       p.subtotal !== expected.unit_amount_minor ||
       p.discount_total !== 0 ||
@@ -286,7 +293,7 @@ export function parseCheckout(
     return {
       id: d.id,
       url: hostedCheckoutUrl(a.url),
-      expiresAt: timestamp(a.expires_at)!,
+      expiresAt,
     };
   } catch {
     throw new BillingError("BILLING_VARIANT_MAPPING_MISMATCH", 502, true);

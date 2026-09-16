@@ -28,6 +28,8 @@ Receipt and success links are server-generated: `/pt-hub/settings/billing?checko
 
 There is no customer precreation. No customer endpoint is called. The first verified subscription purchase establishes the customer mapping.
 
+Lemon Squeezy normalizes Checkout expiry to whole-second precision. RepSync therefore requires equality at UTC epoch-second precision in provider validation, completion, and the ready-state constraint. There is no tolerance across a second boundary, even for a sub-second difference. The actual validated provider timestamp is retained; the expected local expiry remains unchanged. Provider expiry must still be in the future, and all other provider contract fields remain exact. Existing ambiguous attempts and billing history are not retried or rewritten by this precision fix.
+
 ## Reconciliation
 
 `billing_provider_customers`, `billing_provider_subscriptions` and `billing_provider_webhook_deliveries` retain commercial identity without customer PII or raw provider objects. Store and customer ownership, Product, Variant, Price, quantity, environment and subscription identity must match. Subscription updates cannot silently switch local plans.
