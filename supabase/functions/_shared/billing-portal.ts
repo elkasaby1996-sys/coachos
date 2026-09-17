@@ -1,4 +1,9 @@
-import { BillingError, boundedBody, object } from "./lemon-squeezy.ts";
+import {
+  BillingError,
+  boundedBody,
+  object,
+  providerId,
+} from "./lemon-squeezy.ts";
 import type { BillingDependencies } from "./billing-handlers.ts";
 
 export type PortalLinkPurpose = "manage_billing" | "update_payment_method";
@@ -72,13 +77,27 @@ export function validatePortalUrl(
   )
     throw invalid();
   const keys = Array.from(url.searchParams.keys());
+  const allowedKeys =
+    purpose === "manage_billing"
+      ? ["expires", "signature", "user"]
+      : ["expires", "signature"];
   if (
-    keys.some((key) => !["expires", "signature"].includes(key)) ||
+    keys.some((key) => !allowedKeys.includes(key)) ||
     url.searchParams.getAll("signature").length !== 1 ||
     !/^[a-f0-9]{64}$/i.test(url.searchParams.get("signature") ?? "") ||
-    url.searchParams.getAll("expires").length > 1
+    url.searchParams.getAll("expires").length > 1 ||
+    url.searchParams.getAll("user").length > 1
   )
     throw invalid();
+  // Provider-supplied capability data only; never an ownership/auth input.
+  const providerUser = url.searchParams.get("user");
+  if (providerUser !== null) {
+    try {
+      providerId(providerUser);
+    } catch {
+      throw invalid();
+    }
+  }
   const expires = url.searchParams.get("expires");
   let expiresAt: string | undefined;
   if (expires !== null) {

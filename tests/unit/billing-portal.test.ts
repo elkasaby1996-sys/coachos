@@ -26,6 +26,8 @@ const owner = "a0600000-0000-4000-8000-000000000001";
 const expiry = Math.floor(Date.now() / 1000) + 3600;
 const url = (path = "/billing", host = "fake.lemonsqueezy.com") =>
   `https://${host}${path}?expires=${expiry}&signature=${"a".repeat(64)}`;
+const providerUser = "60000";
+const urlWithUser = () => `${url()}&user=${providerUser}`;
 const link = {
   provider: "lemonsqueezy" as const,
   environment: "test" as const,
@@ -40,7 +42,7 @@ function fixture() {
     retrieveSubscriptionForPortal: vi.fn(async () => ({
       ...link,
       status: "past_due",
-      customerPortal: url(),
+      customerPortal: urlWithUser(),
       updatePaymentMethod: url("/subscription/3/payment-details"),
     })),
     createCheckout: vi.fn(),
@@ -93,6 +95,12 @@ describe("customer portal server boundary", () => {
         { p_owner: owner, p_environment: "test" },
       );
       expect(deps.log).not.toHaveBeenCalled();
+      expect(serviceRpc.mock.calls).toEqual(
+        Array.from({ length: 4 }, () => [
+          "get_billing_portal_subscription",
+          { p_owner: owner, p_environment: "test" },
+        ]),
+      );
     },
   );
   it.each(["non-owner", "client", "anonymous", "no-history"])(
@@ -125,6 +133,7 @@ describe("customer portal server boundary", () => {
     "variantId",
     "environment",
     "extra",
+    "user",
   ])("rejects extra %s", async (key) => {
     const input = { purpose: "manage_billing", [key]: "forged" };
     expect(portalLinkRequestSchema.safeParse(input).success).toBe(false);
@@ -176,13 +185,18 @@ describe("customer portal server boundary", () => {
   });
   it("maps unavailable provider and configuration safely", async () => {
     const { deps, provider } = fixture();
-    provider.retrieveSubscriptionForPortal.mockRejectedValue(new Error(url()));
+    provider.retrieveSubscriptionForPortal.mockRejectedValue(
+      new Error(urlWithUser()),
+    );
     expect(
       await (await handleCustomerPortalLink(request(), deps)).json(),
     ).toEqual({ code: "BILLING_PORTAL_RETRIEVAL_FAILED" });
     expect(
       JSON.stringify(vi.mocked(deps.log).mock.calls).includes("signature"),
     ).toBe(false);
+    expect(JSON.stringify(vi.mocked(deps.log).mock.calls)).not.toContain(
+      providerUser,
+    );
     deps.config = () => null;
     expect(
       await (await handleCustomerPortalLink(request(), deps)).json(),
@@ -208,6 +222,81 @@ describe("customer portal server boundary", () => {
   );
 });
 describe("signed URL validation and telemetry", () => {
+  it.each([undefined, "1", providerUser, String(Number.MAX_SAFE_INTEGER)])(
+    "accepts manage_billing with optional provider user %s, with or without expiry",
+    (user) => {
+      for (const withExpiry of [true, false]) {
+        const signed = new URL(url());
+        if (user !== undefined) signed.searchParams.set("user", user);
+        if (!withExpiry) signed.searchParams.delete("expires");
+        expect(
+          validatePortalUrl(
+            signed.toString(),
+            "manage_billing",
+            [signed.hostname],
+            "3",
+          ),
+        ).toEqual({
+          purpose: "manage_billing",
+          portalUrl: signed.toString(),
+          ...(withExpiry
+            ? { expiresAt: new Date(expiry * 1000).toISOString() }
+            : {}),
+        });
+      }
+    },
+  );
+  it.each([
+    "",
+    "abc",
+    "0",
+    "-1",
+    "01",
+    "1.5",
+    "1e3",
+    "+1",
+    " 1",
+    "1 ",
+    "9007199254740992",
+  ])(
+    "rejects malformed provider user %j with a safe portal error",
+    async (user) => {
+      const { deps, provider } = fixture();
+      const signed = new URL(url());
+      signed.searchParams.set("user", user);
+      provider.retrieveSubscriptionForPortal.mockResolvedValue({
+        ...link,
+        status: "past_due",
+        customerPortal: signed.toString(),
+        updatePaymentMethod: url("/subscription/3/payment-details"),
+      });
+      const response = await handleCustomerPortalLink(request(), deps);
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({
+        code: "BILLING_PORTAL_URL_INVALID",
+      });
+      expect(response.headers.get("cache-control")).toBe("no-store, private");
+      expect(response.headers.get("pragma")).toBe("no-cache");
+      expect(vi.mocked(deps.log).mock.calls).toEqual([
+        [
+          {
+            code: "BILLING_PORTAL_URL_INVALID",
+            processingStatus: "failed",
+          },
+        ],
+      ]);
+    },
+  );
+  it("keeps update_payment_method strict even for a valid provider user", () => {
+    expect(() =>
+      validatePortalUrl(
+        `${url("/subscription/3/payment-details")}&user=${providerUser}`,
+        "update_payment_method",
+        ["fake.lemonsqueezy.com"],
+        "3",
+      ),
+    ).toThrow("BILLING_PORTAL_URL_INVALID");
+  });
   it.each([
     "protocol",
     "host",
@@ -215,6 +304,10 @@ describe("signed URL validation and telemetry", () => {
     "expired",
     "signature",
     "duplicate",
+    "duplicate-user",
+    "duplicate-expires",
+    "unknown",
+    "missing-signature",
     "path",
     "fragment",
     "port",
@@ -224,7 +317,7 @@ describe("signed URL validation and telemetry", () => {
     "missing",
   ])("rejects %s without exposing URL", (kind) => {
     let value: unknown = url();
-    const u = new URL(url());
+    const u = new URL(urlWithUser());
     if (kind === "protocol") u.protocol = "http:";
     if (kind === "host") u.hostname = "fake.lemonsqueezy.com.evil.test";
     if (kind === "credentials") u.username = "private";
@@ -232,6 +325,11 @@ describe("signed URL validation and telemetry", () => {
     if (kind === "signature") u.searchParams.set("signature", "bad");
     if (kind === "duplicate")
       u.searchParams.append("signature", "b".repeat(64));
+    if (kind === "duplicate-user") u.searchParams.append("user", providerUser);
+    if (kind === "duplicate-expires")
+      u.searchParams.append("expires", String(expiry));
+    if (kind === "unknown") u.searchParams.set("extra", "value");
+    if (kind === "missing-signature") u.searchParams.delete("signature");
     if (kind === "path") u.pathname = "/billing/3/update";
     if (kind === "fragment") u.hash = "secret";
     if (kind === "port") u.port = "8443";
@@ -299,30 +397,37 @@ describe("signed URL validation and telemetry", () => {
       "updatePaymentMethod",
     ]);
   });
-  it("scrubs messages, exception strings, breadcrumbs, console and structured logs", () => {
-    const signed = url(
-      "/subscription/3/payment-details",
-      "billing.example.test",
-    );
-    const value = {
-      message: `Failure ${signed}`,
-      exception: { values: [{ value: signed }] },
-      breadcrumbs: [{ category: "console", message: signed }],
-      attributes: { url: signed, signature: "a".repeat(64) },
-    };
-    const clean = JSON.stringify(redactHostedPaymentUrls(value));
-    expect(/signature.*a{64}|billing\.example|expires=/.test(clean)).toBe(
-      false,
-    );
-    expect(
-      JSON.stringify(safePortalError({ message: signed })).includes(
-        "signature",
-      ),
-    ).toBe(false);
-    expect(readFileSync("src/lib/sentry.ts", "utf8")).toContain(
-      "beforeSendLog: (log) => redactHostedPaymentUrls(log)",
-    );
-  });
+  it.each(["manage_billing", "update_payment_method"])(
+    "scrubs %s messages, exception strings, breadcrumbs, console and structured logs",
+    (purpose) => {
+      const signed =
+        purpose === "manage_billing"
+          ? urlWithUser().replace(
+              "fake.lemonsqueezy.com",
+              "billing.example.test",
+            )
+          : url("/subscription/3/payment-details", "billing.example.test");
+      const value = {
+        message: `Failure ${signed}`,
+        exception: { values: [{ value: signed }] },
+        breadcrumbs: [{ category: "console", message: signed }],
+        attributes: { url: signed, signature: "a".repeat(64) },
+      };
+      const clean = JSON.stringify(redactHostedPaymentUrls(value));
+      expect(clean).not.toContain(providerUser);
+      expect(/signature.*a{64}|billing\.example|expires=/.test(clean)).toBe(
+        false,
+      );
+      expect(
+        JSON.stringify(safePortalError({ message: signed })).includes(
+          "signature",
+        ),
+      ).toBe(false);
+      expect(readFileSync("src/lib/sentry.ts", "utf8")).toContain(
+        "beforeSendLog: (log) => redactHostedPaymentUrls(log)",
+      );
+    },
+  );
 });
 describe("portal return and isolation", () => {
   const current = {
