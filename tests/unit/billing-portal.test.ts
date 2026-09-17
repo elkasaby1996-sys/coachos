@@ -12,7 +12,10 @@ import {
   parsePortalSubscription,
 } from "../../supabase/functions/_shared/lemon-squeezy";
 import type { BillingDependencies } from "../../supabase/functions/_shared/billing-handlers";
-import { portalLinkRequestSchema } from "../../src/features/billing/portal-contracts";
+import {
+  customerPortalLinkResponseSchema,
+  portalLinkRequestSchema,
+} from "../../src/features/billing/portal-contracts";
 import { safePortalError } from "../../src/features/billing/portal-errors";
 import { redactHostedPaymentUrls } from "../../src/lib/redact-hosted-payment-urls";
 import {
@@ -81,11 +84,7 @@ describe("customer portal server boundary", () => {
       expect(res.headers.get("cache-control")).toBe("no-store, private");
       expect(res.headers.get("pragma")).toBe("no-cache");
       const data = await res.json();
-      expect(Object.keys(data).sort()).toEqual([
-        "expiresAt",
-        "portalUrl",
-        "purpose",
-      ]);
+      expect(Object.keys(data).sort()).toEqual(["portalUrl", "purpose"]);
       expect(data.purpose).toBe(purpose);
       expect(typeof data.portalUrl).toBe("string");
       await handleCustomerPortalLink(request({ purpose }), deps);
@@ -134,6 +133,8 @@ describe("customer portal server boundary", () => {
     "environment",
     "extra",
     "user",
+    "host",
+    "destination",
   ])("rejects extra %s", async (key) => {
     const input = { purpose: "manage_billing", [key]: "forged" };
     expect(portalLinkRequestSchema.safeParse(input).success).toBe(false);
@@ -170,6 +171,47 @@ describe("customer portal server boundary", () => {
     expect(
       await (await handleCustomerPortalLink(request(), deps)).json(),
     ).toEqual({ code: "BILLING_PORTAL_IDENTITY_MISMATCH" });
+  });
+  it("never turns repeated provider fields into ownership or routing inputs", async () => {
+    const { deps, provider, serviceRpc } = fixture();
+    const value = `${urlWithUser()}&user=another&subscription_id=999&environment=live&redirect=https%3A%2F%2Fother.example.test`;
+    provider.retrieveSubscriptionForPortal.mockResolvedValue({
+      ...link,
+      status: "past_due",
+      customerPortal: value,
+      updatePaymentMethod: url("/subscription/3/payment-details"),
+    });
+    const response = await handleCustomerPortalLink(request(), deps);
+    expect(await response.json()).toEqual({
+      purpose: "manage_billing",
+      portalUrl: value,
+    });
+    expect(serviceRpc.mock.calls).toEqual(
+      Array.from({ length: 2 }, () => [
+        "get_billing_portal_subscription",
+        { p_owner: owner, p_environment: "test" },
+      ]),
+    );
+    expect(provider.retrieveSubscriptionForPortal).toHaveBeenCalledWith("3");
+    expect(deps.log).not.toHaveBeenCalled();
+  });
+  it("rejects a failed post-retrieval owner recheck without returning capability data", async () => {
+    const { deps, serviceRpc } = fixture();
+    serviceRpc
+      .mockResolvedValueOnce({ ...link })
+      .mockRejectedValueOnce(
+        new BillingError("BILLING_PORTAL_OWNER_REQUIRED", 403),
+      );
+    const response = await handleCustomerPortalLink(request(), deps);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      code: "BILLING_PORTAL_OWNER_REQUIRED",
+    });
+    expect(response.headers.get("cache-control")).toBe("no-store, private");
+    expect(response.headers.get("pragma")).toBe("no-cache");
+    expect(vi.mocked(deps.log).mock.calls).toEqual([
+      [{ code: "BILLING_PORTAL_OWNER_REQUIRED", processingStatus: "failed" }],
+    ]);
   });
   it("does not claim payment recovery for expired history", async () => {
     const { deps, serviceRpc } = fixture();
@@ -222,150 +264,148 @@ describe("customer portal server boundary", () => {
   );
 });
 describe("signed URL validation and telemetry", () => {
-  it.each([undefined, "1", providerUser, String(Number.MAX_SAFE_INTEGER)])(
-    "accepts manage_billing with optional provider user %s, with or without expiry",
-    (user) => {
-      for (const withExpiry of [true, false]) {
-        const signed = new URL(url());
-        if (user !== undefined) signed.searchParams.set("user", user);
-        if (!withExpiry) signed.searchParams.delete("expires");
-        expect(
-          validatePortalUrl(
-            signed.toString(),
-            "manage_billing",
-            [signed.hostname],
+  const queryShapes = [
+    ["expires/signature", `?expires=${expiry}&signature=${"a".repeat(64)}`],
+    [
+      "expires/user/signature",
+      `?expires=${expiry}&user=60000&signature=${"a".repeat(64)}`,
+    ],
+    [
+      "future fields and encoding",
+      "?token=opaque%2fValue+Value%20&future[]=one&empty=&flag",
+    ],
+    ["different order", "?signature=opaque&user=60000&expires=1"],
+    [
+      "repeated fields",
+      "?user=one&user=two&signature=a&signature=b&expires=0&expires=never",
+    ],
+    [
+      "routing-looking fields",
+      "?redirect=https%3A%2F%2Fother.example.test&environment=live&subscription=999",
+    ],
+    ["no query", ""],
+    ["empty query", "?"],
+  ];
+  describe.each([
+    ["manage_billing", "/billing"],
+    ["update_payment_method", "/subscription/3/payment-details"],
+  ] as const)("%s provider capability", (purpose, path) => {
+    it.each(queryShapes)(
+      "preserves %s exactly, including a single trailing slash",
+      (_name, query) => {
+        for (const trailing of ["", "/"]) {
+          const value = `https://fake.lemonsqueezy.com${path}${trailing}${query}`;
+          const result = validatePortalUrl(
+            value,
+            purpose,
+            ["fake.lemonsqueezy.com"],
             "3",
-          ),
-        ).toEqual({
-          purpose: "manage_billing",
-          portalUrl: signed.toString(),
-          ...(withExpiry
-            ? { expiresAt: new Date(expiry * 1000).toISOString() }
-            : {}),
-        });
-      }
-    },
-  );
+          );
+          expect(result).toEqual({ purpose, portalUrl: value });
+          expect(customerPortalLinkResponseSchema.parse(result)).toEqual(
+            result,
+          );
+        }
+      },
+    );
+    it.each(["fake.lemonsqueezy.com", "billing.example.test"])(
+      "accepts exact allowed host %s",
+      (host) => {
+        const value = `https://${host}${path}`;
+        expect(
+          validatePortalUrl(value, purpose, portalHosts(host), "3").portalUrl,
+        ).toBe(value);
+      },
+    );
+    it.each([
+      ["HTTP", "http://fake.lemonsqueezy.com"],
+      ["username", "https://private@fake.lemonsqueezy.com"],
+      ["password", "https://:private@fake.lemonsqueezy.com"],
+      ["empty credentials", "https://@fake.lemonsqueezy.com"],
+      ["port", "https://fake.lemonsqueezy.com:8443"],
+      ["default port", "https://fake.lemonsqueezy.com:443"],
+      ["padded default port", "https://fake.lemonsqueezy.com:0443"],
+      ["empty port", "https://fake.lemonsqueezy.com:"],
+      ["wrong host", "https://evil.test"],
+      ["host suffix", "https://fake.lemonsqueezy.com.evil.test"],
+      ["unapproved subdomain", "https://child.fake.lemonsqueezy.com"],
+    ])("rejects %s", (_name, origin) => {
+      expect(() =>
+        validatePortalUrl(
+          `${origin}${path}?token=opaque`,
+          purpose,
+          ["fake.lemonsqueezy.com"],
+          "3",
+        ),
+      ).toThrow(BillingError);
+    });
+    it.each(["#private", "#"])("rejects fragment %s", (fragment) => {
+      expect(() =>
+        validatePortalUrl(
+          `https://fake.lemonsqueezy.com${path}?token=opaque${fragment}`,
+          purpose,
+          ["fake.lemonsqueezy.com"],
+          "3",
+        ),
+      ).toThrow("BILLING_PORTAL_URL_INVALID");
+    });
+  });
   it.each([
-    "",
-    "abc",
-    "0",
-    "-1",
-    "01",
-    "1.5",
-    "1e3",
-    "+1",
-    " 1",
-    "1 ",
-    "9007199254740992",
-  ])(
-    "rejects malformed provider user %j with a safe portal error",
-    async (user) => {
-      const { deps, provider } = fixture();
-      const signed = new URL(url());
-      signed.searchParams.set("user", user);
-      provider.retrieveSubscriptionForPortal.mockResolvedValue({
-        ...link,
-        status: "past_due",
-        customerPortal: signed.toString(),
-        updatePaymentMethod: url("/subscription/3/payment-details"),
-      });
-      const response = await handleCustomerPortalLink(request(), deps);
-      expect(response.status).toBe(503);
-      expect(await response.json()).toEqual({
-        code: "BILLING_PORTAL_URL_INVALID",
-      });
-      expect(response.headers.get("cache-control")).toBe("no-store, private");
-      expect(response.headers.get("pragma")).toBe("no-cache");
-      expect(vi.mocked(deps.log).mock.calls).toEqual([
-        [
-          {
-            code: "BILLING_PORTAL_URL_INVALID",
-            processingStatus: "failed",
-          },
-        ],
-      ]);
-    },
-  );
-  it("keeps update_payment_method strict even for a valid provider user", () => {
+    ["manage_billing", "/billing/anything"],
+    ["manage_billing", "/billing/3/update"],
+    ["manage_billing", "/billing//"],
+    ["manage_billing", "/%62illing"],
+    ["manage_billing", "/billing%2f"],
+    ["manage_billing", "/billing/%252e%252e/other"],
+    ["manage_billing", "/billing/%2e%2e/other"],
+    ["manage_billing", "/unrelated"],
+    ["update_payment_method", "/subscription/4/payment-details"],
+    ["update_payment_method", "/subscription/4/payment-details/"],
+    ["update_payment_method", "/subscription/%33/payment-details"],
+    ["update_payment_method", "/subscription/3/payment-details/anything"],
+    ["update_payment_method", "/subscription/3/payment-details//"],
+    ["update_payment_method", "/billing"],
+  ] as const)("rejects %s path %s", (purpose, path) => {
     expect(() =>
       validatePortalUrl(
-        `${url("/subscription/3/payment-details")}&user=${providerUser}`,
-        "update_payment_method",
+        `https://fake.lemonsqueezy.com${path}?token=opaque`,
+        purpose,
         ["fake.lemonsqueezy.com"],
         "3",
       ),
     ).toThrow("BILLING_PORTAL_URL_INVALID");
   });
   it.each([
-    "protocol",
-    "host",
-    "credentials",
-    "expired",
-    "signature",
-    "duplicate",
-    "duplicate-user",
-    "duplicate-expires",
-    "unknown",
-    "missing-signature",
-    "path",
-    "fragment",
-    "port",
-    "redirect",
-    "encoded-path",
-    "empty",
-    "missing",
-  ])("rejects %s without exposing URL", (kind) => {
-    let value: unknown = url();
-    const u = new URL(urlWithUser());
-    if (kind === "protocol") u.protocol = "http:";
-    if (kind === "host") u.hostname = "fake.lemonsqueezy.com.evil.test";
-    if (kind === "credentials") u.username = "private";
-    if (kind === "expired") u.searchParams.set("expires", "1");
-    if (kind === "signature") u.searchParams.set("signature", "bad");
-    if (kind === "duplicate")
-      u.searchParams.append("signature", "b".repeat(64));
-    if (kind === "duplicate-user") u.searchParams.append("user", providerUser);
-    if (kind === "duplicate-expires")
-      u.searchParams.append("expires", String(expiry));
-    if (kind === "unknown") u.searchParams.set("extra", "value");
-    if (kind === "missing-signature") u.searchParams.delete("signature");
-    if (kind === "path") u.pathname = "/billing/3/update";
-    if (kind === "fragment") u.hash = "secret";
-    if (kind === "port") u.port = "8443";
-    if (kind === "redirect")
-      u.searchParams.set("redirect", "https://evil.test");
-    if (kind === "encoded-path") u.pathname = "/%62illing";
-    value = kind === "empty" ? "" : kind === "missing" ? null : u.toString();
-    let code = "";
-    try {
-      validatePortalUrl(
-        value,
-        "manage_billing",
-        ["fake.lemonsqueezy.com"],
-        "3",
-      );
-    } catch (error) {
-      code = (error as BillingError).code;
-    }
-    expect(code.startsWith("BILLING_PORTAL_")).toBe(true);
-  });
-  it("accepts exact provider/custom host and optional valid expiry", () => {
-    for (const host of ["fake.lemonsqueezy.com", "billing.example.test"]) {
-      const result = validatePortalUrl(
-        url("/billing", host),
-        "manage_billing",
-        portalHosts(host),
-        "3",
-      );
-      expect(result.expiresAt).toBeDefined();
-      const noExpiry = new URL(url("/billing", host));
-      noExpiry.searchParams.delete("expires");
-      expect(
-        validatePortalUrl(noExpiry.toString(), "manage_billing", [host], "3")
-          .expiresAt,
-      ).toBeUndefined();
-    }
+    null,
+    undefined,
+    "",
+    123,
+    {},
+    [],
+    "not a URL",
+    " https://fake.lemonsqueezy.com/billing",
+    "https://fake.lemonsqueezy.com/billing\\other",
+    "https://fake.lemonsqueezy.com/billing?token=" + "a".repeat(4096),
+  ])(
+    "rejects missing, non-string, malformed or oversized input case %#",
+    (value) => {
+      expect(() =>
+        validatePortalUrl(
+          value,
+          "manage_billing",
+          ["fake.lemonsqueezy.com"],
+          "3",
+        ),
+      ).toThrow(BillingError);
+    },
+  );
+  it("accepts the maximum bounded URL length", () => {
+    const prefix = "https://fake.lemonsqueezy.com/billing?token=";
+    const value = prefix + "a".repeat(4096 - prefix.length);
+    expect(
+      validatePortalUrl(value, "manage_billing", ["fake.lemonsqueezy.com"], "3")
+        .portalUrl,
+    ).toBe(value);
     expect(() => portalHosts("*.lemonsqueezy.com")).toThrow();
   });
   it("adapter returns only minimal identity and selected URL fields", () => {
@@ -396,6 +436,29 @@ describe("signed URL validation and telemetry", () => {
       "subscription_id",
       "updatePaymentMethod",
     ]);
+  });
+  it.each([
+    "/billing",
+    "/billing/",
+    "/subscription/3/payment-details",
+    "/subscription/3/payment-details/",
+  ])("redacts opaque or absent query on custom-domain path %s", (path) => {
+    for (const query of [
+      "",
+      "?token=opaque-private-value&future=value&future=second",
+    ]) {
+      const capability = `https://billing.example.test${path}${query}`;
+      const clean = redactHostedPaymentUrls({
+        message: capability,
+        breadcrumbs: [{ message: capability }],
+        attributes: { portalUrl: capability },
+        exception: { values: [{ value: capability }] },
+      });
+      expect(JSON.stringify(clean)).not.toMatch(
+        /billing\.example|opaque-private-value|future=/,
+      );
+      expect(JSON.stringify(clean)).toContain("[redacted payment URL]");
+    }
   });
   it.each(["manage_billing", "update_payment_method"])(
     "scrubs %s messages, exception strings, breadcrumbs, console and structured logs",

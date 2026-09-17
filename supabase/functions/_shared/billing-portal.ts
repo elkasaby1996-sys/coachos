@@ -1,9 +1,4 @@
-import {
-  BillingError,
-  boundedBody,
-  object,
-  providerId,
-} from "./lemon-squeezy.ts";
+import { BillingError, boundedBody, object } from "./lemon-squeezy.ts";
 import type { BillingDependencies } from "./billing-handlers.ts";
 
 export type PortalLinkPurpose = "manage_billing" | "update_payment_method";
@@ -46,7 +41,6 @@ export function validatePortalUrl(
   purpose: PortalLinkPurpose,
   hosts: string[],
   subscriptionId: string,
-  now = Date.now(),
 ) {
   if (value == null || value === "")
     throw new BillingError("BILLING_PORTAL_URL_MISSING", 503);
@@ -59,7 +53,12 @@ export function validatePortalUrl(
   } catch {
     throw invalid();
   }
+  // URL.port hides an explicit default :443; inspect the original authority too.
+  const authority = value.match(/^https:\/\/([^/?#]+)/i)?.[1];
   if (
+    !authority ||
+    /[:@]/.test(authority) ||
+    value.includes("#") ||
     url.protocol !== "https:" ||
     url.username ||
     url.password ||
@@ -69,49 +68,15 @@ export function validatePortalUrl(
     throw invalid();
   if (!hosts.includes(url.hostname))
     throw new BillingError("BILLING_PORTAL_HOST_NOT_ALLOWED", 503);
-  if (
-    url.pathname !==
-    (purpose === "manage_billing"
-      ? "/billing"
-      : `/subscription/${subscriptionId}/payment-details`)
-  )
-    throw invalid();
-  const keys = Array.from(url.searchParams.keys());
-  const allowedKeys =
+  const path =
     purpose === "manage_billing"
-      ? ["expires", "signature", "user"]
-      : ["expires", "signature"];
-  if (
-    keys.some((key) => !allowedKeys.includes(key)) ||
-    url.searchParams.getAll("signature").length !== 1 ||
-    !/^[a-f0-9]{64}$/i.test(url.searchParams.get("signature") ?? "") ||
-    url.searchParams.getAll("expires").length > 1 ||
-    url.searchParams.getAll("user").length > 1
-  )
-    throw invalid();
-  // Provider-supplied capability data only; never an ownership/auth input.
-  const providerUser = url.searchParams.get("user");
-  if (providerUser !== null) {
-    try {
-      providerId(providerUser);
-    } catch {
-      throw invalid();
-    }
-  }
-  const expires = url.searchParams.get("expires");
-  let expiresAt: string | undefined;
-  if (expires !== null) {
-    const ms = Number(expires) * 1000;
-    if (
-      !/^[1-9][0-9]{0,12}$/.test(expires) ||
-      !Number.isSafeInteger(ms) ||
-      ms <= now ||
-      ms > 8.64e15
-    )
-      throw invalid();
-    expiresAt = new Date(ms).toISOString();
-  }
-  return { purpose, portalUrl: value, ...(expiresAt ? { expiresAt } : {}) };
+      ? "/billing"
+      : `/subscription/${subscriptionId}/payment-details`;
+  if (url.pathname !== path && url.pathname !== `${path}/`) throw invalid();
+  // Only called after authenticated provider retrieval and canonical identity rechecks.
+  // The provider owns the query, including signature/expiry semantics. Never parse,
+  // reconstruct, or use it for RepSync authorization, ownership, or routing.
+  return { purpose, portalUrl: value };
 }
 const headers = {
   "Access-Control-Allow-Origin": "*",
