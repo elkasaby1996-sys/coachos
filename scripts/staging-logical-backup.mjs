@@ -2,6 +2,11 @@ import { createHash } from "node:crypto";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  filterManagedCopyBlocks,
+  managedExclusionArgument,
+  validatePortableData,
+} from "./staging-logical-backup-data.mjs";
 
 export const sha256 = (bytes) =>
   createHash("sha256").update(bytes).digest("hex");
@@ -67,9 +72,11 @@ export function writeBackupEvidence(env, directory = "backup") {
   ) {
     throw new Error("Invalid backup run metadata.");
   }
+  let portability;
   const files = ["roles.sql", "schema.sql", "data.sql"].map((filename) => {
     const bytes = readFileSync(join(directory, filename));
     if (!bytes.length) throw new Error("A required logical dump is empty.");
+    if (filename === "data.sql") portability = validatePortableData(bytes);
     return { filename, sha256: sha256(bytes), byteLength: bytes.length };
   });
   writeFileSync(
@@ -77,7 +84,7 @@ export function writeBackupEvidence(env, directory = "backup") {
     files.map((f) => `${f.sha256}  ${f.filename}\n`).join(""),
   );
   const evidence = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     environment: "staging",
     commitSha: env.GITHUB_SHA,
     githubRunId: env.GITHUB_RUN_ID,
@@ -85,6 +92,7 @@ export function writeBackupEvidence(env, directory = "backup") {
     createdAt: new Date().toISOString(),
     projectRefSha256: sha256(staging),
     files,
+    ...portability,
     storageObjectsIncluded: false,
     remoteMutationPerformed: false,
   };
@@ -120,7 +128,15 @@ if (
   try {
     if (process.argv[2] === "validate") validateBackupEnvironment(process.env);
     else if (process.argv[2] === "evidence") writeBackupEvidence(process.env);
-    else throw new Error("Unsupported mode.");
+    else if (process.argv[2] === "exclusions")
+      console.log(managedExclusionArgument());
+    else if (process.argv[2] === "portable-copy" && process.argv.length === 5) {
+      const [, , , source, destination] = process.argv;
+      const bytes = filterManagedCopyBlocks(readFileSync(source));
+      // Exclusive creation protects the source and any existing derivative,
+      // including aliases/symlinks. SQL stays private and outside stdout.
+      writeFileSync(destination, bytes, { flag: "wx", mode: 0o600 });
+    } else throw new Error("Unsupported mode.");
   } catch {
     console.error(
       "Staging backup validation or evidence generation failed; details suppressed.",
