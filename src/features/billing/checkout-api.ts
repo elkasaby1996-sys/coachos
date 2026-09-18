@@ -5,6 +5,7 @@ import {
   type CheckoutRequest,
 } from "./contracts";
 import { safeBillingError } from "./checkout-errors";
+import { billingBrowserProvider } from "./providers/active-provider";
 export async function createBillingCheckout(input: CheckoutRequest) {
   const parsed = checkoutRequestSchema.safeParse(input);
   if (!parsed.success)
@@ -12,7 +13,7 @@ export async function createBillingCheckout(input: CheckoutRequest) {
   try {
     const { supabase } = await import("../../lib/supabase");
     const { data, error } = await supabase.functions.invoke(
-      "billing-create-lemon-squeezy-checkout",
+      billingBrowserProvider.checkoutFunction,
       { body: parsed.data },
     );
     if (error) {

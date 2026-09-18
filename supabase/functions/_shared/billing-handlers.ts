@@ -11,6 +11,7 @@ import {
   type CheckoutOperation,
   type Environment,
 } from "./lemon-squeezy.ts";
+import type { BillingAdapter } from "./billing-provider.ts";
 
 export type Rpc = (name: string, args: Record<string, unknown>) => Promise<any>;
 export type BillingConfig = {
@@ -18,6 +19,8 @@ export type BillingConfig = {
   appBaseUrl: string;
   webhookSecret: string;
   provider: BillingProvider;
+  /** Neutral port for new callers; provider preserves the historical SQL proof contract. */
+  adapter?: BillingAdapter;
   portalAllowedHosts?: string;
 };
 export type BillingDependencies = {
