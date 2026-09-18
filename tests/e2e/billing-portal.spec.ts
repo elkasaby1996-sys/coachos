@@ -1,3 +1,4 @@
+import { configureTestBillingPorts } from "../unit/helpers/billing-test-ports";
 import { expect, test, type Page, type BrowserContext } from "@playwright/test";
 import { seedEntitlementCoach } from "./utils/account-entitlement-seeds";
 import { seedAuthSmokeStates } from "./utils/auth-seeds";
@@ -139,38 +140,39 @@ async function fixture(
               local_status: summary.status,
             };
           },
-          config: () => ({
-            environment: "test",
-            webhookSecret: "fake",
-            appBaseUrl: "https://local.test",
-            portalAllowedHosts: "portal.example.test",
-            provider: {
-              createCheckout: async () => {
-                throw new Error("unused");
+          config: () =>
+            configureTestBillingPorts({
+              environment: "test",
+              webhookSecret: "fake",
+              appBaseUrl: "https://local.test",
+              portalAllowedHosts: "portal.example.test",
+              provider: {
+                createCheckout: async () => {
+                  throw new Error("unused");
+                },
+                retrieveSubscription: async () => {
+                  throw new Error("unused");
+                },
+                retrieveSubscriptionForPortal: async () => {
+                  const capability = (path: string) =>
+                    `https://portal.example.test${path}?expires=${Math.floor(Date.now() / 1000) + 3600}&signature=${"a".repeat(64)}`;
+                  if (failed) throw new Error(capability("/billing"));
+                  return {
+                    provider: "lemonsqueezy",
+                    environment: "test",
+                    store_id: "1",
+                    customer_id: "2",
+                    subscription_id: "3",
+                    status:
+                      summary.status === "grace" ? "unpaid" : summary.status!,
+                    customerPortal: capability("/billing"),
+                    updatePaymentMethod: capability(
+                      "/subscription/3/payment-details",
+                    ),
+                  };
+                },
               },
-              retrieveSubscription: async () => {
-                throw new Error("unused");
-              },
-              retrieveSubscriptionForPortal: async () => {
-                const capability = (path: string) =>
-                  `https://portal.example.test${path}?expires=${Math.floor(Date.now() / 1000) + 3600}&signature=${"a".repeat(64)}`;
-                if (failed) throw new Error(capability("/billing"));
-                return {
-                  provider: "lemonsqueezy",
-                  environment: "test",
-                  store_id: "1",
-                  customer_id: "2",
-                  subscription_id: "3",
-                  status:
-                    summary.status === "grace" ? "unpaid" : summary.status!,
-                  customerPortal: capability("/billing"),
-                  updatePaymentMethod: capability(
-                    "/subscription/3/payment-details",
-                  ),
-                };
-              },
-            },
-          }),
+            }),
           log: (tags) =>
             telemetry.push(JSON.stringify(redactHostedPaymentUrls(tags))),
         },
@@ -291,23 +293,24 @@ test("client cannot open billing portal", async ({ page, context }) => {
           serviceRpc: async () => {
             throw new BillingError("BILLING_PORTAL_OWNER_REQUIRED", 403);
           },
-          config: () => ({
-            environment: "test",
-            webhookSecret: "fake",
-            appBaseUrl: "https://local.test",
-            portalAllowedHosts: "portal.example.test",
-            provider: {
-              createCheckout: async () => {
-                throw new Error("unused");
+          config: () =>
+            configureTestBillingPorts({
+              environment: "test",
+              webhookSecret: "fake",
+              appBaseUrl: "https://local.test",
+              portalAllowedHosts: "portal.example.test",
+              provider: {
+                createCheckout: async () => {
+                  throw new Error("unused");
+                },
+                retrieveSubscription: async () => {
+                  throw new Error("unused");
+                },
+                retrieveSubscriptionForPortal: async () => {
+                  throw new Error("must not retrieve");
+                },
               },
-              retrieveSubscription: async () => {
-                throw new Error("unused");
-              },
-              retrieveSubscriptionForPortal: async () => {
-                throw new Error("must not retrieve");
-              },
-            },
-          }),
+            }),
         },
       );
       await route.fulfill({
