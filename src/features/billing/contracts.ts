@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PUBLIC_PLAN_KEYS } from "../commercial-catalogue/contracts";
+import { billingBrowserProvider } from "./providers/active-provider";
 
 export const checkoutRequestSchema = z.strictObject({
   planKey: z.enum(PUBLIC_PLAN_KEYS),
@@ -7,18 +8,9 @@ export const checkoutRequestSchema = z.strictObject({
   operationId: z.uuid(),
 });
 export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
-export const hostedCheckoutUrlSchema = z.url().refine((value) => {
-  const u = new URL(value);
-  return (
-    u.protocol === "https:" &&
-    /^[a-z0-9-]+\.lemonsqueezy\.com$/.test(u.hostname) &&
-    !u.username &&
-    !u.password &&
-    !u.port &&
-    !u.hash &&
-    u.pathname.startsWith("/checkout/")
-  );
-});
+export const hostedCheckoutUrlSchema = z
+  .url()
+  .refine(billingBrowserProvider.acceptsCheckoutUrl);
 export const checkoutResponseSchema = z.strictObject({
   checkoutUrl: hostedCheckoutUrlSchema,
   checkoutAttemptId: z.uuid(),
