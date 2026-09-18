@@ -53,9 +53,10 @@ jobs:
           umask 077
           mkdir -p backup
           trap 'echo "Logical dump failed; raw output suppressed."' ERR
+          exclusions="$(node scripts/staging-logical-backup.mjs exclusions)"
           supabase db dump --db-url "$STAGING_SUPABASE_DB_URL" -f backup/roles.sql --role-only > /dev/null 2>&1
           supabase db dump --db-url "$STAGING_SUPABASE_DB_URL" -f backup/schema.sql > /dev/null 2>&1
-          supabase db dump --db-url "$STAGING_SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only > /dev/null 2>&1
+          supabase db dump --db-url "$STAGING_SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only --exclude "$exclusions" > /dev/null 2>&1
 
       - name: Generate sanitized evidence and hashes
         run: node scripts/staging-logical-backup.mjs evidence

@@ -44,6 +44,7 @@ import {
   parseMigrationList,
 } from "../../scripts/staging-commercial-apply.mjs";
 import { guardedArgs } from "../../scripts/supabase-remote-guard.mjs";
+import { writeBackupEvidence } from "../../scripts/staging-logical-backup.mjs";
 
 const manifest = readJson("config/staging-commercial-certification.json");
 const mappings = readJson("config/staging-commercial-provider.fake.json");
@@ -526,73 +527,146 @@ describe("apply safety and workflow contract", () => {
     ).toEqual([versions[0]]);
     expect(() => parseMigrationList("unexpected private output")).toThrow();
   });
-  it("binds separate authorization to commit, target, manifest, auth and actual normalized test mappings", () => {
-    const normalized = clone(mappings);
-    normalized.mappings.forEach((m: any) => {
-      for (const k of ["storeRef", "productRef", "variantRef", "priceRef"])
-        m[k] = "sha256:" + sha256(m[k]);
-    });
-    const a = {
-      reviewedCommit: commit,
-      manifestSha256: sha256(JSON.stringify(manifest)),
-      projectSha256: sha256(project),
-      originSha256: sha256(inputs.origin),
-      approvedRemoteVersions: [],
-      backupEvidenceSha256: "b".repeat(64),
-      auth: {
-        siteUrl: inputs.origin,
-        redirectUrls: [inputs.origin + "/auth/callback"],
-        signupEnabled: true,
-        confirmationsEnabled: true,
-      },
-      providerMappings: normalized,
-      remoteSecretNamesPresent: manifest.requiredSecretNames,
-      providerEnvironment: "test",
-      billingAppOrigin: inputs.origin,
-      portalAllowedHosts: ["test-store.lemonsqueezy.com"],
-      portalControlsReviewed: true,
-      webhookTestStoreReviewed: true,
-      rollbackReviewed: true,
-    };
-    expect(() =>
-      validateApplyAuthorization(a, manifest, inputs, commit),
-    ).not.toThrow();
-    expect(() =>
-      validateApplyAuthorization(
-        { ...a, providerMappings: mappings },
-        manifest,
-        inputs,
-        commit,
-      ),
-    ).toThrow("FAKE_PROVIDER_PROOF_BLOCKED");
-    expect(() =>
-      validateApplyAuthorization(
-        { ...a, reviewedCommit: "b".repeat(40) },
-        manifest,
-        inputs,
-        commit,
-      ),
-    ).toThrow();
-    expect(() =>
-      validateApplyAuthorization(
+  it.each([1, 2])(
+    "binds a schema-v%s backup digest without relaxing authorization checks",
+    (backupVersion) => {
+      const directory = mkdtempSync(join(tmpdir(), "cert-backup-"));
+      tempDirs.push(directory);
+      for (const filename of ["roles.sql", "schema.sql", "data.sql"])
+        writeFileSync(
+          join(directory, filename),
+          filename === "data.sql"
+            ? "COPY auth.users (id) FROM stdin;\n\\.\nCOPY public.billing_accounts (id) FROM stdin;\n\\.\n"
+            : "-- synthetic fixture\n",
+        );
+      const backup = writeBackupEvidence(
         {
-          ...a,
-          auth: { ...a.auth, redirectUrls: ["https://other.example.com/**"] },
+          STAGING_SUPABASE_PROJECT_REF: project,
+          PRODUCTION_SUPABASE_PROJECT_REF: production,
+          CONFIRM_PROJECT_REF: project,
+          STAGING_SUPABASE_DB_URL: `postgresql://postgres:synthetic-fixture@db.${project}.supabase.co/postgres`,
+          EVIDENCE_LABEL: "compatibility-fixture",
+          GITHUB_SHA: commit,
+          GITHUB_RUN_ID: "12345",
         },
-        manifest,
-        inputs,
-        commit,
-      ),
-    ).toThrow();
-    expect(() =>
-      validateApplyAuthorization(
-        { ...a, remoteSecretNamesPresent: [] },
-        manifest,
-        inputs,
-        commit,
-      ),
-    ).toThrow();
-  });
+        directory,
+      );
+      const currentBytes = readFileSync(
+        join(directory, "backup-evidence.json"),
+      );
+      expect(backup.schemaVersion).toBe(2);
+      expect(
+        readFileSync(join(directory, "backup-evidence.sha256"), "utf8"),
+      ).toBe(`${sha256(currentBytes)}\n`);
+      // Reconstruct the legacy fixture's exact field set; neither authorization
+      // consumer reads this JSON. Both receive only its independently reviewed hash.
+      const legacy = Object.fromEntries(
+        [
+          "environment",
+          "commitSha",
+          "githubRunId",
+          "evidenceLabel",
+          "createdAt",
+          "projectRefSha256",
+          "files",
+          "storageObjectsIncluded",
+          "remoteMutationPerformed",
+        ].map((key) => [key, backup[key]]),
+      );
+      const backupBytes =
+        backupVersion === 2
+          ? currentBytes
+          : Buffer.from(
+              `${JSON.stringify({ schemaVersion: 1, ...legacy }, null, 2)}\n`,
+            );
+      const normalized = clone(mappings);
+      normalized.mappings.forEach((m: any) => {
+        for (const k of ["storeRef", "productRef", "variantRef", "priceRef"])
+          m[k] = "sha256:" + sha256(m[k]);
+      });
+      const a = {
+        reviewedCommit: commit,
+        manifestSha256: sha256(JSON.stringify(manifest)),
+        projectSha256: sha256(project),
+        originSha256: sha256(inputs.origin),
+        approvedRemoteVersions: [],
+        backupEvidenceSha256: sha256(backupBytes),
+        auth: {
+          siteUrl: inputs.origin,
+          redirectUrls: [inputs.origin + "/auth/callback"],
+          signupEnabled: true,
+          confirmationsEnabled: true,
+        },
+        providerMappings: normalized,
+        remoteSecretNamesPresent: manifest.requiredSecretNames,
+        providerEnvironment: "test",
+        billingAppOrigin: inputs.origin,
+        portalAllowedHosts: ["test-store.lemonsqueezy.com"],
+        portalControlsReviewed: true,
+        webhookTestStoreReviewed: true,
+        rollbackReviewed: true,
+      };
+      expect(() =>
+        validateApplyAuthorization(a, manifest, inputs, commit),
+      ).not.toThrow();
+      expect(
+        validateApplyAuthorization(a, manifest, inputs, commit)
+          .backupEvidenceSha256,
+      ).toBe(sha256(backupBytes));
+      for (const invalid of [undefined, "", "g".repeat(64), backup])
+        expect(() =>
+          validateApplyAuthorization(
+            { ...a, backupEvidenceSha256: invalid },
+            manifest,
+            inputs,
+            commit,
+          ),
+        ).toThrow("PHASE_B_AUTHORIZATION_INVALID");
+      expect(() =>
+        validateApplyAuthorization(
+          { ...a, backupEvidence: backup },
+          manifest,
+          inputs,
+          commit,
+        ),
+      ).toThrow("PHASE_B_AUTHORIZATION_INVALID");
+      expect(() =>
+        validateApplyAuthorization(
+          { ...a, providerMappings: mappings },
+          manifest,
+          inputs,
+          commit,
+        ),
+      ).toThrow("FAKE_PROVIDER_PROOF_BLOCKED");
+      expect(() =>
+        validateApplyAuthorization(
+          { ...a, reviewedCommit: "b".repeat(40) },
+          manifest,
+          inputs,
+          commit,
+        ),
+      ).toThrow();
+      expect(() =>
+        validateApplyAuthorization(
+          {
+            ...a,
+            auth: { ...a.auth, redirectUrls: ["https://other.example.com/**"] },
+          },
+          manifest,
+          inputs,
+          commit,
+        ),
+      ).toThrow();
+      expect(() =>
+        validateApplyAuthorization(
+          { ...a, remoteSecretNamesPresent: [] },
+          manifest,
+          inputs,
+          commit,
+        ),
+      ).toThrow();
+    },
+  );
   it("guards exact project flags and linked project without unsupported db flags", () => {
     const env = {
       ALLOW_REMOTE_SUPABASE: "I_UNDERSTAND_THIS_TOUCHES_REMOTE",

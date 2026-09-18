@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createRequire } from "node:module";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -9,6 +15,29 @@ import {
   validateBackupEnvironment,
   writeBackupEvidence,
 } from "../../scripts/staging-logical-backup.mjs";
+import {
+  MANAGED_COMPATIBILITY_EXCLUSIONS,
+  filterManagedCopyBlocks,
+  inspectCopyData,
+  managedExclusionArgument,
+  validateManagedExclusions,
+  validatePortableData,
+} from "../../scripts/staging-logical-backup-data.mjs";
+
+const expectedExclusions = [
+  "auth.mfa_recovery_code_sets",
+  "auth.mfa_recovery_codes",
+  "auth.scim_tokens",
+  "auth.scim_users",
+  "auth.one_time_tokens",
+];
+const copy = (relation: string, rows = "", eol = "\n") =>
+  `COPY ${relation} ("id") FROM stdin;${eol}${rows}\\.${eol}`;
+const retainedData =
+  copy('"auth"."users"', "private fixture user\r\n", "\r\n") +
+  copy('"public"."billing_subscriptions"', "private fixture billing\n");
+const rawData =
+  retainedData + expectedExclusions.map((r) => copy(r, "managed\n")).join("");
 
 const staging = "s".repeat(20),
   production = "p".repeat(20);
@@ -111,7 +140,9 @@ describe("staging backup offline validation", () => {
     for (const filename of ["roles.sql", "schema.sql", "data.sql"])
       writeFileSync(
         join(directory, filename),
-        `private fixture ${filename}\r\n`,
+        filename === "data.sql"
+          ? retainedData
+          : `private fixture ${filename}\r\n`,
       );
     const evidence = writeBackupEvidence(
       { ...env, GITHUB_STEP_SUMMARY: summary },
@@ -126,15 +157,27 @@ describe("staging backup offline validation", () => {
       "createdAt",
       "projectRefSha256",
       "files",
+      "portableRestoreData",
+      "managedCompatibilityExclusions",
+      "authUsersIncluded",
+      "publicCopyTargetCount",
+      "copyTargetCount",
+      "applicationSchemasExcluded",
       "storageObjectsIncluded",
       "remoteMutationPerformed",
     ]);
     expect(evidence).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       environment: "staging",
       commitSha: env.GITHUB_SHA,
       githubRunId: env.GITHUB_RUN_ID,
       projectRefSha256: sha256(staging),
+      portableRestoreData: true,
+      managedCompatibilityExclusions: expectedExclusions,
+      authUsersIncluded: true,
+      publicCopyTargetCount: 1,
+      copyTargetCount: 2,
+      applicationSchemasExcluded: false,
       storageObjectsIncluded: false,
       remoteMutationPerformed: false,
     });
@@ -165,6 +208,190 @@ describe("staging backup offline validation", () => {
     }
     writeFileSync(join(directory, "data.sql"), "");
     expect(() => writeBackupEvidence(env, directory)).toThrow("empty");
+  });
+});
+
+describe("managed compatibility boundary", () => {
+  it("uses exactly the reviewed relations in the native CLI argument", () => {
+    expect(MANAGED_COMPATIBILITY_EXCLUSIONS).toEqual(expectedExclusions);
+    expect(Object.isFrozen(MANAGED_COMPATIBILITY_EXCLUSIONS)).toBe(true);
+    expect(managedExclusionArgument()).toBe(expectedExclusions.join(","));
+    const result = spawnSync(
+      process.execPath,
+      ["scripts/staging-logical-backup.mjs", "exclusions"],
+      { encoding: "utf8" },
+    );
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe(`${expectedExclusions.join(",")}\n`);
+    expect(result.stderr).toBe("");
+  });
+
+  it.each([
+    ["public.billing_subscriptions"],
+    ["tenant.invoices"],
+    ["auth.users"],
+    ["auth.identities"],
+    ["storage.objects"],
+    ["auth.*"],
+    ["auth.scim_users; DROP TABLE public.accounts"],
+    ['"auth"."scim_users"'],
+    ["auth.scim_users "],
+    ["AUTH.scim_users"],
+    ["auth..scim_users"],
+    ["auth.scim_users", "auth.scim_users"],
+  ])("rejects unsafe exclusions %#", (...exclusions) => {
+    expect(() => validateManagedExclusions(exclusions)).toThrow(
+      "Portable backup data validation failed.",
+    );
+    expect(() =>
+      filterManagedCopyBlocks(Buffer.from(rawData), exclusions),
+    ).toThrow();
+  });
+
+  it.each(expectedExclusions)(
+    "removes a complete %s block, retaining auth.users and application bytes",
+    (relation) => {
+      const input = Buffer.from(retainedData + copy(relation, "managed\n"));
+      const original = Buffer.from(input);
+      expect(filterManagedCopyBlocks(input, [relation])).toEqual(
+        Buffer.from(retainedData),
+      );
+      expect(input).toEqual(original);
+    },
+  );
+
+  it("removes multiple managed blocks without changing retained bytes or the 108 application targets", () => {
+    const header =
+      "-- private fixture\r\nSET session_replication_role = replica;\r\n";
+    const users = copy('"auth"."users"', "é\\tvalue\t\\N\r\n", "\r\n");
+    const application = Array.from({ length: 108 }, (_, i) =>
+      copy(`"public"."table_${i}"`, `${i}\t東京\t\\\\\n`),
+    );
+    const custom = copy('"tenant"."invoices"') + copy('"auth"."identities"');
+    const footer =
+      "SELECT pg_catalog.setval('public.seq', 108, true);\nRESET ALL;\n";
+    const retained = header + users + application.join("") + custom + footer;
+    const input = Buffer.from(
+      header +
+        expectedExclusions
+          .map((r) => copy(r, "sensitive managed row\r\n", "\r\n"))
+          .join("") +
+        users +
+        application.join("") +
+        custom +
+        footer,
+    );
+    const result = filterManagedCopyBlocks(input);
+    expect(result).toEqual(Buffer.from(retained));
+    expect(
+      inspectCopyData(input).filter((b) => b.schema === "public"),
+    ).toHaveLength(108);
+    expect(validatePortableData(result)).toMatchObject({
+      authUsersIncluded: true,
+      publicCopyTargetCount: 108,
+      copyTargetCount: 111,
+      managedCompatibilityExclusions: expectedExclusions,
+    });
+  });
+
+  it("defines empty and no-match behavior separately for native validation and offline filtering", () => {
+    expect(validateManagedExclusions([])).toEqual([]);
+    expect(filterManagedCopyBlocks(Buffer.from(rawData), [])).toEqual(
+      Buffer.from(rawData),
+    );
+    expect(() => filterManagedCopyBlocks(Buffer.from(retainedData))).toThrow();
+    expect(() =>
+      filterManagedCopyBlocks(
+        Buffer.from(retainedData + copy(expectedExclusions[0])),
+      ),
+    ).toThrow();
+    // Missing managed tables are expected in native output, even on older platforms.
+    expect(
+      validatePortableData(Buffer.from(retainedData))
+        .managedCompatibilityExclusions,
+    ).toEqual(expectedExclusions);
+    expect(() => validatePortableData(Buffer.from(rawData))).toThrow();
+  });
+
+  it.each([
+    "",
+    retainedData + "COPY auth.scim_users (id) FROM stdin;\nunterminated\n",
+    retainedData +
+      "COPY auth.scim_users (id) FROM stdin;\n" +
+      copy("public.swallowed"),
+    retainedData + "COPY auth.scim_users FROM stdin;\n\\.\n",
+    retainedData + "COPY auth.scim_users (id) FROM '/tmp/data';\n",
+    retainedData + "COPY auth.scim_users (id)\nFROM stdin;\n\\.\n",
+    retainedData + "\\.\n",
+    retainedData + copy('"public"."billing_subscriptions"'),
+    retainedData + "INSERT INTO public.accounts VALUES (1);\n",
+    retainedData + copy("auth.scim_users") + copy('"auth"."scim_users"'),
+    copy("public.accounts"),
+    copy("auth.users"),
+  ])("fails closed on malformed or incomplete recovery data %#", (sql) => {
+    expect(() => validatePortableData(Buffer.from(sql))).toThrow(
+      "Portable backup data validation failed.",
+    );
+    expect(() => filterManagedCopyBlocks(Buffer.from(sql), [])).toThrow(
+      "Portable backup data validation failed.",
+    );
+  });
+
+  it("recognizes quoted identifiers without treating dots or COPY text in rows as targets", () => {
+    const sql =
+      retainedData + copy('"tenant.schema"."a""b"', "ordinary COPY text\n");
+    expect(inspectCopyData(Buffer.from(sql)).at(-1)).toMatchObject({
+      schema: "tenant.schema",
+      table: 'a"b',
+    });
+  });
+
+  it("does not generate evidence for an unfiltered managed block", () => {
+    const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
+    directories.push(directory);
+    for (const filename of ["roles.sql", "schema.sql", "data.sql"])
+      writeFileSync(
+        join(directory, filename),
+        filename === "data.sql" ? rawData : "-- fixture\n",
+      );
+    expect(() => writeBackupEvidence(env, directory)).toThrow();
+    for (const filename of [
+      "SHA256SUMS.txt",
+      "backup-evidence.json",
+      "backup-evidence.sha256",
+    ])
+      expect(existsSync(join(directory, filename))).toBe(false);
+  });
+
+  it("creates an offline derivative exclusively, preserving the immutable source and suppressing rows", () => {
+    const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
+    directories.push(directory);
+    const source = join(directory, "original.sql"),
+      destination = join(directory, "portable.sql");
+    writeFileSync(source, rawData);
+    const run = (target: string) =>
+      spawnSync(
+        process.execPath,
+        ["scripts/staging-logical-backup.mjs", "portable-copy", source, target],
+        { encoding: "utf8" },
+      );
+    const success = run(destination);
+    expect(success.status).toBe(0);
+    expect(success.stdout + success.stderr).toBe("");
+    expect(readFileSync(destination)).toEqual(Buffer.from(retainedData));
+    for (const target of [source, destination]) {
+      const failure = run(target);
+      expect(failure.status).toBe(1);
+      expect(failure.stdout + failure.stderr).not.toMatch(
+        /private fixture|managed|original.sql|portable.sql/,
+      );
+    }
+    expect(readFileSync(source)).toEqual(Buffer.from(rawData));
+    expect(readFileSync(destination)).toEqual(Buffer.from(retainedData));
+    writeFileSync(source, retainedData);
+    const missing = join(directory, "missing.sql");
+    expect(run(missing).status).toBe(1);
+    expect(existsSync(missing)).toBe(false);
   });
 });
 
@@ -206,13 +433,16 @@ describe("staging backup workflow contract", () => {
     expect(runs[0]).toBe("node scripts/staging-logical-backup.mjs validate");
     expect(runs[2]).toBe("node scripts/staging-logical-backup.mjs evidence");
     expect(runs[1]).toContain("set +x");
+    expect(runs[1]).toContain(
+      'exclusions="$(node scripts/staging-logical-backup.mjs exclusions)"',
+    );
     const dumps = runs[1]
       .split("\n")
       .filter((line) => line.startsWith("supabase "));
     expect(dumps).toEqual([
       'supabase db dump --db-url "$STAGING_SUPABASE_DB_URL" -f backup/roles.sql --role-only > /dev/null 2>&1',
       'supabase db dump --db-url "$STAGING_SUPABASE_DB_URL" -f backup/schema.sql > /dev/null 2>&1',
-      'supabase db dump --db-url "$STAGING_SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only > /dev/null 2>&1',
+      'supabase db dump --db-url "$STAGING_SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only --exclude "$exclusions" > /dev/null 2>&1',
     ]);
     expect(source).not.toMatch(/(?:echo|printf).*\$STAGING_SUPABASE_DB_URL/);
     expect(
