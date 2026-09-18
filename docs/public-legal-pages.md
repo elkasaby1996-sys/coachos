@@ -66,7 +66,7 @@ Proposed PR title: `Finalize RepSync public legal policies and Paddle review req
 | Whitespace                     | `git diff --check` passed                                                                                                                                                                             |
 | Release readiness              | Exit 0: no blockers, `PADDLE_LEGAL_PR_READY`                                                                                                                                                          |
 | Visual check                   | Support at 375px inspected; contact link visible and no horizontal overflow. Legal layouts covered at phone/tablet/desktop widths                                                                     |
-| Remote actions                 | None: no commit, push, deployment, or payment-provider integration                                                                                                                                    |
+| Remote actions                 | No staging/production deployment, provider integration, migrations, secrets, billing logic, or user-data changes                                                                                      |
 
 | Public route | Anonymous local check | Additional evidence                                                      |
 | ------------ | --------------------- | ------------------------------------------------------------------------ |
@@ -82,7 +82,7 @@ These results cover the local build, not the deployed domain. Live HTTPS verific
 
 ## Changed-file inventory
 
-The existing branch remains uncommitted. Its complete legal-page change includes:
+The reviewed branch contains only the following 32 legal-page implementation, documentation, configuration, and test files:
 
 ```text
 docs/marketing-site-launch-evidence.md
@@ -118,3 +118,11 @@ tests/unit/marketing-public-contract.test.ts
 tests/unit/public-legal-policies.test.ts
 vite.config.ts
 ```
+
+## Final PR safety review
+
+The approved operator is RepSync and the support phone is the operator-supplied business number, with explicit approval enabled; it is not the synthetic test fixture. The readiness command exits 0 with no blockers. Anonymous E2E covers Terms, Privacy, Refunds, Support, footer links, the exact Paddle reseller statement, telephone links, index/follow metadata, and JavaScript-free legal content. Policy copy integrity tests preserve the supplied documents apart from the separately tested requested additions.
+
+The complete branch diff contains no credentials, auth/session files, temporary browser output, backup artifacts, local environment files, generated private evidence, or payment-provider secrets. Billing implementation, migrations, dependencies/lockfile, and provider configuration are unchanged. The three lint-warning source files are unchanged from the PR base. Checkout acceptance remains documentation for future Paddle integration only.
+
+Automatic CI is intentionally suppressed on the final verification commit. The existing `.github/workflows/ci.yml` invokes `playwright.configured-data.config.ts` with repository-configured account credentials; that suite includes check-in submission and workout assignment, which can write to a hosted environment. This PR is authorized to make no staging or production changes. The commit's CI skip instruction avoids that indirect mutation without changing repository-wide workflow behavior. Required checks may remain pending and must not be bypassed for merge. Safely isolating those configured-account checks or obtaining separate environment-specific authorization is follow-up work before allowing that CI workflow to run. All requested verification in this report ran locally; no deployment was performed.
