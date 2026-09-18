@@ -1,0 +1,107 @@
+.rs-legal-document {
+  width: min(76ch, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 140px 0 80px;
+  color: #1b1c17;
+  font-size: 1rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.rs-legal-document header {
+  margin-bottom: 40px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid #d2d5cc;
+}
+
+.rs-legal-document h1 {
+  font-size: clamp(2.25rem, 6vw, 3.5rem);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.rs-legal-document .rs-legal-effective {
+  margin: 20px 0;
+  color: #404944;
+}
+
+.rs-legal-document nav,
+.rs-legal-static-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+}
+
+.rs-legal-document a,
+.rs-legal-static-footer a {
+  color: #0b4533;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.rs-legal-document nav a,
+.rs-legal-static-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.rs-legal-document a:hover,
+.rs-legal-document a[aria-current="page"] {
+  text-decoration-thickness: 2px;
+}
+
+.rs-legal-document a:focus-visible,
+.rs-legal-static-footer a:focus-visible {
+  outline: 3px solid #0b4533;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+.rs-legal-copy h2 {
+  margin: 44px 0 16px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.rs-legal-copy h3 {
+  margin: 28px 0 12px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.rs-legal-copy p,
+.rs-legal-copy ul,
+.rs-legal-copy ol {
+  margin: 0 0 20px;
+}
+
+.rs-legal-copy ul,
+.rs-legal-copy ol {
+  padding-left: 1.5em;
+}
+
+.rs-legal-copy ul {
+  list-style: disc;
+}
+.rs-legal-copy ol {
+  list-style: decimal;
+}
+.rs-legal-copy li {
+  margin: 4px 0;
+}
+
+.rs-legal-static-footer {
+  justify-content: center;
+  padding: 24px 20px;
+  border-top: 1px solid #d2d5cc;
+}
+
+@media (max-width: 600px) {
+  .rs-legal-document {
+    padding: 110px 0 48px;
+  }
+}

@@ -23,6 +23,22 @@ function readSource(...segments: string[]) {
 }
 
 describe("marketing public configuration", () => {
+  it("attributes coaching and nutrition decisions to independent professionals", () => {
+    const copy = JSON.stringify(publicFaqGroups);
+    expect(copy).toContain(
+      "software tools used by independent fitness professionals",
+    );
+    expect(copy).toContain(
+      "RepSync does not supply coaches or provide personal training",
+    );
+    expect(copy).toContain(
+      "Your independent coach creates your programs and defines your nutrition targets",
+    );
+    const source = readSource("src/lib/marketing-public.ts");
+    expect(source).toContain(
+      "coach-created programs, coach-defined nutrition targets",
+    );
+  });
   it("centralizes signup-mode CTA destinations", () => {
     expect(marketingSignupMode).toBe("direct_signup");
     expect(getMarketingCtaDestination("primary")).toBe("/start-trial");
@@ -97,6 +113,7 @@ describe("marketing public configuration", () => {
       "/security",
       "/privacy",
       "/terms",
+      "/refunds",
       "/cookies",
     ];
 
@@ -136,8 +153,9 @@ describe("marketing public configuration", () => {
           : `https://www.repsync.com${route}`;
       expect(sitemap).toContain(expected);
     });
-    expect(sitemap).not.toContain("https://www.repsync.com/privacy");
-    expect(sitemap).not.toContain("https://www.repsync.com/terms");
+    expect(sitemap).toContain("https://www.repsync.com/privacy");
+    expect(sitemap).toContain("https://www.repsync.com/terms");
+    expect(sitemap).toContain("https://www.repsync.com/refunds");
   });
 
   it("declares robots and sitemap behavior for public launch", () => {
@@ -170,7 +188,9 @@ describe("marketing public configuration", () => {
     expect(legalSiteConfig.contactEmail).toBe("support@repsync.com");
     expect(legalSiteConfig.privacyEmail).toBe("privacy@repsync.com");
     expect(legalSiteConfig.securityEmail).toBe("security@repsync.com");
-    expect(legalReviewRequired).toBe(true);
+    expect(legalSiteConfig.legalEntityName).toBe("RepSync");
+    expect(legalSiteConfig.effectiveDate).toBe("2026-09-18");
+    expect(legalReviewRequired).toBe(false);
   });
 
   it("groups visible FAQ answers for structured data", () => {

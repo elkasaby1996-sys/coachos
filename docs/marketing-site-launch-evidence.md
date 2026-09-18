@@ -2,6 +2,8 @@
 
 Date: 2026-07-12
 
+Legal-copy update (September 18, 2026): the historical legal-draft status below is superseded by [Public legal policies](public-legal-pages.md). Privacy Policy, Terms of Service, and Refund and Cancellation Policy now use the operator-confirmed name RepSync. This update does not change the historical results of the other launch checks.
+
 ## Implementation Summary
 
 PR-MKT-WEB-04 completes the public trust, security, FAQ, legal draft, cookie consent, SEO, public-profile metadata, and launch QA surface for the RepSync marketing site.

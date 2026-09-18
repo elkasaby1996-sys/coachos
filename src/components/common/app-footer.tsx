@@ -102,10 +102,16 @@ export function AppFooter({
             className="transition-colors hover:text-foreground"
             to="/privacy"
           >
-            {t("footer.privacy", "Privacy policy")}
+            {t("footer.privacy", "Privacy Policy")}
           </Link>
           <Link className="transition-colors hover:text-foreground" to="/terms">
-            {t("footer.terms", "Terms of use")}
+            {t("footer.terms", "Terms of Service")}
+          </Link>
+          <Link
+            className="transition-colors hover:text-foreground"
+            to="/refunds"
+          >
+            {t("footer.refunds", "Refund Policy")}
           </Link>
           {linkSet === "marketing" ? (
             <Link

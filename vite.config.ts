@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
+import { legalPagesBuild } from "./scripts/legal-pages-build";
 
 const sentrySourceMapsEnabled = Boolean(process.env.SENTRY_AUTH_TOKEN);
 
@@ -9,6 +10,7 @@ export default defineConfig({
   optimizeDeps: { entries: ["index.html"] },
   plugins: [
     react(),
+    legalPagesBuild(),
     ...(sentrySourceMapsEnabled
       ? sentryVitePlugin({
           org: process.env.SENTRY_ORG,

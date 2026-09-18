@@ -53,6 +53,7 @@ export default async function prepareOwnedServer(config: FullConfig) {
         "/src/pages/public/security.tsx",
         "/src/pages/public/privacy.tsx",
         "/src/pages/public/terms.tsx",
+        "/src/pages/public/refunds.tsx",
         "/src/pages/public/cookies.tsx",
       ],
     );

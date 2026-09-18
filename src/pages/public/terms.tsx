@@ -1,1 +1,4 @@
-export { TermsPage } from "./marketing-content";
+import { LegalPolicyPage } from "./legal-policy";
+export function TermsPage() {
+  return <LegalPolicyPage policy="terms" />;
+}
