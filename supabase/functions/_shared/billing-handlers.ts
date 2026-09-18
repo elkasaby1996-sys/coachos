@@ -3,14 +3,12 @@ import {
   boundedBody,
   checkoutRequest,
   hostedCheckoutUrl,
-  normalizeWebhook,
   object,
-  sha256,
-  validSignature,
   type BillingProvider,
   type CheckoutOperation,
   type Environment,
 } from "./lemon-squeezy.ts";
+import type { BillingCommercialPorts } from "./billing-commercial-ports.ts";
 import type { BillingAdapter } from "./billing-provider.ts";
 
 export type Rpc = (name: string, args: Record<string, unknown>) => Promise<any>;
@@ -19,8 +17,9 @@ export type BillingConfig = {
   appBaseUrl: string;
   webhookSecret: string;
   provider: BillingProvider;
-  /** Neutral port for new callers; provider preserves the historical SQL proof contract. */
+  /** Neutral capabilities; legacy provider remains for checkout compatibility only. */
   adapter?: BillingAdapter;
+  commercial?: BillingCommercialPorts;
   portalAllowedHosts?: string;
 };
 export type BillingDependencies = {
@@ -188,68 +187,26 @@ export async function handleBillingWebhook(
   try {
     const config = deps.config();
     if (!config) throw new BillingError("BILLING_PROVIDER_NOT_CONFIGURED", 503);
-    const raw = await boundedBody(request);
-    if (
-      !(await validSignature(
-        raw,
-        request.headers.get("x-signature"),
-        config.webhookSecret,
-      ))
-    )
-      throw new BillingError("BILLING_WEBHOOK_INVALID_SIGNATURE");
-    const event = request.headers.get("x-event-name");
-    if (!event || !/^[a-z_]{1,100}$/.test(event))
-      throw new BillingError("BILLING_WEBHOOK_EVENT_MISMATCH");
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(
-        new TextDecoder("utf-8", { fatal: true }).decode(raw),
-      );
-    } catch {
-      throw new BillingError("BILLING_INVALID_INPUT");
-    }
+    const proof = config.commercial?.reconciliation;
+    if (!proof) throw new BillingError("BILLING_PROVIDER_NOT_CONFIGURED", 503);
+    const event = await proof.verifyEvent(
+      await boundedBody(request),
+      request.headers,
+    );
     const store = await deps.serviceRpc("get_billing_provider_store", {
       p_environment: config.environment,
     });
     if (!store) throw new BillingError("BILLING_PROVIDER_NOT_CONFIGURED", 503);
-    const normalized = normalizeWebhook(
-      parsed,
-      event,
-      config.environment,
-      store,
+    delivery = await deps.serviceRpc(
+      "record_billing_webhook_delivery",
+      await proof.deliveryArguments(event, store),
     );
-    const hash = await sha256(raw),
-      fingerprint = await sha256(`${config.environment}\n${event}\n${hash}`);
-    delivery = await deps.serviceRpc("record_billing_webhook_delivery", {
-      p_environment: config.environment,
-      p_event_name: event,
-      p_object_type: normalized.objectType,
-      p_object_id: normalized.objectId,
-      p_payload_sha256: hash,
-      p_fingerprint: fingerprint,
-      p_payload: normalized.payload,
-    });
-    const snapshot = normalized.supported
-      ? await config.provider.retrieveSubscription(
-          String(normalized.payload.subscription_id),
-        )
-      : null;
-    // Real adapters always retrieve the first item. Legacy base-only fixtures
-    // can omit the method; SQL requires item proof for every seat obligation.
-    const verifiedItem =
-      snapshot && config.provider.retrieveSubscriptionItem
-        ? await config.provider.retrieveSubscriptionItem(
-            snapshot.first_subscription_item_id,
-          )
-        : null;
+    const snapshot = await proof.eventSubscription(event);
     const status = await deps.serviceRpc(
       "reconcile_billing_provider_subscription",
       {
         p_delivery: delivery,
-        p_snapshot:
-          snapshot && verifiedItem
-            ? { ...snapshot, verified_item: verifiedItem }
-            : snapshot,
+        ...proof.snapshotArguments(snapshot),
       },
     );
     if (status === "failed") {

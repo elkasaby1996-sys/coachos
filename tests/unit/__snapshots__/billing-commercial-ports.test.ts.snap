@@ -1,0 +1,1066 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`merged ADAPTER-01 durable parity > plan apply 1`] = `
+{
+  "body": {
+    "synthetic": "state",
+  },
+  "status": 200,
+  "trace": [
+    [
+      "billing_plan_change_context",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "begin_billing_plan_change",
+      {
+        "p_environment": "test",
+        "p_operation": "a0700000-0000-4000-8000-000000000001",
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+        "p_target_cadence": "monthly",
+        "p_target_plan": "growth",
+      },
+    ],
+    [
+      "changePlan",
+      "3",
+      "15",
+      "immediate",
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "finish_billing_plan_change",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "16",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "15",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "16",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+      },
+    ],
+    [
+      "get_my_billing_plan_change_state",
+      {},
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > plan cancel 1`] = `
+{
+  "body": {
+    "synthetic": "state",
+  },
+  "status": 200,
+  "trace": [
+    [
+      "billing_plan_change_context",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "begin_cancel_billing_plan_change",
+      {
+        "p_environment": "test",
+        "p_operation": "a0700000-0000-4000-8000-000000000001",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "changePlan",
+      "3",
+      "15",
+      "immediate",
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "finish_billing_plan_change",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "16",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "15",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "16",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+      },
+    ],
+    [
+      "get_my_billing_plan_change_state",
+      {},
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > plan preview 1`] = `
+{
+  "body": {
+    "synthetic": "state",
+  },
+  "status": 200,
+  "trace": [
+    [
+      "billing_plan_change_context",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "preview_billing_plan_change",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+        "p_target_cadence": "monthly",
+        "p_target_plan": "growth",
+      },
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > plan refresh 1`] = `
+{
+  "body": {
+    "synthetic": "state",
+  },
+  "status": 200,
+  "trace": [
+    [
+      "billing_plan_change_context",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "finish_billing_plan_change",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+      },
+    ],
+    [
+      "getInvoices",
+      "3",
+    ],
+    [
+      "finish_billing_plan_change",
+      {
+        "p_environment": "test",
+        "p_invoice": {
+          "billing_reason": "updated",
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "status": "paid",
+          "store_id": "1",
+          "subscription_id": "3",
+          "test_mode": true,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+        },
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+      },
+    ],
+    [
+      "get_my_billing_plan_change_state",
+      {},
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > portal manage_billing 1`] = `
+{
+  "cache": "no-store, private",
+  "purpose": "manage_billing",
+  "status": 200,
+  "trace": [
+    [
+      "get_billing_portal_subscription",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "getPortal",
+      "3",
+    ],
+    [
+      "get_billing_portal_subscription",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > portal update_payment_method 1`] = `
+{
+  "cache": "no-store, private",
+  "purpose": "update_payment_method",
+  "status": 200,
+  "trace": [
+    [
+      "get_billing_portal_subscription",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "getPortal",
+      "3",
+    ],
+    [
+      "get_billing_portal_subscription",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > seat apply 1`] = `
+{
+  "body": {
+    "synthetic": "state",
+  },
+  "status": 200,
+  "trace": [
+    [
+      "billing_seat_quantity_context",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "begin_billing_seat_quantity",
+      {
+        "p_environment": "test",
+        "p_operation": "a0700000-0000-4000-8000-000000000001",
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+        "p_target": 1,
+      },
+    ],
+    [
+      "changeQuantity",
+      "9",
+      2,
+      "immediate",
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "finish_billing_plan_change",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 2,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 2,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+      },
+    ],
+    [
+      "get_my_billing_seat_quantity_state",
+      {},
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > seat cancel 1`] = `
+{
+  "body": {
+    "synthetic": "state",
+  },
+  "status": 200,
+  "trace": [
+    [
+      "billing_seat_quantity_context",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "begin_cancel_billing_seat_quantity",
+      {
+        "p_environment": "test",
+        "p_operation": "a0700000-0000-4000-8000-000000000001",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "changeQuantity",
+      "9",
+      2,
+      "immediate",
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "finish_billing_plan_change",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 2,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 2,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+      },
+    ],
+    [
+      "get_my_billing_seat_quantity_state",
+      {},
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > seat preview 1`] = `
+{
+  "body": {
+    "synthetic": "state",
+  },
+  "status": 200,
+  "trace": [
+    [
+      "billing_seat_quantity_context",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "preview_billing_seat_quantity",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+        "p_target": 1,
+      },
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > seat refresh 1`] = `
+{
+  "body": {
+    "synthetic": "state",
+  },
+  "status": 200,
+  "trace": [
+    [
+      "billing_seat_quantity_context",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+      },
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "finish_billing_plan_change",
+      {
+        "p_environment": "test",
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+      },
+    ],
+    [
+      "getInvoices",
+      "3",
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "finish_billing_plan_change",
+      {
+        "p_environment": "test",
+        "p_invoice": {
+          "billing_reason": "updated",
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "status": "paid",
+          "store_id": "1",
+          "subscription_id": "3",
+          "test_mode": true,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+        },
+        "p_owner": "synthetic-owner",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+      },
+    ],
+    [
+      "get_my_billing_seat_quantity_state",
+      {},
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > webhook subscription_resumed 1`] = `
+{
+  "body": {
+    "status": "processed",
+  },
+  "status": 200,
+  "trace": [
+    [
+      "get_billing_provider_store",
+      {
+        "p_environment": "test",
+      },
+    ],
+    [
+      "record_billing_webhook_delivery",
+      {
+        "p_environment": "test",
+        "p_event_name": "subscription_resumed",
+        "p_fingerprint": "839cc99e853f874e6fadb76c0b47a2d2882ecec41b813f2508cc62bd39ce46cd",
+        "p_object_id": "3",
+        "p_object_type": "subscriptions",
+        "p_payload": {
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "product_id": "4",
+          "store_id": "1",
+          "subscription_id": "3",
+          "test_mode": true,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+        },
+        "p_payload_sha256": "ab05e5a6f8916c2af67d20646a3182b520d3e798eb0db0390bafb1d34d3d187e",
+      },
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "reconcile_billing_provider_subscription",
+      {
+        "p_delivery": "synthetic-delivery",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+      },
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > webhook subscription_updated 1`] = `
+{
+  "body": {
+    "status": "processed",
+  },
+  "status": 200,
+  "trace": [
+    [
+      "get_billing_provider_store",
+      {
+        "p_environment": "test",
+      },
+    ],
+    [
+      "record_billing_webhook_delivery",
+      {
+        "p_environment": "test",
+        "p_event_name": "subscription_updated",
+        "p_fingerprint": "5c0dd7ff874b6dee8b568a68e876ebc33ff2b80db5fd05a1249fd6580e3be21b",
+        "p_object_id": "3",
+        "p_object_type": "subscriptions",
+        "p_payload": {
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "product_id": "4",
+          "store_id": "1",
+          "subscription_id": "3",
+          "test_mode": true,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+        },
+        "p_payload_sha256": "be55259f9d80c0a8505de95e4c0f44e43af9d9cd74cad27422461a912b3aa16a",
+      },
+    ],
+    [
+      "getSubscription",
+      "3",
+    ],
+    [
+      "getItem",
+      "9",
+    ],
+    [
+      "reconcile_billing_provider_subscription",
+      {
+        "p_delivery": "synthetic-delivery",
+        "p_snapshot": {
+          "cancelled": false,
+          "created_at": "2026-09-18T00:00:00.000Z",
+          "customer_id": "2",
+          "ends_at": null,
+          "environment": "test",
+          "first_subscription_item_id": "9",
+          "order_id": "7",
+          "order_item_id": "8",
+          "payment_processor": "card",
+          "price_id": "6",
+          "product_id": "4",
+          "provider": "lemonsqueezy",
+          "quantity": 1,
+          "renews_at": "2027-01-01T00:00:00.000Z",
+          "status": "active",
+          "store_id": "1",
+          "subscription_id": "3",
+          "trial_ends_at": null,
+          "updated_at": "2026-09-18T00:00:00.000Z",
+          "variant_id": "5",
+          "verified_item": {
+            "created_at": "2026-09-18T00:00:00.000Z",
+            "is_usage_based": false,
+            "item_id": "9",
+            "price_id": "6",
+            "quantity": 1,
+            "subscription_id": "3",
+            "updated_at": "2026-09-18T00:00:00.000Z",
+          },
+        },
+      },
+    ],
+  ],
+}
+`;
+
+exports[`merged ADAPTER-01 durable parity > webhook unknown_event 1`] = `
+{
+  "body": {
+    "status": "processed",
+  },
+  "status": 200,
+  "trace": [
+    [
+      "get_billing_provider_store",
+      {
+        "p_environment": "test",
+      },
+    ],
+    [
+      "record_billing_webhook_delivery",
+      {
+        "p_environment": "test",
+        "p_event_name": "unknown_event",
+        "p_fingerprint": "751131e2b47bad6eb148a19de2e231d046e3bae35c51a1c5198f69f5fbcfc7c4",
+        "p_object_id": "3",
+        "p_object_type": "subscriptions",
+        "p_payload": {
+          "store_id": "1",
+          "test_mode": true,
+        },
+        "p_payload_sha256": "59f2f1a77c8de6db219fd3b471af5b98eaf7629ebd625d95e1d91c87882f8c94",
+      },
+    ],
+    [
+      "reconcile_billing_provider_subscription",
+      {
+        "p_delivery": "synthetic-delivery",
+        "p_snapshot": null,
+      },
+    ],
+  ],
+}
+`;

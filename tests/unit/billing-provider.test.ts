@@ -1,3 +1,4 @@
+import { installTestBillingPorts } from "./helpers/billing-test-ports";
 import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -151,6 +152,7 @@ function dependencies() {
     serviceRpc,
     log: vi.fn(),
   };
+  installTestBillingPorts(deps);
   return { deps, provider, records, serviceRpc };
 }
 describe("Lemon Squeezy adapter contracts", () => {

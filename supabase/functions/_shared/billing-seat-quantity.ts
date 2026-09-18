@@ -3,9 +3,8 @@ import {
   boundedBody,
   object,
   uuidPattern,
-  type SubscriptionSnapshot,
-} from "./lemon-squeezy.ts";
-import { validateSubscriptionItem } from "./billing-seat-item.ts";
+} from "./billing-common.ts";
+import { canonicalSubscriptionIdentity } from "./billing-legacy-records.ts";
 import type { BillingDependencies } from "./billing-handlers.ts";
 
 export const seatQuantityCodes = [
@@ -91,63 +90,45 @@ export async function handleSeatQuantity(
       action,
     );
     const config = deps.config();
-    if (!config || !config.provider.retrieveSubscriptionItem)
+    if (!config?.commercial?.seats)
       throw new BillingError("BILLING_SEAT_QUANTITY_PROVIDER_FAILED", 503);
+    const { subscriptions, reconciliation: proof, seats } = config.commercial;
     const base = { p_owner: owner.id, p_environment: config.environment };
     const ctx = await deps.serviceRpc("billing_seat_quantity_context", base);
     const id = ctx.subscription.provider_subscription_id;
-    const current = await config.provider.retrieveSubscription(id);
-    const read = async (s: SubscriptionSnapshot) => {
-      const item = await config.provider.retrieveSubscriptionItem!(
-        s.first_subscription_item_id,
-      );
-      if (action !== "refresh") validateSubscriptionItem(s, item);
-      return { ...s, verified_item: item };
-    };
-    let verified = await read(current);
+    const current = await subscriptions.retrieve(id);
+    let verified = await subscriptions.withItem(current, action !== "refresh");
     if (action === "refresh") {
       await deps.serviceRpc("finish_billing_plan_change", {
         ...base,
-        p_snapshot: verified,
+        ...proof.snapshotArguments(verified),
       });
-      for (const invoice of (await config.provider.listSubscriptionInvoices?.(
-        id,
-      )) ?? []) {
-        if (invoice.billing_reason === "updated" && invoice.status === "paid") {
-          verified = await read(await config.provider.retrieveSubscription(id));
-          await deps.serviceRpc("finish_billing_plan_change", {
-            ...base,
-            p_snapshot: verified,
-            p_invoice: invoice,
-          });
-        }
+      for (const invoice of await proof.paidAdjustments(id)) {
+        verified = await subscriptions.withItem(
+          await subscriptions.retrieve(id),
+        );
+        await deps.serviceRpc("finish_billing_plan_change", {
+          ...base,
+          ...proof.snapshotArguments(verified),
+          ...proof.invoiceArguments(invoice),
+        });
       }
     } else if (action === "preview") {
       return reply(
         await deps.serviceRpc("preview_billing_seat_quantity", {
           ...base,
           p_target: input.targetAdditionalSeats,
-          p_snapshot: verified,
+          ...proof.snapshotArguments(verified),
         }),
       );
     } else {
-      if (!config.provider.updateSubscriptionItemQuantity)
+      if (!seats.canChange)
         throw new BillingError("BILLING_SEAT_QUANTITY_PROVIDER_FAILED", 503);
-      if (
-        action === "cancel" &&
-        (current.status !== "active" ||
-          current.cancelled ||
-          current.payment_processor !== "card" ||
-          current.subscription_id !== id ||
-          current.customer_id !== ctx.subscription.provider_customer_id ||
-          current.store_id !== ctx.subscription.provider_store_id ||
-          current.environment !== config.environment ||
-          current.variant_id !== ctx.subscription.provider_variant_id ||
-          current.price_id !== ctx.subscription.provider_price_id ||
-          current.first_subscription_item_id !==
-            ctx.subscription.first_subscription_item_id)
-      )
-        throw new BillingError("BILLING_SEAT_QUANTITY_CANNOT_CANCEL", 409);
+      if (action === "cancel")
+        seats.assertCancelable(
+          current,
+          canonicalSubscriptionIdentity(ctx.subscription, config.environment),
+        );
       operation = await deps.serviceRpc(
         action === "cancel"
           ? "begin_cancel_billing_seat_quantity"
@@ -156,40 +137,22 @@ export async function handleSeatQuantity(
           ...base,
           p_operation: input.operationId,
           ...(action === "apply"
-            ? { p_target: input.targetAdditionalSeats, p_snapshot: verified }
+            ? {
+                p_target: input.targetAdditionalSeats,
+                ...proof.snapshotArguments(verified),
+              }
             : {}),
         },
       );
       if (operation?.dispatch) {
         dispatched = true;
-        const item = await config.provider.updateSubscriptionItemQuantity(
-          current.first_subscription_item_id,
-          operation.quantity,
-          operation.timing,
-        );
-        validateSubscriptionItem(current, item, operation.quantity);
-        const updated = await config.provider.retrieveSubscription(id);
-        if (
-          updated.quantity !== operation.quantity ||
-          updated.variant_id !== current.variant_id ||
-          updated.price_id !== current.price_id ||
-          updated.customer_id !== current.customer_id ||
-          updated.store_id !== current.store_id ||
-          updated.environment !== current.environment ||
-          updated.first_subscription_item_id !==
-            current.first_subscription_item_id ||
-          updated.payment_processor !== "card" ||
-          Date.parse(updated.updated_at) < Date.parse(current.updated_at)
-        )
-          throw new BillingError(
-            "BILLING_SEAT_QUANTITY_PROVIDER_AMBIGUOUS",
-            503,
-            true,
-          );
-        verified = await read(updated);
+        await seats.change(current, operation.quantity, operation.timing);
+        const updated = await subscriptions.retrieve(id);
+        seats.assertResult(updated, current, operation.quantity);
+        verified = await subscriptions.withItem(updated, true);
         const result = await deps.serviceRpc("finish_billing_plan_change", {
           ...base,
-          p_snapshot: verified,
+          ...proof.snapshotArguments(verified),
         });
         if (!["processed", "replayed"].includes(result))
           throw new BillingError(

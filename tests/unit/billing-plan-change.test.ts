@@ -1,3 +1,4 @@
+import { installTestBillingPorts } from "./helpers/billing-test-ports";
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import {
@@ -98,6 +99,7 @@ function fixture() {
     serviceRpc: service,
     log: vi.fn(),
   };
+  installTestBillingPorts(deps);
   const request = (body: unknown = input) =>
     new Request("http://local.test", {
       method: "POST",

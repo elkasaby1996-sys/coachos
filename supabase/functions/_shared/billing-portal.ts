@@ -1,7 +1,11 @@
-import { BillingError, boundedBody, object } from "./lemon-squeezy.ts";
+import { BillingError, boundedBody, object } from "./billing-common.ts";
 import type { BillingDependencies } from "./billing-handlers.ts";
 
-export type PortalLinkPurpose = "manage_billing" | "update_payment_method";
+import type { PortalLinkPurpose } from "./billing-provider.ts";
+import { canonicalPortalIdentity } from "./billing-legacy-records.ts";
+export type { PortalLinkPurpose } from "./billing-provider.ts";
+// Compatibility exports for existing validator consumers.
+export { portalHosts, validatePortalUrl } from "./lemon-squeezy-portal.ts";
 export const portalCodes = new Set([
   "BILLING_PORTAL_NOT_AVAILABLE",
   "BILLING_PORTAL_OWNER_REQUIRED",
@@ -21,62 +25,6 @@ export function portalPurpose(input: unknown): PortalLinkPurpose {
   )
     throw new BillingError("BILLING_PORTAL_NOT_AVAILABLE", 400);
   return value.purpose;
-}
-export function portalHosts(value: string): string[] {
-  const hosts = value
-    .split(",")
-    .map((host) => host.trim().toLowerCase())
-    .filter(Boolean);
-  if (
-    !hosts.length ||
-    hosts.some(
-      (host) => !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(host),
-    )
-  )
-    throw new BillingError("BILLING_PORTAL_PROVIDER_NOT_CONFIGURED", 503);
-  return hosts;
-}
-export function validatePortalUrl(
-  value: unknown,
-  purpose: PortalLinkPurpose,
-  hosts: string[],
-  subscriptionId: string,
-) {
-  if (value == null || value === "")
-    throw new BillingError("BILLING_PORTAL_URL_MISSING", 503);
-  const invalid = () => new BillingError("BILLING_PORTAL_URL_INVALID", 503);
-  if (typeof value !== "string" || value.length > 4096 || /[\s\\]/.test(value))
-    throw invalid();
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw invalid();
-  }
-  // URL.port hides an explicit default :443; inspect the original authority too.
-  const authority = value.match(/^https:\/\/([^/?#]+)/i)?.[1];
-  if (
-    !authority ||
-    /[:@]/.test(authority) ||
-    value.includes("#") ||
-    url.protocol !== "https:" ||
-    url.username ||
-    url.password ||
-    url.port ||
-    url.hash
-  )
-    throw invalid();
-  if (!hosts.includes(url.hostname))
-    throw new BillingError("BILLING_PORTAL_HOST_NOT_ALLOWED", 503);
-  const path =
-    purpose === "manage_billing"
-      ? "/billing"
-      : `/subscription/${subscriptionId}/payment-details`;
-  if (url.pathname !== path && url.pathname !== `${path}/`) throw invalid();
-  // Only called after authenticated provider retrieval and canonical identity rechecks.
-  // The provider owns the query, including signature/expiry semantics. Never parse,
-  // reconstruct, or use it for RepSync authorization, ownership, or routing.
-  return { purpose, portalUrl: value };
 }
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -111,24 +59,21 @@ export async function handleCustomerPortalLink(
       throw new BillingError("BILLING_PORTAL_NOT_AVAILABLE", 400);
     }
     const config = deps.config();
-    if (!config?.provider.retrieveSubscriptionForPortal)
+    const capability = config?.adapter?.capabilities.customerPortal;
+    if (!config || !capability)
       throw new BillingError("BILLING_PORTAL_PROVIDER_NOT_CONFIGURED", 503);
-    const hosts = portalHosts(config.portalAllowedHosts ?? "");
+    capability.validateConfiguration();
     const args = { p_owner: user.id, p_environment: config.environment };
     const link = object(
       await deps.serviceRpc("get_billing_portal_subscription", args),
     );
-    const snapshot = await config.provider.retrieveSubscriptionForPortal(
-      link.subscription_id,
-    );
-    for (const key of [
-      "provider",
-      "environment",
-      "store_id",
-      "customer_id",
-      "subscription_id",
-    ] as const)
-      if (snapshot[key] !== link[key])
+    const prepared = await capability.prepare({
+      subscriptionReference: link.subscription_id,
+      purpose,
+    });
+    const expected = canonicalPortalIdentity(link);
+    for (const key of Object.keys(expected) as (keyof typeof expected)[])
+      if (prepared.identity[key] !== expected[key])
         throw new BillingError("BILLING_PORTAL_IDENTITY_MISMATCH", 409);
     // Revalidate ownership and the current local linkage after the network request.
     const current = object(
@@ -139,20 +84,10 @@ export async function handleCustomerPortalLink(
         throw new BillingError("BILLING_PORTAL_IDENTITY_MISMATCH", 409);
     if (
       purpose === "update_payment_method" &&
-      (!["past_due", "grace"].includes(current.local_status) ||
-        !["past_due", "unpaid"].includes(snapshot.status))
+      !["past_due", "grace"].includes(current.local_status)
     )
       throw new BillingError("BILLING_PORTAL_NOT_AVAILABLE", 409);
-    return reply(
-      validatePortalUrl(
-        purpose === "manage_billing"
-          ? snapshot.customerPortal
-          : snapshot.updatePaymentMethod,
-        purpose,
-        hosts,
-        snapshot.subscription_id,
-      ),
-    );
+    return reply({ purpose, portalUrl: prepared.destination().url });
   } catch (error) {
     const safe =
       error instanceof BillingError && portalCodes.has(error.code)

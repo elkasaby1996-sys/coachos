@@ -1,5 +1,7 @@
 # BILLING-ADAPTER-01: provider-neutral billing boundary
 
+This records the ADAPTER-01 implementation. The follow-up [BILLING-ADAPTER-02](billing-commercial-ports.md) adds verified reconciliation, portal orchestration and provider policy ports; its current design supersedes the deferred-port limitations below.
+
 ## Investigation and dependency map (before implementation)
 
 The existing billing path is:

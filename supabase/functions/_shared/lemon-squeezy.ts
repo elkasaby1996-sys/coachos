@@ -1,3 +1,10 @@
+import { BillingError, object, uuidPattern } from "./billing-common.ts";
+export {
+  BillingError,
+  object,
+  uuidPattern,
+  boundedBody,
+} from "./billing-common.ts";
 /** Provider objects and PII never leave this adapter. No environment-selectable fake. */
 import {
   parseSubscriptionItem,
@@ -5,20 +12,6 @@ import {
   type SubscriptionItemSnapshot,
 } from "./billing-seat-item.ts";
 export type Environment = "test" | "live";
-export class BillingError extends Error {
-  constructor(
-    public code: string,
-    public httpStatus = 400,
-    public ambiguous = false,
-  ) {
-    super(code);
-  }
-}
-export function object(value: unknown): Record<string, any> {
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new BillingError("BILLING_INVALID_INPUT");
-  return value as Record<string, any>;
-}
 export function providerId(value: unknown): string {
   if (
     (typeof value !== "number" && typeof value !== "string") ||
@@ -38,8 +31,6 @@ export function timestamp(value: unknown, nullable = false): string | null {
     throw new BillingError("BILLING_INVALID_INPUT");
   return new Date(value).toISOString();
 }
-export const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export function checkoutRequest(value: unknown) {
   const v = object(value);
   if (
@@ -542,31 +533,6 @@ export async function validSignature(
     bytes,
     raw as Uint8Array<ArrayBuffer>,
   );
-}
-export async function boundedBody(request: Request, limit = 262_144) {
-  if (Number(request.headers.get("content-length")) > limit)
-    throw new BillingError("BILLING_INVALID_INPUT");
-  const reader = request.body?.getReader();
-  if (!reader) throw new BillingError("BILLING_INVALID_INPUT");
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    length += value.length;
-    if (length > limit) {
-      await reader.cancel();
-      throw new BillingError("BILLING_INVALID_INPUT");
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return bytes;
 }
 export function normalizeWebhook(
   value: unknown,

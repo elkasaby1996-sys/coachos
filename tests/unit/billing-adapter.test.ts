@@ -1,3 +1,4 @@
+import { installTestBillingPorts } from "./helpers/billing-test-ports";
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -531,7 +532,9 @@ describe("thin compatibility delegation", () => {
       http,
     );
     expect(http).not.toHaveBeenCalled();
-    expect(boundary.adapter.capabilities.customerPortal).toBeUndefined();
+    expect(boundary.adapter.capabilities.customerPortal?.prepare).toBeTypeOf(
+      "function",
+    );
     expect(boundary.adapter.capabilities.cancellation).toBeUndefined();
     expect(boundary.compatibility.retrieveSubscriptionForPortal).toBeTypeOf(
       "function",
@@ -751,6 +754,7 @@ describe("thin compatibility delegation", () => {
         }),
         serviceRpc: rpc,
       };
+      installTestBillingPorts(deps);
       const checkout = await handleBillingCheckout(
         new Request("https://local.test/checkout", {
           method: "POST",
