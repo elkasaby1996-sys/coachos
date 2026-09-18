@@ -69,6 +69,27 @@
   font-weight: 600;
   letter-spacing: -0.015em;
 }
+.support-buyer-contact {
+  margin: 20px 0;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.support-buyer-contact a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--support-accent);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.support-buyer-contact a:focus-visible {
+  outline: 2px solid var(--support-accent);
+  outline-offset: 4px;
+}
+
 .support-email-block {
   margin-top: 38px;
 }

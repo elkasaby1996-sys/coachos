@@ -8,10 +8,12 @@ import {
 } from "../../lib/icons";
 import { useSessionAuth } from "../../lib/auth";
 import { AppFooter } from "../../components/common/app-footer";
+import { BuyerSupportContact } from "../../components/common/buyer-support-contact";
+import { legalSiteConfig } from "../../lib/legal-site";
 import "../../styles/support.css";
 import { SupportRequestForm } from "../../features/support/support-request-form";
 
-const supportEmail = "support@repsync.com";
+const supportEmail = legalSiteConfig.contactEmail;
 const description =
   "Get help with your RepSync account, billing, or coaching workspace.";
 const emailLink = (subject: string) =>
@@ -82,6 +84,9 @@ export function SupportPage() {
               A question about your account or something not working? The
               RepSync team is here to help.
             </p>
+            <div className="support-buyer-contact">
+              <BuyerSupportContact />
+            </div>
             <SupportRequestForm />
           </div>
           <aside

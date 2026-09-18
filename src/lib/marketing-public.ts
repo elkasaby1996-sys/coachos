@@ -1,3 +1,4 @@
+import { legalPolicyMetadata, legalSiteConfig } from "./legal-site";
 export type MarketingFeatureAvailability =
   | "available"
   | "beta"
@@ -541,7 +542,8 @@ export const productPreviewGroups: ProductPreviewGroup[] = [
   {
     key: "nutrition_assignment",
     title: "Nutrition",
-    caption: "Marketing demonstration preview of nutrition guidance.",
+    caption:
+      "Marketing demonstration preview of coach-defined nutrition targets.",
     screenTitle: "Nutrition assignment",
     screenSubtitle: "Goals and guidance remain visible beside coaching work",
     facts: [
@@ -819,7 +821,7 @@ export const marketingProductFeatures: MarketingFeature[] = [
     title: "Client home",
     shortDescription: "Give clients one clear place for today's coaching work.",
     longDescription:
-      "Clients can see their own workout, nutrition guidance, habits, check-ins, messages, progress, and supported wearable context without seeing coach business analytics or other clients.",
+      "Clients can see their coach-created programs, coach-defined nutrition targets, habits, check-ins, messages, progress, and supported wearable context without seeing coach business analytics or other clients.",
     availability: marketingFeatureAvailability.coachClientAccounts.status,
     audiences: ["client"],
     category: "client_experience",
@@ -970,32 +972,8 @@ export function getPublicTrustClaims() {
   );
 }
 
-export type LegalSiteConfig = {
-  businessName: string;
-  legalEntityName: string;
-  jurisdiction: string;
-  contactEmail: string;
-  privacyEmail: string;
-  securityEmail: string;
-  effectiveDate: string;
-  version: string;
-  approvedBy?: string;
-  approvedAt?: string;
-};
-
-export const legalSiteConfig: LegalSiteConfig = {
-  businessName: "RepSync",
-  legalEntityName: "RepSync",
-  jurisdiction: "Legal review pending",
-  contactEmail: "support@repsync.com",
-  privacyEmail: "privacy@repsync.com",
-  securityEmail: "security@repsync.com",
-  effectiveDate: "2026-07-12",
-  version: "draft-public-launch-2026-07-12",
-};
-
-export const legalReviewRequired =
-  !legalSiteConfig.approvedBy || !legalSiteConfig.approvedAt;
+export { legalSiteConfig, legalReviewRequired } from "./legal-site";
+export type { LegalSiteConfig } from "./legal-site";
 
 export type FaqGroup = {
   category: string;
@@ -1153,7 +1131,7 @@ export const publicFaqGroups: FaqGroup[] = [
       },
       {
         q: "Does RepSync provide medical advice?",
-        a: "No. RepSync is coaching software and should not be presented as medical, psychological, or diagnostic advice.",
+        a: "No. RepSync provides software tools used by independent fitness professionals. RepSync does not supply coaches or provide personal training, nutrition treatment, medical, psychological, diagnostic, weight-loss, or muscle-building advice. Your independent coach creates your programs and defines your nutrition targets.",
       },
     ],
   },
@@ -1913,18 +1891,9 @@ export const marketingRouteMetadata: Record<string, MarketingRouteMetadata> = {
       "Learn how RepSync separates public profile information from private coaching data with authentication, workspace roles, client boundaries, and invite checks.",
     canonicalPath: "/security",
   },
-  "/privacy": {
-    title: "RepSync Interim Privacy Notice",
-    description:
-      "Read the interim RepSync privacy notice covering account information, coach profiles, applications, marketing forms, analytics, and coaching information.",
-    canonicalPath: "/privacy",
-  },
-  "/terms": {
-    title: "RepSync Interim Terms of Use",
-    description:
-      "Read the interim RepSync terms covering accounts, acceptable use, coach responsibilities, trials, and service limitations.",
-    canonicalPath: "/terms",
-  },
+  "/privacy": legalPolicyMetadata.privacy,
+  "/terms": legalPolicyMetadata.terms,
+  "/refunds": legalPolicyMetadata.refunds,
   "/cookies": {
     title: "RepSync Cookie Notice and Analytics Preferences",
     description:

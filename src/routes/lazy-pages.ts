@@ -130,6 +130,9 @@ export const PrivacyPage = lazy(() =>
 export const TermsPage = lazy(() =>
   import("../pages/public/terms").then((m) => ({ default: m.TermsPage })),
 );
+export const RefundsPage = lazy(() =>
+  import("../pages/public/refunds").then((m) => ({ default: m.RefundsPage })),
+);
 export const SupportPage = lazy(() =>
   import("../pages/public/support").then((m) => ({ default: m.SupportPage })),
 );

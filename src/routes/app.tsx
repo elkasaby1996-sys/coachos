@@ -8,6 +8,7 @@ import {
   useParams,
 } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { getLegalRobots, legalRoutes } from "../lib/legal-site";
 import {
   ClientAccountOnboardingPage,
   ClientBaselinePage,
@@ -49,6 +50,7 @@ import {
   ProductPage,
   NotificationsPage,
   PrivacyPage,
+  RefundsPage,
   PublicCoachProfilePage,
   PtBaselineTemplatesPage,
   PtCalendarPage,
@@ -554,9 +556,13 @@ function DocumentMetadata() {
     const robots = ensureMetaTag("robots");
     const googlebot = ensureMetaTag("googlebot");
     const canonical = ensureCanonicalLink();
-    const content = isPrivateRoute(location.pathname)
-      ? "noindex, nofollow"
-      : "index, follow";
+    const content = legalRoutes.some(
+      (path) => path === location.pathname.replace(/\/$/, ""),
+    )
+      ? getLegalRobots()
+      : isPrivateRoute(location.pathname)
+        ? "noindex, nofollow"
+        : "index, follow";
     const canonicalUrl = `${window.location.origin}${location.pathname}`;
 
     robots.content = content;
@@ -733,6 +739,7 @@ export function App() {
           />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/refunds" element={<RefundsPage />} />
           <Route path="/cookies" element={<CookiesPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/health" element={<HealthPage />} />

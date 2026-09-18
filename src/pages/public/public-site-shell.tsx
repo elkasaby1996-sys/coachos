@@ -84,9 +84,14 @@ export function PublicHeader() {
           <PublicSiteLink to="/start-trial">Start 14-day trial</PublicSiteLink>
         </div>
       </header>
-      {!["/pricing", "/privacy", "/terms", "/cookies", "/security"].includes(
-        location.pathname,
-      ) && (
+      {![
+        "/pricing",
+        "/privacy",
+        "/terms",
+        "/refunds",
+        "/cookies",
+        "/security",
+      ].includes(location.pathname.replace(/\/$/, "")) && (
         <aside
           className="rs-commercial-preview-note"
           aria-label="Product preview status"

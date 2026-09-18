@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { legalSiteConfig } from "../../src/lib/legal-site";
 
 const publicRoutes = [
   ["/", "From first inquiry to every check-in."],
@@ -15,12 +16,173 @@ const publicRoutes = [
   ["/compare/fitr", "RepSync compared with FITR"],
   ["/faq", "Useful answers. No inflated claims."],
   ["/security", "Access should follow the coaching relationship."],
-  ["/privacy", "Interim Privacy Notice"],
-  ["/terms", "Interim Terms of Use"],
+  ["/privacy", "Privacy Policy"],
+  ["/terms", "Terms of Service"],
+  ["/refunds", "Refund and Cancellation Policy"],
   ["/cookies", "Cookie notice"],
+  ["/support", "How can we help?"],
 ] as const;
 
 test.describe("public marketing site", () => {
+  test("shows reseller terms and buyer support without a session or placeholder phone", async ({
+    page,
+  }) => {
+    await page.route("**/auth/v1/**", (route) => route.abort());
+    await page.goto("/terms");
+    await expect(page.locator("[data-paddle-reseller]")).toContainText(
+      "Our order process is conducted by our online reseller Paddle.com. Paddle.com is the Merchant of Record for all our orders. Paddle provides all customer service inquiries and handles returns",
+    );
+    await page.goto("/support");
+    const contact = page.getByRole("region", { name: "Buyer support contact" });
+    await expect(
+      contact.getByRole("link", { name: "support@repsync.com" }),
+    ).toHaveAttribute("href", "mailto:support@repsync.com");
+    await expect(contact).not.toContainText(
+      /\bTODO\b|\[PHONE\]|\+000|placeholder|example number/i,
+    );
+    for (const path of ["/terms", "/refunds", "/support"]) {
+      await page.goto(path);
+      await expect(
+        page.getByRole("link", {
+          name: legalSiteConfig.supportPhone,
+          exact: true,
+        }),
+      ).toHaveAttribute("href", `tel:${legalSiteConfig.supportPhone}`);
+    }
+    await page.setViewportSize({ width: 375, height: 900 });
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: test.info().outputPath("support-375.png"),
+      fullPage: true,
+    });
+    await page.goto("/faq");
+    await page
+      .getByText("Does RepSync provide medical advice?", { exact: true })
+      .click();
+    await expect(
+      page.getByText(
+        /RepSync provides software tools used by independent fitness professionals/,
+      ),
+    ).toBeVisible();
+  });
+  for (const [route, heading, section] of [
+    ["/privacy", "Privacy Policy", "18. Contact"],
+    ["/terms", "Terms of Service", "25. Contact"],
+    ["/refunds", "Refund and Cancellation Policy", "14. Contact"],
+  ]) {
+    test(`makes ${route} public, complete, and indexable without a session`, async ({
+      page,
+    }) => {
+      await page.route("**/auth/v1/**", (route) => route.abort());
+      const response = await page.goto(route);
+      expect(response?.status()).toBe(200);
+      await expect(
+        page.getByRole("heading", { name: heading, exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: section, exact: true }),
+      ).toBeAttached();
+      await expect(page.locator("main")).toContainText("Operated by: RepSync");
+      await expect(page.locator("main")).not.toContainText(
+        "[LEGAL OPERATOR NAME]",
+      );
+      await expect(page).not.toHaveURL(/\/login/);
+      await expect(page).not.toHaveTitle(/Interim/i);
+      for (const name of ["robots", "googlebot"])
+        await expect(page.locator(`meta[name="${name}"]`)).toHaveAttribute(
+          "content",
+          "index,follow",
+        );
+      for (const [path, label] of [
+        ["/privacy", "Privacy Policy"],
+        ["/terms", "Terms of Service"],
+        ["/refunds", "Refund Policy"],
+      ])
+        await expect(
+          page
+            .locator("footer")
+            .getByRole("link", { name: label, exact: true }),
+        ).toHaveAttribute("href", path);
+    });
+  }
+
+  test("serves all three complete policies without JavaScript or authentication", async ({
+    browser,
+  }, testInfo) => {
+    test.skip(
+      !testInfo.config.configFile?.endsWith("public-marketing.config.ts"),
+      "Requires the built-site public-only configuration.",
+    );
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+      storageState: { cookies: [], origins: [] },
+    });
+    const page = await context.newPage();
+    try {
+      for (const [path, title] of [
+        ["privacy", "Privacy Policy"],
+        ["terms", "Terms of Service"],
+        ["refunds", "Refund and Cancellation Policy"],
+      ]) {
+        const response = await page.goto(`http://127.0.0.1:4175/${path}/`);
+        expect(response?.status()).toBe(200);
+        if (path !== "privacy") {
+          await expect(
+            page.getByRole("link", {
+              name: legalSiteConfig.supportPhone,
+              exact: true,
+            }),
+          ).toHaveAttribute("href", `tel:${legalSiteConfig.supportPhone}`);
+        }
+        await expect(
+          page.getByRole("heading", { name: title, exact: true }),
+        ).toBeVisible();
+        await expect(page.locator("main")).toContainText(
+          "Operated by: RepSync",
+        );
+        await expect(page.locator("main")).not.toContainText(
+          "[LEGAL OPERATOR NAME]",
+        );
+        await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+          "content",
+          "index,follow",
+        );
+      }
+    } finally {
+      await context.close();
+    }
+  });
+
+  test("keeps legal text and footer readable at phone, tablet, and desktop widths", async ({
+    page,
+  }, testInfo) => {
+    for (const width of [375, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/terms");
+      await expect(
+        page.getByRole("heading", { name: "Terms of Service", exact: true }),
+      ).toBeVisible();
+      await expect(page.locator("main")).toContainText(
+        "RepSync itself does not provide personal training",
+      );
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > innerWidth,
+        ),
+      ).toBe(false);
+      if (width === 375 || width === 1440)
+        await page.screenshot({
+          path: testInfo.outputPath(`legal-${width}.png`),
+        });
+    }
+  });
+
   test("shows the v1 commercial prices and retains paid-plan intent", async ({
     page,
   }) => {
@@ -237,18 +399,22 @@ test.describe("public marketing site", () => {
 
     await page.goto("/privacy");
     await expect(
-      page.getByText("Account and profile information"),
+      page.getByRole("heading", { name: "Account and identity information" }),
     ).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
       "content",
-      "noindex,nofollow",
+      "index,follow",
     );
 
     await page.goto("/terms");
-    await expect(page.getByText("Coach responsibility")).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: "2. Coaches and clients are independent",
+      }),
+    ).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
       "content",
-      "noindex,nofollow",
+      "index,follow",
     );
 
     await page.goto("/cookies");

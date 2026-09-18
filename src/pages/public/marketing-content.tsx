@@ -30,10 +30,7 @@ import {
   Utensils,
 } from "../../lib/icons";
 import { AppFooter } from "../../components/common/app-footer";
-import {
-  legalReviewRequired,
-  publicFaqGroups,
-} from "../../lib/marketing-public";
+import { publicFaqGroups } from "../../lib/marketing-public";
 import { buildTrialPath } from "../../lib/trial-plan";
 import { BloomField } from "./bloom-field";
 import { usePublicSeo } from "./public-seo";
@@ -3427,68 +3424,6 @@ export function SecurityPage() {
         Security documentation will be updated when a formal review supports
         additional claims.
       </p>
-    </SimpleInfoPage>
-  );
-}
-
-export function PrivacyPage() {
-  return (
-    <SimpleInfoPage
-      eyebrow="Privacy"
-      title="Interim Privacy Notice"
-      description="This interim notice explains the categories of account, profile, coaching, application, and marketing information RepSync may process while the final policy is under review."
-      robots={legalReviewRequired ? "noindex,nofollow" : "index,follow"}
-    >
-      <InfoGrid
-        items={[
-          [
-            <UsersRound />,
-            "Account and profile information",
-            "RepSync may process identity, email, profile, workspace, and coach-controlled public profile details.",
-          ],
-          [
-            <ClipboardCheck />,
-            "Coaching information",
-            "Private coaching areas may include programs, nutrition, habits, check-ins, messages, notes, progress, and wearable context.",
-          ],
-          [
-            <MessageSquare />,
-            "Marketing forms",
-            "Switch-planning forms collect contact details and operational context so the team can respond.",
-          ],
-        ]}
-      />
-    </SimpleInfoPage>
-  );
-}
-
-export function TermsPage() {
-  return (
-    <SimpleInfoPage
-      eyebrow="Terms"
-      title="Interim Terms of Use"
-      description="These interim terms describe responsible use of RepSync's public and authenticated surfaces while the final terms are under review."
-      robots={legalReviewRequired ? "noindex,nofollow" : "index,follow"}
-    >
-      <InfoGrid
-        items={[
-          [
-            <CheckCircle2 />,
-            "Account responsibility",
-            "Users are responsible for accurate account information and secure credentials.",
-          ],
-          [
-            <ShieldCheck />,
-            "Acceptable use",
-            "Do not misuse RepSync, attempt unauthorized access, or interfere with service operation.",
-          ],
-          [
-            <Dumbbell />,
-            "Coach responsibility",
-            "Coaches remain responsible for coaching content, client communication, and professional obligations.",
-          ],
-        ]}
-      />
     </SimpleInfoPage>
   );
 }
