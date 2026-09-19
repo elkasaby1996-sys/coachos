@@ -1,3 +1,4 @@
+import { lemonSqueezyPortalCapability } from "./lemon-squeezy-portal.ts";
 /** Compatibility adapter: existing parsers/transport remain the source of truth. */
 import {
   BillingError,
@@ -170,6 +171,7 @@ export type LemonSqueezyAdapterOptions = {
   environment: BillingEnvironment;
   webhookSecret: string;
   resolveMapping?: BillingMappingResolver;
+  portalAllowedHosts?: string;
 };
 
 export function adaptLemonSqueezyProvider(
@@ -355,8 +357,12 @@ export function adaptLemonSqueezyProvider(
         };
       },
     };
-  // Portal identity/ownership rechecks stay in the current handler. Subscription
-  // cancellation has no existing direct API operation. Neither is falsely advertised.
+  const portal = lemonSqueezyPortalCapability(
+    legacy,
+    options.portalAllowedHosts ?? "",
+  );
+  if (portal) adapter.capabilities.customerPortal = portal;
+  // Subscription cancellation has no existing direct API operation.
   return adapter;
 }
 

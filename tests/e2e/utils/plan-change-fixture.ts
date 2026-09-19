@@ -1,3 +1,4 @@
+import { configureTestBillingPorts } from "../../unit/helpers/billing-test-ports";
 import { createHmac, randomUUID } from "node:crypto";
 import { expect, type Page, type BrowserContext } from "@playwright/test";
 import { seedEntitlementCoach } from "./account-entitlement-seeds";
@@ -148,59 +149,63 @@ export async function planChangeFixture(
       );
       return rows.find((r) => r.value)?.value;
     },
-    config: () => ({
-      environment: "test",
-      appBaseUrl: "http://local.test",
-      webhookSecret: "plan-fixture",
-      provider: {
-        createCheckout: async () => {
-          throw new Error("unused");
-        },
-        retrieveSubscription: async () => ({ ...snapshot }),
-        retrieveSubscriptionItem: async () => ({
-          item_id: snapshot.first_subscription_item_id,
-          subscription_id: snapshot.subscription_id,
-          price_id: snapshot.price_id,
-          quantity: snapshot.quantity,
-          is_usage_based: false,
-          created_at: snapshot.created_at,
-          updated_at: snapshot.updated_at,
-        }),
-        updateSubscriptionItemQuantity: async (_id, quantity) => {
-          patches++;
-          snapshot = {
-            ...snapshot,
-            quantity,
-            updated_at: new Date(
-              Math.max(Date.now() + 1000, Date.parse(snapshot.updated_at) + 1),
-            ).toISOString(),
-          };
-          return {
+    config: () =>
+      configureTestBillingPorts({
+        environment: "test",
+        appBaseUrl: "http://local.test",
+        webhookSecret: "plan-fixture",
+        provider: {
+          createCheckout: async () => {
+            throw new Error("unused");
+          },
+          retrieveSubscription: async () => ({ ...snapshot }),
+          retrieveSubscriptionItem: async () => ({
             item_id: snapshot.first_subscription_item_id,
             subscription_id: snapshot.subscription_id,
             price_id: snapshot.price_id,
-            quantity,
+            quantity: snapshot.quantity,
             is_usage_based: false,
             created_at: snapshot.created_at,
             updated_at: snapshot.updated_at,
-          };
+          }),
+          updateSubscriptionItemQuantity: async (_id, quantity) => {
+            patches++;
+            snapshot = {
+              ...snapshot,
+              quantity,
+              updated_at: new Date(
+                Math.max(
+                  Date.now() + 1000,
+                  Date.parse(snapshot.updated_at) + 1,
+                ),
+              ).toISOString(),
+            };
+            return {
+              item_id: snapshot.first_subscription_item_id,
+              subscription_id: snapshot.subscription_id,
+              price_id: snapshot.price_id,
+              quantity,
+              is_usage_based: false,
+              created_at: snapshot.created_at,
+              updated_at: snapshot.updated_at,
+            };
+          },
+          updateSubscriptionVariant: async (_id, variant) => {
+            patches++;
+            const target = mappings.find(
+              (m) => m.provider_variant_id === variant,
+            )!;
+            snapshot = {
+              ...snapshot,
+              variant_id: variant,
+              price_id: target.provider_price_id,
+              updated_at: new Date(Date.now() + 1000).toISOString(),
+            };
+            return snapshot;
+          },
+          listSubscriptionInvoices: async () => [],
         },
-        updateSubscriptionVariant: async (_id, variant) => {
-          patches++;
-          const target = mappings.find(
-            (m) => m.provider_variant_id === variant,
-          )!;
-          snapshot = {
-            ...snapshot,
-            variant_id: variant,
-            price_id: target.provider_price_id,
-            updated_at: new Date(Date.now() + 1000).toISOString(),
-          };
-          return snapshot;
-        },
-        listSubscriptionInvoices: async () => [],
-      },
-    }),
+      }),
   };
   const actions: Record<string, "preview" | "apply" | "cancel" | "refresh"> = {
     "billing-preview-plan-change": "preview",

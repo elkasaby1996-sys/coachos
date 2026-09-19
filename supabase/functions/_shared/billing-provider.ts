@@ -154,11 +154,21 @@ export interface WebhookVerificationCapability {
     merchantReference: ProviderReference;
   }): Promise<VerifiedProviderEvent>;
 }
+export type PortalLinkPurpose = "manage_billing" | "update_payment_method";
 export interface CustomerPortalCapability {
-  createLink(input: {
+  validateConfiguration(): void;
+  prepare(input: {
     subscriptionReference: ProviderReference;
-    purpose: "manage_billing" | "update_payment_method";
-  }): Promise<{ url: string; expiresAt?: string }>;
+    purpose: PortalLinkPurpose;
+  }): Promise<{
+    identity: ProviderIdentity & {
+      customerReference: ProviderReference;
+      subscriptionReference: ProviderReference;
+    };
+    /** Invoke only after the core rechecks canonical ownership and purpose eligibility.
+     * Never log, persist or cache the returned opaque URL. */
+    destination(): { url: string; expiresAt?: string };
+  }>;
 }
 export interface SubscriptionCancellationCapability {
   cancel(input: {

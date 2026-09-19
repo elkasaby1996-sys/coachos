@@ -1,3 +1,4 @@
+import { configureTestBillingPorts } from "../unit/helpers/billing-test-ports";
 import { randomUUID, createHmac } from "node:crypto";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { seedEntitlementCoach } from "./utils/account-entitlement-seeds";
@@ -168,17 +169,18 @@ async function fixture(
         },
       });
       const deps: BillingDependencies = {
-        config: () => ({
-          environment: "test",
-          appBaseUrl: "http://localhost",
-          webhookSecret: "browser-fixture",
-          provider: {
-            createCheckout: async () => {
-              throw new Error("unused");
+        config: () =>
+          configureTestBillingPorts({
+            environment: "test",
+            appBaseUrl: "http://localhost",
+            webhookSecret: "browser-fixture",
+            provider: {
+              createCheckout: async () => {
+                throw new Error("unused");
+              },
+              retrieveSubscription: async () => snapshot,
             },
-            retrieveSubscription: async () => snapshot,
-          },
-        }),
+          }),
         authenticate: async () => null,
         ownerRpc: () => async () => null,
         serviceRpc: async (name) => {

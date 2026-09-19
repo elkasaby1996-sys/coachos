@@ -1,3 +1,4 @@
+import { createLemonSqueezyCommercialPorts } from "./lemon-squeezy-reconciliation.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.0";
 import { BillingError } from "./lemon-squeezy.ts";
 import { createLemonSqueezyBillingBoundary } from "./lemon-squeezy-adapter.ts";
@@ -61,6 +62,7 @@ export function billingDependencies(): BillingDependencies {
       const boundary = createLemonSqueezyBillingBoundary(apiKey, {
         environment: environment as "test" | "live",
         webhookSecret,
+        portalAllowedHosts: env("BILLING_PORTAL_ALLOWED_HOSTS"),
       });
       return {
         environment: environment as "test" | "live",
@@ -69,6 +71,10 @@ export function billingDependencies(): BillingDependencies {
         portalAllowedHosts: env("BILLING_PORTAL_ALLOWED_HOSTS"),
         provider: boundary.compatibility,
         adapter: boundary.adapter,
+        commercial: createLemonSqueezyCommercialPorts(boundary.compatibility, {
+          environment: environment as "test" | "live",
+          webhookSecret,
+        }),
       };
     },
     authenticate: async (token) => {

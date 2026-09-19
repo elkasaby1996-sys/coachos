@@ -1,3 +1,7 @@
+import {
+  installTestBillingPorts,
+  configureTestBillingPorts,
+} from "./helpers/billing-test-ports";
 import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import {
@@ -65,6 +69,7 @@ function fixture() {
       portalAllowedHosts: "fake.lemonsqueezy.com,billing.example.test",
     }),
   };
+  installTestBillingPorts(deps);
   return { deps, provider, serviceRpc };
 }
 function request(body: unknown = { purpose: "manage_billing" }) {
@@ -256,7 +261,7 @@ describe("customer portal server boundary", () => {
           return new Response("private data", { status: failure });
         }),
       );
-      deps.config = () => config;
+      deps.config = () => configureTestBillingPorts(config);
       expect(
         await (await handleCustomerPortalLink(request(), deps)).json(),
       ).toEqual({ code: "BILLING_PORTAL_RETRIEVAL_FAILED" });

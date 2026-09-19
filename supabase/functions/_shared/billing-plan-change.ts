@@ -3,8 +3,8 @@ import {
   boundedBody,
   object,
   uuidPattern,
-  type SubscriptionSnapshot,
-} from "./lemon-squeezy.ts";
+} from "./billing-common.ts";
+import { canonicalSubscriptionIdentity } from "./billing-legacy-records.ts";
 import type { BillingDependencies } from "./billing-handlers.ts";
 
 export const planChangeCodes = [
@@ -97,52 +97,35 @@ export async function handlePlanChange(
         throw new BillingError("BILLING_INVALID_INPUT");
     } else planChangeRequest(input);
     const config = deps.config();
-    if (!config)
+    if (!config?.commercial?.plans)
       throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
+    const { subscriptions, reconciliation: proof, plans } = config.commercial;
     const ctx = await deps.serviceRpc("billing_plan_change_context", {
       p_owner: owner.id,
       p_environment: config.environment,
     });
     const id = ctx.subscription.provider_subscription_id;
-    const subscription = await config.provider.retrieveSubscription(id);
-    const firstItem = config.provider.retrieveSubscriptionItem
-      ? await config.provider.retrieveSubscriptionItem(
-          subscription.first_subscription_item_id,
-        )
-      : null;
-    const current = firstItem
-      ? { ...subscription, verified_item: firstItem }
-      : subscription;
-    if (current.payment_processor === "paypal")
-      throw new BillingError("BILLING_PLAN_CHANGE_PAYPAL_UNSUPPORTED", 409);
-    if (current.payment_processor !== "card")
-      throw new BillingError("BILLING_PLAN_CHANGE_NOT_ELIGIBLE", 409);
-    if (
-      action === "cancel" &&
-      (current.status !== "active" ||
-        current.cancelled ||
-        current.variant_id !== ctx.subscription.provider_variant_id ||
-        current.price_id !== ctx.subscription.provider_price_id ||
-        current.customer_id !== ctx.subscription.provider_customer_id ||
-        current.store_id !== ctx.subscription.provider_store_id ||
-        current.environment !== config.environment)
-    )
-      throw new BillingError("BILLING_PLAN_CHANGE_CANNOT_CANCEL", 409);
+    const current = await subscriptions.withItem(
+      await subscriptions.retrieve(id),
+    );
+    plans.assertEligible(current);
+    if (action === "cancel")
+      plans.assertCancelable(
+        current,
+        canonicalSubscriptionIdentity(ctx.subscription, config.environment),
+      );
     const base = { p_owner: owner.id, p_environment: config.environment };
     if (action === "refresh") {
       await deps.serviceRpc("finish_billing_plan_change", {
         ...base,
-        p_snapshot: current,
+        ...proof.snapshotArguments(current),
       });
-      for (const invoice of (await config.provider.listSubscriptionInvoices?.(
-        id,
-      )) ?? []) {
-        if (invoice.billing_reason === "updated" && invoice.status === "paid")
-          await deps.serviceRpc("finish_billing_plan_change", {
-            ...base,
-            p_snapshot: current,
-            p_invoice: invoice,
-          });
+      for (const invoice of await proof.paidAdjustments(id)) {
+        await deps.serviceRpc("finish_billing_plan_change", {
+          ...base,
+          ...proof.snapshotArguments(current),
+          ...proof.invoiceArguments(invoice),
+        });
       }
       return reply(
         await deps.ownerRpc(token)("get_my_billing_plan_change_state", {}),
@@ -154,10 +137,10 @@ export async function handlePlanChange(
           ...base,
           p_target_plan: input.targetPlanKey,
           p_target_cadence: input.targetCadence,
-          p_snapshot: current,
+          ...proof.snapshotArguments(current),
         }),
       );
-    if (!config.provider.updateSubscriptionVariant)
+    if (!plans.canChange)
       throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
     operation =
       action === "cancel"
@@ -170,57 +153,28 @@ export async function handlePlanChange(
             p_target_plan: input.targetPlanKey,
             p_target_cadence: input.targetCadence,
             p_operation: input.operationId,
-            p_snapshot: current,
+            ...proof.snapshotArguments(current),
           });
     if (operation?.dispatch) {
       dispatched = true;
-      const validate = (snapshot: SubscriptionSnapshot) => {
-        if (
-          snapshot.subscription_id !== id ||
-          snapshot.environment !== config.environment ||
-          snapshot.store_id !== current.store_id ||
-          snapshot.customer_id !== current.customer_id ||
-          snapshot.order_id !== current.order_id ||
-          snapshot.order_item_id !== current.order_item_id ||
-          snapshot.first_subscription_item_id !==
-            current.first_subscription_item_id ||
-          snapshot.quantity !==
-            1 + (ctx.subscription.approved_additional_coach_seats ?? 0) ||
-          snapshot.payment_processor !== "card" ||
-          snapshot.variant_id !== operation!.variant ||
-          snapshot.product_id !== operation!.product ||
-          snapshot.price_id !== operation!.price ||
-          Date.parse(snapshot.updated_at) < Date.parse(current.updated_at) ||
-          snapshot.trial_ends_at !== null ||
-          (operation!.timing === "period_end" &&
-            snapshot.renews_at !== current.renews_at)
-        )
-          throw new BillingError(
-            "BILLING_PLAN_CHANGE_PROVIDER_AMBIGUOUS",
-            503,
-            true,
-          );
+      const target = {
+        subscriptionReference: id,
+        offerReference: operation.variant,
+        productReference: operation.product,
+        priceReference: operation.price,
+        // RepSync owns the approved seat quantity; the provider only verifies it.
+        expectedQuantity:
+          1 + (ctx.subscription.approved_additional_coach_seats ?? 0),
+        timing: operation.timing,
       };
-      validate(
-        await config.provider.updateSubscriptionVariant(
-          id,
-          operation.variant,
-          operation.timing,
-        ),
-      );
+      plans.assertResult(await plans.change(target), current, target);
       // GET confirms state after PATCH, especially source restoration on cancel.
-      const updated = await config.provider.retrieveSubscription(id);
-      validate(updated);
-      const verifiedItem = config.provider.retrieveSubscriptionItem
-        ? await config.provider.retrieveSubscriptionItem(
-            updated.first_subscription_item_id,
-          )
-        : null;
+      const updated = await subscriptions.retrieve(id);
+      plans.assertResult(updated, current, target);
+      const verified = await subscriptions.withItem(updated);
       const result = await deps.serviceRpc("finish_billing_plan_change", {
         ...base,
-        p_snapshot: verifiedItem
-          ? { ...updated, verified_item: verifiedItem }
-          : updated,
+        ...proof.snapshotArguments(verified),
       });
       if (!["processed", "replayed"].includes(result))
         throw new BillingError(
