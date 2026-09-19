@@ -117,6 +117,41 @@ test("evidence mixed with integration, legacy or future schema changes requires 
   }
 });
 
+const catalogueFiles = [
+  "config/staging-commercial-certification.json",
+  "docs/paddle-catalogue-publication.md",
+  "docs/staging-commercial-deployment-manifest.md",
+  "scripts/test-billing-catalogue-concurrency.py",
+  "scripts/verify-billing-catalogue-manifest.py",
+  "supabase/functions/_shared/billing-verified-receipts-v2.ts",
+  "supabase/functions/_shared/billing-catalogue-proof-v1.ts",
+  "supabase/functions/_shared/billing-catalogue-writer-v1.ts",
+  "supabase/migrations/20260919134451_paddle_catalogue_verified_publication.sql",
+  "supabase/tests/billing_catalogue_publication.sql",
+  "supabase/tests/fixtures/billing_catalogue_fixture.psql",
+  "supabase/tests/fixtures/billing_catalogue_legacy_manifest.psql",
+  "tests/unit/billing-catalogue-publication.test.ts",
+];
+test("catalogue publication and manifest sync keep local checks without hosted writes", () => {
+  assert.deepEqual(classifyChanges(catalogueFiles), {
+    docs_only: false,
+    configured_data_required: false,
+  });
+});
+test("catalogue mixed with transport, runtime or another migration requires all checks", () => {
+  for (const file of [
+    "supabase/functions/_shared/paddle-catalogue/index.ts",
+    "supabase/functions/_shared/billing-runtime.ts",
+    "supabase/migrations/20260920000000_paddle_enablement.sql",
+    "scripts/staging-commercial-apply.mjs",
+  ]) {
+    assert.equal(
+      classifyChanges([...catalogueFiles, file]).configured_data_required,
+      true,
+    );
+  }
+});
+
 test("PR comparison includes the whole PR and both sides of renames", () => {
   const base = "a".repeat(40);
   const head = "b".repeat(40);

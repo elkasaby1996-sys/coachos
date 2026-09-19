@@ -1,4 +1,8 @@
 import {
+  parseCatalogueProofV1,
+  type CatalogueProofV1,
+} from "./billing-catalogue-proof-v1.ts";
+import {
   parseBillingProofV2,
   proofReference,
   type BillingProofV2,
@@ -12,6 +16,7 @@ declare const receipt: unique symbol;
 export type VerifiedEventV2 = { readonly [receipt]: "event-v2" };
 export type VerifiedSubscriptionV2 = { readonly [receipt]: "subscription-v2" };
 export type VerifiedTransactionV2 = { readonly [receipt]: "transaction-v2" };
+export type VerifiedCatalogueV1 = { readonly [receipt]: "catalogue-v1" };
 
 /** TRUSTED COMPOSITION ONLY. This port must authenticate raw webhook bytes or
  * an independently retrieved provider response before returning sanitized facts.
@@ -25,6 +30,8 @@ export interface AuthenticatedEvidenceVerifierV2 extends ProofScope {
   ): Promise<{ proof: unknown; notificationRef: string | null }>;
   retrieveSubscription(reference: string): Promise<unknown>;
   retrieveTransaction(reference: string): Promise<unknown>;
+  /** Optional trusted catalogue adapter port. No Paddle implementation exists. */
+  retrieveCatalogue?(priceReference: string): Promise<unknown>;
 }
 
 function denied(): never {
@@ -54,9 +61,14 @@ export function createVerifiedEvidenceBoundaryV2(
   const verifyEvent = verifier.verifyEvent.bind(verifier);
   const retrieveSubscription = verifier.retrieveSubscription.bind(verifier);
   const retrieveTransaction = verifier.retrieveTransaction.bind(verifier);
+  const retrieveCatalogue = verifier.retrieveCatalogue?.bind(verifier);
   const receipts = new WeakMap<
     object,
-    { proof: BillingProofV2; rawHash?: string; notification?: string | null }
+    {
+      proof: BillingProofV2 | CatalogueProofV1;
+      rawHash?: string;
+      notification?: string | null;
+    }
   >();
   function parse(value: unknown, kind: BillingProofV2["kind"]) {
     const proof = parseBillingProofV2(value);
@@ -69,7 +81,7 @@ export function createVerifiedEvidenceBoundaryV2(
     return proof;
   }
   function seal<T extends object>(
-    proof: BillingProofV2,
+    proof: BillingProofV2 | CatalogueProofV1,
     rawHash?: string,
     notification?: string | null,
   ): T {
@@ -85,7 +97,7 @@ export function createVerifiedEvidenceBoundaryV2(
   }
   function read(
     token: object,
-    kind: BillingProofV2["kind"],
+    kind: BillingProofV2["kind"] | "catalogue",
     destination: ProofScope,
   ) {
     if (
@@ -98,6 +110,28 @@ export function createVerifiedEvidenceBoundaryV2(
     return stored;
   }
   return Object.freeze({
+    async retrieveCatalogue(reference: string): Promise<VerifiedCatalogueV1> {
+      proofReference(reference);
+      if (!retrieveCatalogue) denied();
+      const proof = parseCatalogueProofV1(await retrieveCatalogue(reference));
+      if (
+        proof.provider !== scope.provider ||
+        proof.environment !== scope.environment ||
+        proof.catalogue.priceRef !== reference
+      )
+        denied();
+      return seal(proof);
+    },
+    catalogueArguments(
+      token: VerifiedCatalogueV1,
+      destination: ProofScope = scope,
+    ) {
+      return {
+        p_proof: structuredClone(
+          read(token, "catalogue", destination).proof,
+        ) as CatalogueProofV1,
+      };
+    },
     async verifyEvent(
       raw: Uint8Array,
       headers: Headers,
