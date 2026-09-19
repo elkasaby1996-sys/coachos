@@ -38,6 +38,41 @@ test("runtime, tests, dependencies, SQL and unknown paths require all checks", (
   }
 });
 
+const foundationFiles = [
+  "docs/billing-provider-v2-foundation.md",
+  "supabase/migrations/20260919092348_billing_provider_v2_private_foundation.sql",
+  "supabase/tests/billing_provider_v2_foundation.sql",
+  "supabase/tests/fixtures/billing_v2_legacy_manifest.psql",
+  "supabase/tests/fixtures/billing_v2_legacy_seed.psql",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+
+test("private billing foundation runs local smoke without remote account writes", () => {
+  assert.deepEqual(classifyChanges(foundationFiles), {
+    docs_only: false,
+    configured_data_required: false,
+  });
+});
+
+test("foundation mixed with runtime or any other SQL still requires all checks", () => {
+  for (const file of [
+    "src/app.tsx",
+    "supabase/functions/billing-webhook/index.ts",
+    "supabase/migrations/20260911010000_lemon_squeezy_billing_foundation.sql",
+    "supabase/migrations/20260920000000_billing_provider_v2_followup.sql",
+    "supabase/tests/lemon_squeezy_billing.sql",
+    "tests/e2e/billing.spec.ts",
+    "package-lock.json",
+  ]) {
+    assert.equal(
+      classifyChanges([...foundationFiles, file]).configured_data_required,
+      true,
+      file,
+    );
+  }
+});
+
 test("empty and manually dispatched comparisons require all checks", () => {
   assert.deepEqual(classifyChanges(changedFiles("workflow_dispatch", {})), {
     docs_only: false,

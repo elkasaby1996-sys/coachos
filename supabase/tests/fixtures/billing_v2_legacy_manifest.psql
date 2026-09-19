@@ -1,0 +1,35 @@
+-- Run on the isolated synthetic migration-proof database before and after
+-- migration up. No legacy writes. Compare the resulting JSON byte-for-byte.
+create temporary table billing_db01_manifest(name text primary key, value jsonb);
+do $$
+declare n text; rows jsonb; definition jsonb;
+begin
+  foreach n in array array['billing_accounts','account_subscriptions','account_subscription_events',
+    'account_feature_entitlement_overrides','commercial_plan_versions','commercial_plan_feature_entitlements',
+    'commercial_features','commercial_trial_policy_versions','account_capacity_reservations','account_capacity_events',
+    'commercial_addon_versions','billing_provider_variant_mappings','billing_quantity_price_contracts',
+    'billing_provider_customers','billing_provider_subscriptions','billing_checkout_attempts',
+    'billing_provider_webhook_deliveries','billing_plan_change_operations','billing_plan_change_events',
+    'billing_seat_quantity_operations','billing_seat_quantity_events'] loop
+    execute format('select coalesce(jsonb_agg(encode(extensions.digest(to_jsonb(r)::text,''sha256''),''hex'') order by to_jsonb(r)::text),''[]''::jsonb) from public.%I r',n) into rows;
+    select jsonb_build_object('acl',t.relacl::text,'rls',t.relrowsecurity,
+      'columns',(select jsonb_agg(jsonb_build_array(a.attname,format_type(a.atttypid,a.atttypmod),a.attnotnull) order by a.attnum)
+        from pg_attribute a where a.attrelid=t.oid and a.attnum>0 and not a.attisdropped),
+      'constraints',(select jsonb_agg(jsonb_build_array(c.conname,pg_get_constraintdef(c.oid)) order by c.conname) from pg_constraint c where c.conrelid=t.oid),
+      'indexes',(select jsonb_agg(pg_get_indexdef(i.indexrelid) order by pg_get_indexdef(i.indexrelid)) from pg_index i where i.indrelid=t.oid),
+      'triggers',(select jsonb_agg(pg_get_triggerdef(g.oid) order by g.tgname) from pg_trigger g where g.tgrelid=t.oid and not g.tgisinternal))
+      into definition from pg_class t where t.oid=('public.'||n)::regclass;
+    insert into billing_db01_manifest values(n,jsonb_build_object('rows',rows,'definition',definition));
+  end loop;
+end $$;
+insert into billing_db01_manifest
+select 'legacy_functions',jsonb_agg(jsonb_build_array(p.oid::regprocedure::text,pg_get_functiondef(p.oid),p.proacl::text) order by p.oid::regprocedure::text)
+from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+where n.nspname='public' and p.prokind='f' and p.proname not like 'billing_v2_%';
+insert into billing_db01_manifest
+select 'entitlements',coalesce(jsonb_agg(jsonb_build_array(a.id,public.resolve_account_entitlements(a.id)-'computedAt') order by a.id),'[]'::jsonb)
+from public.billing_accounts a;
+insert into billing_db01_manifest
+select 'capacity',coalesce(jsonb_agg(jsonb_build_array(a.id,public.resolve_account_capacity(a.owner_user_id,a.id)-'computedAt') order by a.id),'[]'::jsonb)
+from public.billing_accounts a;
+select jsonb_object_agg(name,value order by name) from billing_db01_manifest;
