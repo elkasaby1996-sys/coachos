@@ -18,10 +18,15 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      docs_only: ${{ steps.scope.outputs.docs_only }}
+      configured_data_required: ${{ steps.scope.outputs.configured_data_required }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -31,6 +36,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Test CI change classification
+        run: node --test .github/scripts/ci-change-scope.test.mjs
+
+      - name: Classify changed files
+        id: scope
+        run: node .github/scripts/ci-change-scope.mjs
 
       - name: Lint
         run: npm run lint
@@ -45,7 +57,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: quality
-    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]'
+    # A skipped job reports a completed check; skipping the whole workflow leaves
+    # required checks pending. CI-only changes still exercise local smoke.
+    if: needs.quality.outputs.docs_only != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]'
     env:
       E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
       E2E_PT_EMAIL: ${{ secrets.E2E_PT_EMAIL }}
@@ -71,6 +85,7 @@ jobs:
         run: npm ci
 
       - name: Validate E2E secrets
+        if: needs.quality.outputs.configured_data_required == 'true'
         run: |
           required=(
             VITE_SUPABASE_URL
@@ -100,6 +115,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run configured-account integration checks
+        if: needs.quality.outputs.configured_data_required == 'true'
         run: npx playwright test --config playwright.configured-data.config.ts
 
       - name: Setup local Supabase CLI
