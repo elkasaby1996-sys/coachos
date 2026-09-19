@@ -18,6 +18,21 @@ const privateBillingFoundationFiles = new Set([
   "supabase/tests/fixtures/billing_v2_legacy_seed.psql",
 ]);
 
+// PROOF-01 is uncomposed evidence retention only. Exercise local smoke and DB
+// checks without writing configured hosted accounts. Runtime callers and any
+// unlisted follow-up migration still require the full configured-data checks.
+const privateBillingEvidenceFiles = new Set([
+  "scripts/verify-billing-proof-manifest.py",
+  "supabase/functions/_shared/billing-evidence-writer-v2.ts",
+  "supabase/functions/_shared/billing-proof-v2.ts",
+  "supabase/functions/_shared/billing-verified-receipts-v2.ts",
+  "supabase/migrations/20260919114502_billing_verified_receipt_evidence_boundary.sql",
+  "supabase/tests/billing_verified_evidence.sql",
+  "supabase/tests/fixtures/billing_proof_legacy_manifest.psql",
+  "supabase/tests/fixtures/billing_verified_proof_fixture.psql",
+  "tests/unit/billing-verified-evidence.test.ts",
+]);
+
 export function classifyChanges(files) {
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   return {
@@ -30,7 +45,8 @@ export function classifyChanges(files) {
         (file) =>
           !documentation(file) &&
           !ciFiles.has(file) &&
-          !privateBillingFoundationFiles.has(file),
+          !privateBillingFoundationFiles.has(file) &&
+          !privateBillingEvidenceFiles.has(file),
       ),
   };
 }
