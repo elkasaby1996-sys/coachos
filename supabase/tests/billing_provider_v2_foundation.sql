@@ -38,7 +38,7 @@ from surfaces join pg_class c on c.oid=('public.'||name)::regclass;
 select ok(not p.prosecdef and p.proconfig @> array['search_path=pg_catalog, public'] and not has_function_privilege(r,p.oid,'EXECUTE'),r||' cannot execute '||p.proname)
 from pg_proc p join pg_namespace n on n.oid=p.pronamespace cross join unnest(array['anon','authenticated','service_role']) r
 where n.nspname='public' and p.proname like 'billing_v2_%';
-select is((select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'billing_v2_%' and p.prorettype<>'trigger'::regtype),0::bigint,'no v2 callable writer API');
+select is((select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'billing_v2_%' and p.prorettype<>'trigger'::regtype and (has_function_privilege('anon',p.oid,'EXECUTE') or has_function_privilege('authenticated',p.oid,'EXECUTE') or has_function_privilege('service_role',p.oid,'EXECUTE'))),0::bigint,'no v2 callable writer API');
 select ok(not has_table_privilege(r,'public.'||v,'SELECT,INSERT,UPDATE,DELETE'),r||' cannot access view '||v)
 from unnest(array['billing_mapping_catalogue_v2','billing_subscription_catalogue_v2','billing_open_operations_v2']) v
 cross join unnest(array['anon','authenticated','service_role']) r;
@@ -157,7 +157,7 @@ begin
   end loop;
 end $$;
 insert into examples select 'billing_customers_v2',to_jsonb(c)-'id' from billing_customers_v2 c limit 1;
-insert into examples select 'billing_subscriptions_v2',to_jsonb(s)-'id'||'{"provider_subscription_ref":"another subscription"}' from billing_subscriptions_v2 s limit 1;
+insert into examples select 'billing_subscriptions_v2',to_jsonb(s)-'id'||'{"provider_subscription_ref":"another subscription"}' from billing_subscriptions_v2 s where s.environment='test' limit 1;
 select pg_temp.reject(t,j,'23505','duplicate scoped customer/account rejected') from examples where t='billing_customers_v2';
 select throws_ok($$update billing_customers_v2 set billing_account_id=gen_random_uuid()$$,'P0001','BILLING_V2_IDENTITY_IMMUTABLE','customer cannot be reassigned');
 select pg_temp.reject(t,j||jsonb_build_object('environment',case j->>'environment' when 'test' then 'live' else 'test' end),'23503','customer/subscription environment scope') from examples where t='billing_subscriptions_v2';
@@ -188,7 +188,7 @@ insert into examples select 'billing_checkouts_v2',jsonb_build_object('billing_a
 from subs s join billing_price_mappings m on m.environment=s.env and m.canonical_key='growth' and m.cadence='monthly' where s.env='test' limit 1;
 select pg_temp.reject(t,j||jsonb_build_object('created_by_user_id',(select u from owners where u<>(j->>'created_by_user_id')::uuid limit 1)),'P0001','checkout owner required') from examples where t='billing_checkouts_v2';
 select pg_temp.reject(t,j||'{"cadence":"annual"}','23503','checkout mapping cadence bound') from examples where t='billing_checkouts_v2';
-select pg_temp.reject(t,j||'{"environment":"live"}','23503','checkout mapping environment bound') from examples where t='billing_checkouts_v2';
+select pg_temp.reject(t,j||'{"environment":"live"}','P0001','checkout mapping environment fenced') from examples where t='billing_checkouts_v2';
 select pg_temp.reject(t,j||'{"requested_additional_seats":1}','23514','checkout seats require mapping') from examples where t='billing_checkouts_v2';
 select pg_temp.reject(t,j||jsonb_build_object('requested_additional_seats',1,'seat_mapping_kind','addon','seat_mapping_id',
  (select id from billing_price_mappings where environment='test' and canonical_key='coach-seat' and cadence='annual')),'23503','checkout seat cadence bound') from examples where t='billing_checkouts_v2';
@@ -207,7 +207,7 @@ select pg_temp.reject(t,j||'{"change_kind":null}','P0001','plan direction requir
 select pg_temp.reject(t,j||'{"preflight_snapshot":{}}','23514','missing preflight members rejected') from examples where t='billing_operations_v2';
 select pg_temp.reject(t,j||'{"effective_timing":"period_end","effective_at":"2099-01-01"}','P0001','canonical direction/timing enforced') from examples where t='billing_operations_v2';
 select pg_temp.put(t,j) from examples where t='billing_operations_v2';
-select pg_temp.reject(t,j||jsonb_build_object('operation_id',gen_random_uuid()),'23505','one shared open operation') from examples where t='billing_operations_v2';
+select pg_temp.reject(t,j||jsonb_build_object('operation_id',gen_random_uuid()),'P0001','one shared open operation') from examples where t='billing_operations_v2';
 insert into billing_operation_events_v2(operation_id,event_type) select id,'requested' from billing_operations_v2;
 select throws_ok($$insert into billing_operation_events_v2(operation_id,event_type) select id,'requested' from billing_operations_v2$$,'23505',null,'operation event idempotency');
 select lives_ok($$update billing_operations_v2 set status='failed',failed_at=now()$$,'operation terminal transition');
@@ -216,7 +216,7 @@ select lives_ok(format('select pg_temp.put(%L,%L)',t,j||jsonb_build_object('oper
  'target_base_mapping_id',j->>'source_base_mapping_id','target_additional_seats',1,'target_seat_mapping_kind','addon',
  'target_seat_mapping_id',(select id from billing_price_mappings where canonical_key='coach-seat' and cadence='monthly' and environment='test'))),'seat operation uses shared ledger')
 from examples where t='billing_operations_v2';
-select pg_temp.reject(t,j||jsonb_build_object('operation_id',gen_random_uuid()),'23505','open seat operation blocks plan operation') from examples where t='billing_operations_v2';
+select pg_temp.reject(t,j||jsonb_build_object('operation_id',gen_random_uuid()),'P0001','open seat operation blocks plan operation') from examples where t='billing_operations_v2';
 select lives_ok($$update billing_operations_v2 set status='canceled',canceled_at=now() where status='requested'$$,'seat cancellation becomes terminal');
 
 -- Logical inbox and transport attempts have distinct replay identities.
@@ -255,6 +255,8 @@ do $$
 declare s record; co uuid; ev uuid;
 begin
   for s in select * from subs where a=(select min(a::text)::uuid from subs) loop
+    -- Each synthetic effect must match the configured entitlement environment.
+    update billing_runtime_policy set entitlement_environment=s.env;
     select pg_temp.put('billing_checkouts_v2',j||jsonb_build_object('billing_account_id',s.a,'created_by_user_id',s.owner_id,'operation_id',gen_random_uuid(),
       'environment',s.env,'base_mapping_id',(select id from billing_price_mappings where canonical_key='growth' and cadence='monthly' and environment=s.env),
       'status','completed','completed_subscription_id',s.s,'completed_at',now())) into co from examples where t='billing_checkouts_v2';
@@ -263,6 +265,7 @@ begin
       'billing_account_id',s.a,'subscription_id',s.s,'evidence_id',ev,'application_kind','initial','checkout_id',co));
   end loop;
 end $$;
+update billing_runtime_policy set entitlement_environment='test';
 insert into examples select 'billing_payment_applications_v2',to_jsonb(p)-'id' from billing_payment_applications_v2 p where environment='test';
 select is((select count(*) from billing_payment_applications_v2),2::bigint,'transaction identity isolated by environment');
 select pg_temp.reject(t,j,'23505','same transaction cannot be applied twice') from examples where t='billing_payment_applications_v2';

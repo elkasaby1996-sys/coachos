@@ -30,7 +30,7 @@ reset role;
 select public.fail_billing_checkout_attempt(id,environment,creation_lease_expires_at,true,'BILLING_CHECKOUT_CREATION_AMBIGUOUS') from public.billing_checkout_attempts where operation_id='b0500000-0000-4000-8000-000000000001';
 select is(public.begin_my_billing_checkout_attempt('launch','monthly','b0500000-0000-4000-8000-000000000001','test')->>'status','ambiguous','ambiguous attempt is never recreated');
 select set_config('request.jwt.claim.sub','a0500000-0000-4000-8000-000000000002',true);
-select throws_ok($$select public.begin_my_billing_checkout_attempt('launch','monthly','b0500000-0000-4000-8000-000000000002','live')$$,'P0001','BILLING_VARIANT_MAPPING_UNAVAILABLE','test mapping cannot resolve in live');
+select throws_ok($$select public.begin_my_billing_checkout_attempt('launch','monthly','b0500000-0000-4000-8000-000000000002','live')$$,'P0001','BILLING_GUARD_ENVIRONMENT_MISMATCH','test runtime rejects live admission before mapping resolution');
 select lives_ok($$select public.begin_my_billing_checkout_attempt('launch','monthly','b0500000-0000-4000-8000-000000000002','test')$$,'beta owner can checkout');
 select set_config('request.jwt.claim.sub','a0500000-0000-4000-8000-000000000003',true);
 select throws_ok($$select public.begin_my_billing_checkout_attempt('launch','monthly',gen_random_uuid(),'test')$$,'42501','BILLING_FORBIDDEN','client cannot initiate');

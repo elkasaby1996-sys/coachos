@@ -1,0 +1,100 @@
+-- Synthetic helpers shared by DB-02 pgTAP and concurrent-session tests.
+-- Adapted from the foundation suite; no application grants or remote calls.
+create function pg_temp.guard_owner() returns uuid language plpgsql as $$
+declare u uuid:=gen_random_uuid();
+begin
+  insert into auth.users(id,email) values(u,u||'@example.test');
+  insert into public.pt_profiles(user_id,workspace_id,full_name) values(u,null,'DB02 synthetic');
+  perform public.ensure_commercial_billing_account(u,'manual');
+  return u;
+end $$;
+
+create function pg_temp.guard_subscription(u uuid,env text default 'test') returns uuid language plpgsql as $$
+declare a uuid; c uuid; s uuid;
+begin
+  select id into strict a from public.billing_accounts where owner_user_id=u;
+  select id into s from public.billing_subscriptions_v2 where billing_account_id=a and environment=env;
+  if s is not null then return s; end if;
+  insert into public.billing_customers_v2(billing_account_id,provider,environment,provider_customer_ref)
+    values(a,'paddle',env,'synthetic-customer/'||u) returning id into c;
+  insert into public.billing_subscriptions_v2(billing_account_id,customer_id,provider,environment,provider_subscription_ref)
+    values(a,c,'paddle',env,'synthetic-subscription/'||u) returning id into s;
+  return s;
+end $$;
+
+create function pg_temp.guard_checkout(u uuid,contract text,op uuid default gen_random_uuid()) returns uuid language plpgsql as $$
+declare j jsonb;
+begin
+  if contract='ls' then
+    perform set_config('request.jwt.claim.sub',u::text,true);
+    j:=public.begin_my_billing_checkout_attempt('growth','monthly',op,'test');
+    return (j->>'checkoutAttemptId')::uuid;
+  end if;
+  j:=public.billing_v2_admit_checkout(u,'test','growth','monthly',0,op);
+  return (j->>'id')::uuid;
+end $$;
+
+create function pg_temp.guard_operation(u uuid,contract text,kind text,op uuid default gen_random_uuid()) returns uuid language plpgsql as $$
+declare a uuid; s uuid; canonical uuid; base uuid; target uuid; seat uuid; result uuid;
+begin
+  if contract='ls' then
+    if kind='plan' then return (public.begin_billing_plan_change(u,'test','scale','monthly',op,pg_temp.snapshot(u))->>'id')::uuid;
+    else return (public.begin_billing_seat_quantity(u,'test',1,op,pg_temp.seat_snapshot(u,1))->>'id')::uuid; end if;
+  end if;
+  select b.billing_account_id,b.account_subscription_id into strict a,canonical from public.billing_provider_subscriptions b join public.billing_accounts x on x.id=b.billing_account_id where x.owner_user_id=u;
+  s:=pg_temp.guard_subscription(u);
+  select id into strict base from public.billing_price_mappings where canonical_key='growth' and cadence='monthly' and environment='test' and status='active';
+  select id into strict target from public.billing_price_mappings where canonical_key='scale' and cadence='monthly' and environment='test' and status='active';
+  select id into strict seat from public.billing_price_mappings where canonical_key='coach-seat' and cadence='monthly' and environment='test' and status='active';
+  insert into public.billing_operations_v2(operation_id,billing_account_id,subscription_id,provider,environment,source_account_subscription_id,operation_kind,
+    source_base_mapping_id,target_base_mapping_id,source_cadence,target_cadence,source_additional_seats,target_additional_seats,
+    target_seat_mapping_id,target_seat_mapping_kind,effective_timing,status,preflight_snapshot,change_kind,created_by_user_id)
+  values(op,a,s,'paddle','test',canonical,case kind when 'plan' then 'plan_change' else 'seat_quantity' end,
+    base,case kind when 'plan' then target else base end,'monthly','monthly',0,case kind when 'plan' then 0 else 1 end,
+    case kind when 'seat' then seat end,case kind when 'seat' then 'addon' end,'immediate','requested',
+    '{"schemaVersion":1,"dimensions":[],"hasAnyDataQualityIssue":false}',case kind when 'plan' then 'tier_upgrade' end,u) returning id into result;
+  return result;
+end $$;
+create function pg_temp.put(t text, j jsonb) returns uuid language plpgsql as $$
+declare cols text; result uuid;
+begin
+  select string_agg(quote_ident(key),',' order by key) into cols from jsonb_object_keys(j) key;
+  execute format('insert into public.%I(%s) select %s from jsonb_populate_record(null::public.%I,$1) returning id',t,cols,cols,t) into result using j;
+  set constraints all immediate;
+  set constraints all deferred;
+  return result;
+end $$;
+
+create function pg_temp.sha(j jsonb) returns text language sql immutable as $$
+  select encode(extensions.digest(j::text,'sha256'),'hex')
+$$;
+
+create function pg_temp.evidence(env text,kind text,identity jsonb,body jsonb,sid uuid default null) returns uuid language plpgsql as $$
+declare p jsonb; j jsonb;
+begin
+  p:=jsonb_build_object('schema','billing-foundation-v1','provider','paddle','environment',env,'kind',kind,'identity',identity,
+    case when kind='catalogue' then 'catalogue' else 'observation' end,body);
+  j:=jsonb_build_object('provider','paddle','environment',env,'source_kind',case when kind='catalogue' then 'catalogue_verification' else 'api_reconciliation' end,
+    'proof_kind',kind,'proof_schema','billing-foundation-v1','validator_version','structure-only-v1','replay_algorithm',case when kind='catalogue' then 'catalogue-evidence-v1' else 'api-evidence-v1' end,
+    'replay_key',pg_temp.sha(p),'normalized_sha256',pg_temp.sha(p),'proof',p,'verified_at',now(),'subscription_id',sid,
+    'provider_transaction_ref',identity->>'transactionRef');
+  return pg_temp.put('billing_evidence_v2',j);
+end $$;
+
+create function pg_temp.mapping(k text,cad text,env text,ref text,st text default 'active') returns uuid language plpgsql as $$
+declare p commercial_plan_versions%rowtype; a commercial_addon_versions%rowtype; j jsonb; proof jsonb; eid uuid; amount bigint; kind text;
+begin
+  if k='coach-seat' then select * into strict a from commercial_addon_versions where status='active'; kind:='addon';
+    amount:=case cad when 'monthly' then a.monthly_unit_amount_minor else a.annual_unit_amount_minor end;
+  else select * into strict p from commercial_plan_versions where plan_key=k and status='active'; kind:='plan';
+    amount:=case cad when 'monthly' then p.monthly_price_minor else p.annual_price_minor end;
+  end if;
+  proof:=jsonb_build_object('canonicalKey',k,'identityKind',kind,'planVersionId',p.id,'addonVersionId',a.id,'cadence',cad,
+    'productRef',null,'priceRef',ref,'currency','USD','unitAmountMinor',amount,'recurrenceUnit',case cad when 'monthly' then 'month' else 'year' end,
+    'recurrenceCount',1,'quantityModel','separate_recurring_item','trial',false);
+  eid:=pg_temp.evidence(env,'catalogue',jsonb_build_object('priceRef',ref),proof);
+  j:=jsonb_build_object('provider','paddle','environment',env,'identity_kind',kind,'canonical_key',k,'cadence',cad,'plan_version_id',p.id,'addon_version_id',a.id,
+    'provider_price_ref',ref,'currency_code','USD','unit_amount_minor',amount,'recurrence_unit',proof->>'recurrenceUnit','recurrence_count',1,
+    'status',st,'verified_at',now(),'verification_sha256',(select normalized_sha256 from billing_evidence_v2 where id=eid),'verification_evidence_id',eid);
+  return pg_temp.put('billing_price_mappings',j);
+end $$;
