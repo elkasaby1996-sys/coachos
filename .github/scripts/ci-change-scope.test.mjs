@@ -80,6 +80,43 @@ test("empty and manually dispatched comparisons require all checks", () => {
   });
 });
 
+const evidenceFiles = [
+  "docs/billing-verified-evidence-boundary.md",
+  "scripts/verify-billing-proof-manifest.py",
+  "supabase/functions/_shared/billing-evidence-writer-v2.ts",
+  "supabase/functions/_shared/billing-proof-v2.ts",
+  "supabase/functions/_shared/billing-verified-receipts-v2.ts",
+  "supabase/migrations/20260919114502_billing_verified_receipt_evidence_boundary.sql",
+  "supabase/tests/billing_verified_evidence.sql",
+  "supabase/tests/fixtures/billing_proof_legacy_manifest.psql",
+  "supabase/tests/fixtures/billing_verified_proof_fixture.psql",
+  "tests/unit/billing-verified-evidence.test.ts",
+];
+
+test("uncomposed evidence persistence requires local smoke without hosted writes", () => {
+  assert.deepEqual(classifyChanges(evidenceFiles), {
+    docs_only: false,
+    configured_data_required: false,
+  });
+});
+
+test("evidence mixed with integration, legacy or future schema changes requires all checks", () => {
+  for (const file of [
+    "supabase/functions/_shared/billing-runtime.ts",
+    "supabase/functions/_shared/lemon-squeezy-reconciliation.ts",
+    "supabase/functions/paddle-webhook/index.ts",
+    "supabase/migrations/20260920000000_billing_verified_effects.sql",
+    "src/features/billing/checkout.ts",
+    "tests/e2e/billing.spec.ts",
+  ]) {
+    assert.equal(
+      classifyChanges([...evidenceFiles, file]).configured_data_required,
+      true,
+      file,
+    );
+  }
+});
+
 test("PR comparison includes the whole PR and both sides of renames", () => {
   const base = "a".repeat(40);
   const head = "b".repeat(40);

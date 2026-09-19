@@ -1,0 +1,112 @@
+-- Synthetic normalized contract facts ONLY. Not Paddle wire samples or real IDs.
+-- Shared by pgTAP and Vitest. No signature/authentication/settlement claim is made
+-- about a real provider. The delimited value is the sole JSON fixture document.
+create temp table proof_vectors(j jsonb);
+insert into proof_vectors values($fixture${
+  "event": {
+    "schema": "billing-proof-v2",
+    "validator": "paddle-contract-v1",
+    "provider": "paddle",
+    "environment": "test",
+    "kind": "event",
+    "source": "webhook",
+    "evidenceClass": "authenticated_provider",
+    "identity": {
+      "customerRef": "synthetic/customer",
+      "subscriptionRef": "synthetic/subscription",
+      "transactionRef": "synthetic/transaction"
+    },
+    "eventEvidence": {
+      "eventRef": "synthetic/event",
+      "eventName": "transaction.paid",
+      "resourceType": "transaction",
+      "resourceRef": "synthetic/transaction",
+      "occurredAt": "2026-09-01T10:01:00.000Z"
+    }
+  },
+  "subscription": {
+    "schema": "billing-proof-v2",
+    "validator": "paddle-contract-v1",
+    "provider": "paddle",
+    "environment": "test",
+    "kind": "subscription",
+    "source": "api_reconciliation",
+    "evidenceClass": "authenticated_provider",
+    "identity": {
+      "customerRef": "synthetic/customer",
+      "subscriptionRef": "synthetic/subscription",
+      "transactionRef": null
+    },
+    "subscriptionEvidence": {
+      "providerCreatedAt": "2026-09-01T10:00:00.000Z",
+      "providerUpdatedAt": "2026-09-01T10:01:00.000Z",
+      "providerStatus": "active",
+      "periodStartedAt": null,
+      "periodEndsAt": null,
+      "items": [
+        {
+          "priceRef": "synthetic/base",
+          "itemRef": "synthetic/item/base",
+          "productRef": null,
+          "quantity": 1,
+          "unitAmountMinor": 4900
+        },
+        {
+          "priceRef": "synthetic/seat",
+          "itemRef": "synthetic/item/seat",
+          "productRef": null,
+          "quantity": 2,
+          "unitAmountMinor": 1000
+        }
+      ]
+    }
+  },
+  "transaction": {
+    "schema": "billing-proof-v2",
+    "validator": "paddle-contract-v1",
+    "provider": "paddle",
+    "environment": "test",
+    "kind": "transaction",
+    "source": "api_reconciliation",
+    "evidenceClass": "verified_transaction",
+    "identity": {
+      "customerRef": "synthetic/customer",
+      "subscriptionRef": "synthetic/subscription",
+      "transactionRef": "synthetic/transaction"
+    },
+    "transactionEvidence": {
+      "providerCreatedAt": "2026-09-01T10:00:00.000Z",
+      "providerUpdatedAt": "2026-09-01T10:01:00.000Z",
+      "providerStatus": "completed",
+      "providerOrigin": "synthetic-recurring",
+      "completedAt": "2026-09-01T10:00:30.000Z",
+      "currency": "USD",
+      "subtotalMinor": 6900,
+      "taxMinor": 0,
+      "discountMinor": 0,
+      "totalMinor": 6900,
+      "paidMinor": 6900,
+      "balanceMinor": 0,
+      "adjustmentRefs": [],
+      "items": [
+        {
+          "priceRef": "synthetic/base",
+          "itemRef": "synthetic/item/base",
+          "productRef": null,
+          "quantity": 1,
+          "unitAmountMinor": 4900
+        },
+        {
+          "priceRef": "synthetic/seat",
+          "itemRef": "synthetic/item/seat",
+          "productRef": null,
+          "quantity": 2,
+          "unitAmountMinor": 1000
+        }
+      ]
+    }
+  }
+}$fixture$::jsonb);
+create function pg_temp.proof(kind text,env text default 'test') returns jsonb language sql as $$
+select (j->kind)||jsonb_build_object('environment',env) from proof_vectors
+$$;
