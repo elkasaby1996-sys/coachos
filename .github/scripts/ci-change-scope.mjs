@@ -33,6 +33,21 @@ const privateBillingEvidenceFiles = new Set([
   "tests/unit/billing-verified-evidence.test.ts",
 ]);
 
+// CATALOGUE-01 remains uncomposed and sandbox-only. The manifest edit records
+// checksums; it does not authorize hosted migration or account mutations.
+const privatePaddleCatalogueFiles = new Set([
+  "config/staging-commercial-certification.json",
+  "scripts/test-billing-catalogue-concurrency.py",
+  "scripts/verify-billing-catalogue-manifest.py",
+  "supabase/functions/_shared/billing-catalogue-proof-v1.ts",
+  "supabase/functions/_shared/billing-catalogue-writer-v1.ts",
+  "supabase/migrations/20260919134451_paddle_catalogue_verified_publication.sql",
+  "supabase/tests/billing_catalogue_publication.sql",
+  "supabase/tests/fixtures/billing_catalogue_fixture.psql",
+  "supabase/tests/fixtures/billing_catalogue_legacy_manifest.psql",
+  "tests/unit/billing-catalogue-publication.test.ts",
+]);
+
 export function classifyChanges(files) {
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   return {
@@ -46,7 +61,8 @@ export function classifyChanges(files) {
           !documentation(file) &&
           !ciFiles.has(file) &&
           !privateBillingFoundationFiles.has(file) &&
-          !privateBillingEvidenceFiles.has(file),
+          !privateBillingEvidenceFiles.has(file) &&
+          !privatePaddleCatalogueFiles.has(file),
       ),
   };
 }

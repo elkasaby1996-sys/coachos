@@ -1,0 +1,43 @@
+-- Synthetic opaque references only. Shared closed-schema vector used by TS/SQL.
+create temp table catalogue_vector(proof jsonb);
+insert into catalogue_vector values ($fixture${
+  "schema":"billing-catalogue-v1","validator":"paddle-catalogue-contract-v1",
+  "kind":"catalogue","source":"catalogue_api","evidenceClass":"verified_catalogue",
+  "provider":"paddle","environment":"test","verificationRef":"synthetic/catalogue/review-1",
+  "observedAt":"2026-09-19T10:00:00.000Z",
+  "catalogue":{
+    "productRef":"synthetic/product/launch","priceRef":"synthetic/price/launch/monthly",
+    "identityKind":"plan","canonicalKey":"launch","canonicalVersionId":"00000000-0000-4000-8000-000000000001",
+    "cadence":"monthly","currency":"USD","unitAmountMinor":1900,
+    "recurrenceUnit":"month","recurrenceCount":1,"trial":null,
+    "productStatus":"active","priceStatus":"active","quantity":{"minimum":1,"maximum":null}
+  }
+}$fixture$::jsonb);
+create function pg_temp.catalogue(k text default 'launch',cad text default 'monthly',env text default 'test') returns jsonb language plpgsql as $$
+declare p jsonb; v uuid; amount bigint;
+begin
+  select proof into p from catalogue_vector;
+  if k='coach-seat' then
+    select id,case cad when 'monthly' then monthly_unit_amount_minor else annual_unit_amount_minor end into strict v,amount from public.commercial_addon_versions where addon_key='coach_seat' and status='active';
+  else
+    select id,case cad when 'monthly' then monthly_price_minor else annual_price_minor end into strict v,amount from public.commercial_plan_versions where plan_key=k and status='active';
+  end if;
+  return p||jsonb_build_object('environment',env,'catalogue',(p->'catalogue')||jsonb_build_object(
+    'canonicalKey',k,'canonicalVersionId',v,'identityKind',case k when 'coach-seat' then 'addon' else 'plan' end,
+    'cadence',cad,'recurrenceUnit',case cad when 'monthly' then 'month' else 'year' end,'unitAmountMinor',amount,
+    'priceRef','synthetic/price/'||k||'/'||cad,'productRef','synthetic/product/'||k));
+end $$;
+
+create function pg_temp.catalogue_draft(p jsonb) returns uuid language plpgsql as $$
+declare e jsonb;
+begin
+  e:=public.record_verified_paddle_catalogue_v1(p);
+  return public.draft_paddle_catalogue_mapping_v1((e->>'id')::uuid,e->>'digest');
+end $$;
+create function pg_temp.catalogue_publish(p jsonb) returns uuid language plpgsql as $$
+declare e jsonb; m uuid;
+begin
+  e:=public.record_verified_paddle_catalogue_v1(p);
+  m:=public.draft_paddle_catalogue_mapping_v1((e->>'id')::uuid,e->>'digest');
+  return public.activate_paddle_catalogue_mapping_v1(m,(e->>'id')::uuid,e->>'digest');
+end $$;

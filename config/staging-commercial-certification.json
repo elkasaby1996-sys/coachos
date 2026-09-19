@@ -656,9 +656,25 @@
       {
         "filename": "20260916100118_billing_checkout_expiry_precision.sql",
         "sha256": "bcb9f564fa259c3f794c48a6a970e8e1165b5d90c4b9a1e7256571785327723d"
+      },
+      {
+        "filename": "20260919092348_billing_provider_v2_private_foundation.sql",
+        "sha256": "1f5d442af8f05e3b0e444265e4245ba51c06e7f54bbae5a263ebe476f3ca9245"
+      },
+      {
+        "filename": "20260919103248_billing_cross_ledger_safety_guards.sql",
+        "sha256": "b50219f69a7623d77ef4861e9df23c7041df9fc808f8650e0ff8c52d7024761a"
+      },
+      {
+        "filename": "20260919114502_billing_verified_receipt_evidence_boundary.sql",
+        "sha256": "dcf00b53a304124bf561fdedc1a769c083b30993da8aac3e4397ebc10e6d4085"
+      },
+      {
+        "filename": "20260919134451_paddle_catalogue_verified_publication.sql",
+        "sha256": "405d9b3c6bbf504107d4feb14675d08c57e3a858d2d4d867a87494b8eff5a2f6"
       }
     ],
-    "expectedLatestMigration": "20260916100118_billing_checkout_expiry_precision.sql"
+    "expectedLatestMigration": "20260919134451_paddle_catalogue_verified_publication.sql"
   },
   "functions": {
     "billing": [
