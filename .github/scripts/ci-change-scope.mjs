@@ -8,6 +8,16 @@ const ciFiles = new Set([
   ".github/scripts/ci-change-scope.test.mjs",
 ]);
 
+// This dormant foundation has no application callers or hosted-schema changes.
+// Keep quality, local smoke, and Supabase CI; do not mutate remote test accounts.
+// Deliberately enumerate this reviewed change, not all future SQL migrations.
+const privateBillingFoundationFiles = new Set([
+  "supabase/migrations/20260919092348_billing_provider_v2_private_foundation.sql",
+  "supabase/tests/billing_provider_v2_foundation.sql",
+  "supabase/tests/fixtures/billing_v2_legacy_manifest.psql",
+  "supabase/tests/fixtures/billing_v2_legacy_seed.psql",
+]);
+
 export function classifyChanges(files) {
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   return {
@@ -16,7 +26,12 @@ export function classifyChanges(files) {
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
       files.length === 0 ||
-      files.some((file) => !documentation(file) && !ciFiles.has(file)),
+      files.some(
+        (file) =>
+          !documentation(file) &&
+          !ciFiles.has(file) &&
+          !privateBillingFoundationFiles.has(file),
+      ),
   };
 }
 
