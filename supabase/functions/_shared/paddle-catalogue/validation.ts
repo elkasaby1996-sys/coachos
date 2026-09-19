@@ -129,7 +129,8 @@ export function priceObservation(value: unknown): PaddlePriceObservation {
   if (
     taxMode !== "account_setting" &&
     taxMode !== "internal" &&
-    taxMode !== "external"
+    taxMode !== "external" &&
+    taxMode !== "location"
   )
     return malformed();
   return {
