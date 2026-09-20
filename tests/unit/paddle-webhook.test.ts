@@ -90,6 +90,20 @@ const verify = (input = request()) =>
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Paddle sandbox configuration", () => {
+  it("supports Supabase Edge Runtime's window compatibility global", async () => {
+    vi.stubGlobal("window", globalThis);
+    vi.stubGlobal("Deno", {
+      version: { deno: "supabase-edge-runtime" },
+      serve: vi.fn(),
+      env: { get: vi.fn() },
+    });
+    expect((await verify()).kind).toBe("supported");
+  });
+  it("does not accept a browser with an incomplete Deno marker", () => {
+    vi.stubGlobal("window", globalThis);
+    vi.stubGlobal("Deno", { version: { deno: "incomplete" } });
+    expect(() => createPaddleSandboxWebhookVerifier(config())).toThrow();
+  });
   it.each([
     { environment: "live" },
     { environment: undefined },
