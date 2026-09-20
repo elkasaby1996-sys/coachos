@@ -676,9 +676,13 @@
       {
         "filename": "20260920084219_paddle_checkout_orchestration.sql",
         "sha256": "42dfc593ca075b3bba4dd9d3eda2411560160f00ba25217f858fed6bb40eb626"
+      },
+      {
+        "filename": "20260920094227_paddle_webhook_ingestion.sql",
+        "sha256": "dd537675348794ae2b2452a4c8154c9c58510ef75f6da13a680e3f0c155c5a11"
       }
     ],
-    "expectedLatestMigration": "20260920084219_paddle_checkout_orchestration.sql"
+    "expectedLatestMigration": "20260920094227_paddle_webhook_ingestion.sql"
   },
   "functions": {
     "billing": [
