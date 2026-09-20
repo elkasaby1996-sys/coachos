@@ -672,9 +672,13 @@
       {
         "filename": "20260919134451_paddle_catalogue_verified_publication.sql",
         "sha256": "405d9b3c6bbf504107d4feb14675d08c57e3a858d2d4d867a87494b8eff5a2f6"
+      },
+      {
+        "filename": "20260920084219_paddle_checkout_orchestration.sql",
+        "sha256": "42dfc593ca075b3bba4dd9d3eda2411560160f00ba25217f858fed6bb40eb626"
       }
     ],
-    "expectedLatestMigration": "20260919134451_paddle_catalogue_verified_publication.sql"
+    "expectedLatestMigration": "20260920084219_paddle_checkout_orchestration.sql"
   },
   "functions": {
     "billing": [
