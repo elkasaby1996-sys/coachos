@@ -24,7 +24,7 @@ export type PaddlePriceObservation = {
       })
     | null;
   quantity: { minimum: number; maximum: number };
-  taxMode: "account_setting" | "internal" | "external";
+  taxMode: "account_setting" | "internal" | "external" | "location";
   /** Base money alone cannot verify a price with geographic overrides. */
   hasUnitPriceOverrides: boolean;
 };

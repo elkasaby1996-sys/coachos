@@ -155,6 +155,46 @@ describe("Paddle configuration and surface", () => {
 });
 
 describe("sanitized catalogue observations", () => {
+  it.each(["account_setting", "internal", "external", "location"])(
+    "preserves documented tax mode %s",
+    async (tax_mode) => {
+      const { adapter } = setup([json(page([{ ...price(), tax_mode }]))]);
+      expect((await adapter.listPrices())[0]?.taxMode).toBe(tax_mode);
+    },
+  );
+  it.each(["undocumented", null, undefined])(
+    "rejects unknown, null or missing tax mode %#",
+    async (tax_mode) => {
+      const { adapter } = setup([json(page([{ ...price(), tax_mode }]))]);
+      await expect(adapter.listPrices()).rejects.toThrow("malformed_response");
+    },
+  );
+  it.each([false, true])(
+    "keeps location tax mode independent of monetary overrides: %s",
+    async (hasOverrides) => {
+      const { adapter } = setup([
+        json(
+          page([
+            {
+              ...price(),
+              tax_mode: "location",
+              unit_price_overrides: hasOverrides
+                ? [
+                    {
+                      country_codes: ["US"],
+                      unit_price: { amount: "2000", currency_code: "USD" },
+                    },
+                  ]
+                : [],
+            },
+          ]),
+        ),
+      ]);
+      const observation = (await adapter.listPrices())[0];
+      expect(observation?.taxMode).toBe("location");
+      expect(observation?.hasUnitPriceOverrides).toBe(hasOverrides);
+    },
+  );
   it("lists products and drops unknown fields and descriptive identity hints", async () => {
     const { adapter } = setup([json(page([product()]))]);
     expect(await adapter.listProducts()).toEqual([
