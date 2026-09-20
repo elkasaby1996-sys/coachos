@@ -35,7 +35,8 @@ select ok(not has_table_privilege(r,('public.'||name),'SELECT,INSERT,UPDATE,DELE
 from surfaces cross join unnest(array['anon','authenticated','service_role']) r;
 select ok(not exists(select 1 from aclexplode(c.relacl) a where a.grantee=0),'PUBLIC has no grant: '||name)
 from surfaces join pg_class c on c.oid=('public.'||name)::regclass;
-select ok(not p.prosecdef and p.proconfig @> array['search_path=pg_catalog, public'] and not has_function_privilege(r,p.oid,'EXECUTE'),r||' cannot execute '||p.proname)
+-- The deferred item-set validator alone uses its trusted owner after RPC return.
+select ok(p.prosecdef=(p.oid='public.billing_v2_validate_item_set()'::regprocedure) and p.proconfig @> array['search_path=pg_catalog, public'] and not has_function_privilege(r,p.oid,'EXECUTE'),r||' cannot execute '||p.proname)
 from pg_proc p join pg_namespace n on n.oid=p.pronamespace cross join unnest(array['anon','authenticated','service_role']) r
 where n.nspname='public' and p.proname like 'billing_v2_%';
 select is((select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'billing_v2_%' and p.prorettype<>'trigger'::regtype and (has_function_privilege('anon',p.oid,'EXECUTE') or has_function_privilege('authenticated',p.oid,'EXECUTE') or has_function_privilege('service_role',p.oid,'EXECUTE'))),0::bigint,'no v2 callable writer API');

@@ -35,9 +35,16 @@ def main():
     r.race('transaction and subscription race',event('transaction.completed','transaction'),event('subscription.created','created'))
     r.sql("update billing_runtime_policy set paddle_sales_enabled=true; create table paddle_webhook_test.second_attempt as select u,begin_paddle_checkout_v1(u,'growth','monthly',0,gen_random_uuid(),true,true,'2026-09-18','2026-09-18') result from (select paddle_webhook_test.guard_owner() u) x; select mark_paddle_checkout_ready_v1(u,(result->>'attemptReference')::uuid,(result->>'operationReference')::uuid,'synthetic/transaction-2','ready','USD',jsonb_build_array(result->'base')) from paddle_webhook_test.second_attempt; update billing_runtime_policy set paddle_sales_enabled=false;")
     def fresh_shadow(e):
-        return f"select paddle_webhook_test.webhook_ingest(paddle_webhook_test.webhook_observation('subscription.created','synthetic/{e}','synthetic/{e}')||jsonb_build_object('transactionCorrelationRef','synthetic/transaction-2','customerRef','synthetic/customer-2','subscriptionRef','synthetic/subscription-2'));"
+        return f"set local role service_role; select paddle_webhook_test.webhook_ingest(paddle_webhook_test.webhook_observation('subscription.created','synthetic/{e}','synthetic/{e}')||jsonb_build_object('transactionCorrelationRef','synthetic/transaction-2','customerRef','synthetic/customer-2','subscriptionRef','synthetic/subscription-2'));"
+    # Grant only access to disposable test helpers, never private billing tables.
+    # Session.commit runs after the definer RPC returns, under service_role.
+    r.sql('grant usage on schema paddle_webhook_test to service_role;')
     r.race('concurrent insertion of new customer and subscription',fresh_shadow('created-a'),fresh_shadow('created-b'))
     r.race('update before create out of order',event('subscription.updated','updated'),event('subscription.created','late-create'))
+    r.sql("begin; set local role service_role; select paddle_webhook_test.webhook_ingest(paddle_webhook_test.webhook_observation('subscription.updated','synthetic/service-commit','synthetic/service-commit','2026-09-21T12:00:00.000Z')||'{\"status\":\"paused\"}'); commit;")
+    assert r.sql("select provider_status from billing_subscriptions_v2 where provider_subscription_ref='synthetic/subscription';")=='paused'
+    r.RESULTS.append({'case':'service update transaction commit','result':'committed'})
+    print('PASS: service update commits deferred validator',flush=True)
     assert r.sql('select count(*) from billing_subscriptions_v2;')=='2'
     assert r.sql('select count(*) from billing_customers_v2;')=='2'
     assert r.sql('select count(*) from billing_payment_applications_v2;')=='0'
