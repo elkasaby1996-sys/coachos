@@ -1,0 +1,9 @@
+-- Isolated local test helpers only: never installed by the migration.
+create function pg_temp.cert_owner() returns uuid language plpgsql as $$
+declare u uuid:=pg_temp.guard_owner();
+begin
+ update auth.users set raw_app_meta_data=coalesce(raw_app_meta_data,'{}')||'{"repsync_paddle_certification":{"environment":"staging","enabled":true}}'::jsonb where id=u;
+ return u;
+end $$;
+create function pg_temp.cert_create(u uuid,r uuid default gen_random_uuid(),k text default 'growth',c text default 'monthly',n integer default 0) returns jsonb language sql as $$
+ select public.create_paddle_checkout_certification_fixture_v1(u,k,c,n,r) $$;
