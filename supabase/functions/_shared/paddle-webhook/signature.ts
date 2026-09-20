@@ -39,7 +39,20 @@ export type PaddleWebhookConfiguration = {
 };
 
 export function assertServer(): void {
-  if (typeof window !== "undefined") fail("configuration");
+  // Supabase Edge Runtime exposes window for compatibility. Require its server
+  // capabilities rather than treating that global alone as a browser signal.
+  const runtime = globalThis as typeof globalThis & {
+    Deno?: {
+      version?: { deno?: string };
+      serve?: unknown;
+      env?: { get?: unknown };
+    };
+  };
+  const denoServer =
+    typeof runtime.Deno?.version?.deno === "string" &&
+    typeof runtime.Deno?.serve === "function" &&
+    typeof runtime.Deno?.env?.get === "function";
+  if (typeof window !== "undefined" && !denoServer) fail("configuration");
 }
 
 /** Native constant-time comparison of equal-sized SHA-256 digests. Length is public. */
