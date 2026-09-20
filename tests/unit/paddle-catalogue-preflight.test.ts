@@ -4,7 +4,6 @@ import {
   writeFileSync,
   rmSync,
   chmodSync,
-  mkdirSync,
   symlinkSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -22,6 +21,15 @@ vi.mock("node:child_process", async (importOriginal) => {
   const original = await importOriginal<typeof import("node:child_process")>();
   return { ...original, spawnSync: vi.fn(original.spawnSync) };
 });
+const nativeProcess =
+  await vi.importActual<typeof import("node:child_process")>(
+    "node:child_process",
+  );
+function outsideGit(command: string, ...args: any[]): any {
+  return command === "git"
+    ? { status: 128, stderr: "fatal: not a git repository", stdout: "" }
+    : (nativeProcess.spawnSync as any)(command, ...args);
+}
 let directory: string, bindingPath: string;
 beforeEach(() => {
   directory = mkdtempSync(join(tmpdir(), "repsync-binding-test-"));
@@ -30,11 +38,27 @@ beforeEach(() => {
     mode: 0o600,
   });
   chmodSync(bindingPath, 0o600);
-  // Exercise the Windows ACL rejection branch deterministically on every host.
-  vi.mocked(spawnSync).mockImplementation(((command: string) =>
-    command === "git"
-      ? { status: 128, stderr: "fatal: not a git repository", stdout: "" }
-      : { status: 0, stdout: "", stderr: "" }) as typeof spawnSync);
+  if (process.platform === "win32") {
+    const secured = nativeProcess.spawnSync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$acl = New-Object System.Security.AccessControl.FileSecurity; $acl.SetAccessRuleProtection($true,$false); $sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User; $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($sid,'FullControl','Allow')); [System.IO.File]::SetAccessControl($env:REPSYNC_TEST_BINDING,$acl)",
+      ],
+      {
+        env: {
+          ...process.env,
+          PSModulePath: undefined,
+          REPSYNC_TEST_BINDING: bindingPath,
+        },
+        stdio: "pipe",
+      },
+    );
+    expect(secured.status, String(secured.stderr)).toBe(0);
+  }
+  vi.mocked(spawnSync).mockImplementation(outsideGit as typeof spawnSync);
   vi.stubEnv("PADDLE_CATALOGUE_BINDING_PATH", bindingPath);
   vi.mocked(createPaddleSandboxCatalogue).mockReturnValue(
     syntheticCatalogue().capability,
@@ -50,6 +74,34 @@ describe("private file boundary", () => {
   it("reads private outside-Git state without exposing it", () => {
     expect(readPrivateCatalogueBinding(bindingPath).selections).toHaveLength(8);
   });
+  it.skipIf(process.platform !== "win32")(
+    "does not reopen a pathname replaced after handle validation",
+    () => {
+      vi.mocked(spawnSync).mockImplementation(((
+        command: string,
+        ...args: any[]
+      ) => {
+        const result = outsideGit(command, ...args);
+        if (command === "powershell.exe" && result.status === 0) {
+          rmSync(bindingPath);
+          writeFileSync(bindingPath, "synthetic-replacement-must-not-be-read");
+        }
+        return result;
+      }) as typeof spawnSync);
+      expect(readPrivateCatalogueBinding(bindingPath).selections).toHaveLength(
+        8,
+      );
+    },
+  );
+  it.skipIf(process.platform !== "win32")(
+    "reads the trusted helper under a restricted process execution policy",
+    () => {
+      vi.stubEnv("PSExecutionPolicyPreference", "Restricted");
+      expect(readPrivateCatalogueBinding(bindingPath).selections).toHaveLength(
+        8,
+      );
+    },
+  );
   it("requires an explicit path", () => {
     expect(() => readPrivateCatalogueBinding(undefined)).toThrow(
       "BINDING_PATH_REQUIRED",
@@ -66,21 +118,25 @@ describe("private file boundary", () => {
     );
   });
   it("rejects another Git worktree", () => {
-    vi.mocked(spawnSync).mockReturnValue({
-      status: 0,
-      stdout: "true",
-      stderr: "",
-    } as any);
+    vi.mocked(spawnSync).mockImplementation(((
+      command: string,
+      ...args: any[]
+    ) =>
+      command === "git"
+        ? { status: 0, stdout: "true", stderr: "" }
+        : outsideGit(command, ...args)) as typeof spawnSync);
     expect(() => readPrivateCatalogueBinding(bindingPath)).toThrow(
       "BINDING_FILE_UNSAFE",
     );
   });
   it("fails closed when Git cannot inspect the path", () => {
-    vi.mocked(spawnSync).mockReturnValue({
-      status: 128,
-      stdout: "",
-      stderr: "synthetic-sensitive-os-error",
-    } as any);
+    vi.mocked(spawnSync).mockImplementation(((
+      command: string,
+      ...args: any[]
+    ) =>
+      command === "git"
+        ? { status: 128, stdout: "", stderr: "synthetic-sensitive-os-error" }
+        : outsideGit(command, ...args)) as typeof spawnSync);
     expect(() => readPrivateCatalogueBinding(bindingPath)).toThrow(
       "BINDING_FILE_UNSAFE",
     );
@@ -125,12 +181,26 @@ describe("private file boundary", () => {
     ).toThrow("BINDING_FILE_UNSAFE");
   });
   it("rejects broad permissions", () => {
-    if (process.platform === "win32")
-      vi.mocked(spawnSync).mockImplementation(((command: string) =>
-        command === "git"
-          ? { status: 128, stderr: "not a git repository" }
-          : { status: 1 }) as typeof spawnSync);
-    else chmodSync(bindingPath, 0o644);
+    if (process.platform === "win32") {
+      const broadened = nativeProcess.spawnSync(
+        "powershell.exe",
+        [
+          "-NoProfile",
+          "-NonInteractive",
+          "-Command",
+          "$acl=[System.IO.File]::GetAccessControl($env:REPSYNC_TEST_BINDING); $sid=[System.Security.Principal.SecurityIdentifier]::new('S-1-1-0'); $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($sid,'Read','Allow')); [System.IO.File]::SetAccessControl($env:REPSYNC_TEST_BINDING,$acl)",
+        ],
+        {
+          env: {
+            ...process.env,
+            PSModulePath: undefined,
+            REPSYNC_TEST_BINDING: bindingPath,
+          },
+          stdio: "pipe",
+        },
+      );
+      expect(broadened.status).toBe(0);
+    } else chmodSync(bindingPath, 0o644);
     expect(() => readPrivateCatalogueBinding(bindingPath)).toThrow(
       "BINDING_FILE_UNSAFE",
     );
