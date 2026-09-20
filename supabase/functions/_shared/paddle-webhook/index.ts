@@ -129,5 +129,13 @@ export function createPaddleSandboxWebhookVerifier(
       }
     },
     readReplayFacts,
+    /** Only this verifier's in-memory receipt can supply persistence facts. */
+    ingestionArguments(receipt: VerifiedEventV2) {
+      const facts = readReplayFacts(receipt);
+      return {
+        ...boundary.eventArguments(receipt, scope),
+        p_observation: facts.observation,
+      };
+    },
   });
 }

@@ -72,7 +72,7 @@ select throws_ok($$select billing_v2_proof_record(pg_temp.proof('subscription'),
 select throws_ok($$update billing_verified_evidence_v2 set proof=jsonb_set(proof,'{identity,customerRef}','"tampered"')$$,'P0001','BILLING_V2_IDENTITY_IMMUTABLE','evidence immutable');
 select throws_ok($$update billing_verified_evidence_v2 set payment_authority=true$$,'P0001','BILLING_V2_IDENTITY_IMMUTABLE','authority cannot be promoted');
 select throws_ok($$delete from billing_verified_evidence_v2$$,'P0001','BILLING_V2_HISTORY_IMMUTABLE','evidence cannot be deleted');
-select throws_ok($$truncate billing_verified_evidence_v2$$,'P0001','BILLING_V2_HISTORY_IMMUTABLE','evidence cannot be truncated');
+select throws_ok($$truncate billing_verified_evidence_v2 cascade$$,'P0001','BILLING_V2_HISTORY_IMMUTABLE','evidence cannot be truncated');
 select ok((select relrowsecurity from pg_class where oid='billing_verified_evidence_v2'::regclass),'verified ledger uses RLS');
 select ok(not has_table_privilege(r,'billing_verified_evidence_v2','SELECT,INSERT,UPDATE,DELETE'),r||' no direct evidence privileges') from unnest(array['anon','authenticated','service_role']) r;
 select ok(not has_function_privilege(r,p.oid,'EXECUTE'),r||' no private helper execute: '||p.proname) from pg_proc p cross join unnest(array['anon','authenticated','service_role']) r

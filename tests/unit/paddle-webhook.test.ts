@@ -680,7 +680,11 @@ describe("receipt provenance, replay and absence of payment authority", () => {
     "provider.future",
   ])("%s never grants payment or access", async (type) => {
     const verifier = createPaddleSandboxWebhookVerifier(config());
-    expect(Object.keys(verifier).sort()).toEqual(["readReplayFacts", "verify"]);
+    expect(Object.keys(verifier).sort()).toEqual([
+      "ingestionArguments",
+      "readReplayFacts",
+      "verify",
+    ]);
     const result = await verifier.verify(request(bytes(event(type))));
     expect(result.observation).not.toHaveProperty("entitlements");
     expect(result.observation).not.toHaveProperty("paymentApplication");
