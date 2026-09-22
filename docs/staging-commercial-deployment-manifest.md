@@ -8,7 +8,7 @@ The required base is `7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7`. The confirmed f
 
 ## Migration drift
 
-The manifest freezes 169 migrations from `20260326084615_baseline_schema.sql` through `20260920105937_paddle_checkout_certification_fixture.sql`. Every filename and SHA-256 is recorded. Hashes normalize CRLF to LF so Windows and Linux checkouts agree; other changes fail. The complete directory must match, timestamp versions must be unique and sorted, and the expected last file must match. Historical SQL is unchanged. PADDLE-CHECKOUT-01 appends its dormant checkout lifecycle migration without authorizing remote deployment. PADDLE-CATALOGUE-01 appends the three already-merged BILLING-DB-01, BILLING-DB-02 and BILLING-PROOF-01 migrations plus its new catalogue migration, preserving all 162 previously approved entries. See the [separate synchronization delta](paddle-catalogue-publication.md#frozen-staging-manifest-synchronization). This synchronization does not authorize a remote deployment.
+The manifest freezes 171 migrations from `20260326084615_baseline_schema.sql` through `20260922094541_paddle_certification_fixture_authority_retirement.sql`. Every filename and SHA-256 is recorded. Hashes normalize CRLF to LF so Windows and Linux checkouts agree; other changes fail. The complete directory must match, timestamp versions must be unique and sorted, and the expected last file must match. Historical SQL is unchanged. PADDLE-CHECKOUT-01 appends its dormant checkout lifecycle migration without authorizing remote deployment. PADDLE-CATALOGUE-01 appends the three already-merged BILLING-DB-01, BILLING-DB-02 and BILLING-PROOF-01 migrations plus its new catalogue migration, preserving all 162 previously approved entries. See the [separate synchronization delta](paddle-catalogue-publication.md#frozen-staging-manifest-synchronization). This synchronization does not authorize a remote deployment.
 
 Before apply, an authorized operator supplies the independently reviewed remote ledger version list and private backup digest. During apply, the actual CLI ledger must equal that list and be an exact prefix of the approved files. Unknown remote versions, gaps, reordering, local-only holes and divergent rows block. The pending suffix is precisely the approved list after that prefix. No include-all or repair flag is used. Post-apply ledger must equal the full list. The CLI ledger contains versions, not historical SQL checksums; this cannot detect a remote manual schema edit or an altered historical migration body. The operator must separately resolve schema drift and verify backup recovery before authorization. Never infer an empty remote ledger because no Phase A remote read occurred.
 
@@ -56,3 +56,11 @@ The remote wrapper now checks conflicting project flags and validates the local 
 PADDLE-WEBHOOK-01 appends the local-only ingestion migration. The new Paddle endpoint is deliberately absent from the existing staging apply function allowlist; deploying it and configuring its notification secrets require a separately reviewed staging deployment.
 
 PADDLE-CERT-FIXTURE-01 appends a staging-QA certification authority migration for separate review. This manifest update does not authorize remote deployment or QA-account designation. The fixture RPCs must be retired under PADDLE-CERT-FIXTURE-02 before Paddle sales activation.
+
+PADDLE-CERT-FIXTURE-02 appends exactly one retirement migration, preserving all
+170 previous entries and hashes, including PR #232. The latest pointer advances
+to `20260922094541_paddle_certification_fixture_authority_retirement.sql`.
+Webhook staging ingress certification already passed. After deployment, the
+temporary fixture RPCs and private gate are absent; permanent historical evidence
+remains. See the [retirement and Auth cleanup runbook](paddle-checkout-certification-fixture.md).
+This manifest change neither deploys staging nor enables sales/reconciliation.
