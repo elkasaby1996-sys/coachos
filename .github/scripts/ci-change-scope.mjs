@@ -48,6 +48,21 @@ const privatePaddleCatalogueFiles = new Set([
   "tests/unit/billing-catalogue-publication.test.ts",
 ]);
 
+// CERT-FIXTURE-02 removes temporary authority without deploying hosted changes.
+// Keep quality and local Supabase smoke; exempt only these reviewed paths from
+// configured-account writes. Any unlisted runtime/schema change fails closed.
+const paddleCertificationRetirementFiles = new Set([
+  "config/staging-commercial-certification.json",
+  "docs/paddle-certification-retirement-verification.md",
+  "docs/paddle-checkout-certification-fixture.md",
+  "docs/staging-commercial-deployment-manifest.md",
+  "scripts/test-paddle-cert-retirement.py",
+  "supabase/migrations/20260922094541_paddle_certification_fixture_authority_retirement.sql",
+  "supabase/tests/fixtures/paddle_certification_before_retirement.psql",
+  "supabase/tests/paddle_certification_authority_retirement.sql",
+  "supabase/tests/paddle_checkout_certification_fixture.sql",
+]);
+
 export function classifyChanges(files) {
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   return {
@@ -62,7 +77,8 @@ export function classifyChanges(files) {
           !ciFiles.has(file) &&
           !privateBillingFoundationFiles.has(file) &&
           !privateBillingEvidenceFiles.has(file) &&
-          !privatePaddleCatalogueFiles.has(file),
+          !privatePaddleCatalogueFiles.has(file) &&
+          !paddleCertificationRetirementFiles.has(file),
       ),
   };
 }

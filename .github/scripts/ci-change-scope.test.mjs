@@ -152,6 +152,70 @@ test("catalogue mixed with transport, runtime or another migration requires all 
   }
 });
 
+const retirementFiles = [
+  "config/staging-commercial-certification.json",
+  "docs/paddle-certification-retirement-verification.md",
+  "docs/paddle-checkout-certification-fixture.md",
+  "docs/staging-commercial-deployment-manifest.md",
+  "scripts/test-paddle-cert-retirement.py",
+  "supabase/migrations/20260922094541_paddle_certification_fixture_authority_retirement.sql",
+  "supabase/tests/fixtures/paddle_certification_before_retirement.psql",
+  "supabase/tests/paddle_certification_authority_retirement.sql",
+  "supabase/tests/paddle_checkout_certification_fixture.sql",
+];
+
+test("exact certification retirement keeps quality and local smoke without hosted writes", () => {
+  for (const files of [
+    retirementFiles,
+    [
+      ...retirementFiles,
+      ".github/scripts/ci-change-scope.mjs",
+      ".github/scripts/ci-change-scope.test.mjs",
+    ],
+  ]) {
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+  }
+});
+
+test("retirement mixed with any unreviewed behavior still requires configured data", () => {
+  for (const file of [
+    "src/app.tsx",
+    "supabase/functions/paddle-webhook/index.ts",
+    "supabase/functions/_shared/billing-runtime.ts",
+    "supabase/migrations/20260924000000_unrelated_change.sql",
+    "tests/e2e/checkin-submit-review.smoke.spec.ts",
+    "package.json",
+    "package-lock.json",
+    "scripts/staging-commercial-apply.mjs",
+    ".github/workflows/supabase-deploy-staging.yml",
+  ]) {
+    assert.deepEqual(
+      classifyChanges([...retirementFiles, file]),
+      { docs_only: false, configured_data_required: true },
+      file,
+    );
+  }
+});
+
+test("unlisted near-matching retirement paths never inherit the exemption", () => {
+  for (const file of [
+    "supabase/migrations/20260923000000_paddle_certification_other_change.sql",
+    "supabase/migrations/20260923000000_paddle_certification_fixture_authority_retirement.sql",
+    "supabase/tests/paddle_certification_authority_retirement_other.sql",
+    "scripts/test-paddle-cert-retirement-other.py",
+  ]) {
+    assert.equal(classifyChanges([file]).configured_data_required, true, file);
+    assert.equal(
+      classifyChanges([...retirementFiles, file]).configured_data_required,
+      true,
+      file,
+    );
+  }
+});
+
 test("PR comparison includes the whole PR and both sides of renames", () => {
   const base = "a".repeat(40);
   const head = "b".repeat(40);

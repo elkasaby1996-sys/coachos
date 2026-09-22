@@ -1,6 +1,22 @@
 # Paddle checkout certification fixtures
 
-Temporary service-only infrastructure for staging webhook correlation. This change does not deploy to staging, designate a QA account, call Paddle, enable sales/reconciliation, or activate checkout for users.
+PADDLE_WEBHOOK_STAGING_INGRESS_CERTIFIED: webhook staging ingress certification
+completed successfully; all certification fixtures are closed (operator-confirmed
+input to this implementation, not a new remote inspection).
+
+PADDLE-CERT-FIXTURE-02 retires the temporary create/close RPCs and fixture-only
+certification gate through the forward migration
+`20260922094541_paddle_certification_fixture_authority_retirement.sql`.
+These RPCs are unavailable after that migration is deployed. The implementation
+itself does not deploy or mutate staging/production. Historical fixture records,
+checkout references, timestamps, RLS, private ACLs and history triggers remain.
+Sales and reconciliation remain disabled. Provider activation is a separate milestone.
+
+## Historical design - PADDLE-CERT-FIXTURE-01 only
+
+The following original contracts explain why the temporary authority existed.
+They describe the pre-retirement schema only and are **not operational instructions
+or available RPC contracts after retirement**.
 
 ## Existing dedicated QA identity
 
@@ -41,10 +57,61 @@ Policy/account locks precede the run advisory lock, checkout/marker locks and no
 
 Checkout, snapshot, marker, webhook event, delivery, evidence and shadow rows are never deleted. Synthetic customer identities must remain stable per certification account because the existing shadow uniqueness contract permits one Paddle/test customer per account. Shadow records remain pending with null canonical subscription links and zero approved seats. A future runner must keep real catalogue references only in memory and private signed requests; use synthetic transaction/customer/subscription/event/notification identities. There is no network-capable runner in this change.
 
-## Required retirement: PADDLE-CERT-FIXTURE-02
+## Historical retirement requirement (superseded below)
 
 Before any Paddle sales activation, deploy a reviewed forward migration that revokes service execution and drops both create/close fixture RPCs and the private gate helper. First close remaining ready certification fixtures through the reviewed close RPC and audit pending/exceptional cases. Preserve the marker table and all checkout/snapshot/event/delivery/evidence/shadow history. Remove any dedicated QA designation only through normal administrator identity management. Verify the RPCs are absent, no fixture is open, flags remain false, and no payment/entitlement/canonical authority was introduced. Sales activation requires its own subsequent authorization; it is not implemented here.
 
-## Local verification
+## Historical local verification
 
 The pgTAP suite tests service/client permissions, QA metadata trust, environment/flag gates, catalogue and seat limits, exact snapshot provenance, idempotency/conflicts, ordinary lifecycle closure, immutable history, real ingestion correlation to a fixture and unchanged entitlement/capacity results. The concurrency script runs only against the dedicated disposable local proof container, exercises real PostgreSQL sessions/lock waits, and checks the deadlock counter. Reset that local database after concurrency fixtures commit. Neither test program accepts a remote connection override.
+
+## Retirement deployment precondition
+
+Stop the certification runner and drain its in-flight requests before the separately
+reviewed deployment. The migration takes an exclusive history-table lock before
+checking closure.
+Any `closed_at IS NULL` row raises
+`PADDLE_CERTIFICATION_OPEN_FIXTURE_BLOCKS_RETIREMENT` and rolls back the entire
+migration. Lock timeout also blocks deployment. Do not delete, automatically close,
+or rewrite unexpected evidence to bypass this check. Investigate separately.
+Exact function drops use no CASCADE; dependent objects block retirement.
+No SECURITY DEFINER function, replacement RPC, view, trigger, grant, payment,
+entitlement, reconciliation, or sales authority is introduced.
+
+## Separate post-deployment staging Auth operation
+
+After a separately reviewed staging migration deployment, an authorized operator
+must use the Supabase Auth Admin API for the dedicated synthetic certification QA
+owner. Read its **current** `app_metadata`, remove only the top-level
+`repsync_paddle_certification` key, and preserve every unrelated field. Update
+through Auth Admin, then read back and verify that unrelated fields are unchanged.
+Coordinate concurrent metadata edits and stop on drift; do not write a stale copy.
+Verify `designated certification actors = 0` through the authorized admin inventory.
+Do not directly update `auth.users`, delete the synthetic user, or delete its billing
+account. The migration never edits `auth.users.raw_app_meta_data`. No staging user
+identifier or private Paddle reference belongs in this runbook or repository.
+This operation is documented only; it is not authorized or performed by this PR.
+
+## Retirement verification
+
+The current `supabase/tests/paddle_checkout_certification_fixture.sql` tests the
+post-retirement history and permission contract. The new
+`supabase/tests/paddle_certification_authority_retirement.sql` checks absence of
+the RPCs, equivalent routine/view access, and privileges. The original 70-assertion suite
+is retained under `supabase/tests/fixtures/paddle_certification_before_retirement.psql`
+and runs only against the pre-retirement schema, via
+`python scripts/test-paddle-cert-retirement.py`. The existing fixture concurrency
+script is likewise a pre-retirement test, not a post-retirement service helper.
+
+Use only the disposable local `repsync_checkout01` proof database, reconstructed
+through `20260920221934` before this upgrade test. The script runs the historical
+suite and races, tests rollback on open fixtures and an uncommitted-creation race,
+then compares all public table rows, Auth metadata, entitlements/capacity, table
+ACLs/RLS, policies, triggers and surviving function definitions/ACLs across the
+actual retirement migration. It then tests concurrent denied RPC and DML attempts.
+Reconstruct the local database at head afterward and run the full DB suite and
+webhook concurrency test. These scripts accept no remote connection override.
+
+Protected CI must pass `quality` and `smoke-e2e` before merge. Do not auto-merge.
+After a separately authorized merge, report the merged PR/main state and stop for
+review of the separate staging retirement deployment.

@@ -688,9 +688,13 @@
       {
         "filename": "20260920221934_paddle_webhook_subscription_validator_permissions.sql",
         "sha256": "822421b77f05d0ea618e064e507fe738718c1aae2030dde46b61dac8484ec124"
+      },
+      {
+        "filename": "20260922094541_paddle_certification_fixture_authority_retirement.sql",
+        "sha256": "cd3fc0272ea21064ee4d48913e421efa468f754e94cba24b21c68addc6fb1475"
       }
     ],
-    "expectedLatestMigration": "20260920221934_paddle_webhook_subscription_validator_permissions.sql"
+    "expectedLatestMigration": "20260922094541_paddle_certification_fixture_authority_retirement.sql"
   },
   "functions": {
     "billing": [
