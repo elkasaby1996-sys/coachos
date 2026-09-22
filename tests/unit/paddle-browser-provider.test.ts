@@ -43,6 +43,7 @@ describe("Paddle browser boundary", () => {
   it.each([
     "https://sandbox-pay.paddle.io/checkout/synthetic-launch?transaction_id=synthetic%2Ftransaction",
     "https://sandbox.pay.paddle.io/checkout/synthetic-launch?transaction_id=synthetic%2Ftransaction",
+    "https://sandbox-pay.paddle.io/hsc_synthetic_checkout?transaction_id=synthetic_transaction",
     "https://merchant.example.test/pay?_ptxn=synthetic%2Ftransaction",
   ])("accepts reviewed destination shape %s and redacts telemetry", (url) => {
     expect(acceptsPaddleCheckoutUrl(url, "https://merchant.example.test")).toBe(
@@ -53,6 +54,18 @@ describe("Paddle browser boundary", () => {
     });
   });
   it.each([
+    "https://sandbox.pay.paddle.io/hsc_synthetic?transaction_id=synthetic_transaction",
+    "https://sandbox-pay.paddle.io/pay/hsc_synthetic?transaction_id=synthetic_transaction",
+    "https://sandbox-pay.paddle.io/hsc_synthetic",
+    "https://sandbox-pay.paddle.io/hsc_synthetic?transaction_id=",
+    "https://sandbox-pay.paddle.io/hsc_synthetic?transaction_id=x&price_id=synthetic",
+    "https://sandbox-pay.paddle.io/hsc_synthetic?transaction_id=x&transaction_id=y",
+    "https://sandbox-pay.paddle.io/hsc_synthetic?transaction_id=x#fragment",
+    "https://custom.paddle.io/hsc_synthetic?transaction_id=x",
+    "https://pay.paddle.io/hsc_synthetic?transaction_id=x",
+    "https://sandbox-pay.paddle.io/hsc_" +
+      "x".repeat(513) +
+      "?transaction_id=x",
     "https://pay.paddle.io/checkout/x?transaction_id=x",
     "https://sandbox-pay.paddle.io.evil.test/checkout/x?transaction_id=x",
     "https://evil.test/pay?_ptxn=x",

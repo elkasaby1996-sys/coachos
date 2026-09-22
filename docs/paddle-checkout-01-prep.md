@@ -116,8 +116,23 @@ by exact equality: `sandbox-pay.paddle.io` and `sandbox.pay.paddle.io`. Paddle's
 2025 changelog documents the former; its current custom-subdomain guide documents
 the latter. There is no DNS probe or assumption that either has been configured
 for a real account. An actual dashboard launch URL is still required for future
-usage. Only `/checkout/<opaque launch reference>` with no initial query is accepted;
-the transport adds solely `transaction_id` from the validated response.
+usage. The transport adds solely `transaction_id` from the validated response.
+
+The exact Sandbox hosted URL matrix is:
+
+| Host                    | Allowed path                                                |
+| ----------------------- | ----------------------------------------------------------- |
+| `sandbox.pay.paddle.io` | `/checkout/<opaque-reference>`                              |
+| `sandbox-pay.paddle.io` | `/checkout/<opaque-reference>` or `/hsc_<opaque-reference>` |
+
+The bare `/hsc_...` form is a narrowly allowlisted Sandbox compatibility form
+only on `sandbox-pay.paddle.io`; its path must match
+`^/hsc_[A-Za-z0-9_-]{1,512}$`. Existing `/checkout/` references retain their
+1�512 character alphanumeric, underscore, or hyphen constraint. Trusted launch
+URLs have no query or fragment; final URLs contain only the validated
+`transaction_id` query parameter. Live hosts, custom subdomains, `/pay/` paths,
+userinfo, non-default ports, whitespace, and backslashes remain rejected.
+Merchant payment-link behavior is unchanged.
 
 Live `pay.paddle.io`, hostname suffix lookalikes, and custom Paddle subdomains are
 rejected. Supporting custom domains later requires an explicitly reviewed exact

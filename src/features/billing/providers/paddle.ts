@@ -18,7 +18,14 @@ export function acceptsPaddleCheckoutUrl(
     const hosted = ["sandbox-pay.paddle.io", "sandbox.pay.paddle.io"].includes(
       url.hostname,
     );
-    if (hosted && !/^\/checkout\/[A-Za-z0-9_-]{1,512}$/.test(url.pathname))
+    if (
+      hosted &&
+      !(
+        /^\/checkout\/[A-Za-z0-9_-]{1,512}$/.test(url.pathname) ||
+        (url.hostname === "sandbox-pay.paddle.io" &&
+          /^\/hsc_[A-Za-z0-9_-]{1,512}$/.test(url.pathname))
+      )
+    )
       return false;
     if (
       !hosted &&

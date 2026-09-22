@@ -432,20 +432,27 @@ describe("sanitized observations and drift rejection", () => {
 });
 
 describe("Paddle and merchant destination policies", () => {
-  it.each(["sandbox-pay.paddle.io", "sandbox.pay.paddle.io"])(
+  it.each([
+    "https://sandbox-pay.paddle.io/hsc_synthetic_checkout",
+    "https://sandbox-pay.paddle.io/checkout/hsc_synthetic_checkout",
+    "https://sandbox.pay.paddle.io/checkout/hsc_synthetic_checkout",
+  ])(
     "constructs hosted destination only from trusted %s launch configuration",
-    async (host) => {
+    async (launch) => {
       const { transport } = setup(
         [json(providerData())],
         {},
         {
-          hostedCheckoutLaunchUrl: `https://${host}/checkout/synthetic-launch`,
+          hostedCheckoutLaunchUrl: launch,
         },
       );
       const result = await transport.createCheckoutTransaction(input());
       expect(result.checkout?.kind).toBe("paddle_hosted");
       const destination = new URL(result.checkout!.destination().url);
-      expect(destination.hostname === host).toBe(true);
+      expect(destination.origin + destination.pathname).toBe(launch);
+      expect(destination.href).toBe(
+        `${launch}?${new URLSearchParams({ transaction_id: transactionRef })}`,
+      );
       expect(
         destination.searchParams.get("transaction_id") === transactionRef,
       ).toBe(true);
@@ -467,6 +474,17 @@ describe("Paddle and merchant destination policies", () => {
     expect(() => JSON.stringify(result.checkout)).toThrow("NOT_SERIALIZABLE");
   });
   it.each([
+    "https://sandbox.pay.paddle.io/hsc_synthetic_checkout",
+    "https://sandbox-pay.paddle.io/pay/hsc_synthetic_checkout",
+    "https://sandbox-pay.paddle.io/hsc_",
+    "https://sandbox-pay.paddle.io/hsc_synthetic/extra",
+    "https://sandbox-pay.paddle.io/hsc_synthetic?",
+    "https://sandbox-pay.paddle.io/hsc_synthetic#fragment",
+    "https://user@sandbox-pay.paddle.io/hsc_synthetic",
+    "https://sandbox-pay.paddle.io:8443/hsc_synthetic",
+    "https://sandbox-pay.paddle.io/hsc_synthetic checkout",
+    "https://sandbox-pay.paddle.io/hsc_synthetic\\checkout",
+    "https://sandbox-pay.paddle.io/hsc_" + "x".repeat(513),
     "https://pay.paddle.io/checkout/synthetic",
     "https://sandbox-pay.paddle.io.evil.test/checkout/synthetic",
     "https://custom.sandbox.paddle.io/pay/synthetic",

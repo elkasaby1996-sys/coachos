@@ -54,7 +54,11 @@ export function destinationPolicy(
       !sandboxHostedHosts.has(hosted.hostname) ||
       hosted.search ||
       hostedCheckoutLaunchUrl.includes("?") ||
-      !/^\/checkout\/[A-Za-z0-9_-]{1,512}$/.test(hosted.pathname)
+      !(
+        /^\/checkout\/[A-Za-z0-9_-]{1,512}$/.test(hosted.pathname) ||
+        (hosted.hostname === "sandbox-pay.paddle.io" &&
+          /^\/hsc_[A-Za-z0-9_-]{1,512}$/.test(hosted.pathname))
+      )
     )
       fail("unsafe_destination");
   }

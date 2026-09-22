@@ -97,6 +97,18 @@ const paddleCheckoutActivationFiles = new Set([
   "tests/unit/staging-commercial-certification.test.ts",
 ]);
 
+// Exact reviewed Sandbox hosted URL compatibility patch; keep local CI running.
+// Unlisted runtime, deployment and schema changes still require configured data.
+const paddleCheckoutUrlCompatibilityFiles = new Set([
+  "docs/paddle-checkout-01-prep.md",
+  "docs/paddle-checkout-activation.md",
+  "src/features/billing/providers/paddle.ts",
+  "supabase/functions/_shared/paddle-checkout/destination.ts",
+  "tests/e2e/paddle-checkout.spec.ts",
+  "tests/unit/paddle-browser-provider.test.ts",
+  "tests/unit/paddle-checkout.test.ts",
+]);
+
 export function classifyChanges(files) {
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   return {
@@ -113,7 +125,8 @@ export function classifyChanges(files) {
           !privateBillingEvidenceFiles.has(file) &&
           !privatePaddleCatalogueFiles.has(file) &&
           !paddleCertificationRetirementFiles.has(file) &&
-          !paddleCheckoutActivationFiles.has(file),
+          !paddleCheckoutActivationFiles.has(file) &&
+          !paddleCheckoutUrlCompatibilityFiles.has(file),
       ),
   };
 }
