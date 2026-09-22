@@ -331,3 +331,47 @@ for (const file of [
     });
   });
 }
+
+const compatibilityFiles = [
+  "docs/paddle-checkout-01-prep.md",
+  "docs/paddle-checkout-activation.md",
+  "src/features/billing/providers/paddle.ts",
+  "supabase/functions/_shared/paddle-checkout/destination.ts",
+  "tests/e2e/paddle-checkout.spec.ts",
+  "tests/unit/paddle-browser-provider.test.ts",
+  "tests/unit/paddle-checkout.test.ts",
+];
+const compatibilityPrFiles = [
+  ...compatibilityFiles,
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+
+test("exact hosted URL compatibility keeps quality and local smoke without hosted writes", () => {
+  assert.equal(compatibilityFiles.length, 7);
+  assert.equal(new Set(compatibilityFiles).size, 7);
+  for (const files of [compatibilityFiles, compatibilityPrFiles]) {
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+  }
+});
+
+for (const file of [
+  "src/app.tsx",
+  "supabase/functions/_shared/billing-handlers.ts",
+  "supabase/functions/billing-create-lemon-squeezy-checkout/index.ts",
+  "supabase/migrations/20260923000000_paddle_checkout_url_followup.sql",
+  "tests/e2e/billing-checkout.spec.ts",
+  "package-lock.json",
+  "scripts/staging-commercial-apply.mjs",
+  "supabase/functions/_shared/paddle-checkout/destination-v2.ts",
+]) {
+  test(`hosted URL compatibility with unreviewed ${file} requires configured data`, () => {
+    assert.deepEqual(classifyChanges([...compatibilityPrFiles, file]), {
+      docs_only: false,
+      configured_data_required: true,
+    });
+  });
+}
