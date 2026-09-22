@@ -102,7 +102,7 @@ test("uncomposed evidence persistence requires local smoke without hosted writes
 
 test("evidence mixed with integration, legacy or future schema changes requires all checks", () => {
   for (const file of [
-    "supabase/functions/_shared/billing-runtime.ts",
+    "supabase/functions/_shared/billing-handlers.ts",
     "supabase/functions/_shared/lemon-squeezy-reconciliation.ts",
     "supabase/functions/paddle-webhook/index.ts",
     "supabase/migrations/20260920000000_billing_verified_effects.sql",
@@ -141,7 +141,7 @@ test("catalogue publication and manifest sync keep local checks without hosted w
 test("catalogue mixed with transport, runtime or another migration requires all checks", () => {
   for (const file of [
     "supabase/functions/_shared/paddle-catalogue/index.ts",
-    "supabase/functions/_shared/billing-runtime.ts",
+    "supabase/functions/_shared/billing-handlers.ts",
     "supabase/migrations/20260920000000_paddle_enablement.sql",
     "scripts/staging-commercial-apply.mjs",
   ]) {
@@ -184,10 +184,9 @@ test("retirement mixed with any unreviewed behavior still requires configured da
   for (const file of [
     "src/app.tsx",
     "supabase/functions/paddle-webhook/index.ts",
-    "supabase/functions/_shared/billing-runtime.ts",
+    "supabase/functions/_shared/billing-handlers.ts",
     "supabase/migrations/20260924000000_unrelated_change.sql",
     "tests/e2e/checkin-submit-review.smoke.spec.ts",
-    "package.json",
     "package-lock.json",
     "scripts/staging-commercial-apply.mjs",
     ".github/workflows/supabase-deploy-staging.yml",
@@ -264,3 +263,71 @@ test("bad revisions and Git failures cannot silently bypass tests", () => {
     /missing history/,
   );
 });
+
+const activationFiles = [
+  "config/staging-commercial-certification.json",
+  "docs/paddle-checkout-activation.md",
+  "docs/staging-commercial-deployment-manifest.md",
+  "package.json",
+  "playwright.config.ts",
+  "playwright.paddle-checkout.config.ts",
+  "scripts/staging-commercial-contracts.mjs",
+  "src/features/billing/checkout-api.ts",
+  "src/features/billing/checkout-errors.ts",
+  "src/features/billing/checkout-panel.tsx",
+  "src/features/billing/contracts.ts",
+  "src/features/billing/providers/active-provider.ts",
+  "src/features/billing/providers/paddle.ts",
+  "src/features/billing/use-billing-checkout.ts",
+  "src/lib/redact-hosted-payment-urls.ts",
+  "src/vite-env.d.ts",
+  "supabase/config.toml",
+  "supabase/functions/_shared/billing-runtime.ts",
+  "supabase/functions/_shared/paddle-checkout-handler.ts",
+  "supabase/functions/_shared/paddle-checkout-rpc.ts",
+  "supabase/functions/_shared/paddle-checkout/config.ts",
+  "supabase/functions/_shared/paddle-checkout/index.ts",
+  "supabase/functions/billing-create-paddle-checkout/index.ts",
+  "tests/e2e/paddle-checkout.spec.ts",
+  "tests/unit/paddle-browser-provider.test.ts",
+  "tests/unit/paddle-checkout-runtime.test.ts",
+  "tests/unit/paddle-checkout.test.ts",
+  "tests/unit/staging-commercial-apply.test.ts",
+  "tests/unit/staging-commercial-certification.test.ts",
+];
+
+const activationPrFiles = [
+  ...activationFiles,
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+
+test("exact checkout activation keeps quality and local smoke without hosted writes", () => {
+  assert.equal(activationFiles.length, 29);
+  assert.equal(new Set(activationFiles).size, 29);
+  for (const files of [activationFiles, activationPrFiles]) {
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+  }
+});
+
+for (const file of [
+  "src/app.tsx",
+  "supabase/functions/_shared/billing-handlers.ts",
+  "supabase/functions/billing-create-lemon-squeezy-checkout/index.ts",
+  "supabase/migrations/20260923000000_paddle_checkout_followup.sql",
+  "tests/e2e/billing-checkout.spec.ts",
+  "package-lock.json",
+  "scripts/staging-commercial-apply.mjs",
+  "supabase/functions/billing-create-paddle-checkout-v2/index.ts",
+]) {
+  test(`checkout activation with unreviewed ${file} requires configured data`, () => {
+    assert.ok(!activationFiles.includes(file));
+    assert.deepEqual(classifyChanges([...activationPrFiles, file]), {
+      docs_only: false,
+      configured_data_required: true,
+    });
+  });
+}
