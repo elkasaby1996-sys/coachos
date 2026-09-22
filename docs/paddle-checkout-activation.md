@@ -48,14 +48,30 @@ The database's `paddle_sales_enabled` gate is independent: both gates must allow
 checkout before POST. Deployment without rollout configuration remains disabled.
 
 Hosted destinations accept only the two exact hosts already in the merged policy:
-`sandbox-pay.paddle.io` and `sandbox.pay.paddle.io`, a `/checkout/<launch>` path,
-and the server-generated `transaction_id` query. Merchant payment links retain the
+`sandbox-pay.paddle.io` and `sandbox.pay.paddle.io`, with the host/path matrix
+below and the server-generated `transaction_id` query. Merchant payment links retain the
 exact configured origin/path with only `_ptxn`. Browser defense in depth further
 restricts merchant navigation to the current HTTPS application origin. An external
 merchant origin is intentionally not accepted by this browser integration. A
 merchant page must already host its separately reviewed payment integration; this
 task does not add Paddle.js, client tokens, or a merchant payment page. Hosted
 checkout is the preferred first certification path.
+
+The exact Sandbox hosted URL matrix is:
+
+| Host                    | Allowed path                                                |
+| ----------------------- | ----------------------------------------------------------- |
+| `sandbox.pay.paddle.io` | `/checkout/<opaque-reference>`                              |
+| `sandbox-pay.paddle.io` | `/checkout/<opaque-reference>` or `/hsc_<opaque-reference>` |
+
+The bare `/hsc_...` form is a narrowly allowlisted Sandbox compatibility form
+only on `sandbox-pay.paddle.io`; its path must match
+`^/hsc_[A-Za-z0-9_-]{1,512}$`. Existing `/checkout/` references retain their
+1�512 character alphanumeric, underscore, or hyphen constraint. Trusted launch
+URLs have no query or fragment; final URLs contain only the validated
+`transaction_id` query parameter. Live hosts, custom subdomains, `/pay/` paths,
+userinfo, non-default ports, whitespace, and backslashes remain rejected.
+Merchant payment-link behavior is unchanged.
 
 ## HTTP and recovery contract
 

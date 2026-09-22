@@ -7,7 +7,13 @@ import {
   waitForBootstrapResolved,
 } from "./utils/test-helpers";
 
-for (const outcome of ["ready", "unsafe", "disabled", "ambiguous"] as const) {
+for (const outcome of [
+  "ready",
+  "legacy",
+  "unsafe",
+  "disabled",
+  "ambiguous",
+] as const) {
   test(`Paddle checkout ${outcome} uses only the authenticated browser contract`, async ({
     page,
     context,
@@ -17,7 +23,9 @@ for (const outcome of ["ready", "unsafe", "disabled", "ambiguous"] as const) {
       `insert into public.workspaces(id,name,owner_user_id) values('${coach.workspaceId}','Local Paddle browser fixture','${coach.userId}')`,
     );
     const hosted =
-      "https://sandbox-pay.paddle.io/checkout/synthetic-launch?transaction_id=synthetic%2Ftransaction";
+      outcome === "legacy"
+        ? "https://sandbox-pay.paddle.io/hsc_synthetic_checkout?transaction_id=synthetic_transaction"
+        : "https://sandbox-pay.paddle.io/checkout/synthetic-launch?transaction_id=synthetic%2Ftransaction";
     let calls = 0;
     await context.route("**/*", (route) => {
       const host = new URL(route.request().url()).hostname;
@@ -67,11 +75,13 @@ for (const outcome of ["ready", "unsafe", "disabled", "ambiguous"] as const) {
           /apikey|priceId|operationId|transactionId|billingAccountId|userId/,
         );
         const json =
-          outcome === "ready" || outcome === "unsafe"
+          outcome === "ready" || outcome === "legacy" || outcome === "unsafe"
             ? {
                 status: "ready",
                 checkoutUrl:
-                  outcome === "ready" ? hosted : "https://evil.example.test",
+                  outcome === "ready" || outcome === "legacy"
+                    ? hosted
+                    : "https://evil.example.test",
               }
             : {
                 code:
@@ -106,7 +116,7 @@ for (const outcome of ["ready", "unsafe", "disabled", "ambiguous"] as const) {
       .check();
     await expect(start).toBeEnabled();
     await start.click();
-    if (outcome === "ready")
+    if (outcome === "ready" || outcome === "legacy")
       await expect(
         page.getByRole("heading", { name: "Mock Paddle checkout" }),
       ).toBeVisible();
