@@ -85,9 +85,11 @@ function setup(
     fetch: fetcher,
     paymentPageUrl,
     readEnvironment: (name) =>
-      ({ PADDLE_ENVIRONMENT: "sandbox", PADDLE_SANDBOX_API_KEY: key, ...env })[
-        name
-      ],
+      ({
+        PADDLE_ENVIRONMENT: "sandbox",
+        PADDLE_SANDBOX_CHECKOUT_API_KEY: key,
+        ...env,
+      })[name],
     ...options,
   };
   const transport = createPaddleSandboxCheckoutTransport(dependencies);
@@ -102,8 +104,8 @@ describe("Paddle checkout configuration and authority boundary", () => {
   it.each([
     { PADDLE_ENVIRONMENT: "live" },
     { PADDLE_ENVIRONMENT: undefined },
-    { PADDLE_SANDBOX_API_KEY: undefined },
-    { PADDLE_SANDBOX_API_KEY: "invalid" },
+    { PADDLE_SANDBOX_CHECKOUT_API_KEY: undefined },
+    { PADDLE_SANDBOX_CHECKOUT_API_KEY: "invalid" },
     { PADDLE_LIVE_API_KEY: "present" },
     { PADDLE_API_KEY: "present" },
     { PADDLE_API_BASE_URL: "https://api.paddle.com" },
@@ -154,7 +156,9 @@ describe("Paddle checkout configuration and authority boundary", () => {
           : [join(dir, entry.name)],
       );
     for (const file of walk("src").filter((p) => /\.[jt]sx?$/.test(p)))
-      expect(readFileSync(file, "utf8")).not.toContain("paddle-checkout");
+      expect(readFileSync(file, "utf8")).not.toMatch(
+        /from\s+["'][^"']*supabase\/functions/,
+      );
   });
 });
 

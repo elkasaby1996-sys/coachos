@@ -2,6 +2,13 @@
 
 `config/staging-commercial-certification.json` is the reviewed machine-readable source. `scripts/staging-commercial-contracts.mjs` validates every object with strict Zod schemas. Unknown fields, duplicate/missing/unreviewed functions, secret-name drift and scenario-set changes fail. schemaVersion is 1; environment is staging and providerEnvironment is test.
 
+The billing allowlist now also registers `billing-create-paddle-checkout` with
+`verify_jwt=true` (14 total functions including the two nonbilling gateways).
+It remains disabled without explicit server rollout configuration. Its dedicated
+checkout key and trusted URLs are conditional runtime settings, not new required
+LS deployment secrets. See [dormant Paddle checkout runtime](paddle-checkout-activation.md)
+for configuration and separate future deployment/activation requirements.
+
 ## Commit and source
 
 The required base is `7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7`. The confirmed forty-character SHA must equal current HEAD. Git must be clean including untracked files, origin/main must contain the base, and HEAD must descend from origin/main. Supported source branches are main and the Phase A feature branch; a detached checkout is accepted only for GitHub refs/heads/main. The deployed workflow runs only on main. It never checks out arbitrary confirmation input. Review again if origin/main or the dispatched commit moves.

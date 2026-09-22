@@ -27,6 +27,7 @@
     "supabase:remote": "node scripts/supabase-remote-guard.mjs",
     "verify:release": "npm run lint && npm run format && npm run build && npm run test:e2e:smoke",
     "test:e2e": "playwright test",
+    "test:e2e:paddle-checkout": "playwright test --config playwright.paddle-checkout.config.ts",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:smoke": "playwright test tests/e2e",
     "staging:commercial:validate": "node scripts/staging-commercial-plan.mjs --validate",

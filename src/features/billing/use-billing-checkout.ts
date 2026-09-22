@@ -5,6 +5,7 @@ import {
   fetchBillingCheckoutState,
 } from "./checkout-api";
 import { billingKeys } from "./query-keys";
+import { usesPaddleCheckout } from "./providers/active-provider";
 export function useBillingCheckout(
   attempt: string | null,
   poll: boolean,
@@ -14,7 +15,7 @@ export function useBillingCheckout(
   const state = useQuery({
     queryKey: billingKeys.state(user?.id, attempt),
     queryFn: () => fetchBillingCheckoutState(attempt),
-    enabled: Boolean(user && owner),
+    enabled: Boolean(user && owner && !usesPaddleCheckout),
     retry: false,
     refetchInterval: (query) =>
       poll &&

@@ -63,6 +63,40 @@ const paddleCertificationRetirementFiles = new Set([
   "supabase/tests/paddle_checkout_certification_fixture.sql",
 ]);
 
+// This exact reviewed activation inventory keeps quality and local smoke running.
+// Hosted-account writes are not authorized; unlisted follow-ups require all checks.
+const paddleCheckoutActivationFiles = new Set([
+  "config/staging-commercial-certification.json",
+  "docs/paddle-checkout-activation.md",
+  "docs/staging-commercial-deployment-manifest.md",
+  "package.json",
+  "playwright.config.ts",
+  "playwright.paddle-checkout.config.ts",
+  "scripts/staging-commercial-contracts.mjs",
+  "src/features/billing/checkout-api.ts",
+  "src/features/billing/checkout-errors.ts",
+  "src/features/billing/checkout-panel.tsx",
+  "src/features/billing/contracts.ts",
+  "src/features/billing/providers/active-provider.ts",
+  "src/features/billing/providers/paddle.ts",
+  "src/features/billing/use-billing-checkout.ts",
+  "src/lib/redact-hosted-payment-urls.ts",
+  "src/vite-env.d.ts",
+  "supabase/config.toml",
+  "supabase/functions/_shared/billing-runtime.ts",
+  "supabase/functions/_shared/paddle-checkout-handler.ts",
+  "supabase/functions/_shared/paddle-checkout-rpc.ts",
+  "supabase/functions/_shared/paddle-checkout/config.ts",
+  "supabase/functions/_shared/paddle-checkout/index.ts",
+  "supabase/functions/billing-create-paddle-checkout/index.ts",
+  "tests/e2e/paddle-checkout.spec.ts",
+  "tests/unit/paddle-browser-provider.test.ts",
+  "tests/unit/paddle-checkout-runtime.test.ts",
+  "tests/unit/paddle-checkout.test.ts",
+  "tests/unit/staging-commercial-apply.test.ts",
+  "tests/unit/staging-commercial-certification.test.ts",
+]);
+
 export function classifyChanges(files) {
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   return {
@@ -78,7 +112,8 @@ export function classifyChanges(files) {
           !privateBillingFoundationFiles.has(file) &&
           !privateBillingEvidenceFiles.has(file) &&
           !privatePaddleCatalogueFiles.has(file) &&
-          !paddleCertificationRetirementFiles.has(file),
+          !paddleCertificationRetirementFiles.has(file) &&
+          !paddleCheckoutActivationFiles.has(file),
       ),
   };
 }

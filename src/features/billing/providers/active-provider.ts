@@ -1,4 +1,14 @@
 import { lemonSqueezyBrowserProvider } from "./lemon-squeezy";
+import { paddleBrowserProvider } from "./paddle";
 
-// Fixed compatibility selection. No browser, URL or environment-driven provider switch.
-export const billingBrowserProvider = lemonSqueezyBrowserProvider;
+// Build-time selection only. Missing/unknown values preserve the existing LS default.
+export function selectBillingBrowserProvider(value: unknown) {
+  return value === "paddle"
+    ? paddleBrowserProvider
+    : lemonSqueezyBrowserProvider;
+}
+export const billingBrowserProvider = selectBillingBrowserProvider(
+  import.meta.env.VITE_BILLING_PROVIDER,
+);
+export const usesPaddleCheckout =
+  billingBrowserProvider === paddleBrowserProvider;

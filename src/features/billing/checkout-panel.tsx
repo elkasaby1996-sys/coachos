@@ -12,6 +12,8 @@ import {
   checkoutReturnState,
 } from "./checkout-return-state";
 import { useBillingCheckout } from "./use-billing-checkout";
+import { usesPaddleCheckout } from "./providers/active-provider";
+import { legalSiteConfig } from "../../lib/legal-site";
 
 export function BillingCheckoutPanel({
   owner,
@@ -25,7 +27,10 @@ export function BillingCheckoutPanel({
   refresh: () => Promise<unknown>;
 }) {
   const [search, setSearch] = useSearchParams();
-  const attempt = checkoutReturnAttempt(search);
+  const attempt = usesPaddleCheckout ? null : checkoutReturnAttempt(search);
+  const [additionalCoachSeats, setAdditionalCoachSeats] = useState(0);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [refundAcknowledged, setRefundAcknowledged] = useState(false);
   const [plan, setPlan] = useState<PublicPlanKey>(requestedPlan);
   const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
   const [pollUntil, setPollUntil] = useState(() =>
@@ -71,8 +76,13 @@ export function BillingCheckoutPanel({
     void refresh();
   }, [returnState, search, setSearch, refresh]);
   const selected = PUBLIC_PLAN_SNAPSHOT_V1.find((p) => p.planKey === plan)!;
+  const blocked =
+    billing.create.error instanceof BillingCheckoutError &&
+    billing.create.error.blocksNewCheckout;
+  const consentMissing =
+    usesPaddleCheckout && (!termsAccepted || !refundAcknowledged);
   async function start() {
-    if (!owner || paid || lock.current) return;
+    if (!owner || paid || lock.current || blocked || consentMissing) return;
     lock.current = true;
     if (
       !operation.current ||
@@ -82,16 +92,30 @@ export function BillingCheckoutPanel({
     )
       operation.current = { plan, cadence, id: crypto.randomUUID() };
     try {
-      const result = await billing.create.mutateAsync({
-        planKey: plan,
-        cadence,
-        operationId: operation.current.id,
-      });
+      const result = await billing.create.mutateAsync(
+        usesPaddleCheckout
+          ? {
+              planKey: plan,
+              cadence,
+              additionalCoachSeats,
+              legal: {
+                termsAccepted: true,
+                refundAcknowledged: true,
+                termsVersion: legalSiteConfig.version,
+                refundVersion: legalSiteConfig.version,
+              },
+            }
+          : {
+              planKey: plan,
+              cadence,
+              operationId: operation.current.id,
+            },
+      );
       setRedirecting(true);
       window.location.assign(result.checkoutUrl);
     } catch {
       lock.current = false;
-      void billing.state.refetch();
+      if (!usesPaddleCheckout) void billing.state.refetch();
     }
   }
   if (!owner)
@@ -166,6 +190,7 @@ export function BillingCheckoutPanel({
             </label>
           </div>
           <p className="text-sm font-medium">
+            {usesPaddleCheckout ? "Base plan: " : null}
             {formatCommercialPrice(
               cadence === "annual"
                 ? selected.annualPriceMinor
@@ -179,9 +204,75 @@ export function BillingCheckoutPanel({
           <p className="text-sm text-muted-foreground">
             Applicable taxes are calculated at checkout
           </p>
+          {usesPaddleCheckout ? (
+            <fieldset
+              className="space-y-3"
+              disabled={billing.create.isPending || redirecting || blocked}
+            >
+              <legend className="sr-only">Checkout acknowledgements</legend>
+              <label className="block space-y-2 text-sm font-medium">
+                Additional coach seats
+                <input
+                  type="number"
+                  min={0}
+                  max={5}
+                  step={1}
+                  className="ui-input block min-h-11 w-full"
+                  value={additionalCoachSeats}
+                  onChange={(e) =>
+                    setAdditionalCoachSeats(e.target.valueAsNumber)
+                  }
+                />
+              </label>
+              <p className="text-sm text-muted-foreground">
+                Additional seat pricing is confirmed at checkout.
+              </p>
+              <label className="flex min-h-11 items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                />
+                <span>
+                  I accept the{" "}
+                  <a
+                    className="underline"
+                    href="/terms"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Terms of Service
+                  </a>
+                </span>
+              </label>
+              <label className="flex min-h-11 items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={refundAcknowledged}
+                  onChange={(e) => setRefundAcknowledged(e.target.checked)}
+                />
+                <span>
+                  I acknowledge the{" "}
+                  <a
+                    className="underline"
+                    href="/refunds"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Refund Policy
+                  </a>
+                </span>
+              </label>
+            </fieldset>
+          ) : null}
           <Button
             onClick={() => void start()}
-            disabled={billing.create.isPending || redirecting}
+            disabled={
+              billing.create.isPending ||
+              redirecting ||
+              blocked ||
+              consentMissing
+            }
           >
             {redirecting
               ? "Redirecting…"

@@ -237,7 +237,7 @@ describe("staging commercial manifest and local planner", () => {
       plan.authorization.commands.filter((s: string) =>
         s.includes("functions deploy"),
       ),
-    ).toHaveLength(13);
+    ).toHaveLength(14);
     expect(network).not.toHaveBeenCalled();
     // No apply module is reachable from the planner import graph.
     expect(
