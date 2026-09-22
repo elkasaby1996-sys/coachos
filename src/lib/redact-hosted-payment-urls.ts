@@ -2,7 +2,7 @@
 export function redactHostedPaymentUrls<T>(value: T): T {
   if (typeof value === "string")
     return value.replace(/https?:\/\/[^\s"<>]+/gi, (candidate) =>
-      /lemonsqueezy\.com|[?&](?:signature|expires)=|\/billing(?:[/?#]|$)|\/subscription\/[^/]+\/payment-details/i.test(
+      /lemonsqueezy\.com|paddle\.io|[?&](?:signature|expires|_ptxn|transaction_id)=|\/billing(?:[/?#]|$)|\/subscription\/[^/]+\/payment-details/i.test(
         candidate,
       )
         ? "[redacted payment URL]"
@@ -13,7 +13,7 @@ export function redactHostedPaymentUrls<T>(value: T): T {
     return Object.fromEntries(
       Object.entries(value).map(([key, entry]) => [
         redactHostedPaymentUrls(key),
-        /^(?:portalUrl|customer_portal|update_payment_method|signature)$/i.test(
+        /^(?:checkoutUrl|portalUrl|customer_portal|update_payment_method|signature)$/i.test(
           key,
         )
           ? "[redacted payment URL]"

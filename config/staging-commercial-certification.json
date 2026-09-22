@@ -699,6 +699,7 @@
   "functions": {
     "billing": [
       "billing-create-lemon-squeezy-checkout",
+      "billing-create-paddle-checkout",
       "billing-lemon-squeezy-webhook",
       "billing-create-customer-portal-link",
       "billing-preview-plan-change",
@@ -714,6 +715,7 @@
   },
   "jwtContracts": {
     "billing-create-lemon-squeezy-checkout": true,
+    "billing-create-paddle-checkout": true,
     "billing-lemon-squeezy-webhook": false,
     "billing-create-customer-portal-link": true,
     "billing-preview-plan-change": true,

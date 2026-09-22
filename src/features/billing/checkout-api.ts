@@ -3,11 +3,21 @@ import {
   checkoutResponseSchema,
   checkoutStateSchema,
   type CheckoutRequest,
+  paddleCheckoutRequestSchema,
+  paddleCheckoutResponseSchema,
+  type PaddleCheckoutRequest,
 } from "./contracts";
-import { safeBillingError } from "./checkout-errors";
-import { billingBrowserProvider } from "./providers/active-provider";
-export async function createBillingCheckout(input: CheckoutRequest) {
-  const parsed = checkoutRequestSchema.safeParse(input);
+import { safeBillingError, BillingCheckoutError } from "./checkout-errors";
+import {
+  billingBrowserProvider,
+  usesPaddleCheckout,
+} from "./providers/active-provider";
+export async function createBillingCheckout(
+  input: CheckoutRequest | PaddleCheckoutRequest,
+) {
+  const parsed = (
+    usesPaddleCheckout ? paddleCheckoutRequestSchema : checkoutRequestSchema
+  ).safeParse(input);
   if (!parsed.success)
     throw safeBillingError({ code: "BILLING_INVALID_INPUT" });
   try {
@@ -25,11 +35,22 @@ export async function createBillingCheckout(input: CheckoutRequest) {
       }
       throw safeBillingError(body);
     }
-    const result = checkoutResponseSchema.safeParse(data);
+    const result = (
+      usesPaddleCheckout ? paddleCheckoutResponseSchema : checkoutResponseSchema
+    ).safeParse(data);
     if (!result.success)
       throw safeBillingError({ code: "BILLING_VARIANT_MAPPING_MISMATCH" });
     return result.data;
   } catch (error) {
+    if (
+      usesPaddleCheckout &&
+      (!(error instanceof BillingCheckoutError) ||
+        [
+          "BILLING_RECONCILIATION_FAILED",
+          "BILLING_VARIANT_MAPPING_MISMATCH",
+        ].includes(error.code))
+    )
+      throw safeBillingError({ code: "PADDLE_CHECKOUT_RECOVERY_REQUIRED" });
     throw safeBillingError(error);
   }
 }

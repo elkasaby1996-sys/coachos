@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 export const BILLING_FUNCTIONS = [
   "billing-create-lemon-squeezy-checkout",
+  "billing-create-paddle-checkout",
   "billing-lemon-squeezy-webhook",
   "billing-create-customer-portal-link",
   "billing-preview-plan-change",

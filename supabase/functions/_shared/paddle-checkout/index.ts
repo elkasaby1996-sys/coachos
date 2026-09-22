@@ -1,7 +1,5 @@
-import {
-  sandboxAuthorization,
-  type ServerEnvironmentReader,
-} from "../paddle-catalogue/config.ts";
+import type { ServerEnvironmentReader } from "../paddle-catalogue/config.ts";
+import { sandboxCheckoutAuthorization } from "./config.ts";
 import type {
   PaddleCheckoutInput,
   PaddleCheckoutRetrieveInput,
@@ -48,7 +46,7 @@ export function createPaddleSandboxCheckoutTransport(
       typeof dependencies.readEnvironment !== "function"
     )
       fail("configuration");
-    authorization = sandboxAuthorization(dependencies.readEnvironment);
+    authorization = sandboxCheckoutAuthorization(dependencies.readEnvironment);
     policy = destinationPolicy(
       dependencies.paymentPageUrl,
       dependencies.hostedCheckoutLaunchUrl,

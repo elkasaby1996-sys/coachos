@@ -1,4 +1,27 @@
 const messages = {
+  PADDLE_CHECKOUT_FORBIDDEN: "Checkout is not available for this account.",
+  PADDLE_CHECKOUT_ROLLOUT_DISABLED:
+    "Subscription checkout is currently unavailable.",
+  PADDLE_CHECKOUT_DISABLED: "Subscription checkout is currently unavailable.",
+  PADDLE_CHECKOUT_INVALID:
+    "Check your plan, billing frequency and additional seats.",
+  PADDLE_CHECKOUT_LEGAL_REQUIRED:
+    "Accept the current terms and acknowledge the refund policy to continue.",
+  PADDLE_CHECKOUT_SEAT_POLICY:
+    "The selected additional seats are not available for this plan.",
+  PADDLE_CHECKOUT_MAPPING: "This plan is not available for checkout yet.",
+  PADDLE_CHECKOUT_CONFLICT:
+    "A checkout or billing change is already in progress. Contact support before starting another.",
+  PADDLE_CHECKOUT_AMBIGUOUS:
+    "We could not confirm whether checkout was created. Contact support before starting another.",
+  PADDLE_CHECKOUT_RECOVERY_REQUIRED:
+    "This checkout needs review. Contact support before starting another.",
+  PADDLE_CHECKOUT_NOT_DISPATCHED:
+    "Checkout was not completed. Your selection has been retained.",
+  PADDLE_CHECKOUT_PERSISTENCE:
+    "Checkout status could not be confirmed. Contact support before starting another.",
+  PADDLE_CHECKOUT_CONFIGURATION:
+    "Subscription checkout is currently unavailable.",
   BILLING_PROVIDER_NOT_CONFIGURED:
     "Subscription checkout is currently unavailable. Please try again later.",
   BILLING_VARIANT_MAPPING_UNAVAILABLE:
@@ -24,6 +47,14 @@ const messages = {
     "Billing details are unavailable. Please refresh to check again.",
 } as const;
 export class BillingCheckoutError extends Error {
+  get blocksNewCheckout() {
+    return [
+      "PADDLE_CHECKOUT_AMBIGUOUS",
+      "PADDLE_CHECKOUT_RECOVERY_REQUIRED",
+      "PADDLE_CHECKOUT_CONFLICT",
+      "PADDLE_CHECKOUT_PERSISTENCE",
+    ].includes(this.code);
+  }
   constructor(public code: keyof typeof messages) {
     super(messages[code]);
     this.name = "BillingCheckoutError";

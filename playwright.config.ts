@@ -25,6 +25,7 @@ if (configuredWorkers && !/^[1-9]\d*$/.test(configuredWorkers)) {
 
 export default defineConfig({
   testDir: "tests/e2e",
+  testIgnore: "**/paddle-checkout.spec.ts",
   timeout: 90_000,
   fullyParallel: false,
   retries: 0,

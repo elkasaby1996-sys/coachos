@@ -6,6 +6,7 @@ import type { BillingDependencies, Rpc } from "./billing-handlers.ts";
 import { portalCodes } from "./billing-portal.ts";
 import { planChangeCodes } from "./billing-plan-change.ts";
 import { seatQuantityCodes } from "./billing-seat-quantity.ts";
+import { paddleCheckoutRpcError } from "./paddle-checkout-rpc.ts";
 
 const safeDatabaseCodes = new Set([
   ...portalCodes,
@@ -32,6 +33,10 @@ export function billingDependencies(): BillingDependencies {
     (client: typeof service): Rpc =>
     async (name, args) => {
       const { data, error } = await client.rpc(name, args);
+      if (error) {
+        const paddleCode = paddleCheckoutRpcError(name, error);
+        if (paddleCode) throw new Error(paddleCode);
+      }
       if (error)
         throw new BillingError(
           safeDatabaseCodes.has(error.message)
