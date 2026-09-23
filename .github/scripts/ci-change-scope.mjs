@@ -146,6 +146,22 @@ const paddleIdentitySupersessionFiles = new Set([
   "config/staging-commercial-certification.json",
 ]);
 
+// Authority-bearing but dormant initial reconciliation: only the complete
+// reviewed implementation may skip hosted writes whose isolation is unproven.
+const paddleInitialPurchaseReconciliationFiles = new Set([
+  "config/staging-commercial-certification.json",
+  "docs/paddle-initial-purchase-reconciliation.md",
+  "docs/staging-commercial-deployment-manifest.md",
+  "scripts/test-paddle-reconciliation-concurrency.py",
+  "scripts/test-paddle-reconciliation-migration.py",
+  "scripts/test-paddle-reconciliation-regressions.py",
+  "supabase/migrations/20260923151445_paddle_initial_purchase_reconciliation.sql",
+  "supabase/tests/billing_provider_v2_foundation.sql",
+  "supabase/tests/billing_verified_evidence.sql",
+  "supabase/tests/paddle_certification_authority_retirement.sql",
+  "supabase/tests/paddle_initial_purchase_reconciliation.sql",
+]);
+
 export function classifyChanges(files) {
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   const sharedRuntimeCompatibility =
@@ -176,6 +192,16 @@ export function classifyChanges(files) {
         file === ".github/scripts/ci-change-scope.mjs" ||
         file === ".github/scripts/ci-change-scope.test.mjs",
     );
+  const paddleInitialPurchaseReconciliation =
+    [...paddleInitialPurchaseReconciliationFiles].every((file) =>
+      files.includes(file),
+    ) &&
+    files.every(
+      (file) =>
+        paddleInitialPurchaseReconciliationFiles.has(file) ||
+        file === ".github/scripts/ci-change-scope.mjs" ||
+        file === ".github/scripts/ci-change-scope.test.mjs",
+    );
   return {
     docs_only: files.length > 0 && files.every(documentation),
     // CI changes still run the full local smoke suite, but do not need to
@@ -184,6 +210,7 @@ export function classifyChanges(files) {
       !sharedRuntimeCompatibility &&
       !billingPreWorkspaceAccess &&
       !paddleIdentitySupersession &&
+      !paddleInitialPurchaseReconciliation &&
       (files.length === 0 ||
         files.some(
           (file) =>

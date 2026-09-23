@@ -111,7 +111,7 @@ select is((select to_jsonb(p) from billing_runtime_policy p),(select policy from
 select is((select count(*) from billing_payment_applications_v2),0::bigint,'no payment applications created');
 select is((select count(*) from billing_subscriptions_v2 where account_subscription_id is not null or approved_additional_coach_seats<>0),0::bigint,'canonical linkage and seats remain impossible');
 select throws_ok($$update billing_subscriptions_v2 set approved_additional_coach_seats=1 where environment='test'$$,'P0001','BILLING_V2_IDENTITY_IMMUTABLE','verified transaction does not remove seat hard stop');
-select ok(exists(select 1 from pg_constraint where conrelid='billing_subscriptions_v2'::regclass and conname='billing_v2_canonical_link_disabled'),'canonical NULL CHECK retained');
+select ok(exists(select 1 from pg_trigger where tgrelid='billing_subscriptions_v2'::regclass and tgname='paddle_initial_link_guard' and tgenabled='O'),'canonical linkage proof guard enabled');
 select ok(exists(select 1 from pg_constraint where conrelid='billing_subscriptions_v2'::regclass and conname='billing_v2_seat_approval_disabled'),'approved-seat zero CHECK retained');
 select is((select count(*) from pg_constraint where conrelid='billing_payment_applications_v2'::regclass and confrelid='billing_verified_evidence_v2'::regclass),0::bigint,'new verified ledger has no payment-application FK path');
 select * from finish();

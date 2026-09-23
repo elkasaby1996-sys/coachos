@@ -569,3 +569,90 @@ for (const file of [
     );
   });
 }
+
+// Generated from git diff-tree for implementation commit
+// c97d74f5bd30556fdccfd86308c23a169e2da12e; kept as a fixture so later
+// squash merges do not require an unreachable historical Git object in CI.
+const reconciliationFiles = [
+  "config/staging-commercial-certification.json",
+  "docs/paddle-initial-purchase-reconciliation.md",
+  "docs/staging-commercial-deployment-manifest.md",
+  "scripts/test-paddle-reconciliation-concurrency.py",
+  "scripts/test-paddle-reconciliation-migration.py",
+  "scripts/test-paddle-reconciliation-regressions.py",
+  "supabase/migrations/20260923151445_paddle_initial_purchase_reconciliation.sql",
+  "supabase/tests/billing_provider_v2_foundation.sql",
+  "supabase/tests/billing_verified_evidence.sql",
+  "supabase/tests/paddle_certification_authority_retirement.sql",
+  "supabase/tests/paddle_initial_purchase_reconciliation.sql",
+];
+const reconciliationPrFiles = [
+  ...reconciliationFiles,
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+
+test("Paddle reconciliation inventory exactly matches the reviewed Git commit", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const entries = [
+    ...source
+      .match(
+        /const paddleInitialPurchaseReconciliationFiles = new Set\(\[([\s\S]*?)\]\);/,
+      )[1]
+      .matchAll(/"([^"]+)"/g),
+  ].map((match) => match[1]);
+  assert.equal(entries.length, 11);
+  assert.equal(new Set(entries).size, 11);
+  assert.equal(reconciliationFiles.length, 11);
+  assert.deepEqual(entries, reconciliationFiles);
+});
+
+for (const files of [reconciliationFiles, reconciliationPrFiles]) {
+  test(`exact ${files.length}-file Paddle reconciliation inventory keeps local CI`, () => {
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+  });
+}
+for (const omitted of reconciliationFiles) {
+  test(`Paddle reconciliation missing ${omitted} remains fail-closed`, () => {
+    for (const files of [reconciliationFiles, reconciliationPrFiles]) {
+      assert.deepEqual(
+        classifyChanges(files.filter((file) => file !== omitted)),
+        { docs_only: false, configured_data_required: true },
+      );
+    }
+  });
+}
+for (const file of [
+  "src/app.tsx",
+  "src/lib/auth.tsx",
+  "supabase/functions/billing-paddle-webhook/index.ts",
+  "supabase/functions/billing-create-paddle-checkout/index.ts",
+  "supabase/functions/_shared/billing-handlers.ts",
+  "supabase/migrations/20260924000000_paddle_reconciliation_followup.sql",
+  "supabase/tests/paddle_initial_purchase_reconciliation_other.sql",
+  "scripts/staging-commercial-apply.mjs",
+  "tests/e2e/billing-checkout.spec.ts",
+  "package-lock.json",
+  ".github/workflows/ci.yml",
+  "supabase/migrations/20260923151445_paddle_initial_purchase_reconciliation_other.sql",
+  "scripts/test-paddle-reconciliation-concurrency-other.py",
+  "scripts/test-paddle-reconciliation-migration-other.py",
+  "scripts/test-paddle-reconciliation-regressions-other.py",
+  "docs/paddle-initial-purchase-reconciliation-other.md",
+  "docs/staging-commercial-deployment-manifest-other.md",
+]) {
+  test(`Paddle reconciliation mixed with ${file} remains fail-closed`, () => {
+    for (const files of [reconciliationFiles, reconciliationPrFiles]) {
+      assert.deepEqual(classifyChanges([...files, file]), {
+        docs_only: false,
+        configured_data_required: true,
+      });
+    }
+  });
+}
