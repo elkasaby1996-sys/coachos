@@ -140,6 +140,36 @@ function setup(overrides: Record<string, string | undefined> = {}) {
   };
 }
 afterEach(() => vi.unstubAllGlobals());
+describe("Supabase Edge Runtime checkout gates", () => {
+  it.each([
+    ["disabled", "PADDLE_CHECKOUT_ROLLOUT_DISABLED", 0],
+    ["non-pilot", "PADDLE_CHECKOUT_FORBIDDEN", 0],
+    ["sales-disabled", "PADDLE_CHECKOUT_DISABLED", 1],
+  ] as const)(
+    "preserves %s without provider dispatch",
+    async (gate, code, rpcCalls) => {
+      vi.stubGlobal("window", globalThis);
+      vi.stubGlobal("Deno", {
+        version: { deno: "supabase-edge-runtime" },
+        serve: vi.fn(),
+        env: { get: vi.fn() },
+      });
+      const x = setup();
+      if (gate === "disabled") x.env.PADDLE_CHECKOUT_ACCESS_MODE = "disabled";
+      if (gate === "non-pilot")
+        x.env.PADDLE_CHECKOUT_PILOT_USER_ID = randomUUID();
+      if (gate === "sales-disabled") x.deny("PADDLE_CHECKOUT_DISABLED");
+      const response = await x.run();
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual({ code, retryable: false });
+      expect(x.auth).toHaveBeenCalledExactlyOnceWith("synthetic-session");
+      expect(x.rpc).toHaveBeenCalledTimes(rpcCalls);
+      if (rpcCalls)
+        expect(x.rpc.mock.calls[0]![0]).toBe("begin_paddle_checkout_v1");
+      expect(x.http).not.toHaveBeenCalled();
+    },
+  );
+});
 describe("dedicated checkout authorization", () => {
   it("uses only the dedicated credential while catalogue keeps its own", () => {
     const dedicated = key(),
