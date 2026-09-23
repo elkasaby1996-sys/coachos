@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { changedFiles, classifyChanges } from "./ci-change-scope.mjs";
 
@@ -375,3 +376,71 @@ for (const file of [
     });
   });
 }
+
+const sharedRuntimeFiles = [
+  "supabase/functions/_shared/paddle-catalogue/config.ts",
+  "tests/unit/paddle-shared-runtime.test.ts",
+  "tests/unit/paddle-checkout-runtime.test.ts",
+];
+const sharedRuntimePrFiles = [
+  ...sharedRuntimeFiles,
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+
+test("exact shared runtime compatibility inventory keeps quality and local smoke", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const entries = [
+    ...source
+      .match(
+        /const paddleSharedRuntimeCompatibilityFiles = new Set\(\[([\s\S]*?)\]\);/,
+      )[1]
+      .matchAll(/"([^"]+)"/g),
+  ].map((match) => match[1]);
+  assert.equal(entries.length, 3);
+  assert.equal(new Set(entries).size, 3);
+  assert.deepEqual(entries, sharedRuntimeFiles);
+  for (const files of [sharedRuntimeFiles, sharedRuntimePrFiles]) {
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+  }
+});
+
+for (const file of [
+  "src/app.tsx",
+  "supabase/functions/_shared/billing-handlers.ts",
+  "supabase/functions/_shared/paddle-webhook/signature.ts",
+  "supabase/functions/billing-create-paddle-checkout-v2/index.ts",
+  "supabase/migrations/20260923000000_paddle_runtime_followup.sql",
+  "tests/e2e/billing-checkout.spec.ts",
+  "package-lock.json",
+  "scripts/staging-commercial-apply.mjs",
+  "supabase/functions/_shared/paddle-catalogue/config-v2.ts",
+  "tests/unit/paddle-shared-runtime-other.test.ts",
+  "supabase/functions/_shared/paddle-checkout-handler.ts",
+  ".github/workflows/ci.yml",
+]) {
+  test(`shared runtime compatibility mixed with ${file} requires configured data`, () => {
+    for (const files of [sharedRuntimeFiles, sharedRuntimePrFiles]) {
+      assert.deepEqual(classifyChanges([...files, file]), {
+        docs_only: false,
+        configured_data_required: true,
+      });
+    }
+  });
+}
+
+test("incomplete shared runtime patches do not inherit the exact exemption", () => {
+  for (const omitted of sharedRuntimeFiles) {
+    assert.equal(
+      classifyChanges(sharedRuntimeFiles.filter((file) => file !== omitted))
+        .configured_data_required,
+      true,
+    );
+  }
+});
