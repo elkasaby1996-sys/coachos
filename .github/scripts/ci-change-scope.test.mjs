@@ -444,3 +444,54 @@ test("incomplete shared runtime patches do not inherit the exact exemption", () 
     );
   }
 });
+
+const billingPreWorkspaceAccessFiles = [
+  "src/lib/protected-route-guard.ts",
+  "src/routes/app.tsx",
+  "tests/unit/pre-workspace-pt-route.test.ts",
+  "tests/unit/client-messages-route-wiring.test.ts",
+  "tests/unit/client-preworkspace-shell-wiring.test.ts",
+  "tests/unit/client-settings-route-wiring.test.ts",
+  "tests/e2e/billing-pre-workspace.spec.ts",
+  "tests/e2e/paddle-checkout.spec.ts",
+  "docs/qa/BILL-ROUTE-01.md",
+];
+const billingPreWorkspaceAccessPrFiles = [
+  ...billingPreWorkspaceAccessFiles,
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+
+test("exact pre-workspace Billing inventory keeps local smoke without hosted writes", () => {
+  assert.equal(billingPreWorkspaceAccessFiles.length, 9);
+  assert.equal(new Set(billingPreWorkspaceAccessFiles).size, 9);
+  for (const files of [
+    billingPreWorkspaceAccessFiles,
+    billingPreWorkspaceAccessPrFiles,
+  ]) {
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+  }
+});
+
+for (const file of [
+  "src/app.tsx",
+  "src/lib/auth.tsx",
+  "src/components/layouts/pt-hub-layout.tsx",
+  "supabase/functions/_shared/billing-handlers.ts",
+  "supabase/migrations/20260923000000_billing_route_followup.sql",
+  "tests/e2e/billing-checkout.spec.ts",
+  "package-lock.json",
+  "scripts/staging-commercial-apply.mjs",
+  "src/lib/protected-route-guard-v2.ts",
+  "tests/e2e/billing-pre-workspace-other.spec.ts",
+]) {
+  test(`pre-workspace Billing mixed with ${file} requires configured data`, () => {
+    assert.deepEqual(
+      classifyChanges([...billingPreWorkspaceAccessPrFiles, file]),
+      { docs_only: false, configured_data_required: true },
+    );
+  });
+}

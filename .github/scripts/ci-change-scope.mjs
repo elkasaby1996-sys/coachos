@@ -117,6 +117,21 @@ const paddleSharedRuntimeCompatibilityFiles = new Set([
   "tests/unit/paddle-checkout-runtime.test.ts",
 ]);
 
+// BILL-ROUTE-01 is a UI route-policy correction with local browser evidence.
+// Only this entire reviewed inventory, optionally with this classifier and its
+// tests, may skip configured hosted-account mutation checks.
+const billingPreWorkspaceAccessFiles = new Set([
+  "src/lib/protected-route-guard.ts",
+  "src/routes/app.tsx",
+  "tests/unit/pre-workspace-pt-route.test.ts",
+  "tests/unit/client-messages-route-wiring.test.ts",
+  "tests/unit/client-preworkspace-shell-wiring.test.ts",
+  "tests/unit/client-settings-route-wiring.test.ts",
+  "tests/e2e/billing-pre-workspace.spec.ts",
+  "tests/e2e/paddle-checkout.spec.ts",
+  "docs/qa/BILL-ROUTE-01.md",
+]);
+
 export function classifyChanges(files) {
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   const sharedRuntimeCompatibility =
@@ -129,12 +144,21 @@ export function classifyChanges(files) {
         file === ".github/scripts/ci-change-scope.mjs" ||
         file === ".github/scripts/ci-change-scope.test.mjs",
     );
+  const billingPreWorkspaceAccess =
+    [...billingPreWorkspaceAccessFiles].every((file) => files.includes(file)) &&
+    files.every(
+      (file) =>
+        billingPreWorkspaceAccessFiles.has(file) ||
+        file === ".github/scripts/ci-change-scope.mjs" ||
+        file === ".github/scripts/ci-change-scope.test.mjs",
+    );
   return {
     docs_only: files.length > 0 && files.every(documentation),
     // CI changes still run the full local smoke suite, but do not need to
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
       !sharedRuntimeCompatibility &&
+      !billingPreWorkspaceAccess &&
       (files.length === 0 ||
         files.some(
           (file) =>
