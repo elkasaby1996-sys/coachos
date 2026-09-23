@@ -12,8 +12,8 @@ select ok(not exists(select 1 from pg_class c cross join lateral aclexplode(coal
 select ok(not has_table_privilege(r,'public.billing_paddle_checkout_certification_fixtures',p),r||' denied '||p) from unnest(array['anon','authenticated','service_role']) r cross join unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p;
 -- Inspect every surviving public routine, not just the three retired names.
 -- Retired fixture creation/close authority stays absent. The identity lifecycle
--- may read the retained fixture table only in its lineage predicate and webhook.
-select is((select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and (p.prosrc ~* 'billing_paddle_checkout_certification_fixtures|repsync_paddle_certification|paddle_certification_gate|paddle_checkout_certification_fixture') and p.proname not in ('billing_paddle_certification_shadow_v1','ingest_verified_paddle_event_v1')),0::bigint,'no surviving certification authority routine');
+-- may read retained history in lineage, ingress and reconciliation's exclusion.
+select is((select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and (p.prosrc ~* 'billing_paddle_checkout_certification_fixtures|repsync_paddle_certification|paddle_certification_gate|paddle_checkout_certification_fixture') and p.proname not in ('billing_paddle_certification_shadow_v1','ingest_verified_paddle_event_v1','billing_paddle_initial_proof_v1')),0::bigint,'no surviving certification authority routine');
 select is((select count(*) from pg_views where schemaname='public' and definition ilike '%billing_paddle_checkout_certification_fixtures%'),0::bigint,'no history access view');
 
 select * from finish();

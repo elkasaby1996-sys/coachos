@@ -696,9 +696,13 @@
       {
         "filename": "20260923102850_paddle_identity_supersession.sql",
         "sha256": "c0c5eac10b60b342e6f9e021e58314d4a38436dcd7a266a0cc4947b2830ec585"
+      },
+      {
+        "filename": "20260923151445_paddle_initial_purchase_reconciliation.sql",
+        "sha256": "2d05e8894a63a51e796994199570eb663c6fe3b645bd562dabca85f89d90af77"
       }
     ],
-    "expectedLatestMigration": "20260923102850_paddle_identity_supersession.sql"
+    "expectedLatestMigration": "20260923151445_paddle_initial_purchase_reconciliation.sql"
   },
   "functions": {
     "billing": [

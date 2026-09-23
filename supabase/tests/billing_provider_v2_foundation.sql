@@ -164,7 +164,7 @@ select pg_temp.reject(t,j,'23505','duplicate scoped customer/account rejected') 
 select throws_ok($$update billing_customers_v2 set billing_account_id=gen_random_uuid()$$,'P0001','BILLING_V2_IDENTITY_IMMUTABLE','customer cannot be reassigned');
 select pg_temp.reject(t,j||jsonb_build_object('environment',case j->>'environment' when 'test' then 'live' else 'test' end),'23503','customer/subscription environment scope') from examples where t='billing_subscriptions_v2';
 select pg_temp.reject(t,j||jsonb_build_object('billing_account_id',(select a from owners where a<>(j->>'billing_account_id')::uuid limit 1)),'23503','customer/subscription account scope') from examples where t='billing_subscriptions_v2';
-select pg_temp.reject(t,j||jsonb_build_object('account_subscription_id',(select s from owners where a=(j->>'billing_account_id')::uuid)),'23514','canonical linkage disabled') from examples where t='billing_subscriptions_v2';
+select pg_temp.reject(t,j||jsonb_build_object('account_subscription_id',(select s from owners where a=(j->>'billing_account_id')::uuid)),'P0001','canonical linkage requires independently reconciled payment proof') from examples where t='billing_subscriptions_v2';
 select pg_temp.reject(t,j||'{"approved_additional_coach_seats":1}','23514','seat approval disabled') from examples where t='billing_subscriptions_v2';
 select throws_ok($$select pg_temp.run('update billing_subscriptions_v2 set reconciliation_status=''processed''')$$,'P0001','BILLING_V2_RECONCILED_ITEMS_REQUIRED','processed requires base item and evidence');
 

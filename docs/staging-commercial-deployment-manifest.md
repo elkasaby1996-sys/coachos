@@ -71,3 +71,10 @@ Webhook staging ingress certification already passed. After deployment, the
 temporary fixture RPCs and private gate are absent; permanent historical evidence
 remains. See the [retirement and Auth cleanup runbook](paddle-checkout-certification-fixture.md).
 This manifest change neither deploys staging nor enables sales/reconciliation.
+
+# Local PADDLE-RECONCILIATION-01 inventory
+
+The local migration inventory now contains 173 migrations, ending with
+`20260923151445_paddle_initial_purchase_reconciliation.sql`. The previous 172
+entries and hashes are unchanged. This checksum update is not deployment or
+reconciliation-enablement authorization. No remote target is changed by this task.
