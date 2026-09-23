@@ -692,9 +692,13 @@
       {
         "filename": "20260922094541_paddle_certification_fixture_authority_retirement.sql",
         "sha256": "cd3fc0272ea21064ee4d48913e421efa468f754e94cba24b21c68addc6fb1475"
+      },
+      {
+        "filename": "20260923102850_paddle_identity_supersession.sql",
+        "sha256": "c0c5eac10b60b342e6f9e021e58314d4a38436dcd7a266a0cc4947b2830ec585"
       }
     ],
-    "expectedLatestMigration": "20260922094541_paddle_certification_fixture_authority_retirement.sql"
+    "expectedLatestMigration": "20260923102850_paddle_identity_supersession.sql"
   },
   "functions": {
     "billing": [
