@@ -132,6 +132,20 @@ const billingPreWorkspaceAccessFiles = new Set([
   "docs/qa/BILL-ROUTE-01.md",
 ]);
 
+// PADDLE-IDENTITY-SUPERSESSION-01 changes private provider-evidence storage and
+// exercises it locally. Only this complete reviewed inventory, optionally with
+// its classifier and tests, may skip configured hosted-account mutations.
+const paddleIdentitySupersessionFiles = new Set([
+  "supabase/migrations/20260923102850_paddle_identity_supersession.sql",
+  "supabase/tests/paddle_identity_supersession.sql",
+  "scripts/test-paddle-identity-supersession-concurrency.py",
+  "scripts/test-paddle-identity-supersession-migration.py",
+  "docs/paddle-identity-supersession.md",
+  "supabase/tests/billing_provider_v2_foundation.sql",
+  "supabase/tests/paddle_certification_authority_retirement.sql",
+  "config/staging-commercial-certification.json",
+]);
+
 export function classifyChanges(files) {
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   const sharedRuntimeCompatibility =
@@ -152,6 +166,16 @@ export function classifyChanges(files) {
         file === ".github/scripts/ci-change-scope.mjs" ||
         file === ".github/scripts/ci-change-scope.test.mjs",
     );
+  const paddleIdentitySupersession =
+    [...paddleIdentitySupersessionFiles].every((file) =>
+      files.includes(file),
+    ) &&
+    files.every(
+      (file) =>
+        paddleIdentitySupersessionFiles.has(file) ||
+        file === ".github/scripts/ci-change-scope.mjs" ||
+        file === ".github/scripts/ci-change-scope.test.mjs",
+    );
   return {
     docs_only: files.length > 0 && files.every(documentation),
     // CI changes still run the full local smoke suite, but do not need to
@@ -159,6 +183,7 @@ export function classifyChanges(files) {
     configured_data_required:
       !sharedRuntimeCompatibility &&
       !billingPreWorkspaceAccess &&
+      !paddleIdentitySupersession &&
       (files.length === 0 ||
         files.some(
           (file) =>

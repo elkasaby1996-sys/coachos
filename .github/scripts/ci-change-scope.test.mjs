@@ -359,6 +359,80 @@ test("exact hosted URL compatibility keeps quality and local smoke without hoste
   }
 });
 
+const paddleIdentitySupersessionFiles = [
+  "supabase/migrations/20260923102850_paddle_identity_supersession.sql",
+  "supabase/tests/paddle_identity_supersession.sql",
+  "scripts/test-paddle-identity-supersession-concurrency.py",
+  "scripts/test-paddle-identity-supersession-migration.py",
+  "docs/paddle-identity-supersession.md",
+  "supabase/tests/billing_provider_v2_foundation.sql",
+  "supabase/tests/paddle_certification_authority_retirement.sql",
+  "config/staging-commercial-certification.json",
+];
+const paddleIdentitySupersessionPrFiles = [
+  ...paddleIdentitySupersessionFiles,
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+
+test("exact Paddle identity supersession inventory keeps CI local-only", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const entries = [
+    ...source
+      .match(
+        /const paddleIdentitySupersessionFiles = new Set\(\[([\s\S]*?)\]\);/,
+      )[1]
+      .matchAll(/"([^"]+)"/g),
+  ].map((match) => match[1]);
+  assert.equal(paddleIdentitySupersessionFiles.length, 8);
+  assert.equal(new Set(paddleIdentitySupersessionFiles).size, 8);
+  assert.deepEqual(entries, paddleIdentitySupersessionFiles);
+  for (const files of [
+    paddleIdentitySupersessionFiles,
+    paddleIdentitySupersessionPrFiles,
+  ]) {
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+  }
+});
+
+test("incomplete Paddle identity supersession patches remain fail-closed", () => {
+  for (const omitted of paddleIdentitySupersessionFiles) {
+    assert.equal(
+      classifyChanges(
+        paddleIdentitySupersessionFiles.filter((file) => file !== omitted),
+      ).configured_data_required,
+      true,
+      omitted,
+    );
+  }
+});
+
+for (const file of [
+  "supabase/functions/billing-paddle-webhook/index.ts",
+  "supabase/functions/_shared/paddle-webhook/ingress.ts",
+  "supabase/functions/_shared/billing-handlers.ts",
+  "supabase/migrations/20260923110000_unreviewed_identity_followup.sql",
+  "scripts/staging-commercial-apply.mjs",
+  "package-lock.json",
+  "src/app.tsx",
+  "tests/e2e/billing-checkout.spec.ts",
+  "supabase/tests/paddle_identity_supersession_other.sql",
+  "scripts/test-paddle-identity-supersession-other.py",
+]) {
+  test(`Paddle identity supersession mixed with ${file} remains fail-closed`, () => {
+    assert.deepEqual(
+      classifyChanges([...paddleIdentitySupersessionPrFiles, file]),
+      { docs_only: false, configured_data_required: true },
+    );
+  });
+}
+
 for (const file of [
   "src/app.tsx",
   "supabase/functions/_shared/billing-handlers.ts",
