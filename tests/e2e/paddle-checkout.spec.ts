@@ -12,6 +12,8 @@ for (const outcome of [
   "legacy",
   "unsafe",
   "disabled",
+  "pilot_disabled",
+  "forbidden",
   "ambiguous",
 ] as const) {
   test(`Paddle checkout ${outcome} uses only the authenticated browser contract`, async ({
@@ -87,12 +89,19 @@ for (const outcome of [
                 code:
                   outcome === "disabled"
                     ? "PADDLE_CHECKOUT_ROLLOUT_DISABLED"
-                    : "PADDLE_CHECKOUT_AMBIGUOUS",
+                    : outcome === "pilot_disabled"
+                      ? "PADDLE_CHECKOUT_DISABLED"
+                      : outcome === "forbidden"
+                        ? "PADDLE_CHECKOUT_FORBIDDEN"
+                        : "PADDLE_CHECKOUT_AMBIGUOUS",
                 retryable: false,
               };
         await route.fulfill({
-          status:
-            outcome === "disabled" ? 403 : outcome === "ambiguous" ? 409 : 200,
+          status: ["disabled", "pilot_disabled", "forbidden"].includes(outcome)
+            ? 403
+            : outcome === "ambiguous"
+              ? 409
+              : 200,
           json,
           headers: { "Access-Control-Allow-Origin": "*" },
         });
@@ -122,10 +131,15 @@ for (const outcome of [
       ).toBeVisible();
     else {
       await expect(page.getByRole("alert")).toContainText(
-        outcome === "disabled" ? "currently unavailable" : "Contact support",
+        outcome === "forbidden"
+          ? "Checkout is not available for this account"
+          : ["disabled", "pilot_disabled"].includes(outcome)
+            ? "currently unavailable"
+            : "Contact support",
       );
       await expect(page).toHaveURL(/\/pt-hub\/settings\/billing$/);
-      if (outcome !== "disabled") await expect(start).toBeDisabled();
+      if (!["disabled", "pilot_disabled", "forbidden"].includes(outcome))
+        await expect(start).toBeDisabled();
     }
     expect(calls).toBe(1);
     await context.unrouteAll({ behavior: "wait" });
