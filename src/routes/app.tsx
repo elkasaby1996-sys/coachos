@@ -121,7 +121,10 @@ import {
   getClientRouteGuardDecision,
   isClientRouteUuid,
 } from "../lib/client-route-guard";
-import { canUseBootstrapForProtectedRoute } from "../lib/protected-route-guard";
+import {
+  canUseBootstrapForProtectedRoute,
+  getProtectedRedirect,
+} from "../lib/protected-route-guard";
 import { supabase } from "../lib/supabase";
 import { BootstrapGate } from "../components/common/bootstrap-gate";
 import { preloadPtHubAnimatedBackground } from "../components/common/app-shell-background-preload";
@@ -177,63 +180,6 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
  * - "none"
  * If your app uses different strings, adjust below.
  */
-function getClientAccountOnboardingPath(inviteToken: string | null) {
-  if (!inviteToken) return "/client/onboarding/account";
-  return `/client/onboarding/account?invite=${encodeURIComponent(inviteToken)}`;
-}
-
-function getProtectedRedirect(params: {
-  pathname: string;
-  allow: Array<"pt" | "client">;
-  accountType: "pt" | "client" | "unknown";
-  hasWorkspaceMembership: boolean;
-  ptWorkspaceComplete: boolean;
-  ptProfileComplete: boolean;
-  clientAccountComplete: boolean;
-  clientWorkspaceOnboardingHardGateRequired: boolean;
-  pendingInviteToken: string | null;
-}) {
-  if (params.accountType === "pt") {
-    if (!params.ptWorkspaceComplete) {
-      return "/pt/onboarding/workspace";
-    }
-    if (!params.allow.includes("pt")) {
-      return "/pt-hub";
-    }
-    return null;
-  }
-
-  if (params.accountType === "client") {
-    if (!params.clientAccountComplete) {
-      return getClientAccountOnboardingPath(params.pendingInviteToken);
-    }
-    if (!params.hasWorkspaceMembership) {
-      if (
-        params.allow.includes("client") &&
-        (params.pathname.startsWith("/app/") ||
-          params.pathname.startsWith("/app/messages") ||
-          params.pathname.startsWith("/app/settings"))
-      ) {
-        return null;
-      }
-      return "/app/home";
-    }
-    if (
-      params.clientWorkspaceOnboardingHardGateRequired &&
-      !params.pathname.startsWith("/app/onboarding") &&
-      !params.pathname.startsWith("/app/home")
-    ) {
-      return "/app/onboarding";
-    }
-    if (!params.allow.includes("client")) {
-      return "/app/home";
-    }
-    return null;
-  }
-
-  return "/no-workspace";
-}
-
 function RequireRole({
   allow,
   children,
@@ -251,6 +197,7 @@ function RequireRole({
     hasWorkspaceMembership,
     pendingInviteToken,
     ptProfileComplete,
+    ptProfile,
     ptWorkspaceComplete,
   } = useBootstrapAuth();
   const { user } = useSessionAuth();
@@ -286,6 +233,7 @@ function RequireRole({
             accountType,
             hasWorkspaceMembership,
             ptWorkspaceComplete,
+            hasPtIdentity: Boolean(user?.id && ptProfile?.user_id === user.id),
             ptProfileComplete,
             clientAccountComplete,
             clientWorkspaceOnboardingHardGateRequired,

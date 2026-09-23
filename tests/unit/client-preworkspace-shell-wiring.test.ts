@@ -7,6 +7,10 @@ const clientLayout = readFileSync(
   "utf8",
 );
 
+const routePolicy = readFileSync(
+  resolve(process.cwd(), "src/lib/protected-route-guard.ts"),
+  "utf8",
+);
 const appRoutes = readFileSync(
   resolve(process.cwd(), "src", "routes", "app.tsx"),
   "utf8",
@@ -36,6 +40,6 @@ describe("client pre-workspace shell wiring", () => {
 
   it("allows the full /app client surface through the pre-workspace guard", () => {
     expect(appRoutes).not.toContain("isPreWorkspaceClientAllowedPath");
-    expect(appRoutes).toContain('params.pathname.startsWith("/app/")');
+    expect(routePolicy).toContain('params.pathname.startsWith("/app/")');
   });
 });
