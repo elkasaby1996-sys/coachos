@@ -2,7 +2,11 @@ import { PaddleCatalogueError } from "./validation.ts";
 
 export const PADDLE_SANDBOX_ORIGIN = "https://sandbox-api.paddle.com";
 type ServerRuntime = typeof globalThis & {
-  Deno?: { env: { get(name: string): string | undefined } };
+  Deno?: {
+    version?: { deno?: string };
+    serve?: unknown;
+    env: { get(name: string): string | undefined };
+  };
   process?: {
     versions?: { node?: string };
     env: Record<string, string | undefined>;
@@ -10,9 +14,16 @@ type ServerRuntime = typeof globalThis & {
 };
 export function assertServer(): void {
   const runtime = globalThis as ServerRuntime;
+  // Supabase Edge Runtime exposes window. Match the webhook guard's server
+  // capabilities instead of treating that compatibility global as a browser.
+  const denoServer =
+    typeof runtime.Deno?.version?.deno === "string" &&
+    typeof runtime.Deno?.serve === "function" &&
+    typeof runtime.Deno?.env?.get === "function";
+  const nodeServer = typeof runtime.process?.versions?.node === "string";
   if (
-    typeof window !== "undefined" ||
-    (!runtime.Deno && !runtime.process?.versions?.node)
+    (typeof window !== "undefined" && !denoServer) ||
+    (!denoServer && !nodeServer)
   ) {
     throw new PaddleCatalogueError("configuration");
   }

@@ -109,25 +109,44 @@ const paddleCheckoutUrlCompatibilityFiles = new Set([
   "tests/unit/paddle-checkout.test.ts",
 ]);
 
+// Only this complete reviewed runtime patch (optionally with its classifier
+// tests) is local-only. Mixing even previously exempt paths fails closed.
+const paddleSharedRuntimeCompatibilityFiles = new Set([
+  "supabase/functions/_shared/paddle-catalogue/config.ts",
+  "tests/unit/paddle-shared-runtime.test.ts",
+  "tests/unit/paddle-checkout-runtime.test.ts",
+]);
+
 export function classifyChanges(files) {
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
+  const sharedRuntimeCompatibility =
+    [...paddleSharedRuntimeCompatibilityFiles].every((file) =>
+      files.includes(file),
+    ) &&
+    files.every(
+      (file) =>
+        paddleSharedRuntimeCompatibilityFiles.has(file) ||
+        file === ".github/scripts/ci-change-scope.mjs" ||
+        file === ".github/scripts/ci-change-scope.test.mjs",
+    );
   return {
     docs_only: files.length > 0 && files.every(documentation),
     // CI changes still run the full local smoke suite, but do not need to
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
-      files.length === 0 ||
-      files.some(
-        (file) =>
-          !documentation(file) &&
-          !ciFiles.has(file) &&
-          !privateBillingFoundationFiles.has(file) &&
-          !privateBillingEvidenceFiles.has(file) &&
-          !privatePaddleCatalogueFiles.has(file) &&
-          !paddleCertificationRetirementFiles.has(file) &&
-          !paddleCheckoutActivationFiles.has(file) &&
-          !paddleCheckoutUrlCompatibilityFiles.has(file),
-      ),
+      !sharedRuntimeCompatibility &&
+      (files.length === 0 ||
+        files.some(
+          (file) =>
+            !documentation(file) &&
+            !ciFiles.has(file) &&
+            !privateBillingFoundationFiles.has(file) &&
+            !privateBillingEvidenceFiles.has(file) &&
+            !privatePaddleCatalogueFiles.has(file) &&
+            !paddleCertificationRetirementFiles.has(file) &&
+            !paddleCheckoutActivationFiles.has(file) &&
+            !paddleCheckoutUrlCompatibilityFiles.has(file),
+        )),
   };
 }
 
