@@ -61,7 +61,7 @@ describe("billing output policy", () => {
     const toJSON = vi.fn(() => references[0]);
     noLeaks(redact({ nested: { toJSON } }));
     expect(toJSON).not.toHaveBeenCalled();
-    expect(redact(references[0].replace("_", "%5F"))).toBe(
+    expect(redact(references[0].replace(/_/g, "%5F"))).toBe(
       "[redacted provider reference]",
     );
   });
