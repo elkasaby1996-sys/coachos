@@ -1,3 +1,4 @@
+import { billingOutput } from "./billing-operator-output.mjs";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -151,10 +152,10 @@ if (
             authorized: process.env.ALLOW_STAGING_CATALOGUE_READ,
           })
         : localCatalogue();
-    console.log(JSON.stringify(result));
+    billingOutput.log(JSON.stringify(result));
     if (!result.match) process.exitCode = 1;
   } catch {
-    console.error("CATALOGUE_CHECK_FAILED");
+    billingOutput.error("CATALOGUE_CHECK_FAILED");
     process.exitCode = 1;
   }
 }

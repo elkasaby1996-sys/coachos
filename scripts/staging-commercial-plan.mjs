@@ -1,3 +1,4 @@
+import { billingOutput } from "./billing-operator-output.mjs";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
@@ -209,11 +210,13 @@ export function runPlan(
   rmSync(resolve(output, "authorization-request.json"), { force: true });
   writeFileSync(
     resolve(output, "plan.json"),
-    JSON.stringify(plan, null, 2) + "\n",
+    billingOutput.serialize(plan) + "\n",
   );
   writeFileSync(
     resolve(output, "plan.md"),
-    `# Staging commercial plan\n\nValidation: ${plan.planValidation}. Verdict: blocked. Remote executed: false.\n\n${plan.authorization ? "```json\n" + JSON.stringify(plan.authorization, null, 2) + "\n```" : plan.errorCode}\n`,
+    billingOutput.serialize(
+      `# Staging commercial plan\n\nValidation: ${plan.planValidation}. Verdict: blocked. Remote executed: false.\n\n${plan.authorization ? "```json\n" + JSON.stringify(plan.authorization, null, 2) + "\n```" : plan.errorCode}\n`,
+    ),
   );
   if (plan.authorization)
     writeFileSync(
@@ -227,7 +230,7 @@ if (
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   const result = runPlan();
-  console.log(
+  billingOutput.log(
     JSON.stringify({
       valid: result.valid,
       planValidation: result.planValidation,
