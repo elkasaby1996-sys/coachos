@@ -162,6 +162,22 @@ const paddleInitialPurchaseReconciliationFiles = new Set([
   "supabase/tests/paddle_initial_purchase_reconciliation.sql",
 ]);
 
+// Authority-bearing but dormant automatic initial-purchase reconciliation.
+// Only this complete reviewed inventory, optionally with its classifier and
+// tests, may skip configured hosted-account writes whose isolation is unproven.
+const paddleAutoInitialPurchaseReconciliationFiles = new Set([
+  "config/staging-commercial-certification.json",
+  "docs/paddle-auto-initial-purchase-reconciliation.md",
+  "docs/staging-commercial-deployment-manifest.md",
+  "scripts/test-paddle-auto-reconciliation-concurrency.py",
+  "scripts/test-paddle-auto-reconciliation-migration.py",
+  "supabase/functions/_shared/paddle-webhook/ingress.ts",
+  "supabase/migrations/20260923220540_paddle_auto_initial_purchase_reconciliation.sql",
+  "supabase/tests/fixtures/paddle_auto_reconciliation_fixture.psql",
+  "supabase/tests/paddle_auto_initial_purchase_reconciliation.sql",
+  "tests/unit/paddle-webhook-ingress.test.ts",
+]);
+
 export function classifyChanges(files) {
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   const sharedRuntimeCompatibility =
@@ -202,6 +218,16 @@ export function classifyChanges(files) {
         file === ".github/scripts/ci-change-scope.mjs" ||
         file === ".github/scripts/ci-change-scope.test.mjs",
     );
+  const paddleAutoInitialPurchaseReconciliation =
+    [...paddleAutoInitialPurchaseReconciliationFiles].every((file) =>
+      files.includes(file),
+    ) &&
+    files.every(
+      (file) =>
+        paddleAutoInitialPurchaseReconciliationFiles.has(file) ||
+        file === ".github/scripts/ci-change-scope.mjs" ||
+        file === ".github/scripts/ci-change-scope.test.mjs",
+    );
   return {
     docs_only: files.length > 0 && files.every(documentation),
     // CI changes still run the full local smoke suite, but do not need to
@@ -211,6 +237,7 @@ export function classifyChanges(files) {
       !billingPreWorkspaceAccess &&
       !paddleIdentitySupersession &&
       !paddleInitialPurchaseReconciliation &&
+      !paddleAutoInitialPurchaseReconciliation &&
       (files.length === 0 ||
         files.some(
           (file) =>

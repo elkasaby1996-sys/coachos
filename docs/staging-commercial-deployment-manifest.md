@@ -78,3 +78,12 @@ The local migration inventory now contains 173 migrations, ending with
 `20260923151445_paddle_initial_purchase_reconciliation.sql`. The previous 172
 entries and hashes are unchanged. This checksum update is not deployment or
 reconciliation-enablement authorization. No remote target is changed by this task.
+
+# Local PADDLE-AUTO-RECONCILIATION-01 inventory
+
+The inventory contains 174 migrations, ending with
+`20260923220540_paddle_auto_initial_purchase_reconciliation.sql`. All previous
+173 entries and hashes remain unchanged. This local implementation does not
+apply migrations remotely or enable either Paddle policy flag. The migration
+performs no data repair; an already-processed checkout remains unchanged until
+an explicitly enabled, fully proven reconciliation call.

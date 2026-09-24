@@ -1,0 +1,31 @@
+-- Synthetic local fixtures. Caller loads catalogue, legacy and webhook helpers.
+create function pg_temp.auto_checkout() returns uuid language plpgsql as $$
+declare u uuid:=pg_temp.guard_owner(); j jsonb;
+begin
+ update billing_runtime_policy set paddle_sales_enabled=true;
+ j:=begin_paddle_checkout_v1(u,'growth','monthly',0,gen_random_uuid(),true,true,'2026-09-18','2026-09-18');
+ perform mark_paddle_checkout_ready_v1(u,(j->>'attemptReference')::uuid,(j->>'operationReference')::uuid,
+ 'synthetic/txn/'||u,'ready','USD',jsonb_build_array(j->'base'));
+ update billing_runtime_policy set paddle_sales_enabled=false;
+ return u;
+end $$;
+create function pg_temp.auto_observation(u uuid,k text) returns jsonb language sql as $$
+ select pg_temp.webhook_observation(k,'synthetic/'||k||'/'||u,'synthetic/'||k||'/'||u)
+ ||jsonb_build_object('customerRef','synthetic/customer/'||u,'subscriptionRef','synthetic/sub/'||u)
+ ||case when k='transaction.completed' then jsonb_build_object('transactionRef','synthetic/txn/'||u)
+ when k='subscription.created' then jsonb_build_object('transactionCorrelationRef','synthetic/txn/'||u) else '{}'::jsonb end
+$$;
+create function pg_temp.auto_ingest(u uuid,k text) returns jsonb language sql as $$
+ select pg_temp.webhook_ingest(pg_temp.auto_observation(u,k)) $$;
+create function pg_temp.auto_dispatch(u uuid,k text) returns text language sql as $$
+ select reconcile_paddle_initial_purchase_event_v1((select id from billing_webhook_events_v2
+ where provider_event_ref='synthetic/'||k||'/'||u))->>'status' $$;
+create function pg_temp.auto_counts(u uuid) returns jsonb language sql as $$
+ select jsonb_build_object(
+ 'payments',(select count(*) from billing_payment_applications_v2 where checkout_id=c.id),
+ 'canonical',(select count(*) from account_subscriptions where billing_account_id=c.billing_account_id),
+ 'links',(select count(*) from billing_subscriptions_v2 where billing_account_id=c.billing_account_id and account_subscription_id is not null),
+ 'items',(select count(*) from billing_subscription_items_v2 where subscription_id=s.id),
+ 'seats',coalesce(s.approved_additional_coach_seats,0),'checkout',c.status)
+ from billing_checkouts_v2 c left join billing_subscriptions_v2 s on s.provider_subscription_ref='synthetic/sub/'||u
+ where c.provider_transaction_ref='synthetic/txn/'||u $$;

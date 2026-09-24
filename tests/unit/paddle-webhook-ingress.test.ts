@@ -51,6 +51,12 @@ function request(value: unknown = event(), signature?: string) {
     body: raw,
   });
 }
+const storedEvent = {
+  accepted: true as const,
+  reused: false,
+  eventId: "00000000-0000-4000-8000-000000000001",
+  eventType: "transaction.completed",
+};
 describe("trusted Paddle ingress", () => {
   it("preserves duplicate signature ambiguity for PREP rejection", async () => {
     const req = request();
@@ -87,12 +93,10 @@ describe("trusted Paddle ingress", () => {
     ).toThrow();
   });
   it("waits for durable persistence and only returns static text", async () => {
-    let release!: (x: { error: null; data: { accepted: true } }) => void;
+    let release!: (x: { error: null; data: unknown }) => void;
     const rpc = vi.fn(
       (_name: string, _args: Record<string, unknown>) =>
-        new Promise<{ error: null; data: { accepted: true } }>(
-          (r) => (release = r),
-        ),
+        new Promise<{ error: null; data: unknown }>((r) => (release = r)),
     );
     const handler = createPaddleWebhookIngress(config, { rpc });
     let finished = false;
@@ -102,11 +106,120 @@ describe("trusted Paddle ingress", () => {
     });
     await vi.waitFor(() => expect(rpc).toHaveBeenCalledOnce());
     expect(finished).toBe(false);
-    release({ error: null, data: { accepted: true } });
+    rpc.mockImplementationOnce(async () => ({
+      error: null,
+      data: { status: "disabled" },
+    }));
+    release({ error: null, data: storedEvent });
     const response = await pending;
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc.mock.calls[1]).toEqual([
+      "reconcile_paddle_initial_purchase_event_v1",
+      { p_event: storedEvent.eventId },
+    ]);
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("accepted");
     expect(rpc.mock.calls[0]?.[0]).toBe("ingest_verified_paddle_event_v1");
+  });
+  it.each(["disabled", "pending", "applied", "reused"])(
+    "acknowledges %s after durable ingestion",
+    async (status) => {
+      const rpc = vi
+        .fn()
+        .mockResolvedValueOnce({ error: null, data: storedEvent })
+        .mockResolvedValueOnce({ error: null, data: { status } });
+      const result = await createPaddleWebhookIngress(config, { rpc })(
+        request(),
+      );
+      expect(result.status).toBe(200);
+      expect(await result.text()).toBe("accepted");
+      expect(rpc.mock.calls[1]).toEqual([
+        "reconcile_paddle_initial_purchase_event_v1",
+        { p_event: storedEvent.eventId },
+      ]);
+    },
+  );
+  it.each([
+    null,
+    {},
+    { ...storedEvent, eventId: "private/ref" },
+    { ...storedEvent, reused: "false" },
+    { ...storedEvent, accepted: false },
+    { ...storedEvent, eventType: "subscription.created" },
+    { ...storedEvent, customerRef: "private" },
+  ])("rejects malformed ingestion result %j", async (data) => {
+    const rpc = vi.fn().mockResolvedValue({ error: null, data });
+    expect(
+      (await createPaddleWebhookIngress(config, { rpc })(request())).status,
+    ).toBe(503);
+    expect(rpc).toHaveBeenCalledOnce();
+  });
+  it.each([
+    null,
+    {},
+    { status: "unknown" },
+    { status: "applied", proof: "private" },
+    [],
+  ])("rejects malformed dispatcher result %j", async (data) => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ error: null, data: storedEvent })
+      .mockResolvedValueOnce({ error: null, data });
+    const result = await createPaddleWebhookIngress(config, { rpc })(request());
+    expect(result.status).toBe(503);
+    expect(await result.text()).toBe("rejected");
+  });
+  it("retries after committed ingestion and dispatcher failure", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ error: null, data: storedEvent })
+      .mockRejectedValueOnce(new Error("private SQL failure"))
+      .mockResolvedValueOnce({
+        error: null,
+        data: { ...storedEvent, reused: true },
+      })
+      .mockResolvedValueOnce({ error: null, data: { status: "reused" } });
+    const handle = createPaddleWebhookIngress(config, { rpc });
+    expect((await handle(request())).status).toBe(503);
+    expect((await handle(request())).status).toBe(200);
+    expect(rpc.mock.calls[1]).toEqual(rpc.mock.calls[3]);
+  });
+  it("returns generic 503 for a hard dispatcher rejection", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ error: null, data: storedEvent })
+      .mockResolvedValueOnce({
+        error: { message: "private proof mismatch" },
+        data: null,
+      });
+    const result = await createPaddleWebhookIngress(config, { rpc })(request());
+    expect(result.status).toBe(503);
+    expect(await result.text()).toBe("rejected");
+  });
+  it("persists subscription.updated without dispatching initial purchase", async () => {
+    const value = event();
+    const rpc = vi.fn().mockResolvedValue({
+      error: null,
+      data: { ...storedEvent, eventType: "subscription.updated" },
+    });
+    const result = await createPaddleWebhookIngress(config, { rpc })(
+      request({
+        ...value,
+        event_type: "subscription.updated",
+        data: {
+          ...value.data,
+          id: "synthetic/subscription",
+          customer_id: "synthetic/customer",
+          status: "active",
+          items: value.data.items.map((item) => ({
+            ...item,
+            status: "active",
+          })),
+        },
+      }),
+    );
+    expect(result.status).toBe(200);
+    expect(rpc).toHaveBeenCalledOnce();
   });
   it.each([null, new Error("private failure")])(
     "retries persistence failure",

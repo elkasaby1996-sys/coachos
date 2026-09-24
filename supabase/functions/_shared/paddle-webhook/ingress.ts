@@ -68,14 +68,61 @@ async function rawBody(request: Request): Promise<Uint8Array> {
   return buffer.subarray(0, size);
 }
 
+type IngestionArguments = ReturnType<
+  ReturnType<typeof createPaddleSandboxWebhookVerifier>["ingestionArguments"]
+>;
+export interface PaddleWebhookDatabase {
+  rpc(
+    ...call:
+      | [name: "ingest_verified_paddle_event_v1", args: IngestionArguments]
+      | [
+          name: "reconcile_paddle_initial_purchase_event_v1",
+          args: { p_event: string },
+        ]
+  ): Promise<{ error: unknown; data: unknown }>;
+}
+function object(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function ingestionResult(
+  value: unknown,
+  eventType: string,
+): value is {
+  accepted: true;
+  reused: boolean;
+  eventId: string;
+  eventType: string;
+} {
+  return (
+    object(value) &&
+    Object.keys(value).length === 4 &&
+    value.accepted === true &&
+    typeof value.reused === "boolean" &&
+    typeof value.eventId === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+      value.eventId,
+    ) &&
+    value.eventType === eventType &&
+    [
+      "transaction.completed",
+      "subscription.created",
+      "subscription.updated",
+    ].includes(eventType)
+  );
+}
+function dispatcherResult(value: unknown): boolean {
+  return (
+    object(value) &&
+    Object.keys(value).length === 1 &&
+    typeof value.status === "string" &&
+    ["disabled", "not_applicable", "pending", "applied", "reused"].includes(
+      value.status,
+    )
+  );
+}
 export function createPaddleWebhookIngress(
   config: PaddleWebhookConfiguration,
-  database: {
-    rpc(
-      name: "ingest_verified_paddle_event_v1",
-      args: Record<string, unknown>,
-    ): Promise<{ error: unknown; data: unknown }>;
-  },
+  database: PaddleWebhookDatabase,
 ) {
   const verifier = createPaddleSandboxWebhookVerifier(config);
   return async (request: Request): Promise<Response> => {
@@ -104,10 +151,20 @@ export function createPaddleWebhookIngress(
       );
       if (
         stored.error ||
-        !stored.data ||
-        (stored.data as { accepted?: unknown }).accepted !== true
+        !ingestionResult(stored.data, result.observation.eventType)
       )
         return response(503);
+      // Separate awaited requests: retained evidence commits before authority.
+      if (stored.data.eventType !== "subscription.updated") {
+        const dispatched = await database.rpc(
+          "reconcile_paddle_initial_purchase_event_v1",
+          {
+            p_event: stored.data.eventId,
+          },
+        );
+        if (dispatched.error || !dispatcherResult(dispatched.data))
+          return response(503);
+      }
       return response(200);
     } catch {
       return response(503);
