@@ -700,9 +700,13 @@
       {
         "filename": "20260923151445_paddle_initial_purchase_reconciliation.sql",
         "sha256": "2d05e8894a63a51e796994199570eb663c6fe3b645bd562dabca85f89d90af77"
+      },
+      {
+        "filename": "20260923220540_paddle_auto_initial_purchase_reconciliation.sql",
+        "sha256": "d4b430d6d5bbcfd82e17ea162349fcd4f40832acc0227415caa4c91c3b7e88e2"
       }
     ],
-    "expectedLatestMigration": "20260923151445_paddle_initial_purchase_reconciliation.sql"
+    "expectedLatestMigration": "20260923220540_paddle_auto_initial_purchase_reconciliation.sql"
   },
   "functions": {
     "billing": [
