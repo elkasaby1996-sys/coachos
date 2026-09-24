@@ -656,3 +656,92 @@ for (const file of [
     }
   });
 }
+
+// Generated from git diff-tree for implementation commit
+// 07ffb467195f18189e461b1c05110166e58f2934. Keeping the exact inventory as
+// a fixture makes the classifier independent of local Git history in CI.
+const autoReconciliationFiles = [
+  "config/staging-commercial-certification.json",
+  "docs/paddle-auto-initial-purchase-reconciliation.md",
+  "docs/staging-commercial-deployment-manifest.md",
+  "scripts/test-paddle-auto-reconciliation-concurrency.py",
+  "scripts/test-paddle-auto-reconciliation-migration.py",
+  "supabase/functions/_shared/paddle-webhook/ingress.ts",
+  "supabase/migrations/20260923220540_paddle_auto_initial_purchase_reconciliation.sql",
+  "supabase/tests/fixtures/paddle_auto_reconciliation_fixture.psql",
+  "supabase/tests/paddle_auto_initial_purchase_reconciliation.sql",
+  "tests/unit/paddle-webhook-ingress.test.ts",
+];
+const autoReconciliationPrFiles = [
+  ...autoReconciliationFiles,
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+
+test("Paddle automatic reconciliation classifier exactly matches the implementation commit", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const entries = [
+    ...source
+      .match(
+        /const paddleAutoInitialPurchaseReconciliationFiles = new Set\(\[([\s\S]*?)\]\);/,
+      )[1]
+      .matchAll(/"([^"]+)"/g),
+  ].map((match) => match[1]);
+  assert.equal(autoReconciliationFiles.length, 10);
+  assert.equal(new Set(autoReconciliationFiles).size, 10);
+  assert.equal(entries.length, 10);
+  assert.deepEqual(entries, autoReconciliationFiles);
+});
+
+for (const files of [autoReconciliationFiles, autoReconciliationPrFiles]) {
+  test(`exact ${files.length}-file Paddle automatic reconciliation inventory keeps local CI`, () => {
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+  });
+}
+
+test("incomplete Paddle automatic reconciliation patches remain fail-closed", () => {
+  for (const omitted of autoReconciliationFiles) {
+    for (const files of [autoReconciliationFiles, autoReconciliationPrFiles]) {
+      assert.deepEqual(
+        classifyChanges(files.filter((file) => file !== omitted)),
+        { docs_only: false, configured_data_required: true },
+        omitted,
+      );
+    }
+  }
+});
+
+for (const file of [
+  "src/app.tsx",
+  "src/lib/auth.tsx",
+  "supabase/functions/billing-paddle-webhook/index.ts",
+  "supabase/functions/billing-create-paddle-checkout/index.ts",
+  "supabase/functions/_shared/billing-handlers.ts",
+  "supabase/functions/_shared/paddle-webhook/index.ts",
+  "supabase/migrations/20260924000000_paddle_auto_reconciliation_followup.sql",
+  "supabase/tests/paddle_auto_initial_purchase_reconciliation_other.sql",
+  "scripts/staging-commercial-apply.mjs",
+  "tests/e2e/billing-checkout.spec.ts",
+  "package-lock.json",
+  ".github/workflows/ci.yml",
+  "supabase/migrations/20260923220540_paddle_auto_initial_purchase_reconciliation_other.sql",
+  "supabase/tests/fixtures/paddle_auto_reconciliation_fixture_other.psql",
+  "scripts/test-paddle-auto-reconciliation-concurrency-other.py",
+  "tests/unit/paddle-webhook-ingress-other.test.ts",
+  "docs/paddle-auto-initial-purchase-reconciliation-other.md",
+]) {
+  test(`Paddle automatic reconciliation mixed with ${file} remains fail-closed`, () => {
+    for (const files of [autoReconciliationFiles, autoReconciliationPrFiles]) {
+      assert.deepEqual(classifyChanges([...files, file]), {
+        docs_only: false,
+        configured_data_required: true,
+      });
+    }
+  });
+}
