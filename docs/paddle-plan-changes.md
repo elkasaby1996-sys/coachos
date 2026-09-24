@@ -5,6 +5,29 @@ Launch, Growth, and Scale, with unchanged monthly or annual cadence and no added
 seats. No purchase, cancellation action, refund, or production activation is added.
 The migration preserves rollout flags.
 
+## Reviewed implementation inventory (N=17)
+
+- `config/staging-commercial-certification.json`
+- `docs/paddle-plan-changes.md`
+- `scripts/test-paddle-plan-change-concurrency.py`
+- `src/features/billing/plan-change-contracts.ts`
+- `src/features/billing/plan-change-panel.tsx`
+- `supabase/functions/_shared/billing-handlers.ts`
+- `supabase/functions/_shared/billing-plan-change.ts`
+- `supabase/functions/_shared/billing-runtime.ts`
+- `supabase/functions/_shared/paddle-plan-change.ts`
+- `supabase/functions/_shared/paddle-webhook/contract.ts`
+- `supabase/functions/_shared/paddle-webhook/observation.ts`
+- `supabase/migrations/20260924113658_paddle_plan_changes.sql`
+- `supabase/tests/fixtures/paddle_plan_change_fixture.psql`
+- `supabase/tests/paddle_plan_changes.sql`
+- `tests/e2e/billing-plan-change.spec.ts`
+- `tests/unit/billing-plan-change-panel.test.ts`
+- `tests/unit/paddle-plan-change.test.ts`
+
+The final PR has 19 files when the two exact CI-classifier files are included.
+The pre-existing local environment configuration edit is excluded.
+
 ## Transport and browser contract
 
 The existing preview/apply endpoints accept only `operationId`, `targetPlanKey`,
@@ -88,9 +111,9 @@ Sandbox end-to-end certification. Deployment is outside this task.
 Provider contract references: [preview](https://developer.paddle.com/api-reference/subscriptions/preview-subscription-update/)
 and [update](https://developer.paddle.com/api-reference/subscriptions/update-subscription/).
 
-## Local verification result
+## Prior implementation verification
 
-One authoritative sequential regression pass was run on 2026-09-24:
+The initial implementation regression pass on 2026-09-24 reported:
 
 - Database: **2,371 assertions / 29 suites passed**, including **71** new plan-change assertions and existing Lemon Squeezy/lifecycle coverage.
 - Full units: **3,182 passed / 1 manifest-hash failure** across 289 files. The new migration hash used CRLF bytes instead of the validator's normalized LF bytes. After correcting only that hash, all **72** tests in the affected manifest suite passed. The full unit suite was not repeated.
@@ -102,3 +125,28 @@ One authoritative sequential regression pass was run on 2026-09-24:
 - Changed-file leakage scan: zero provider-reference, credential-value, or JWT matches. All provider transport uses injected mocks.
 
 Verification made no deployment, provider call, or staging/production write.
+
+## Final release verification
+
+The final local source tree was verified in one sequential missing/affected pass
+on 2026-09-24, before the administrative release commits:
+
+- Full units: **3,183 passed, zero failures, 289 files, exit 0**. This supersedes the earlier manifest-only correction evidence; the checksum assertion is unchanged.
+- Browser: **16 Chromium plan-change tests passed, exit 0**, using four workers, no retries, and the existing timeouts. Four cases cover Paddle monthly/annual failed-upgrade and scheduled-downgrade projections, fixed cadence, source capacity retention, refresh without redispatch, and absence of a cancellation action. Existing owner, payment, mapping, capacity, and mobile browser regressions also passed.
+- Browser execution used the disposable local API/database on loopback ports 57431/57432. Paddle UI responses were route-mocked over local seeded canonical accounts. Provider payment authority is independently covered by the SQL and transport tests, not claimed from these UI mocks. The main application database was not used.
+- **2,371 DB assertions and 29 concurrency cases (zero deadlocks) are reused** from the tested implementation. All 218 SQL/fixture files match the tested local copy; relevant database, server, concurrency, and repository configuration paths are unchanged. Only pending-state copy, its UI assertions, browser coverage, documentation, and the CI classifier changed during release preparation.
+- Strict application TypeScript, affected Edge TypeScript, Deno checks for all four plan-change endpoints and the Paddle webhook, build, repository lint/format, manifest validation, and diff checks passed locally.
+- CI classification: **280 tests passed**. The complete 17-path inventory and 19-path inventory classify as `docs_only=false`, `configured_data_required=false`. Every single implementation omission, duplicates, unrelated additions, and near-matching paths fail closed.
+
+The exact CI exemption is limited to the complete implementation inventory above,
+optionally accompanied by the two classifier files. It retains quality, local
+smoke, Supabase CI, and CodeQL. No workflow or branch-protection files change.
+Configured-account integration is excluded because hosted mutations are not
+part of this release. Supabase deployment workflows are manual-dispatch only;
+no such workflow is dispatched. The final pushed commit and PR title contain
+`[skip netlify]`; a preview created by the earlier PR push remains historical.
+
+The original implementation commit is preserved. Release verification changes
+and the exact classifier change are committed separately. PR metadata records
+all commit SHAs and final-head check outcomes. Provider calls and hosted mutations
+during this release verification are zero; no merge or deployment is authorized.

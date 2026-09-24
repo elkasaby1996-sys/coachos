@@ -131,6 +131,12 @@ describe("plan change presentation", () => {
     );
     expect(html).toContain("Refresh plan change");
     expect(html).not.toContain("Cancel scheduled change");
+    expect(html).toContain(
+      "Your current plan and capacity remain unchanged until this date.",
+    );
+    expect(html).not.toContain(
+      "The target plan limits new capacity commitments.",
+    );
   });
   it("hides details from nonowners", () =>
     expect(

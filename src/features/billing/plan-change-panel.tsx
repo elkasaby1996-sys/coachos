@@ -159,9 +159,10 @@ export function PlanChangePanel({
           {operation.effectiveTiming === "period_end" ? (
             <p>
               Scheduled date:{" "}
-              {new Date(operation.effectiveAt!).toLocaleDateString()}. The
-              target plan limits new capacity commitments. Existing delivery
-              remains available.
+              {new Date(operation.effectiveAt!).toLocaleDateString()}.{" "}
+              {state.data.provider === "paddle"
+                ? "Your current plan and capacity remain unchanged until this date."
+                : "The target plan limits new capacity commitments. Existing delivery remains available."}
             </p>
           ) : null}
           {[
