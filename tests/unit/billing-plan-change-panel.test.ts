@@ -107,6 +107,31 @@ describe("plan change presentation", () => {
       /Buy seats|Refund|Coupon|customer_portal_update_subscription/,
     );
   });
+  it("Paddle pending state exposes refresh without cancellation", () => {
+    mocks.state = {
+      provider: "paddle",
+      linked: true,
+      cadence: "annual",
+      eligible: false,
+      operation: {
+        operationId: "a0700000-0000-4000-8000-000000000001",
+        status: "scheduled",
+        targetPlanKey: "growth",
+        targetCadence: "annual",
+        effectiveAt: "2027-09-20T00:00:00Z",
+        effectiveTiming: "period_end",
+        errorCode: null,
+      },
+    };
+    const html = render(
+      React.createElement(PlanChangePanel, {
+        owner: true,
+        refresh: async () => null,
+      }),
+    );
+    expect(html).toContain("Refresh plan change");
+    expect(html).not.toContain("Cancel scheduled change");
+  });
   it("hides details from nonowners", () =>
     expect(
       render(

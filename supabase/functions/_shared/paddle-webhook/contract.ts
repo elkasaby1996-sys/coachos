@@ -9,6 +9,7 @@ export type PaddleEventEnvelope = {
   eventType: string;
   /** Exact observed provider timestamp, including fractional precision/offset. */
   occurredAt: string;
+  planChangeOperationId?: string;
 };
 export type PaddleWebhookItem = {
   priceRef: string;
@@ -36,6 +37,7 @@ export type PaddleSupportedEventObservation = PaddleEventEnvelope &
         currency: string;
         origin?: string;
         billingPeriod?: PaddleBillingPeriod | null;
+        paymentTotals?: { total: number; paid: number; balance: number };
         items: PaddleWebhookItem[];
       }
     | (PaddleLifecycleObservation & {

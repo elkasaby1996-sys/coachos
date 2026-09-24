@@ -23,6 +23,7 @@ export type BillingConfig = {
   portalAllowedHosts?: string;
 };
 export type BillingDependencies = {
+  paddlePlans?: () => import("./paddle-plan-change.ts").PaddlePlanTransport;
   config: () => BillingConfig | null;
   authenticate: (
     token: string,

@@ -24,6 +24,52 @@ function reference(value: unknown): string {
 function nullableReference(value: unknown): string | null {
   return value === null || value === undefined ? null : reference(value);
 }
+function planOperation(data: Record<string, unknown>) {
+  const custom = data.custom_data;
+  if (
+    !custom ||
+    typeof custom !== "object" ||
+    Array.isArray(custom) ||
+    !("repsync_plan_change_operation" in custom)
+  )
+    return {};
+  const id = custom.repsync_plan_change_operation;
+  if (
+    typeof id !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)
+  )
+    return fail("event_invalid");
+  return { planChangeOperationId: id };
+}
+function planPayment(data: Record<string, unknown>) {
+  if (
+    !planOperation(data).planChangeOperationId ||
+    !data.details ||
+    !Array.isArray(data.payments)
+  )
+    return {};
+  const totals = object(object(data.details).totals);
+  const money = (v: unknown) => {
+    if (
+      !/^(0|[1-9][0-9]*)$/.test(String(v)) ||
+      !Number.isSafeInteger(Number(v))
+    )
+      return fail("event_invalid");
+    return Number(v);
+  };
+  const paid = data.payments.reduce((sum: number, p: unknown) => {
+    const payment = object(p);
+    return sum + (payment.status === "captured" ? money(payment.amount) : 0);
+  }, 0);
+  if (!Number.isSafeInteger(paid)) return fail("event_invalid");
+  return {
+    paymentTotals: {
+      total: money(totals.grand_total),
+      balance: money(totals.balance),
+      paid,
+    },
+  };
+}
 /** Preserve the provider's RFC3339 spelling; reject dates JS would silently roll over. */
 export function observedTimestamp(value: unknown): string {
   if (typeof value !== "string") return fail("event_invalid");
@@ -153,6 +199,8 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
     return {
       ...base,
       kind: "transaction.completed",
+      ...planOperation(data),
+      ...planPayment(data),
       transactionRef: reference(data.id),
       subscriptionRef: nullableReference(data.subscription_id),
       customerRef: nullableReference(data.customer_id),
@@ -200,6 +248,7 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
           ? nullableReference(data.transaction_id)
           : null,
       items: rows,
+      ...planOperation(data),
       ...(base.eventType === "subscription.updated" ? lifecycle(data) : {}),
     };
   }

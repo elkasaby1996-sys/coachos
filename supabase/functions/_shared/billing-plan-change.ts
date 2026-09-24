@@ -6,6 +6,7 @@ import {
 } from "./billing-common.ts";
 import { canonicalSubscriptionIdentity } from "./billing-legacy-records.ts";
 import type { BillingDependencies } from "./billing-handlers.ts";
+import { handlePaddlePlanAction } from "./paddle-plan-change.ts";
 
 export const planChangeCodes = [
   "OWNER_REQUIRED",
@@ -96,6 +97,15 @@ export async function handlePlanChange(
       if (Object.keys(input).length)
         throw new BillingError("BILLING_INVALID_INPUT");
     } else planChangeRequest(input);
+    if (
+      deps.paddlePlans &&
+      (await deps.serviceRpc("paddle_plan_change_route_v1", {
+        p_owner: owner.id,
+      }))
+    )
+      return reply(
+        await handlePaddlePlanAction(deps, owner.id, token, action, input),
+      );
     const config = deps.config();
     if (!config?.commercial?.plans)
       throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
