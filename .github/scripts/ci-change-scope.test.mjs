@@ -745,3 +745,85 @@ for (const file of [
     }
   });
 }
+
+// Immutable implementation commit bf56f14127d58b5a78ee19970caaa198ae8fb1ad; generated with git diff-tree.
+const outputRedactionFiles = [
+  "docs/paddle-output-redaction.md",
+  "output/paddle-output-redaction/verification.json",
+  "scripts/billing-operator-output.mjs",
+  "scripts/paddle-catalogue-preflight.ts",
+  "scripts/paddle-legal-readiness.ts",
+  "scripts/staging-commercial-apply.mjs",
+  "scripts/staging-commercial-catalogue.mjs",
+  "scripts/staging-commercial-evidence.mjs",
+  "scripts/staging-commercial-plan.mjs",
+  "scripts/staging-commercial-preflight.mjs",
+  "scripts/test-billing-output.mjs",
+  "src/lib/redact-billing-private-values.ts",
+  "src/lib/redact-hosted-payment-urls.ts",
+  "tests/fixtures/billing-output-canaries.mjs",
+  "tests/unit/billing-output-redaction.test.ts",
+  "tests/unit/staging-commercial-preflight.test.ts",
+];
+
+const outputRedactionPrFiles = [
+  ...outputRedactionFiles,
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+test("output redaction exemption matches the authoritative 16-file implementation", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const entries = [
+    ...source
+      .match(/const paddleOutputRedactionFiles = new Set\(\[([\s\S]*?)\]\);/)[1]
+      .matchAll(/"([^"]+)"/g),
+  ].map((match) => match[1]);
+  assert.equal(entries.length, 16);
+  assert.equal(new Set(entries).size, 16);
+  assert.deepEqual(entries, outputRedactionFiles);
+});
+for (const files of [outputRedactionFiles, outputRedactionPrFiles]) {
+  test(`exact ${files.length}-file output redaction inventory keeps local CI`, () => {
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+  });
+}
+for (const omitted of outputRedactionFiles) {
+  test(`output redaction missing ${omitted} requires configured data`, () => {
+    for (const files of [outputRedactionFiles, outputRedactionPrFiles])
+      assert.deepEqual(
+        classifyChanges(files.filter((file) => file !== omitted)),
+        { docs_only: false, configured_data_required: true },
+      );
+  });
+}
+for (const extra of [
+  "src/app.tsx",
+  "supabase/functions/billing-paddle-webhook/index.ts",
+  "supabase/migrations/20260924000000_redaction_followup.sql",
+  // Already part of the implementation: a duplicate is invalid, not a new path.
+  "scripts/staging-commercial-apply.mjs",
+  ".github/workflows/ci.yml",
+  "package-lock.json",
+  "src/lib/redact-billing-private-values-other.ts",
+  "src/lib/redact-hosted-payment-urls-other.ts",
+  "scripts/billing-operator-output-other.mjs",
+  "scripts/test-billing-output-other.mjs",
+  "tests/unit/billing-output-redaction-other.test.ts",
+  "tests/fixtures/billing-output-canaries-other.mjs",
+  "docs/paddle-output-redaction-other.md",
+  "output/paddle-output-redaction/verification-other.json",
+]) {
+  test(`output redaction mixed with ${extra} requires configured data`, () => {
+    for (const files of [outputRedactionFiles, outputRedactionPrFiles])
+      assert.deepEqual(classifyChanges([...files, extra]), {
+        docs_only: false,
+        configured_data_required: true,
+      });
+  });
+}

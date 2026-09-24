@@ -178,7 +178,37 @@ const paddleAutoInitialPurchaseReconciliationFiles = new Set([
   "tests/unit/paddle-webhook-ingress.test.ts",
 ]);
 
+// Output-only hardening: exact implementation inventory from bf56f14127d58b5a78ee19970caaa198ae8fb1ad.
+// Keep local quality and smoke; never broaden to unreviewed paths or subsets.
+const paddleOutputRedactionFiles = new Set([
+  "docs/paddle-output-redaction.md",
+  "output/paddle-output-redaction/verification.json",
+  "scripts/billing-operator-output.mjs",
+  "scripts/paddle-catalogue-preflight.ts",
+  "scripts/paddle-legal-readiness.ts",
+  "scripts/staging-commercial-apply.mjs",
+  "scripts/staging-commercial-catalogue.mjs",
+  "scripts/staging-commercial-evidence.mjs",
+  "scripts/staging-commercial-plan.mjs",
+  "scripts/staging-commercial-preflight.mjs",
+  "scripts/test-billing-output.mjs",
+  "src/lib/redact-billing-private-values.ts",
+  "src/lib/redact-hosted-payment-urls.ts",
+  "tests/fixtures/billing-output-canaries.mjs",
+  "tests/unit/billing-output-redaction.test.ts",
+  "tests/unit/staging-commercial-preflight.test.ts",
+]);
+
 export function classifyChanges(files) {
+  const paddleOutputRedaction =
+    new Set(files).size === files.length &&
+    [...paddleOutputRedactionFiles].every((file) => files.includes(file)) &&
+    files.every(
+      (file) =>
+        paddleOutputRedactionFiles.has(file) ||
+        file === ".github/scripts/ci-change-scope.mjs" ||
+        file === ".github/scripts/ci-change-scope.test.mjs",
+    );
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   const sharedRuntimeCompatibility =
     [...paddleSharedRuntimeCompatibilityFiles].every((file) =>
@@ -233,6 +263,7 @@ export function classifyChanges(files) {
     // CI changes still run the full local smoke suite, but do not need to
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
+      !paddleOutputRedaction &&
       !sharedRuntimeCompatibility &&
       !billingPreWorkspaceAccess &&
       !paddleIdentitySupersession &&
