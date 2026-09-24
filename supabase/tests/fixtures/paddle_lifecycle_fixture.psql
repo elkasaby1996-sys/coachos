@@ -1,0 +1,28 @@
+-- Synthetic local authority. Never contacts a provider.
+create function pg_temp.lifecycle_owner() returns uuid language plpgsql as $$
+declare u uuid:=pg_temp.auto_checkout();
+begin
+ perform pg_temp.auto_ingest(u,'transaction.completed');
+ perform pg_temp.auto_ingest(u,'subscription.created');
+ perform pg_temp.auto_dispatch(u,'subscription.created');
+ return u;
+end $$;
+create function pg_temp.lifecycle_observation(u uuid,label text,k text default 'subscription.updated',state text default 'active',stamp text default '2026-10-20T10:00:00Z',start_at text default '2026-10-20T00:00:00Z',end_at text default '2026-11-20T00:00:00Z') returns jsonb language sql as $$
+ select pg_temp.auto_observation(u,k)||jsonb_build_object('eventRef','synthetic/lifecycle/'||label||'/'||u,
+ 'notificationRef','synthetic/lifecycle/'||label||'/'||u,'occurredAt',stamp)
+ ||case when k='transaction.completed' then jsonb_build_object('transactionRef','synthetic/renewal/'||label||'/'||u,
+ 'origin','subscription_recurring','billingPeriod',jsonb_build_object('startsAt',start_at,'endsAt',end_at))
+ else jsonb_build_object('status',state,'updatedAt',stamp,'currentBillingPeriod',jsonb_build_object('startsAt',start_at,'endsAt',end_at),
+ 'nextBilledAt',case when state='active' then end_at else null end,'canceledAt',case when state='canceled' then stamp else null end,
+ 'pausedAt',null,'scheduledChange',null,'items',jsonb_set(pg_temp.auto_observation(u,k)->'items','{0,status}',to_jsonb(case when state='canceled' then 'inactive' else 'active' end))) end
+$$;
+create function pg_temp.lifecycle_ingest(o jsonb) returns uuid language sql as $$
+ select (pg_temp.webhook_ingest(o)->>'eventId')::uuid $$;
+create function pg_temp.lifecycle_dispatch(o jsonb) returns text language sql as $$
+ select reconcile_paddle_initial_purchase_event_v1(pg_temp.lifecycle_ingest(o))->>'status' $$;
+create function pg_temp.lifecycle_counts(u uuid) returns jsonb language sql as $$
+ select jsonb_build_object('canonical',(select count(*) from account_subscriptions where billing_account_id=s.billing_account_id),
+ 'renewals',(select count(*) from billing_payment_applications_v2 where subscription_id=s.id and application_kind='renewal'),
+ 'seats',s.approved_additional_coach_seats,'status',a.status,'cancel',a.cancel_at_period_end,
+ 'access',account_subscription_access_mode(a.status),'end',to_char(a.current_period_ends_at at time zone 'UTC','YYYY-MM-DD'))
+ from billing_subscriptions_v2 s join account_subscriptions a on a.id=s.account_subscription_id where s.provider_subscription_ref='synthetic/sub/'||u $$;

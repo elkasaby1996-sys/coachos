@@ -704,9 +704,13 @@
       {
         "filename": "20260923220540_paddle_auto_initial_purchase_reconciliation.sql",
         "sha256": "d4b430d6d5bbcfd82e17ea162349fcd4f40832acc0227415caa4c91c3b7e88e2"
+      },
+      {
+        "filename": "20260924100007_paddle_subscription_lifecycle.sql",
+        "sha256": "f6747918bbd670725db9469afcd6d6fb28171e89102f941dde21641ecc77efe1"
       }
     ],
-    "expectedLatestMigration": "20260923220540_paddle_auto_initial_purchase_reconciliation.sql"
+    "expectedLatestMigration": "20260924100007_paddle_subscription_lifecycle.sql"
   },
   "functions": {
     "billing": [

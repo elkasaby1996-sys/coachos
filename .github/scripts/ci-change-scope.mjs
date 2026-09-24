@@ -199,7 +199,33 @@ const paddleOutputRedactionFiles = new Set([
   "tests/unit/staging-commercial-preflight.test.ts",
 ]);
 
+// Only the complete reviewed lifecycle inventory may skip hosted-account writes.
+const paddleSubscriptionLifecycleFiles = new Set([
+  "config/staging-commercial-certification.json",
+  "scripts/test-paddle-lifecycle-concurrency.py",
+  "scripts/test-paddle-lifecycle-migration.py",
+  "supabase/functions/_shared/paddle-webhook/contract.ts",
+  "supabase/functions/_shared/paddle-webhook/ingress.ts",
+  "supabase/functions/_shared/paddle-webhook/observation.ts",
+  "supabase/migrations/20260924100007_paddle_subscription_lifecycle.sql",
+  "supabase/tests/fixtures/paddle_lifecycle_fixture.psql",
+  "supabase/tests/paddle_subscription_lifecycle.sql",
+  "tests/unit/paddle-lifecycle-observation.test.ts",
+  "tests/unit/paddle-webhook-ingress.test.ts",
+]);
+
 export function classifyChanges(files) {
+  const paddleSubscriptionLifecycle =
+    new Set(files).size === files.length &&
+    [...paddleSubscriptionLifecycleFiles].every((file) =>
+      files.includes(file),
+    ) &&
+    files.every(
+      (file) =>
+        paddleSubscriptionLifecycleFiles.has(file) ||
+        file === ".github/scripts/ci-change-scope.mjs" ||
+        file === ".github/scripts/ci-change-scope.test.mjs",
+    );
   const paddleOutputRedaction =
     new Set(files).size === files.length &&
     [...paddleOutputRedactionFiles].every((file) => files.includes(file)) &&
@@ -263,6 +289,7 @@ export function classifyChanges(files) {
     // CI changes still run the full local smoke suite, but do not need to
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
+      !paddleSubscriptionLifecycle &&
       !paddleOutputRedaction &&
       !sharedRuntimeCompatibility &&
       !billingPreWorkspaceAccess &&

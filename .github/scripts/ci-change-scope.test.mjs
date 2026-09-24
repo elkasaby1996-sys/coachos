@@ -827,3 +827,70 @@ for (const extra of [
       });
   });
 }
+
+// Exact implementation inventory committed in 060b210.
+const lifecycleFiles = [
+  "config/staging-commercial-certification.json",
+  "scripts/test-paddle-lifecycle-concurrency.py",
+  "scripts/test-paddle-lifecycle-migration.py",
+  "supabase/functions/_shared/paddle-webhook/contract.ts",
+  "supabase/functions/_shared/paddle-webhook/ingress.ts",
+  "supabase/functions/_shared/paddle-webhook/observation.ts",
+  "supabase/migrations/20260924100007_paddle_subscription_lifecycle.sql",
+  "supabase/tests/fixtures/paddle_lifecycle_fixture.psql",
+  "supabase/tests/paddle_subscription_lifecycle.sql",
+  "tests/unit/paddle-lifecycle-observation.test.ts",
+  "tests/unit/paddle-webhook-ingress.test.ts",
+];
+const lifecyclePrFiles = [
+  ...lifecycleFiles,
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+test("lifecycle classifier has the exact eleven implementation files", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const entries = [
+    ...source
+      .match(
+        /const paddleSubscriptionLifecycleFiles = new Set\(\[([\s\S]*?)\]\);/,
+      )[1]
+      .matchAll(/"([^"]+)"/g),
+  ].map((m) => m[1]);
+  assert.equal(entries.length, 11);
+  assert.deepEqual(entries, lifecycleFiles);
+});
+for (const files of [lifecycleFiles, lifecyclePrFiles]) {
+  test(`exact ${files.length}-file lifecycle inventory keeps local CI`, () => {
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+  });
+  for (const omitted of lifecycleFiles) {
+    test(`${files.length}-file lifecycle inventory missing ${omitted} fails closed`, () => {
+      assert.deepEqual(classifyChanges(files.filter((f) => f !== omitted)), {
+        docs_only: false,
+        configured_data_required: true,
+      });
+    });
+  }
+  for (const extra of [
+    "src/app.tsx",
+    "supabase/functions/billing-paddle-webhook/index.ts",
+    "supabase/migrations/20260925000000_lifecycle_followup.sql",
+    ".github/workflows/ci.yml",
+    "package-lock.json",
+    "docs/unrelated.md",
+    lifecycleFiles[0],
+  ]) {
+    test(`${files.length}-file lifecycle inventory plus ${extra} fails closed`, () => {
+      assert.deepEqual(classifyChanges([...files, extra]), {
+        docs_only: false,
+        configured_data_required: true,
+      });
+    });
+  }
+}

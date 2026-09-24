@@ -115,9 +115,14 @@ function dispatcherResult(value: unknown): boolean {
     object(value) &&
     Object.keys(value).length === 1 &&
     typeof value.status === "string" &&
-    ["disabled", "not_applicable", "pending", "applied", "reused"].includes(
-      value.status,
-    )
+    [
+      "disabled",
+      "not_applicable",
+      "pending",
+      "applied",
+      "reused",
+      "manual_review",
+    ].includes(value.status)
   );
 }
 export function createPaddleWebhookIngress(
@@ -155,7 +160,7 @@ export function createPaddleWebhookIngress(
       )
         return response(503);
       // Separate awaited requests: retained evidence commits before authority.
-      if (stored.data.eventType !== "subscription.updated") {
+      {
         const dispatched = await database.rpc(
           "reconcile_paddle_initial_purchase_event_v1",
           {
