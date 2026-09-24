@@ -121,24 +121,26 @@ describe("trusted Paddle ingress", () => {
     expect(await response.text()).toBe("accepted");
     expect(rpc.mock.calls[0]?.[0]).toBe("ingest_verified_paddle_event_v1");
   });
-  it.each(["disabled", "pending", "applied", "reused"])(
-    "acknowledges %s after durable ingestion",
-    async (status) => {
-      const rpc = vi
-        .fn()
-        .mockResolvedValueOnce({ error: null, data: storedEvent })
-        .mockResolvedValueOnce({ error: null, data: { status } });
-      const result = await createPaddleWebhookIngress(config, { rpc })(
-        request(),
-      );
-      expect(result.status).toBe(200);
-      expect(await result.text()).toBe("accepted");
-      expect(rpc.mock.calls[1]).toEqual([
-        "reconcile_paddle_initial_purchase_event_v1",
-        { p_event: storedEvent.eventId },
-      ]);
-    },
-  );
+  it.each([
+    "disabled",
+    "not_applicable",
+    "pending",
+    "applied",
+    "reused",
+    "manual_review",
+  ])("acknowledges %s after durable ingestion", async (status) => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ error: null, data: storedEvent })
+      .mockResolvedValueOnce({ error: null, data: { status } });
+    const result = await createPaddleWebhookIngress(config, { rpc })(request());
+    expect(result.status).toBe(200);
+    expect(await result.text()).toBe("accepted");
+    expect(rpc.mock.calls[1]).toEqual([
+      "reconcile_paddle_initial_purchase_event_v1",
+      { p_event: storedEvent.eventId },
+    ]);
+  });
   it.each([
     null,
     {},
@@ -196,12 +198,18 @@ describe("trusted Paddle ingress", () => {
     expect(result.status).toBe(503);
     expect(await result.text()).toBe("rejected");
   });
-  it("persists subscription.updated without dispatching initial purchase", async () => {
+  it("dispatches subscription.updated using only the retained internal UUID", async () => {
     const value = event();
-    const rpc = vi.fn().mockResolvedValue({
-      error: null,
-      data: { ...storedEvent, eventType: "subscription.updated" },
-    });
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({
+        error: null,
+        data: { ...storedEvent, eventType: "subscription.updated" },
+      })
+      .mockResolvedValueOnce({
+        error: null,
+        data: { status: "manual_review" },
+      });
     const result = await createPaddleWebhookIngress(config, { rpc })(
       request({
         ...value,
@@ -219,7 +227,11 @@ describe("trusted Paddle ingress", () => {
       }),
     );
     expect(result.status).toBe(200);
-    expect(rpc).toHaveBeenCalledOnce();
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc.mock.calls[1]).toEqual([
+      "reconcile_paddle_initial_purchase_event_v1",
+      { p_event: storedEvent.eventId },
+    ]);
   });
   it.each([null, new Error("private failure")])(
     "retries persistence failure",

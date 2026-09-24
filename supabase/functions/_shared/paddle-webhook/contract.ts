@@ -16,6 +16,15 @@ export type PaddleWebhookItem = {
   quantity: number;
   unitPrice: { amount: string; currency: string };
 };
+export type PaddleBillingPeriod = { startsAt: string; endsAt: string };
+export type PaddleLifecycleObservation = {
+  updatedAt?: string;
+  currentBillingPeriod?: PaddleBillingPeriod | null;
+  nextBilledAt?: string | null;
+  canceledAt?: string | null;
+  pausedAt?: string | null;
+  scheduledChange?: { action: string; effectiveAt: string } | null;
+};
 export type PaddleSupportedEventObservation = PaddleEventEnvelope &
   (
     | {
@@ -25,9 +34,11 @@ export type PaddleSupportedEventObservation = PaddleEventEnvelope &
         customerRef: string | null;
         status: "completed";
         currency: string;
+        origin?: string;
+        billingPeriod?: PaddleBillingPeriod | null;
         items: PaddleWebhookItem[];
       }
-    | {
+    | (PaddleLifecycleObservation & {
         kind: "subscription.created" | "subscription.updated";
         subscriptionRef: string;
         customerRef: string | null;
@@ -37,7 +48,7 @@ export type PaddleSupportedEventObservation = PaddleEventEnvelope &
         items: (PaddleWebhookItem & {
           status: "active" | "inactive" | "trialing";
         })[];
-      }
+      })
   );
 export type PaddleUnsupportedEventObservation = PaddleEventEnvelope & {
   kind: "unsupported";

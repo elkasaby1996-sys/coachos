@@ -3,6 +3,8 @@ import type {
   PaddleEventObservation,
   PaddleSupportedEventObservation,
   PaddleWebhookItem,
+  PaddleBillingPeriod,
+  PaddleLifecycleObservation,
 } from "./contract.ts";
 import { fail } from "./signature.ts";
 
@@ -59,6 +61,42 @@ function currency(value: unknown): string {
   if (typeof value !== "string" || !/^[A-Z]{3}$/.test(value))
     return fail("event_invalid");
   return value;
+}
+function period(value: unknown): PaddleBillingPeriod | null {
+  if (value === null) return null;
+  const row = object(value);
+  const startsAt = observedTimestamp(row.starts_at);
+  const endsAt = observedTimestamp(row.ends_at);
+  if (Date.parse(endsAt) <= Date.parse(startsAt)) fail("event_invalid");
+  return { startsAt, endsAt };
+}
+// Omitted fields stay omitted so pre-lifecycle retained replay digests are stable.
+// Missing facts are never sufficient for database lifecycle authority.
+function lifecycle(data: Record<string, unknown>): PaddleLifecycleObservation {
+  const result: PaddleLifecycleObservation = {};
+  if ("updated_at" in data)
+    result.updatedAt = observedTimestamp(data.updated_at);
+  if ("current_billing_period" in data)
+    result.currentBillingPeriod = period(data.current_billing_period);
+  for (const [wire, key] of [
+    ["next_billed_at", "nextBilledAt"],
+    ["canceled_at", "canceledAt"],
+    ["paused_at", "pausedAt"],
+  ] as const) {
+    if (wire in data)
+      result[key] = data[wire] === null ? null : observedTimestamp(data[wire]);
+  }
+  if ("scheduled_change" in data) {
+    const change = data.scheduled_change;
+    result.scheduledChange =
+      change === null
+        ? null
+        : {
+            action: reference(object(change).action),
+            effectiveAt: observedTimestamp(object(change).effective_at),
+          };
+  }
+  return result;
 }
 function items(value: unknown): PaddleWebhookItem[] {
   if (!Array.isArray(value) || value.length < 1 || value.length > 32)
@@ -121,6 +159,10 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
       status: "completed",
       currency: currency(data.currency_code),
       items: items(data.items),
+      ...("origin" in data ? { origin: reference(data.origin) } : {}),
+      ...("billing_period" in data
+        ? { billingPeriod: period(data.billing_period) }
+        : {}),
     };
   }
   if (
@@ -158,6 +200,7 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
           ? nullableReference(data.transaction_id)
           : null,
       items: rows,
+      ...(base.eventType === "subscription.updated" ? lifecycle(data) : {}),
     };
   }
   return { ...base, kind: "unsupported", reason: "event_type_not_supported" };
