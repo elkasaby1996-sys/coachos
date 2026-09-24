@@ -13,6 +13,10 @@ import {
   fields,
   fixture,
   identity,
+  projectFields,
+  projectReferences,
+  projectSemanticCanaries,
+  projectUrls,
   references,
   semanticCanaries,
 } from "../fixtures/billing-output-canaries.mjs";
@@ -39,6 +43,27 @@ describe("billing output policy", () => {
       redact(`Diagnostic ${key}="${semanticCanaries[fields.indexOf(key)]}"`),
     );
   });
+  it.each(projectReferences)(
+    "redacts bare synthetic project reference %s",
+    (projectReference) => {
+      expect(redact(projectReference)).toBe("[redacted project identifier]");
+    },
+  );
+  it.each(projectFields)("protects project field %s", (key) => {
+    const value = {
+      [key]: projectSemanticCanaries[projectFields.indexOf(key)],
+    };
+    noLeaks(redact(value));
+    noLeaks(redact(JSON.stringify(value)));
+    noLeaks(
+      redact(
+        `CLI row ${key}=${projectSemanticCanaries[projectFields.indexOf(key)]}`,
+      ),
+    );
+  });
+  it.each(projectUrls)("redacts private project URL %s", (url) => {
+    expect(redact(url)).toBe("[redacted project identifier]");
+  });
   it("recurses through keys, arrays, Error causes and serialized diagnostics without mutation", () => {
     const value = fixture();
     const before = JSON.stringify(value);
@@ -53,6 +78,8 @@ describe("billing output policy", () => {
     const value = {
       message: "Growth Monthly: 50 clients, 2 seats",
       url: "https://example.test/help",
+      publicSupabaseUrl: "https://supabase.com/docs",
+      products: "Supabase Paddle staging",
       amount: 42,
     };
     expect(redact(value)).toEqual(value);
