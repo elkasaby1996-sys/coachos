@@ -1,3 +1,4 @@
+import { billingOutput } from "./billing-operator-output.mjs";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { resolve, relative, dirname, join } from "node:path";
@@ -462,7 +463,7 @@ export function runPreflight(mode = "preflight", dependencies = {}) {
   const persist = () =>
     writeFileSync(
       join(output, "preflight-evidence.json"),
-      JSON.stringify(validatePreflightEvidence(e), null, 2) + "\n",
+      billingOutput.serialize(validatePreflightEvidence(e)) + "\n",
     );
   const check = (name, fn) => {
     stage = name;
@@ -648,9 +649,9 @@ if (
 ) {
   try {
     runPreflight();
-    console.log("STAGING_PREFLIGHT_PASS_REMOTE_NOT_EXECUTED");
+    billingOutput.log("STAGING_PREFLIGHT_PASS_REMOTE_NOT_EXECUTED");
   } catch (error) {
-    console.error(preflightFailureLine("preflight", error));
+    billingOutput.error(preflightFailureLine("preflight", error));
     process.exitCode = 1;
   }
 }

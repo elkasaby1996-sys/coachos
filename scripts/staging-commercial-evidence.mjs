@@ -1,6 +1,6 @@
+import { billingOutput } from "./billing-operator-output.mjs";
 import { z } from "zod";
 import { pathToFileURL } from "node:url";
-import { writeFileSync } from "node:fs";
 import {
   REMOTE_STAGES,
   REMOTE_ERROR_CODES,
@@ -240,9 +240,8 @@ if (
       ),
     );
     const result = { verdict: verdict(value), evidence: value };
-    if (process.argv[3])
-      writeFileSync(process.argv[3], JSON.stringify(result, null, 2) + "\n");
-    console.log(
+    if (process.argv[3]) billingOutput.report(process.argv[3], result);
+    billingOutput.log(
       JSON.stringify({
         verdict: result.verdict,
         records: value.records.length,
@@ -250,7 +249,7 @@ if (
     );
     if (result.verdict !== "pass") process.exitCode = 1;
   } catch {
-    console.error("EVIDENCE_VALIDATION_FAILED");
+    billingOutput.error("EVIDENCE_VALIDATION_FAILED");
     process.exitCode = 1;
   }
 }

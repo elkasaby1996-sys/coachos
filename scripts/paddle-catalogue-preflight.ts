@@ -1,3 +1,4 @@
+import { billingOutput } from "./billing-operator-output.mjs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createPaddleSandboxCatalogue } from "../supabase/functions/_shared/paddle-catalogue/index.ts";
@@ -38,6 +39,6 @@ if (
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   const summary = await runPaddleCataloguePreflight();
-  console.log(JSON.stringify(summary));
+  billingOutput.log(JSON.stringify(summary));
   if (summary.receiptCount !== 8) process.exitCode = 1;
 }

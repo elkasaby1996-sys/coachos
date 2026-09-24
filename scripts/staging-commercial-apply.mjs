@@ -1,3 +1,4 @@
+import { billingOutput } from "./billing-operator-output.mjs";
 // Phase B only. This entry point is never imported or invoked by the planner.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -153,7 +154,7 @@ export async function apply() {
   const persist = () =>
     writeFileSync(
       `${output}/deployment-evidence.json`,
-      JSON.stringify(evidence(), null, 2) + "\n",
+      billingOutput.serialize(evidence()) + "\n",
     );
   const atStage = (stage, operation) => {
     progress.remoteStarted = true;
@@ -270,9 +271,11 @@ if (
 ) {
   try {
     await apply();
-    console.log("DEPLOYMENT_COMMANDS_COMPLETE_CERTIFICATION_STILL_BLOCKED");
+    billingOutput.log(
+      "DEPLOYMENT_COMMANDS_COMPLETE_CERTIFICATION_STILL_BLOCKED",
+    );
   } catch (error) {
-    console.error(applyFailureLine(error));
+    billingOutput.error(applyFailureLine(error));
     process.exitCode = 1;
   }
 }
