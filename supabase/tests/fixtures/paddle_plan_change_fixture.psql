@@ -1,0 +1,56 @@
+-- Synthetic local-only identities, signed-ingress contract and real dispatchers.
+create function pg_temp.plan_owner() returns uuid language plpgsql as $$
+declare u uuid:=pg_temp.lifecycle_owner();begin
+ perform pg_temp.lifecycle_dispatch(pg_temp.lifecycle_observation(u,'baseline','subscription.updated','active',
+ to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),'2026-09-20T00:00:00Z','2026-10-20T00:00:00Z'));
+ return u;end $$;
+create function pg_temp.plan_snapshot(u uuid) returns jsonb language sql as $$
+ select jsonb_build_object('subscriptionRef',c->'subscriptionRef','customerRef',c->'customerRef','priceRef',c->'sourcePriceRef','productRef',c->'sourceProductRef',
+ 'status','active','cadence',c->'cadence','quantity',1,'cancelled',false,
+ 'updatedAt',to_char((c->>'providerUpdatedAt')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+ 'periodStart',to_char((c->>'periodStart')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+ 'periodEnd',to_char((c->>'periodEnd')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'))
+ from (select paddle_plan_change_context_v1(u) c) x $$;
+create function pg_temp.plan_begin(u uuid,target text default 'scale',operation uuid default gen_random_uuid()) returns jsonb language sql as $$
+ select begin_paddle_plan_change_v1(u,target,'monthly',operation,pg_temp.plan_snapshot(u)) $$;
+create function pg_temp.plan_observation(u uuid,label text,k text default 'subscription.updated',state text default 'active') returns jsonb language plpgsql as $$
+declare op billing_operations_v2%rowtype;m billing_price_mappings%rowtype;o jsonb;stamp text;
+begin
+ select b.* into op from billing_operations_v2 b join billing_accounts a on a.id=b.billing_account_id where a.owner_user_id=u order by b.provider_requested_at desc,b.id desc limit 1;
+ select * into m from billing_price_mappings where id=op.target_base_mapping_id;
+ stamp:=to_char(greatest(billing_paddle_plan_now_v1(),op.provider_requested_at+interval '1 millisecond') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"');
+ o:=pg_temp.lifecycle_observation(u,label,k,state,stamp,
+ to_char(op.source_period_started_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),to_char(op.source_period_ends_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
+ o:=o||jsonb_build_object('planChangeOperationId',op.operation_id,'items',jsonb_build_array(jsonb_build_object('priceRef',m.provider_price_ref,'productRef',m.provider_product_ref,
+ 'quantity',1,'unitPrice',jsonb_build_object('amount',m.unit_amount_minor::text,'currency','USD'))||case when k='subscription.updated' then jsonb_build_object('status','active') else '{}'::jsonb end));
+ if k='transaction.completed' then o:=o||jsonb_build_object('origin','subscription_update','paymentTotals',jsonb_build_object('total',3000,'paid',3000,'balance',0));end if;
+ return o;
+end $$;
+create function pg_temp.plan_status(u uuid) returns jsonb language sql as $$
+ select jsonb_build_object('plan',m.canonical_key,'canonical',s.account_subscription_id,'status',a.status,'access',account_subscription_access_mode(a.status),
+ 'payments',(select count(*) from billing_payment_applications_v2 where subscription_id=s.id and application_kind='plan_change'),
+ 'operation',(select status from billing_operations_v2 where subscription_id=s.id order by provider_requested_at desc,id desc limit 1),
+ 'entitlements',resolve_account_entitlements(s.billing_account_id),'capacity',resolve_account_capacity(b.owner_user_id,b.id))
+ from billing_subscriptions_v2 s join billing_accounts b on b.id=s.billing_account_id join account_subscriptions a on a.id=s.account_subscription_id
+ join billing_price_mappings m on m.id=billing_paddle_current_mapping_v1(s.id) where b.owner_user_id=u $$;
+
+-- Seed a historical annual subscription directly: annual purchases are outside
+-- this task. Only fixture setup bypasses triggers; every tested plan operation
+-- runs with the complete production guards restored in the same transaction.
+create function pg_temp.plan_annual_owner() returns uuid language plpgsql as $$
+declare u uuid:=pg_temp.plan_owner();sid uuid;mapping billing_price_mappings%rowtype;e uuid;p jsonb;
+begin
+ select id into sid from billing_subscriptions_v2 where provider_subscription_ref='synthetic/sub/'||u;
+ select * into mapping from billing_price_mappings where canonical_key='growth' and cadence='annual' and environment='test' and status='active';
+ select evidence_id into e from billing_payment_applications_v2 where subscription_id=sid and application_kind='initial_purchase';
+ set constraints all immediate;
+ alter table account_subscriptions disable trigger user;alter table billing_subscriptions_v2 disable trigger user;alter table billing_subscription_items_v2 disable trigger user;alter table billing_evidence_v2 disable trigger user;
+ update account_subscriptions set current_period_ends_at='2027-09-20T00:00:00Z' where id=(select account_subscription_id from billing_subscriptions_v2 where id=sid);
+ update billing_subscriptions_v2 set current_period_ends_at='2027-09-20T00:00:00Z' where id=sid;
+ update billing_subscription_items_v2 set mapping_id=mapping.id,cadence='annual' where subscription_id=sid;
+ select jsonb_set(proof,'{observation}',(proof->'observation')||jsonb_build_object('mappingId',mapping.id,'cadence','annual','amountMinor',mapping.unit_amount_minor,'catalogueEvidenceId',mapping.catalogue_evidence_id)) into p from billing_evidence_v2 where id=e;
+ update billing_evidence_v2 set proof=p,normalized_sha256=encode(extensions.digest(p::text,'sha256'),'hex') where id=e;
+ alter table account_subscriptions enable trigger user;alter table billing_subscriptions_v2 enable trigger user;alter table billing_subscription_items_v2 enable trigger user;alter table billing_evidence_v2 enable trigger user;
+ set constraints all deferred;
+ return u;
+end $$;

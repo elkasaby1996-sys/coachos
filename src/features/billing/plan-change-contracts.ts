@@ -11,6 +11,7 @@ export const planChangeInputSchema = z
 export type PlanChangeInput = z.infer<typeof planChangeInputSchema>;
 export const planChangePreviewSchema = z
   .object({
+    provider: z.literal("paddle").optional(),
     sourcePlanKey: planKey,
     sourceCadence: cadence,
     targetPlanKey: planKey,
@@ -56,6 +57,7 @@ export const planChangePreviewSchema = z
 export type PlanChangePreview = z.infer<typeof planChangePreviewSchema>;
 export const planChangeStateSchema = z
   .object({
+    provider: z.literal("paddle").optional(),
     linked: z.boolean(),
     cadence: cadence.nullable(),
     eligible: z.boolean(),

@@ -708,9 +708,13 @@
       {
         "filename": "20260924100007_paddle_subscription_lifecycle.sql",
         "sha256": "f6747918bbd670725db9469afcd6d6fb28171e89102f941dde21641ecc77efe1"
+      },
+      {
+        "filename": "20260924113658_paddle_plan_changes.sql",
+        "sha256": "b586c062378083e23239880906d7401475e646ad891af1d353bec9af1a8fd81d"
       }
     ],
-    "expectedLatestMigration": "20260924100007_paddle_subscription_lifecycle.sql"
+    "expectedLatestMigration": "20260924113658_paddle_plan_changes.sql"
   },
   "functions": {
     "billing": [

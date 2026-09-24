@@ -214,7 +214,39 @@ const paddleSubscriptionLifecycleFiles = new Set([
   "tests/unit/paddle-webhook-ingress.test.ts",
 ]);
 
+// PADDLE-PLAN-CHANGE-01: only the complete reviewed implementation skips
+// configured-account mutations. Quality, local smoke, DB and security remain.
+const paddlePlanChangeFiles = new Set([
+  "config/staging-commercial-certification.json",
+  "docs/paddle-plan-changes.md",
+  "scripts/test-paddle-plan-change-concurrency.py",
+  "src/features/billing/plan-change-contracts.ts",
+  "src/features/billing/plan-change-panel.tsx",
+  "supabase/functions/_shared/billing-handlers.ts",
+  "supabase/functions/_shared/billing-plan-change.ts",
+  "supabase/functions/_shared/billing-runtime.ts",
+  "supabase/functions/_shared/paddle-plan-change.ts",
+  "supabase/functions/_shared/paddle-webhook/contract.ts",
+  "supabase/functions/_shared/paddle-webhook/observation.ts",
+  "supabase/migrations/20260924113658_paddle_plan_changes.sql",
+  "supabase/tests/fixtures/paddle_plan_change_fixture.psql",
+  "supabase/tests/paddle_plan_changes.sql",
+  "tests/e2e/billing-plan-change.spec.ts",
+  "tests/unit/billing-plan-change-panel.test.ts",
+  "tests/unit/paddle-plan-change.test.ts",
+]);
+
 export function classifyChanges(files) {
+  const paddlePlanChange =
+    new Set(files).size === files.length &&
+    [...paddlePlanChangeFiles].every((file) => files.includes(file)) &&
+    files.every(
+      (file) =>
+        paddlePlanChangeFiles.has(file) ||
+        file === ".github/scripts/ci-change-scope.mjs" ||
+        file === ".github/scripts/ci-change-scope.test.mjs",
+    );
+
   const paddleSubscriptionLifecycle =
     new Set(files).size === files.length &&
     [...paddleSubscriptionLifecycleFiles].every((file) =>
@@ -289,6 +321,7 @@ export function classifyChanges(files) {
     // CI changes still run the full local smoke suite, but do not need to
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
+      !paddlePlanChange &&
       !paddleSubscriptionLifecycle &&
       !paddleOutputRedaction &&
       !sharedRuntimeCompatibility &&

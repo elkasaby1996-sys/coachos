@@ -7,6 +7,7 @@ import { portalCodes } from "./billing-portal.ts";
 import { planChangeCodes } from "./billing-plan-change.ts";
 import { seatQuantityCodes } from "./billing-seat-quantity.ts";
 import { paddleCheckoutRpcError } from "./paddle-checkout-rpc.ts";
+import { createPaddlePlanTransport } from "./paddle-plan-change.ts";
 
 const safeDatabaseCodes = new Set([
   ...portalCodes,
@@ -52,6 +53,12 @@ export function billingDependencies(): BillingDependencies {
       return data;
     };
   return {
+    paddlePlans: () =>
+      createPaddlePlanTransport(
+        env("PADDLE_ENVIRONMENT") === "sandbox" ? "test" : "",
+        env("PADDLE_SANDBOX_API_KEY"),
+        fetch,
+      ),
     config: () => {
       const environment = env("BILLING_PROVIDER_ENVIRONMENT"),
         apiKey = env("LEMONSQUEEZY_API_KEY"),

@@ -894,3 +894,85 @@ for (const files of [lifecycleFiles, lifecyclePrFiles]) {
     });
   }
 }
+
+const paddlePlanChangeFiles = [
+  "config/staging-commercial-certification.json",
+  "docs/paddle-plan-changes.md",
+  "scripts/test-paddle-plan-change-concurrency.py",
+  "src/features/billing/plan-change-contracts.ts",
+  "src/features/billing/plan-change-panel.tsx",
+  "supabase/functions/_shared/billing-handlers.ts",
+  "supabase/functions/_shared/billing-plan-change.ts",
+  "supabase/functions/_shared/billing-runtime.ts",
+  "supabase/functions/_shared/paddle-plan-change.ts",
+  "supabase/functions/_shared/paddle-webhook/contract.ts",
+  "supabase/functions/_shared/paddle-webhook/observation.ts",
+  "supabase/migrations/20260924113658_paddle_plan_changes.sql",
+  "supabase/tests/fixtures/paddle_plan_change_fixture.psql",
+  "supabase/tests/paddle_plan_changes.sql",
+  "tests/e2e/billing-plan-change.spec.ts",
+  "tests/unit/billing-plan-change-panel.test.ts",
+  "tests/unit/paddle-plan-change.test.ts",
+];
+const paddlePlanChangePrFiles = [
+  ...paddlePlanChangeFiles,
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+test("Paddle plan-change exemption matches the documented frozen inventory", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const entries = [
+    ...source
+      .match(/const paddlePlanChangeFiles = new Set\(\[([\s\S]*?)\]\);/)[1]
+      .matchAll(/"([^"]+)"/g),
+  ].map((m) => m[1]);
+  const doc = readFileSync(
+    new URL("../../docs/paddle-plan-changes.md", import.meta.url),
+    "utf8",
+  );
+  const documented = [
+    ...doc
+      .split("## Reviewed implementation inventory (N=17)")[1]
+      .split("## Transport")[0]
+      .matchAll(/^- `([^`]+)`$/gm),
+  ].map((m) => m[1]);
+  assert.equal(entries.length, 17);
+  assert.deepEqual(entries, paddlePlanChangeFiles);
+  assert.deepEqual(documented, paddlePlanChangeFiles);
+});
+for (const files of [paddlePlanChangeFiles, paddlePlanChangePrFiles]) {
+  test(`exact ${files.length}-file Paddle plan-change inventory keeps local checks`, () => {
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+  });
+  for (const omitted of paddlePlanChangeFiles) {
+    test(`${files.length}-file Paddle plan-change inventory missing ${omitted} fails closed`, () => {
+      assert.deepEqual(classifyChanges(files.filter((f) => f !== omitted)), {
+        docs_only: false,
+        configured_data_required: true,
+      });
+    });
+  }
+  for (const extra of [
+    "src/app.tsx",
+    "supabase/migrations/20260925000000_unreviewed.sql",
+    ".github/workflows/ci.yml",
+    "package.json",
+    "package-lock.json",
+    "docs/unrelated.md",
+    paddlePlanChangeFiles[0],
+    ...paddlePlanChangeFiles.map((f) => f.replace(/(\.[^./]+)$/, "-other$1")),
+  ]) {
+    test(`${files.length}-file Paddle plan-change inventory plus ${extra} fails closed`, () => {
+      assert.deepEqual(classifyChanges([...files, extra]), {
+        docs_only: false,
+        configured_data_required: true,
+      });
+    });
+  }
+}

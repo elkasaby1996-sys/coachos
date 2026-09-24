@@ -280,3 +280,152 @@ test("mobile plan preview fits and exposes no provider data", async ({
     fullPage: true,
   });
 });
+
+// UI-only Paddle projections over a local seeded canonical account. Provider
+// mutation/payment authority is exercised by the separate SQL/transport suites.
+for (const cadence of ["monthly", "annual"] as const) {
+  for (const downgrade of [false, true]) {
+    test(`Paddle ${cadence} ${downgrade ? "scheduled downgrade" : "failed upgrade"} retains source capacity`, async ({
+      page,
+      context,
+    }, info) => {
+      const source = downgrade ? "scale" : "growth";
+      const target = downgrade ? "growth" : "scale";
+      const f = await planChangeFixture(
+        page,
+        context,
+        info.testId,
+        source,
+        cadence,
+      );
+      let operation: Record<string, unknown> | null = null;
+      let submitted = 0;
+      const state = () => ({
+        provider: "paddle",
+        linked: true,
+        cadence,
+        eligible: !operation,
+        operation,
+      });
+      await context.route(
+        "**/rest/v1/rpc/get_my_billing_plan_change_state",
+        (route) => route.fulfill({ json: state() }),
+      );
+      await context.route(
+        "**/functions/v1/billing-preview-plan-change",
+        (route) => {
+          const input = route.request().postDataJSON();
+          expect(Object.keys(input).sort()).toEqual([
+            "operationId",
+            "targetCadence",
+            "targetPlanKey",
+          ]);
+          expect(input.targetCadence).toBe(cadence);
+          return route.fulfill({
+            json: {
+              provider: "paddle",
+              sourcePlanKey: source,
+              sourceCadence: cadence,
+              targetPlanKey: target,
+              targetCadence: cadence,
+              changeKind: downgrade ? "tier_downgrade" : "tier_upgrade",
+              effectiveTiming: downgrade ? "period_end" : "immediate",
+              prorationMode: downgrade
+                ? "disable_prorations"
+                : "invoice_immediately",
+              currentPriceMinor: downgrade ? 9900 : 5900,
+              targetPriceMinor: downgrade ? 5900 : 9900,
+              currency: "USD",
+              effectiveAt: downgrade
+                ? new Date(Date.now() + 86400000).toISOString()
+                : null,
+              dataQualityIssue: false,
+              blockers: [],
+            },
+          });
+        },
+      );
+      await context.route(
+        "**/functions/v1/billing-change-subscription-plan",
+        (route) => {
+          const input = route.request().postDataJSON();
+          expect(Object.keys(input).sort()).toEqual([
+            "operationId",
+            "targetCadence",
+            "targetPlanKey",
+          ]);
+          submitted++;
+          operation = {
+            operationId: input.operationId,
+            status: downgrade ? "scheduled" : "awaiting_payment",
+            targetPlanKey: target,
+            targetCadence: cadence,
+            effectiveTiming: downgrade ? "period_end" : "immediate",
+            effectiveAt: downgrade
+              ? new Date(Date.now() + 86400000).toISOString()
+              : null,
+            errorCode: downgrade ? null : "BILLING_PLAN_CHANGE_PAYMENT_FAILED",
+          };
+          return route.fulfill({ json: state() });
+        },
+      );
+      await context.route(
+        "**/functions/v1/billing-refresh-plan-change",
+        (route) => route.fulfill({ json: state() }),
+      );
+      await page.reload();
+      await page
+        .getByRole("button", { name: "Change plan", exact: true })
+        .click();
+      await expect(
+        page.getByLabel("Target billing frequency", { exact: true }),
+      ).toBeDisabled();
+      await expect(
+        page.getByLabel("Target billing frequency", { exact: true }),
+      ).toHaveValue(cadence);
+      await page
+        .getByLabel("Target plan", { exact: true })
+        .selectOption(target);
+      await page
+        .getByRole("button", { name: "Preview plan change", exact: true })
+        .click();
+      await expect(
+        page.getByText("Paddle calculates any immediate charge.", {
+          exact: false,
+        }),
+      ).toBeVisible();
+      await f.apply();
+      await expect(
+        page.getByRole("progressbar", { name: "Clients committed capacity" }),
+      ).toHaveAttribute(
+        "aria-valuetext",
+        downgrade ? /committed of 100;/ : /committed of 50;/,
+      );
+      await expect(
+        page.getByText(
+          downgrade
+            ? "Your current plan and capacity remain unchanged until this date."
+            : "Waiting for verified payment.",
+          { exact: false },
+        ),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", {
+          name: "Cancel scheduled change",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: "Change plan", exact: true }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Refresh plan change", exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", { name: "Refresh plan change", exact: true }),
+      ).toBeEnabled();
+      expect(submitted).toBe(1);
+      expect(f.patches()).toBe(0);
+    });
+  }
+}
