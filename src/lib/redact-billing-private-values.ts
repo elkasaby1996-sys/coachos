@@ -5,12 +5,16 @@ const uuid =
   /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
 const privateLabel = "[redacted provider reference]";
 const urlLabel = "[redacted payment URL]";
+const projectLabel = "[redacted project identifier]";
+const projectReference = /\b[a-z0-9]{20}\b/g;
 const capabilityKey =
   /^(?:checkouturl|portalurl|customerportal|updatepaymentmethod|signature|signedurl|capability|capabilityurl|paymenturl)$/;
 const referenceKey =
   /^(?:provider)?(?:checkout|transaction|customer|subscription|notification|event|resource|product|price|user|account|billingaccount|pilot|control)(?:ref|reference|id|uuid)$/;
 const secretKey =
   /^(?:authorization|accesstoken|refreshtoken|apikey|webhooksecret|password|secret|token)$/;
+const projectKey =
+  /^(?:(?:supabase|internal)?project|deployment|environment|organization)(?:ref|reference|id|uuid|slug)$/;
 
 function text(value: string): string {
   if (/^\s*[{[]/.test(value)) {
@@ -30,13 +34,23 @@ function text(value: string): string {
         const normalized = key.replace(/[^a-z0-9]/gi, "").toLowerCase();
         const label = capabilityKey.test(normalized)
           ? urlLabel
-          : referenceKey.test(normalized)
-            ? privateLabel
-            : secretKey.test(normalized)
-              ? "[redacted secret]"
-              : null;
+          : projectKey.test(normalized)
+            ? projectLabel
+            : referenceKey.test(normalized)
+              ? privateLabel
+              : secretKey.test(normalized)
+                ? "[redacted secret]"
+                : null;
         return label ? `${key}=${label}` : whole;
       },
+    )
+    .replace(
+      /(?:(?:https?|postgres(?:ql)?):\/\/[^\s"<>]*?(?:db\.)?[a-z0-9]{20}\.supabase\.(?:co|in)[^\s"<>]*|(?:db\.)?[a-z0-9]{20}\.supabase\.(?:co|in)(?:[^\s"<>]*)?)/g,
+      projectLabel,
+    )
+    .replace(
+      /https?:\/\/(?:app\.)?supabase\.com\/dashboard\/project\/[a-z0-9]{20}(?:[^\s"<>]*)?/g,
+      projectLabel,
     )
     .replace(
       /\b(?:che|hsc|txn|ctm|sub|ntf|evt|pro|pri|res)%5f[a-z0-9_%.-]+/gi,
@@ -51,6 +65,7 @@ function text(value: string): string {
           ? urlLabel
           : candidate,
     )
+    .replace(projectReference, projectLabel)
     .replace(reference, privateLabel)
     .replace(uuid, "[redacted private identifier]")
     .replace(
@@ -84,13 +99,15 @@ export function redactBillingPrivateValues<T>(value: T): T {
         const cleanKey = text(key);
         const clean = capabilityKey.test(normalized)
           ? urlLabel
-          : referenceKey.test(normalized)
-            ? privateLabel
-            : secretKey.test(normalized)
-              ? "[redacted secret]"
-              : "value" in descriptor
-                ? visit(descriptor.value)
-                : "[accessor omitted]";
+          : projectKey.test(normalized)
+            ? projectLabel
+            : referenceKey.test(normalized)
+              ? privateLabel
+              : secretKey.test(normalized)
+                ? "[redacted secret]"
+                : "value" in descriptor
+                  ? visit(descriptor.value)
+                  : "[accessor omitted]";
         let uniqueKey = cleanKey;
         for (
           let n = 2;

@@ -771,6 +771,89 @@ const outputRedactionPrFiles = [
   ".github/scripts/ci-change-scope.mjs",
   ".github/scripts/ci-change-scope.test.mjs",
 ];
+
+const projectIdentifierRedactionFiles = [
+  "src/lib/redact-billing-private-values.ts",
+  "tests/fixtures/billing-output-canaries.mjs",
+  "tests/unit/billing-output-redaction.test.ts",
+  "scripts/test-billing-output.mjs",
+];
+const projectIdentifierRedactionPrFiles = [
+  ...projectIdentifierRedactionFiles,
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+
+test("project-identifier redaction exemption has the exact four-file inventory", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const entries = [
+    ...source
+      .match(
+        /const paddleProjectIdentifierRedactionFiles = new Set\(\[([\s\S]*?)\]\);/,
+      )[1]
+      .matchAll(/"([^"]+)"/g),
+  ].map((match) => match[1]);
+  assert.equal(entries.length, 4);
+  assert.equal(new Set(entries).size, 4);
+  assert.deepEqual(entries, projectIdentifierRedactionFiles);
+});
+
+test("exact project-identifier redaction implementation keeps CI local-only", () => {
+  assert.deepEqual(classifyChanges(projectIdentifierRedactionFiles), {
+    docs_only: false,
+    configured_data_required: false,
+  });
+});
+
+test("final six-file project-identifier redaction PR keeps CI local-only", () => {
+  assert.equal(projectIdentifierRedactionPrFiles.length, 6);
+  assert.deepEqual(classifyChanges(projectIdentifierRedactionPrFiles), {
+    docs_only: false,
+    configured_data_required: false,
+  });
+});
+
+test("incomplete project-identifier redaction patches remain fail-closed", () => {
+  for (const omitted of projectIdentifierRedactionFiles) {
+    for (const files of [
+      projectIdentifierRedactionFiles,
+      projectIdentifierRedactionPrFiles,
+    ]) {
+      assert.deepEqual(
+        classifyChanges(files.filter((file) => file !== omitted)),
+        { docs_only: false, configured_data_required: true },
+        omitted,
+      );
+    }
+  }
+});
+
+for (const extra of [
+  "src/app.tsx",
+  "supabase/migrations/20260925000000_project_redaction_followup.sql",
+  ".github/workflows/ci.yml",
+  "package-lock.json",
+  "src/lib/redact-billing-private-values-project.ts",
+  "tests/fixtures/billing-output-project-canaries.mjs",
+  "tests/unit/billing-output-project-redaction.test.ts",
+  "scripts/test-project-billing-output.mjs",
+]) {
+  test(`project-identifier redaction mixed with ${extra} requires configured data`, () => {
+    for (const files of [
+      projectIdentifierRedactionFiles,
+      projectIdentifierRedactionPrFiles,
+    ]) {
+      assert.deepEqual(classifyChanges([...files, extra]), {
+        docs_only: false,
+        configured_data_required: true,
+      });
+    }
+  });
+}
+
 test("output redaction exemption matches the authoritative 16-file implementation", () => {
   const source = readFileSync(
     new URL("./ci-change-scope.mjs", import.meta.url),
