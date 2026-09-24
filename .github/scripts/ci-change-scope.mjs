@@ -199,6 +199,15 @@ const paddleOutputRedactionFiles = new Set([
   "tests/unit/staging-commercial-preflight.test.ts",
 ]);
 
+// PADDLE-OUTPUT-REDACTION-02 is output-only hardening. Exempt only its exact
+// four-file implementation, optionally with this classifier and its tests.
+const paddleProjectIdentifierRedactionFiles = new Set([
+  "src/lib/redact-billing-private-values.ts",
+  "tests/fixtures/billing-output-canaries.mjs",
+  "tests/unit/billing-output-redaction.test.ts",
+  "scripts/test-billing-output.mjs",
+]);
+
 // Only the complete reviewed lifecycle inventory may skip hosted-account writes.
 const paddleSubscriptionLifecycleFiles = new Set([
   "config/staging-commercial-certification.json",
@@ -267,6 +276,17 @@ export function classifyChanges(files) {
         file === ".github/scripts/ci-change-scope.mjs" ||
         file === ".github/scripts/ci-change-scope.test.mjs",
     );
+  const paddleProjectIdentifierRedaction =
+    new Set(files).size === files.length &&
+    [...paddleProjectIdentifierRedactionFiles].every((file) =>
+      files.includes(file),
+    ) &&
+    files.every(
+      (file) =>
+        paddleProjectIdentifierRedactionFiles.has(file) ||
+        file === ".github/scripts/ci-change-scope.mjs" ||
+        file === ".github/scripts/ci-change-scope.test.mjs",
+    );
   const documentation = (file) => /^docs\/.+\.md$/.test(file);
   const sharedRuntimeCompatibility =
     [...paddleSharedRuntimeCompatibilityFiles].every((file) =>
@@ -324,6 +344,7 @@ export function classifyChanges(files) {
       !paddlePlanChange &&
       !paddleSubscriptionLifecycle &&
       !paddleOutputRedaction &&
+      !paddleProjectIdentifierRedaction &&
       !sharedRuntimeCompatibility &&
       !billingPreWorkspaceAccess &&
       !paddleIdentitySupersession &&
