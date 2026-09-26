@@ -305,10 +305,16 @@ for (const cadence of ["monthly", "annual"] as const) {
       const source = downgrade ? "scale" : "growth";
       const target = downgrade ? "growth" : "scale";
       let providerRequests = 0;
-      await context.route(/https:\/\/[^/]*paddle\.com\//, (route) => {
-        providerRequests++;
-        return route.abort();
-      });
+      await context.route(
+        (url) =>
+          url.protocol === "https:" &&
+          (url.hostname === "paddle.com" ||
+            url.hostname.endsWith(".paddle.com")),
+        (route) => {
+          providerRequests++;
+          return route.abort();
+        },
+      );
       const quote = {
         action: "charge",
         amountMinor: 2400,
