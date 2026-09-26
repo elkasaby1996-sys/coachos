@@ -1173,3 +1173,94 @@ test("unrelated billing changes do not inherit the Paddle preview exemption", ()
     previewRequiresConfigured,
   );
 });
+
+const paddlePreviewBridgeFiles = [
+  "src/features/billing/plan-change-api.ts",
+  "src/features/billing/plan-change-panel.tsx",
+  "supabase/functions/_shared/billing-plan-change.ts",
+  "tests/unit/paddle-plan-change.test.ts",
+  "tests/unit/billing-plan-change-api.test.ts",
+  "tests/e2e/billing-plan-change.spec.ts",
+  "docs/paddle-plan-changes.md",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+test("preview bridge exact inventory agrees with implementation and documentation", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const entries = [
+    ...source
+      .match(/const paddlePreviewBridgeFiles = new Set\(\[([\s\S]*?)\]\);/)[1]
+      .matchAll(/"([^"]+)"/g),
+  ].map((m) => m[1]);
+  const doc = readFileSync(
+    new URL("../../docs/paddle-plan-changes.md", import.meta.url),
+    "utf8",
+  );
+  const inventory = doc
+    .split("<!-- preview-bridge-inventory -->")[1]
+    .split("<!-- /preview-bridge-inventory -->")[0]
+    .trim()
+    .split(/\r?\n/)
+    .slice(1, -1);
+  assert.deepEqual(entries, paddlePreviewBridgeFiles);
+  assert.deepEqual(inventory, paddlePreviewBridgeFiles);
+  assert.equal(entries.length, 9);
+  for (const list of [entries, [...entries].reverse()])
+    assert.deepEqual(classifyChanges(list), previewLocalOnly);
+});
+for (const file of paddlePreviewBridgeFiles) {
+  test("preview bridge omission fails closed: " + file, () => {
+    assert.deepEqual(
+      classifyChanges(paddlePreviewBridgeFiles.filter((f) => f !== file)),
+      previewRequiresConfigured,
+    );
+  });
+  test("preview bridge duplicate fails closed: " + file, () => {
+    assert.deepEqual(
+      classifyChanges([...paddlePreviewBridgeFiles, file]),
+      previewRequiresConfigured,
+    );
+  });
+  for (const alias of [
+    "./" + file,
+    file.replaceAll("/", "\\"),
+    file.toUpperCase(),
+    "tests/../" + file,
+  ]) {
+    test("preview bridge path alias fails closed: " + alias, () => {
+      assert.deepEqual(
+        classifyChanges(
+          paddlePreviewBridgeFiles.map((f) => (f === file ? alias : f)),
+        ),
+        previewRequiresConfigured,
+      );
+    });
+  }
+}
+for (const extra of [
+  "src/app.tsx",
+  "supabase/functions/_shared/paddle-plan-change.ts",
+  "src/features/billing/plan-change-contracts.ts",
+  "supabase/migrations/20260926000000_unrelated.sql",
+  ".github/workflows/ci.yml",
+  "package.json",
+  "package-lock.json",
+  "docs/unrelated.md",
+  ".codex/environments/environment.toml",
+]) {
+  test("preview bridge unrelated addition fails closed: " + extra, () => {
+    assert.deepEqual(
+      classifyChanges([...paddlePreviewBridgeFiles, extra]),
+      previewRequiresConfigured,
+    );
+  });
+}
+test("unrelated billing subset cannot inherit bridge exemption", () => {
+  assert.deepEqual(
+    classifyChanges(["supabase/functions/_shared/billing-plan-change.ts"]),
+    previewRequiresConfigured,
+  );
+});

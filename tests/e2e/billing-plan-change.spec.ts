@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { setTimeout as delay } from "node:timers/promises";
 import { planChangeFixture } from "./utils/plan-change-fixture";
+import { handlePlanChange } from "../../supabase/functions/_shared/billing-plan-change";
+import type { BillingDependencies } from "../../supabase/functions/_shared/billing-handlers";
 test.describe.configure({ mode: "parallel" });
 test.afterEach(async ({ context }) => {
   await context.unrouteAll({ behavior: "wait" });
@@ -294,8 +296,8 @@ test("mobile plan preview fits and exposes no provider data", async ({
   });
 });
 
-// UI-only Paddle projections over a local seeded canonical account. Provider
-// mutation/payment authority is exercised by the separate SQL/transport suites.
+// UI and HTTP bridge over a local seeded canonical account with an injected
+// provider preview. Payment authority is exercised by SQL/transport suites.
 for (const cadence of ["monthly", "annual"] as const) {
   for (const downgrade of [false, true]) {
     test(`Paddle ${cadence} ${downgrade ? "scheduled downgrade" : "failed upgrade"} retains source capacity`, async ({
@@ -341,45 +343,103 @@ for (const cadence of ["monthly", "annual"] as const) {
         "**/rest/v1/rpc/get_my_billing_plan_change_state",
         (route) => route.fulfill({ json: state() }),
       );
+      const previewBody = {
+        provider: "paddle",
+        sourcePlanKey: source,
+        sourceCadence: cadence,
+        targetPlanKey: target,
+        targetCadence: cadence,
+        changeKind: downgrade ? "tier_downgrade" : "tier_upgrade",
+        effectiveTiming: downgrade ? "period_end" : "immediate",
+        prorationMode: downgrade ? "disable_prorations" : "invoice_immediately",
+        currentPriceMinor: downgrade ? 9900 : 5900,
+        targetPriceMinor: downgrade ? 5900 : 9900,
+        currency: "USD",
+        effectiveAt: downgrade
+          ? new Date(Date.now() + 86400000).toISOString()
+          : null,
+        dataQualityIssue: false,
+        blockers: [],
+      };
+      const versions: unknown[] = [];
+      const bridgeDeps = {
+        authenticate: async () => ({ id: "synthetic-owner" }),
+        serviceRpc: async (name: string) => {
+          if (name === "paddle_plan_change_route_v1") return true;
+          if (name === "paddle_plan_change_context_v1") return {};
+          if (name === "preview_paddle_plan_change_v1")
+            return {
+              preview: previewBody,
+              targetPriceRef: "synthetic-price",
+              targetProductRef: "synthetic-product",
+            };
+          throw new Error("Preview attempted a commercial RPC");
+        },
+        paddlePlans: () => ({
+          retrieve: async () => ({ snapshot: {}, custom: {} }),
+          preview: async () => (downgrade ? undefined : quote),
+          update: async () => {
+            throw new Error("Preview attempted a subscription mutation");
+          },
+        }),
+      } as unknown as BillingDependencies;
       await context.route(
         "**/functions/v1/billing-preview-plan-change",
-        (route) => {
+        async (route) => {
           const input = route.request().postDataJSON();
-          expect(Object.keys(input).sort()).toEqual([
-            "operationId",
-            "targetCadence",
-            "targetPlanKey",
-          ]);
+          versions.push(input.previewContractVersion);
+          expect(Object.keys(input).sort()).toEqual(
+            input.previewContractVersion === undefined
+              ? ["operationId", "targetCadence", "targetPlanKey"]
+              : [
+                  "operationId",
+                  "previewContractVersion",
+                  "targetCadence",
+                  "targetPlanKey",
+                ],
+          );
+          if (input.previewContractVersion !== undefined)
+            expect(input.previewContractVersion).toBe(2);
           expect(input.targetCadence).toBe(cadence);
-          return route.fulfill({
-            json: {
-              provider: "paddle",
-              sourcePlanKey: source,
-              sourceCadence: cadence,
-              targetPlanKey: target,
-              targetCadence: cadence,
-              changeKind: downgrade ? "tier_downgrade" : "tier_upgrade",
-              effectiveTiming: downgrade ? "period_end" : "immediate",
-              prorationMode: downgrade
-                ? "disable_prorations"
-                : "invoice_immediately",
-              currentPriceMinor: downgrade ? 9900 : 5900,
-              targetPriceMinor: downgrade ? 5900 : 9900,
-              currency: "USD",
-              ...(!downgrade
-                ? {
-                    quote,
-                  }
-                : {}),
-              effectiveAt: downgrade
-                ? new Date(Date.now() + 86400000).toISOString()
-                : null,
-              dataQualityIssue: false,
-              blockers: [],
-            },
+          const response = await handlePlanChange(
+            new Request(route.request().url(), {
+              method: "POST",
+              headers: { authorization: "Bearer synthetic" },
+              body: route.request().postData(),
+            }),
+            bridgeDeps,
+            "preview",
+          );
+          await route.fulfill({
+            status: response.status,
+            headers: Object.fromEntries(response.headers),
+            body: await response.text(),
           });
         },
       );
+      // A cached legacy frontend still sends the original three-field body.
+      const legacy = await page.evaluate(
+        async (body) => {
+          const response = await fetch(
+            "/functions/v1/billing-preview-plan-change",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            },
+          );
+          return { status: response.status, body: await response.json() };
+        },
+        {
+          targetPlanKey: target,
+          targetCadence: cadence,
+          operationId: "a0700000-0000-4000-8000-000000000001",
+        },
+      );
+      expect(legacy.status).toBe(200);
+      expect(legacy.body).toEqual(previewBody);
+      expect(legacy.body).not.toHaveProperty("quote");
+      expect(await f.commercialCounts()).toEqual(beforePreview);
       await context.route(
         "**/functions/v1/billing-change-subscription-plan",
         (route) => {
@@ -444,6 +504,7 @@ for (const cadence of ["monthly", "annual"] as const) {
       }
       expect(await f.commercialCounts()).toEqual(beforePreview);
       expect(beforePreview).toEqual({ operations: 0, applications: 0 });
+      expect(versions).toEqual([undefined, 2]);
       expect(await page.locator("body").innerText()).not.toMatch(
         /\b(?:sub|ctm|txn|pri|pro)_[a-z0-9]+/i,
       );

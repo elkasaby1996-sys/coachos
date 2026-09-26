@@ -18,6 +18,7 @@ export async function fetchPlanChangeState() {
 export async function requestPlanChange(
   action: "preview" | "apply" | "cancel" | "refresh",
   body: Record<string, unknown>,
+  provider?: "paddle",
 ) {
   try {
     const { supabase } = await import("../../lib/supabase");
@@ -27,7 +28,12 @@ export async function requestPlanChange(
       cancel: "billing-cancel-scheduled-plan-change",
       refresh: "billing-refresh-plan-change",
     }[action];
-    const { data, error } = await supabase.functions.invoke(endpoint, { body });
+    const { data, error } = await supabase.functions.invoke(endpoint, {
+      body:
+        action === "preview" && provider === "paddle"
+          ? { ...body, previewContractVersion: 2 }
+          : body,
+    });
     if (error) {
       let safe: unknown;
       try {

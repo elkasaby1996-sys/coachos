@@ -1,5 +1,8 @@
 import { observeEvent } from "../../supabase/functions/_shared/paddle-webhook/observation";
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+import { handlePlanChange } from "../../supabase/functions/_shared/billing-plan-change";
+import { planChangePreviewSchema } from "../../src/features/billing/plan-change-contracts";
 import {
   createPaddlePlanTransport,
   handlePaddlePlanAction,
@@ -497,4 +500,262 @@ describe("Paddle plan settlement projection", () => {
       project(event([{ status: "captured", amount: "-1" }])),
     ).toThrow();
   });
+});
+
+// Frozen deployed frontend schema from 0d0ce4b0f7bc66d2b3661d39beb582d78b55f9f8.
+// Keep independent of the current schema so compatibility cannot pass by construction.
+const legacyPlanKey = z.enum(["launch", "growth", "scale"]);
+const legacyCadence = z.enum(["monthly", "annual"]);
+const legacyPreviewSchema = z
+  .object({
+    provider: z.literal("paddle").optional(),
+    sourcePlanKey: legacyPlanKey,
+    sourceCadence: legacyCadence,
+    targetPlanKey: legacyPlanKey,
+    targetCadence: legacyCadence,
+    changeKind: z.enum([
+      "tier_upgrade",
+      "cadence_upgrade",
+      "combined_upgrade",
+      "tier_downgrade",
+      "cadence_downgrade",
+      "combined_downgrade",
+    ]),
+    effectiveTiming: z.enum(["immediate", "period_end"]),
+    prorationMode: z.enum(["invoice_immediately", "disable_prorations"]),
+    currentPriceMinor: z.number().int().positive(),
+    targetPriceMinor: z.number().int().positive(),
+    currency: z.literal("USD"),
+    effectiveAt: z.string().datetime({ offset: true }).nullable(),
+    dataQualityIssue: z.boolean(),
+    blockers: z.array(
+      z
+        .object({
+          dimension: z.enum([
+            "counted_clients",
+            "coach_seats",
+            "active_workspaces",
+            "published_packages",
+          ]),
+          committed: z.number().int().nonnegative(),
+          targetLimit: z.number().int().positive().nullable(),
+          overBy: z.number().int().nonnegative(),
+          managementRoute: z.enum([
+            "/pt-hub/clients",
+            "/pt-hub/workspaces",
+            "/pt-hub/packages",
+          ]),
+          remediation: z.string(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+function bridgeFixture(value: unknown = data(true), scheduled = false) {
+  const base = {
+    provider: "paddle",
+    sourcePlanKey: scheduled ? "scale" : "growth",
+    sourceCadence: "monthly",
+    targetPlanKey: scheduled ? "growth" : "scale",
+    targetCadence: "monthly",
+    changeKind: scheduled ? "tier_downgrade" : "tier_upgrade",
+    effectiveTiming: scheduled ? "period_end" : "immediate",
+    prorationMode: scheduled ? "disable_prorations" : "invoice_immediately",
+    currentPriceMinor: context.sourceAmount,
+    targetPriceMinor: target.amount,
+    currency: "USD",
+    effectiveAt: scheduled ? context.periodEnd : null,
+    dataQualityIssue: false,
+    blockers: [],
+  };
+  const fetcher = vi.fn(
+    async (_url: string, init?: RequestInit) =>
+      new Response(
+        JSON.stringify({ data: init?.method === "GET" ? data() : value }),
+        { headers: { "content-type": "application/json" } },
+      ),
+  );
+  const transport = createPaddlePlanTransport(
+    "test",
+    "pdl_sdbx_synthetic",
+    fetcher,
+  );
+  const update = vi.spyOn(transport, "update");
+  const serviceRpc = vi.fn(async (name: string) => {
+    if (name === "paddle_plan_change_route_v1") return true;
+    if (name === "paddle_plan_change_context_v1") return context;
+    if (name === "preview_paddle_plan_change_v1")
+      return {
+        targetPriceRef: target.priceRef,
+        targetProductRef: target.productRef,
+        preview: base,
+      };
+    throw new Error("Unexpected commercial RPC");
+  });
+  const deps = {
+    authenticate: async () => ({ id: "owner" }),
+    paddlePlans: () => transport,
+    serviceRpc,
+  } as unknown as BillingDependencies;
+  const input = {
+    targetPlanKey: base.targetPlanKey,
+    targetCadence: "monthly",
+    operationId: operation,
+  };
+  const request = (
+    extra: Record<string, unknown> = {},
+    action: "preview" | "apply" | "cancel" | "refresh" = "preview",
+  ) =>
+    handlePlanChange(
+      new Request("http://local.test", {
+        method: "POST",
+        headers: { authorization: "Bearer synthetic" },
+        body: JSON.stringify({ ...input, ...extra }),
+      }),
+      deps,
+      action,
+    );
+  const assertPreviewOnly = () => {
+    expect(update).not.toHaveBeenCalled();
+    expect(
+      fetcher.mock.calls.map(([url, init]) => [
+        url.endsWith("/preview"),
+        init?.method,
+      ]),
+    ).toEqual([
+      [false, "GET"],
+      [true, "PATCH"],
+    ]);
+    expect(serviceRpc.mock.calls.map(([name]) => name)).toEqual([
+      "paddle_plan_change_route_v1",
+      "paddle_plan_change_context_v1",
+      "preview_paddle_plan_change_v1",
+    ]);
+  };
+  return { request, base, fetcher, serviceRpc, assertPreviewOnly };
+}
+describe("preview compatibility bridge HTTP boundary", () => {
+  it("serves the frozen old strict frontend without quote or extra fields", async () => {
+    const f = bridgeFixture();
+    const r = await f.request();
+    const body = await r.json();
+    expect(r.status).toBe(200);
+    expect(body).toEqual(f.base);
+    expect(body).not.toHaveProperty("quote");
+    expect(legacyPreviewSchema.parse(body)).toEqual(f.base);
+    expect(
+      legacyPreviewSchema.safeParse({
+        ...body,
+        quote: { action: "charge", amountMinor: 2700, currencyCode: "USD" },
+      }).success,
+    ).toBe(false);
+    f.assertPreviewOnly();
+  });
+  it("serves an explicit v2 request accepted by the new strict frontend", async () => {
+    const f = bridgeFixture();
+    const r = await f.request({ previewContractVersion: 2 });
+    expect(r.status).toBe(200);
+    expect(planChangePreviewSchema.parse(await r.json())).toEqual({
+      ...f.base,
+      quote: { action: "charge", amountMinor: 2700, currencyCode: "USD" },
+    });
+    f.assertPreviewOnly();
+  });
+  it.each(
+    [1, 0, -1, 2.5, 3, "2", null, true, {}, []].map((version) => ({ version })),
+  )(
+    "rejects explicit unsupported version $version before provider access",
+    async ({ version }) => {
+      const f = bridgeFixture();
+      const r = await f.request({ previewContractVersion: version });
+      expect(r.status).toBe(400);
+      expect(await r.json()).toEqual({ code: "BILLING_INVALID_INPUT" });
+      expect(f.fetcher).not.toHaveBeenCalled();
+      expect(f.serviceRpc).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["apply", "cancel", "refresh"] as const)(
+    "rejects negotiation on %s",
+    async (action) => {
+      const f = bridgeFixture();
+      const r = await f.request({ previewContractVersion: 2 }, action);
+      expect(r.status).toBe(400);
+      expect(f.fetcher).not.toHaveBeenCalled();
+      expect(f.serviceRpc).not.toHaveBeenCalled();
+    },
+  );
+  it("still rejects extra request fields alongside valid negotiation", async () => {
+    const f = bridgeFixture();
+    const r = await f.request({
+      previewContractVersion: 2,
+      subscriptionId: "forged",
+    });
+    expect(r.status).toBe(400);
+    expect(f.fetcher).not.toHaveBeenCalled();
+  });
+  for (const version of [undefined, 2]) {
+    it.each(
+      [
+        undefined,
+        null,
+        [],
+        "malformed",
+        {},
+        { result: [] },
+        { result: { action: "charge", amount: "0", currency_code: "USD" } },
+        { result: { action: "charge", amount: "2700", currency_code: "EUR" } },
+        { result: { action: "credit", amount: "2700", currency_code: "USD" } },
+        {
+          result: {
+            action: "charge",
+            amount: "9007199254740992",
+            currency_code: "USD",
+          },
+        },
+      ].map((summary) => ({ summary })),
+    )(
+      "contract " +
+        (version ?? "legacy") +
+        " rejects invalid required provider summary $summary without fallback",
+      async ({ summary }) => {
+        const f = bridgeFixture({ ...data(true), update_summary: summary });
+        const r = await f.request(
+          version === undefined ? {} : { previewContractVersion: version },
+        );
+        expect(r.status).toBe(503);
+        expect(await r.json()).toEqual({
+          code: "BILLING_PLAN_CHANGE_PROVIDER_FAILED",
+        });
+        f.assertPreviewOnly();
+      },
+    );
+    it(
+      "contract " +
+        (version ?? "legacy") +
+        " preserves scheduled optional quote and rejects malformed supplied summary",
+      async () => {
+        const f = bridgeFixture(
+          { ...data(true), update_summary: undefined },
+          true,
+        );
+        const extra =
+          version === undefined ? {} : { previewContractVersion: version };
+        const r = await f.request(extra);
+        const body = await r.json();
+        expect(r.status).toBe(200);
+        expect(body).not.toHaveProperty("quote");
+        expect(planChangePreviewSchema.parse(body).effectiveAt).toBe(
+          context.periodEnd,
+        );
+        f.assertPreviewOnly();
+        const malformed = bridgeFixture(
+          { ...data(true), update_summary: [] },
+          true,
+        );
+        expect((await malformed.request(extra)).status).toBe(503);
+        malformed.assertPreviewOnly();
+      },
+    );
+  }
 });
