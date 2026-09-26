@@ -262,7 +262,25 @@ const paddlePreviewContractFiles = new Set([
   ".github/scripts/ci-change-scope.test.mjs",
 ]);
 
+// Temporary preview negotiation bridge. Every reviewed path is required;
+// no extra paths, aliases, duplicates or partial inventories are exempt.
+const paddlePreviewBridgeFiles = new Set([
+  "src/features/billing/plan-change-api.ts",
+  "src/features/billing/plan-change-panel.tsx",
+  "supabase/functions/_shared/billing-plan-change.ts",
+  "tests/unit/paddle-plan-change.test.ts",
+  "tests/unit/billing-plan-change-api.test.ts",
+  "tests/e2e/billing-plan-change.spec.ts",
+  "docs/paddle-plan-changes.md",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+]);
+
 export function classifyChanges(files) {
+  const paddlePreviewBridge =
+    files.length === paddlePreviewBridgeFiles.size &&
+    new Set(files).size === files.length &&
+    files.every((file) => paddlePreviewBridgeFiles.has(file));
   const paddlePreviewContract =
     files.length === paddlePreviewContractFiles.size &&
     new Set(files).size === files.length &&
@@ -362,6 +380,7 @@ export function classifyChanges(files) {
     // CI changes still run the full local smoke suite, but do not need to
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
+      !paddlePreviewBridge &&
       !paddlePreviewContract &&
       !paddlePlanChange &&
       !paddleSubscriptionLifecycle &&

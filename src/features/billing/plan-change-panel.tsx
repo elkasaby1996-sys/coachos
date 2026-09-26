@@ -110,6 +110,7 @@ export function PlanChangePanel({
           : action === "cancel"
             ? { operationId: state.data?.operation?.operationId }
             : target,
+        state.data?.provider,
       );
       if (action === "preview")
         setPreview(planChangePreviewSchema.parse(result));

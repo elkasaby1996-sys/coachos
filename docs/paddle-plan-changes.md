@@ -150,3 +150,78 @@ The original implementation commit is preserved. Release verification changes
 and the exact classifier change are committed separately. PR metadata records
 all commit SHAs and final-head check outcomes. Provider calls and hosted mutations
 during this release verification are zero; no merge or deployment is authorized.
+
+## Temporary preview compatibility bridge
+
+This release negotiates only the Paddle preview response. The Billing panel passes
+its canonical Paddle provider context to the API helper; only its preview request
+adds numeric `previewContractVersion: 2`. Apply, refresh, cancellation and
+non-Paddle request bodies remain unchanged. Browser payloads gain no provider IDs.
+
+The preview HTTP handler accepts an absent version as temporary v1, or numeric 2
+as v2. Every other explicit value fails with HTTP 400 / `BILLING_INVALID_INPUT`
+before routing/provider access. The version is rejected on other actions. The
+helper never retries as v1 or falls back to the legacy response parser.
+
+Both modes execute the same strict provider validation. Only after validation does
+v1 omit `quote`, preserving the old strict frontend shape without any replacement
+field. V2 retains the existing quoted response. Immediate paid upgrades require a
+positive USD charge from Paddle `update_summary.result`; safe integer, malformed
+container, identity and actual-mutation checks remain unchanged. A genuinely absent
+scheduled-change quote remains optional; malformed supplied data still fails.
+Preview creates no durable operation, payment application or entitlement authority.
+
+Compatibility proof uses a frozen schema from deployed frontend commit
+`0d0ce4b0f7bc66d2b3661d39beb582d78b55f9f8`, the full HTTP handler and injected
+provider fetch. Browser cases exercise legacy and v2 requests against the handler,
+with synthetic provider previews over local canonical accounts. These are local
+compatibility checks, not Sandbox certification or captured-payment evidence.
+
+After separate review and deployment authorization: deploy only the bridge preview
+function first; verify dormant invariants; then deploy the version-requesting
+frontend from the new reviewed bridge release. Commit `026e97d` alone does not
+request v2. Verify both artifacts without invoking a real Paddle preview.
+
+Rollback the frontend first and retain the bridge where possible. If the backend
+must revert to v15, any remaining v2 clients receive an explicit input error and
+fail closed. Retain v1 in this release; remove it only after staging certification,
+production frontend migration, and evidence that legacy clients are no longer
+expected. Shared handler imports do not authorize redeploying other functions.
+
+The new exact CI exemption requires all nine paths below. Omissions, duplicates,
+path aliases and unrelated additions (including the local environment file) fail
+closed. Quality, local smoke, database and security gates remain active; only
+configured hosted-account integration is excluded. No workflow change is included.
+
+### Preview bridge release inventory
+
+<!-- preview-bridge-inventory -->
+
+```text
+src/features/billing/plan-change-api.ts
+src/features/billing/plan-change-panel.tsx
+supabase/functions/_shared/billing-plan-change.ts
+tests/unit/paddle-plan-change.test.ts
+tests/unit/billing-plan-change-api.test.ts
+tests/e2e/billing-plan-change.spec.ts
+docs/paddle-plan-changes.md
+.github/scripts/ci-change-scope.mjs
+.github/scripts/ci-change-scope.test.mjs
+```
+
+<!-- /preview-bridge-inventory -->
+
+### Bridge local verification
+
+On 2026-09-26, the final bridge code passed **3,314 unit tests across 291 files**
+with zero failures. The exact-inventory classifier passed **397 tests**.
+The normal Chromium plan-change and coach-seat suites passed **24 tests** using
+four workers, zero retries, and the existing timeouts. Monthly and annual Paddle
+cases exercised legacy and v2 requests through the real HTTP handler with an
+injected synthetic preview transport, verified quote copy, and retained unchanged
+commercial counts. The unit matrix separately exercised the real transport with
+injected fetch, including malformed quotes and the existing identity rules.
+
+Browser verification used the retained disposable local Supabase database; no
+migration was applied. The local stack was stopped afterward. No provider call,
+staging/production write, deployment, commit, push, or PR was performed.

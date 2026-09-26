@@ -83,9 +83,20 @@ export async function handlePlanChange(
     if (!owner || !token)
       throw new BillingError("BILLING_PLAN_CHANGE_OWNER_REQUIRED", 401);
     ownerId = owner.id;
-    const input = object(
+    let input = object(
       JSON.parse(new TextDecoder().decode(await boundedBody(request, 4096))),
     );
+    let previewContractVersion = 1;
+    if (
+      action === "preview" &&
+      Object.hasOwn(input, "previewContractVersion")
+    ) {
+      if (input.previewContractVersion !== 2)
+        throw new BillingError("BILLING_INVALID_INPUT");
+      previewContractVersion = 2;
+      input = { ...input };
+      delete input.previewContractVersion;
+    }
     if (action === "cancel") {
       if (
         Object.keys(input).join() !== "operationId" ||
@@ -102,10 +113,23 @@ export async function handlePlanChange(
       (await deps.serviceRpc("paddle_plan_change_route_v1", {
         p_owner: owner.id,
       }))
-    )
-      return reply(
-        await handlePaddlePlanAction(deps, owner.id, token, action, input),
+    ) {
+      const result = await handlePaddlePlanAction(
+        deps,
+        owner.id,
+        token,
+        action,
+        input,
       );
+      // Validate the provider preview in both modes before projecting the
+      // temporary legacy shape. Negotiation never changes mutation authority.
+      if (action === "preview" && previewContractVersion === 1) {
+        const legacy = { ...result };
+        delete legacy.quote;
+        return reply(legacy);
+      }
+      return reply(result);
+    }
     const config = deps.config();
     if (!config?.commercial?.plans)
       throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
