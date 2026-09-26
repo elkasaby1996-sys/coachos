@@ -144,7 +144,7 @@ function lifecycle(data: Record<string, unknown>): PaddleLifecycleObservation {
   }
   return result;
 }
-function items(value: unknown): PaddleWebhookItem[] {
+function items(value: unknown, planSettlement = false): PaddleWebhookItem[] {
   if (!Array.isArray(value) || value.length < 1 || value.length > 32)
     return fail("event_invalid");
   return value.map((raw) => {
@@ -154,8 +154,9 @@ function items(value: unknown): PaddleWebhookItem[] {
     if (
       typeof item.quantity !== "number" ||
       !Number.isSafeInteger(item.quantity) ||
-      item.quantity < 1 ||
-      item.quantity > 2147483647 ||
+      item.quantity === 0 ||
+      (!planSettlement && item.quantity < 1) ||
+      Math.abs(item.quantity) > 2147483647 ||
       typeof money.amount !== "string" ||
       !/^(0|[1-9][0-9]{0,34})$/.test(money.amount)
     )
@@ -196,17 +197,24 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
   const data = object(envelope.data);
   if (base.eventType === "transaction.completed") {
     if (data.status !== "completed") fail("event_invalid");
+    const operation = planOperation(data);
     return {
       ...base,
       kind: "transaction.completed",
-      ...planOperation(data),
+      ...operation,
       ...planPayment(data),
       transactionRef: reference(data.id),
       subscriptionRef: nullableReference(data.subscription_id),
       customerRef: nullableReference(data.customer_id),
       status: "completed",
       currency: currency(data.currency_code),
-      items: items(data.items),
+      // Proration transactions describe a delta, not current subscription state.
+      // Only settlement SQL can bind either sign to the operation's mappings.
+      items: items(
+        data.items,
+        !!operation.planChangeOperationId &&
+          data.origin === "subscription_update",
+      ),
       ...("origin" in data ? { origin: reference(data.origin) } : {}),
       ...("billing_period" in data
         ? { billingPeriod: period(data.billing_period) }

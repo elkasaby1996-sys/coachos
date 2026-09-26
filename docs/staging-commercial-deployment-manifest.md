@@ -1,5 +1,10 @@
 # Staging commercial deployment manifest
 
+CODEX-11 appends `20260926195242_paddle_proration_settlement.sql` for local review.
+It corrects authenticated immediate plan-change proration retention and settlement
+validation without changing existing rows, grants, or historical migrations.
+This manifest entry does not authorize deployment, webhook replay, or staging recovery.
+
 `config/staging-commercial-certification.json` is the reviewed machine-readable source. `scripts/staging-commercial-contracts.mjs` validates every object with strict Zod schemas. Unknown fields, duplicate/missing/unreviewed functions, secret-name drift and scenario-set changes fail. schemaVersion is 1; environment is staging and providerEnvironment is test.
 
 The billing allowlist now also registers `billing-create-paddle-checkout` with

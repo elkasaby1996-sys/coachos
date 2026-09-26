@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.0";
 import {
   createPaddleWebhookIngress,
+  logPaddleWebhookRejection,
   webhookConfiguration,
 } from "../_shared/paddle-webhook/ingress.ts";
 
@@ -17,7 +18,8 @@ Deno.serve(async (request) => {
     return await createPaddleWebhookIngress(config, {
       rpc: async (name, args) => client.rpc(name, args),
     })(request);
-  } catch {
+  } catch (error) {
+    logPaddleWebhookRejection("configuration", error, 503);
     return new Response("unavailable", {
       status: 503,
       headers: { "Cache-Control": "no-store" },

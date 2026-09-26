@@ -14,7 +14,7 @@ create function pg_temp.plan_snapshot(u uuid) returns jsonb language sql as $$
 create function pg_temp.plan_begin(u uuid,target text default 'scale',operation uuid default gen_random_uuid()) returns jsonb language sql as $$
  select begin_paddle_plan_change_v1(u,target,'monthly',operation,pg_temp.plan_snapshot(u)) $$;
 create function pg_temp.plan_observation(u uuid,label text,k text default 'subscription.updated',state text default 'active') returns jsonb language plpgsql as $$
-declare op billing_operations_v2%rowtype;m billing_price_mappings%rowtype;o jsonb;stamp text;
+declare op billing_operations_v2%rowtype;m billing_price_mappings%rowtype;source_mapping billing_price_mappings%rowtype;o jsonb;stamp text;
 begin
  select b.* into op from billing_operations_v2 b join billing_accounts a on a.id=b.billing_account_id where a.owner_user_id=u order by b.provider_requested_at desc,b.id desc limit 1;
  select * into m from billing_price_mappings where id=op.target_base_mapping_id;
@@ -23,7 +23,12 @@ begin
  to_char(op.source_period_started_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),to_char(op.source_period_ends_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
  o:=o||jsonb_build_object('planChangeOperationId',op.operation_id,'items',jsonb_build_array(jsonb_build_object('priceRef',m.provider_price_ref,'productRef',m.provider_product_ref,
  'quantity',1,'unitPrice',jsonb_build_object('amount',m.unit_amount_minor::text,'currency','USD'))||case when k='subscription.updated' then jsonb_build_object('status','active') else '{}'::jsonb end));
- if k='transaction.completed' then o:=o||jsonb_build_object('origin','subscription_update','paymentTotals',jsonb_build_object('total',3000,'paid',3000,'balance',0));end if;
+ if k='transaction.completed' then
+  select * into source_mapping from billing_price_mappings where id=op.source_base_mapping_id;
+  o:=o||jsonb_build_object('origin','subscription_update','paymentTotals',jsonb_build_object('total',3000,'paid',3000,'balance',0),
+   'items',(o->'items')||case when op.effective_timing='immediate' then jsonb_build_array(jsonb_build_object('priceRef',source_mapping.provider_price_ref,'productRef',source_mapping.provider_product_ref,
+    'quantity',-1,'unitPrice',jsonb_build_object('amount',source_mapping.unit_amount_minor::text,'currency','USD'))) else '[]'::jsonb end);
+ end if;
  return o;
 end $$;
 create function pg_temp.plan_status(u uuid) returns jsonb language sql as $$
