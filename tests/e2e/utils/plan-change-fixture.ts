@@ -3,6 +3,10 @@ import { createHmac, randomUUID } from "node:crypto";
 import { expect, type Page, type BrowserContext } from "@playwright/test";
 import { seedEntitlementCoach } from "./account-entitlement-seeds";
 import { pgQuery } from "./auth-seeds";
+import {
+  validatePlanChangeMappings,
+  type PlanChangeMapping,
+} from "./plan-change-mappings";
 import { trackRpcReads } from "./rpc-readiness";
 import {
   signInWithEmail,
@@ -41,25 +45,31 @@ export async function planChangeFixture(
   page: Page,
   context: BrowserContext,
   scope: string,
-  plan = "launch",
+  plan = "growth",
   cadence = "monthly",
   processor: "card" | "paypal" = "card",
   seatCapable = false,
 ) {
   const waitForReads = trackRpcReads(page);
   const coach = await seedEntitlementCoach(`plan-${scope}`, true);
-  await pgQuery(`insert into public.billing_provider_variant_mappings(plan_version_id,cadence,environment,provider_store_id,provider_product_id,provider_variant_id,provider_price_id,currency_code,unit_amount_minor,renewal_interval_unit,renewal_interval_quantity,status,verified_at)
-    select p.id,c.cadence,'test','99001','99002',(99010+row_number() over(order by p.plan_key,c.cadence))::text,(99110+row_number() over(order by p.plan_key,c.cadence))::text,'USD',case c.cadence when 'annual' then p.annual_price_minor else p.monthly_price_minor end,case c.cadence when 'annual' then 'year' else 'month' end,1,'active',now()
-    from public.commercial_plan_versions p cross join(values('monthly'),('annual'))c(cadence) where p.status='active' and p.plan_key in ('launch','growth','scale') on conflict do nothing`);
-  const mappings = await pgQuery<{
-    id: string;
-    plan_version_id: string;
-    plan_key: string;
-    cadence: string;
-    provider_variant_id: string;
-    provider_price_id: string;
-  }>(
-    `select m.*,p.plan_key from public.billing_provider_variant_mappings m join public.commercial_plan_versions p on p.id=m.plan_version_id where m.environment='test' and m.status='active'`,
+  // The mapping trigger runs before ON CONFLICT. Serialize empty-baseline
+  // seeding, and never attempt a second store/product binding over retained data.
+  await pgQuery(`begin;
+    select pg_advisory_xact_lock(hashtextextended('billing-mapping:test',0));
+    insert into public.billing_provider_variant_mappings(plan_version_id,cadence,environment,provider_store_id,provider_product_id,provider_variant_id,provider_price_id,currency_code,unit_amount_minor,renewal_interval_unit,renewal_interval_quantity,status,verified_at,retired_at)
+    select p.id,c.cadence,'test','99001','99002',(99010+row_number() over(order by p.plan_key,c.cadence))::text,(99110+row_number() over(order by p.plan_key,c.cadence))::text,'USD',case c.cadence when 'annual' then p.annual_price_minor else p.monthly_price_minor end,case c.cadence when 'annual' then 'year' else 'month' end,1,case when p.plan_key='launch' and c.cadence='monthly' then 'retired' else 'active' end,now(),case when p.plan_key='launch' and c.cadence='monthly' then now() else null end
+    from public.commercial_plan_versions p cross join(values('monthly'),('annual'))c(cadence) where p.status='active' and p.plan_key in ('launch','growth','scale')
+    and not exists(select 1 from public.billing_provider_variant_mappings where environment='test');
+    commit;`);
+  const mappings = validatePlanChangeMappings(
+    await pgQuery<PlanChangeMapping>(
+      `select m.*,p.plan_key,p.status as plan_status,p.currency_code as canonical_currency,
+      case m.cadence when 'monthly' then p.monthly_price_minor else p.annual_price_minor end as canonical_amount
+      from public.billing_provider_variant_mappings m join public.commercial_plan_versions p on p.id=m.plan_version_id
+      where m.environment='test'`,
+    ),
+    plan,
+    cadence,
   );
   if (seatCapable)
     await pgQuery(`insert into public.billing_quantity_price_contracts(variant_mapping_id,addon_version_id,status,pricing_scheme,base_quantity,normalized_price_contract,price_contract_sha256,verified_at)
@@ -79,10 +89,10 @@ export async function planChangeFixture(
   let snapshot: SubscriptionSnapshot = {
     provider: "lemonsqueezy",
     environment: "test",
-    store_id: "99001",
+    store_id: mapping.provider_store_id,
     customer_id: sid,
     subscription_id: sid,
-    product_id: "99002",
+    product_id: mapping.provider_product_id,
     variant_id: mapping.provider_variant_id,
     price_id: mapping.provider_price_id,
     order_id: sid,
@@ -101,9 +111,9 @@ export async function planChangeFixture(
   await pgQuery(`begin;
     update public.account_subscriptions set status='canceled',canceled_at=now(),status_changed_at=now() where billing_account_id=(select id from public.billing_accounts where owner_user_id=${sql(coach.userId)}) and status in ('active','trialing');
     insert into public.account_subscriptions(billing_account_id,plan_version_id,subscription_kind,status,source,current_period_started_at,current_period_ends_at) select id,${sql(mapping.plan_version_id)},'paid','active','billing_provider',${sql(created)},${sql(renews)} from public.billing_accounts where owner_user_id=${sql(coach.userId)};
-    insert into public.billing_provider_customers(billing_account_id,provider,environment,provider_store_id,provider_customer_id) select id,'lemonsqueezy','test','99001',${sql(sid)} from public.billing_accounts where owner_user_id=${sql(coach.userId)};
+    insert into public.billing_provider_customers(billing_account_id,provider,environment,provider_store_id,provider_customer_id) select id,'lemonsqueezy','test',${sql(mapping.provider_store_id)},${sql(sid)} from public.billing_accounts where owner_user_id=${sql(coach.userId)};
     insert into public.billing_provider_subscriptions(billing_account_id,account_subscription_id,variant_mapping_id,provider,environment,provider_store_id,provider_customer_id,provider_subscription_id,provider_order_id,provider_order_item_id,provider_product_id,provider_variant_id,provider_price_id,first_subscription_item_id,quantity,provider_status,provider_cancelled,provider_renews_at,provider_created_at,provider_updated_at,latest_snapshot_sha256,last_reconciled_at,reconciliation_status)
-    select a.id,s.id,${sql(mapping.id)},'lemonsqueezy','test','99001',${sql(sid)},${sql(sid)},${sql(sid)},${sql(sid)},'99002',${sql(mapping.provider_variant_id)},${sql(mapping.provider_price_id)},${sql(sid)},1,'active',false,${sql(renews)},${sql(created)},${sql(created)},repeat('0',64),now(),'processed' from public.billing_accounts a join public.account_subscriptions s on s.billing_account_id=a.id where a.owner_user_id=${sql(coach.userId)} and s.status='active';commit;`);
+    select a.id,s.id,${sql(mapping.id)},'lemonsqueezy','test',${sql(mapping.provider_store_id)},${sql(sid)},${sql(sid)},${sql(sid)},${sql(sid)},${sql(mapping.provider_product_id)},${sql(mapping.provider_variant_id)},${sql(mapping.provider_price_id)},${sql(sid)},1,'active',false,${sql(renews)},${sql(created)},${sql(created)},repeat('0',64),now(),'processed' from public.billing_accounts a join public.account_subscriptions s on s.billing_account_id=a.id where a.owner_user_id=${sql(coach.userId)} and s.status='active';commit;`);
   const serviceRpc = async (name: string, args: Record<string, unknown>) => {
     if (!functions.has(name)) throw new Error("Unexpected fixture RPC");
     const rows = await pgQuery<{ value: unknown }>(
@@ -360,6 +370,15 @@ export async function planChangeFixture(
   };
   return {
     coach,
+    async commercialCounts() {
+      const rows = await pgQuery<{ operations: number; applications: number }>(
+        `with account as (select id from public.billing_accounts where owner_user_id=${sql(coach.userId)})
+        select ((select count(*) from public.billing_plan_change_operations where billing_account_id in (select id from account)) +
+        (select count(*) from public.billing_operations_v2 where billing_account_id in (select id from account)))::int as operations,
+        (select count(*)::int from public.billing_payment_applications_v2 where billing_account_id in (select id from account)) as applications`,
+      );
+      return rows[0];
+    },
     cancelScheduledPlanChange: () =>
       planAction("cancel", "Cancel scheduled change"),
     refreshSeats: () => seatAction("refresh", "Refresh coach seats"),
@@ -468,7 +487,7 @@ export async function planChangeFixture(
           type: "subscription-invoices",
           id: sid,
           attributes: {
-            store_id: "99001",
+            store_id: mapping.provider_store_id,
             subscription_id: sid,
             customer_id: sid,
             test_mode: true,

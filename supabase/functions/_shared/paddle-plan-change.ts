@@ -12,6 +12,11 @@ type Context = {
   cadence: "monthly" | "annual";
 };
 type Target = { priceRef: string; productRef: string; amount: number };
+type PreviewQuote = {
+  action: "charge" | "credit";
+  amountMinor: number;
+  currencyCode: "USD";
+};
 const fail = (ambiguous = false): never => {
   throw new BillingError(
     ambiguous
@@ -24,6 +29,17 @@ const fail = (ambiguous = false): never => {
 const reference = (v: string, prefix: string) => {
   if (!new RegExp(`^${prefix}_[a-z0-9]{26}$`).test(v)) fail();
   return v;
+};
+const record = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+const minor = (value: unknown): number => {
+  const text = typeof value === "string" ? value : fail();
+  if (!/^\d+$/.test(text)) fail();
+  const amount = BigInt(text);
+  if (amount > BigInt(Number.MAX_SAFE_INTEGER)) fail();
+  return Number(amount);
 };
 /** Server-only, fixed Sandbox origin, bounded IO, no implicit retries. */
 export function createPaddlePlanTransport(
@@ -120,7 +136,12 @@ export function createPaddlePlanTransport(
       void reader?.cancel().catch(() => {});
     }
   }
-  function inspect(value: unknown, context: Context, target?: Target) {
+  function inspect(
+    value: unknown,
+    context: Context,
+    target?: Target,
+    previewResponse = false,
+  ) {
     const d = object(value);
     const item =
       Array.isArray(d.items) && d.items.length === 1
@@ -136,7 +157,9 @@ export function createPaddlePlanTransport(
       amount: context.sourceAmount,
     };
     if (
-      d.id !== context.subscriptionRef ||
+      (previewResponse
+        ? d.id !== undefined && d.id !== context.subscriptionRef
+        : d.id !== context.subscriptionRef) ||
       d.customer_id !== context.customerRef ||
       d.status !== "active" ||
       d.collection_mode !== "automatic" ||
@@ -163,7 +186,7 @@ export function createPaddlePlanTransport(
     if (JSON.stringify(custom).length > 8192) fail();
     return {
       snapshot: {
-        subscriptionRef: d.id,
+        subscriptionRef: context.subscriptionRef,
         customerRef: d.customer_id,
         priceRef: price.id,
         productRef: price.product_id,
@@ -216,16 +239,40 @@ export function createPaddlePlanTransport(
           body(target, timing, operation, custom),
         ),
       );
-      inspect(d, context, target);
-      // Quote is advisory; only authenticated payment webhooks grant authority.
-      if (
-        timing === "immediate" &&
-        (!d.immediate_transaction ||
-          !/^\d+$/.test(
-            String(d.immediate_transaction.details?.totals?.grand_total),
-          ))
-      )
+      inspect(d, context, target, true);
+      // Projected amounts are advisory; only authenticated payment webhooks
+      // grant settlement authority.
+      if (timing === "immediate") {
+        const totals = record(record(d.immediate_transaction)?.details);
+        const immediate = record(totals?.totals);
+        if (
+          !immediate ||
+          immediate.currency_code !== "USD" ||
+          minor(immediate.grand_total) === 0
+        )
+          fail();
+      }
+      if (d.update_summary === undefined || d.update_summary === null) {
+        if (timing === "immediate") fail();
+        return undefined;
+      }
+      const summary = record(d.update_summary) ?? fail();
+      const result = record(summary.result) ?? fail();
+      const action =
+        result.action === "charge"
+          ? "charge"
+          : result.action === "credit"
+            ? "credit"
+            : fail();
+      if (result.currency_code !== "USD") fail();
+      const amountMinor = minor(result.amount);
+      if (timing === "immediate" && (action !== "charge" || amountMinor === 0))
         fail();
+      return {
+        action,
+        amountMinor,
+        currencyCode: "USD",
+      } satisfies PreviewQuote;
     },
     update: async (
       context: Context,
@@ -288,7 +335,7 @@ export async function handlePaddlePlanAction(
       p_target_cadence: input.targetCadence,
       p_snapshot: current.snapshot,
     });
-    await transport.preview(
+    const quote = await transport.preview(
       context,
       {
         priceRef: v.targetPriceRef,
@@ -299,7 +346,7 @@ export async function handlePaddlePlanAction(
       input.operationId,
       current.custom,
     );
-    return v.preview;
+    return quote ? { ...v.preview, quote } : v.preview;
   }
   const operation = await deps.serviceRpc("begin_paddle_plan_change_v1", {
     ...args,

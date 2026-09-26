@@ -54,7 +54,12 @@ function data(changed = false) {
         },
       },
     ],
-    immediate_transaction: { details: { totals: { grand_total: "2700" } } },
+    immediate_transaction: {
+      details: { totals: { grand_total: "2700", currency_code: "USD" } },
+    },
+    update_summary: {
+      result: { action: "charge", amount: "2700", currency_code: "USD" },
+    },
   };
 }
 function setup(value: unknown = data(true), status = 200) {
@@ -133,10 +138,205 @@ describe("server-only Paddle plan transport", () => {
   );
   it("preview uses the preview endpoint", async () => {
     const { transport, fetcher } = setup();
-    await transport.preview(context, target, "immediate", operation, {});
+    const quote = await transport.preview(
+      context,
+      target,
+      "immediate",
+      operation,
+      {},
+    );
+    expect(quote).toEqual({
+      action: "charge",
+      amountMinor: 2700,
+      currencyCode: "USD",
+    });
+    expect(JSON.stringify(quote)).not.toMatch(/sub_|ctm_|pri_|pro_|txn_/);
     expect((fetcher.mock.calls[0] as unknown as [string])[0]).toMatch(
       /\/preview$/,
     );
+  });
+  it("accepts a documented preview without a subscription id", async () => {
+    const { id: _id, ...preview } = data(true);
+    const { transport, fetcher } = setup(preview);
+    await expect(
+      transport.preview(context, target, "immediate", operation, {}),
+    ).resolves.toEqual({
+      action: "charge",
+      amountMinor: 2700,
+      currencyCode: "USD",
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect((fetcher.mock.calls[0] as unknown as [string])[0]).toMatch(
+      /\/preview$/,
+    );
+  });
+  it.each([
+    { field: "id", value: ref("sub", "3") },
+    { field: "customer_id", value: ref("ctm", "3") },
+    { field: "items", value: [] },
+    { field: "status", value: "paused" },
+  ])("rejects a mismatched preview $field", async ({ field, value }) => {
+    const { id: _id, ...preview } = data(true);
+    const { transport } = setup({ ...preview, [field]: value });
+    await expect(
+      transport.preview(context, target, "immediate", operation, {}),
+    ).rejects.toMatchObject({
+      code: "BILLING_PLAN_CHANGE_PROVIDER_AMBIGUOUS",
+    });
+  });
+  it("distinguishes preview HTTP and transport failures", async () => {
+    const rejected = setup({}, 422);
+    await expect(
+      rejected.transport.preview(context, target, "immediate", operation, {}),
+    ).rejects.toMatchObject({ code: "BILLING_PLAN_CHANGE_PROVIDER_FAILED" });
+    const lost = vi.fn(async () => {
+      throw new Error("synthetic transport failure");
+    });
+    const transport = createPaddlePlanTransport(
+      "test",
+      "pdl_sdbx_synthetic",
+      lost,
+    );
+    await expect(
+      transport.preview(context, target, "immediate", operation, {}),
+    ).rejects.toMatchObject({ code: "BILLING_PLAN_CHANGE_PROVIDER_FAILED" });
+  });
+  it.each([
+    { label: "missing summary", update_summary: undefined },
+    { label: "null summary", update_summary: null },
+    {
+      label: "missing result",
+      update_summary: { result: null },
+    },
+    {
+      label: "zero charge",
+      update_summary: {
+        result: { action: "charge", amount: "0", currency_code: "USD" },
+      },
+    },
+    {
+      label: "credit for paid upgrade",
+      update_summary: {
+        result: { action: "credit", amount: "2700", currency_code: "USD" },
+      },
+    },
+    {
+      label: "currency mismatch",
+      update_summary: {
+        result: { action: "charge", amount: "2700", currency_code: "EUR" },
+      },
+    },
+    {
+      label: "invalid amount",
+      update_summary: {
+        result: { action: "charge", amount: "27.00", currency_code: "USD" },
+      },
+    },
+    {
+      label: "unsafe amount",
+      update_summary: {
+        result: {
+          action: "charge",
+          amount: "9007199254740992",
+          currency_code: "USD",
+        },
+      },
+    },
+  ])(
+    "rejects $label for an immediate paid preview",
+    async ({ update_summary }) => {
+      const { transport } = setup({ ...data(true), update_summary });
+      await expect(
+        transport.preview(context, target, "immediate", operation, {}),
+      ).rejects.toMatchObject({ code: "BILLING_PLAN_CHANGE_PROVIDER_FAILED" });
+    },
+  );
+  it.each([undefined, null])(
+    "accepts an absent scheduled update summary (%s)",
+    async (update_summary) => {
+      const { transport } = setup({ ...data(true), update_summary });
+      await expect(
+        transport.preview(context, target, "period_end", operation, {}),
+      ).resolves.toBeUndefined();
+    },
+  );
+  it.each([
+    { label: "array summary", summary: [] },
+    { label: "string summary", summary: "invalid" },
+    { label: "boolean summary", summary: false },
+    { label: "numeric summary", summary: 0 },
+    { label: "missing result", summary: {} },
+    { label: "null result", summary: { result: null } },
+    { label: "array result", summary: { result: [] } },
+    { label: "string result", summary: { result: "invalid" } },
+    { label: "boolean result", summary: { result: false } },
+    { label: "numeric result", summary: { result: 0 } },
+    {
+      label: "missing action",
+      summary: { result: { amount: "125", currency_code: "USD" } },
+    },
+    {
+      label: "invalid action",
+      summary: {
+        result: { action: "refund", amount: "125", currency_code: "USD" },
+      },
+    },
+    {
+      label: "decimal amount",
+      summary: {
+        result: { action: "credit", amount: "1.25", currency_code: "USD" },
+      },
+    },
+    {
+      label: "numeric amount",
+      summary: {
+        result: { action: "credit", amount: 125, currency_code: "USD" },
+      },
+    },
+    {
+      label: "missing amount",
+      summary: { result: { action: "credit", currency_code: "USD" } },
+    },
+    {
+      label: "missing currency",
+      summary: { result: { action: "credit", amount: "125" } },
+    },
+    {
+      label: "invalid currency",
+      summary: {
+        result: { action: "credit", amount: "125", currency_code: "EUR" },
+      },
+    },
+  ])(
+    "rejects a present malformed scheduled quote: $label",
+    async ({ summary }) => {
+      const { transport } = setup({ ...data(true), update_summary: summary });
+      await expect(
+        transport.preview(context, target, "period_end", operation, {}),
+      ).rejects.toMatchObject({ code: "BILLING_PLAN_CHANGE_PROVIDER_FAILED" });
+    },
+  );
+  it("retains a valid credit quote for a scheduled change", async () => {
+    const { transport } = setup({
+      ...data(true),
+      update_summary: {
+        result: { action: "credit", amount: "125", currency_code: "USD" },
+      },
+    });
+    await expect(
+      transport.preview(context, target, "period_end", operation, {}),
+    ).resolves.toEqual({
+      action: "credit",
+      amountMinor: 125,
+      currencyCode: "USD",
+    });
+  });
+  it("still requires an id on the actual update response", async () => {
+    const { id: _id, ...response } = data(true);
+    const { transport } = setup(response);
+    await expect(
+      transport.update(context, target, "immediate", operation, {}),
+    ).rejects.toMatchObject({ code: "BILLING_PLAN_CHANGE_PROVIDER_AMBIGUOUS" });
   });
   it.each([null, {}, { ...data(true), items: [] }])(
     "malformed mutation response is ambiguous",
@@ -195,6 +395,57 @@ describe("server-only Paddle plan transport", () => {
     await handlePaddlePlanAction(deps, "owner", "token", "refresh", {});
     expect(provider).not.toHaveBeenCalled();
     expect(read).toHaveBeenCalledTimes(2);
+  });
+  it("preview does not begin a durable operation or invoke update", async () => {
+    const retrieve = vi.fn(async () => ({
+      snapshot: { subscriptionRef: context.subscriptionRef },
+      custom: {},
+    }));
+    const quote = { action: "charge", amountMinor: 2700, currencyCode: "USD" };
+    const preview = vi.fn(async () => quote);
+    const update = vi.fn();
+    const serviceRpc = vi.fn(async (name: string) => {
+      if (name === "paddle_plan_change_context_v1") return context;
+      if (name === "preview_paddle_plan_change_v1")
+        return {
+          targetPriceRef: target.priceRef,
+          targetProductRef: target.productRef,
+          preview: {
+            targetPriceMinor: target.amount,
+            effectiveTiming: "immediate",
+          },
+        };
+      throw new Error(`unexpected RPC: ${name}`);
+    });
+    const deps = {
+      paddlePlans: () => ({ retrieve, preview, update }),
+      serviceRpc,
+    } as unknown as BillingDependencies;
+    const result = await handlePaddlePlanAction(
+      deps,
+      "owner",
+      "token",
+      "preview",
+      {
+        targetPlanKey: "scale",
+        targetCadence: "monthly",
+        operationId: operation,
+      },
+    );
+    expect(serviceRpc.mock.calls.map(([name]) => name)).toEqual([
+      "paddle_plan_change_context_v1",
+      "preview_paddle_plan_change_v1",
+    ]);
+    expect(preview).toHaveBeenCalledOnce();
+    expect(update).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      targetPriceMinor: target.amount,
+      effectiveTiming: "immediate",
+      quote,
+    });
+    expect(JSON.stringify(result)).not.toMatch(
+      /sub_|ctm_|pri_|pro_|transaction/,
+    );
   });
 });
 

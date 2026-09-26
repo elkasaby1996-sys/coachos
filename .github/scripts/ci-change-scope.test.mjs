@@ -1059,3 +1059,117 @@ for (const files of [paddlePlanChangeFiles, paddlePlanChangePrFiles]) {
     });
   }
 }
+
+const paddlePreviewContractFiles = [
+  "src/features/billing/plan-change-contracts.ts",
+  "src/features/billing/plan-change-panel.tsx",
+  "supabase/functions/_shared/paddle-plan-change.ts",
+  "tests/e2e/billing-plan-change.spec.ts",
+  "tests/e2e/billing-coach-seats.spec.ts",
+  "tests/e2e/utils/plan-change-fixture.ts",
+  "tests/e2e/utils/plan-change-mappings.ts",
+  "tests/unit/billing-plan-change-panel.test.ts",
+  "tests/unit/paddle-plan-change.test.ts",
+  "tests/unit/plan-change-mappings.test.ts",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+const previewLocalOnly = { docs_only: false, configured_data_required: false };
+const previewRequiresConfigured = {
+  docs_only: false,
+  configured_data_required: true,
+};
+
+test("Paddle preview exemption requires the exact twelve reviewed paths in any order", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const entries = [
+    ...source
+      .match(/const paddlePreviewContractFiles = new Set\(\[([\s\S]*?)\]\);/)[1]
+      .matchAll(/"([^"]+)"/g),
+  ].map((match) => match[1]);
+  assert.deepEqual(entries, paddlePreviewContractFiles);
+  assert.equal(entries.length, 12);
+  assert.deepEqual(
+    classifyChanges(paddlePreviewContractFiles),
+    previewLocalOnly,
+  );
+  assert.deepEqual(
+    classifyChanges([...paddlePreviewContractFiles].reverse()),
+    previewLocalOnly,
+  );
+});
+test("old eleven-file Paddle preview inventory no longer receives the exemption", () => {
+  const previousInventory = paddlePreviewContractFiles.filter(
+    (file) => file !== "tests/e2e/billing-coach-seats.spec.ts",
+  );
+  assert.equal(previousInventory.length, 11);
+  assert.deepEqual(
+    classifyChanges(previousInventory),
+    previewRequiresConfigured,
+  );
+});
+for (const omitted of paddlePreviewContractFiles) {
+  test(`Paddle preview inventory missing ${omitted} fails closed`, () => {
+    assert.deepEqual(
+      classifyChanges(
+        paddlePreviewContractFiles.filter((file) => file !== omitted),
+      ),
+      previewRequiresConfigured,
+    );
+  });
+}
+for (const extra of [
+  "src/app.tsx",
+  "supabase/migrations/20260926000000_unrelated.sql",
+  ".github/workflows/ci.yml",
+  "package.json",
+  "package-lock.json",
+  "docs/unrelated.md",
+  ".codex/environments/environment.toml",
+  "supabase/functions/_shared/billing-plan-change.ts",
+  "src/features/billing/plan-change-api.ts",
+  ...paddlePreviewContractFiles,
+]) {
+  test(`Paddle preview inventory plus ${extra} fails closed`, () => {
+    assert.deepEqual(
+      classifyChanges([...paddlePreviewContractFiles, extra]),
+      previewRequiresConfigured,
+    );
+  });
+}
+for (const normalize of [
+  (file) => `./${file}`,
+  (file) => file.replaceAll("/", "\\"),
+  (file) => file.toUpperCase(),
+  (file) => `tests/../${file}`,
+]) {
+  test(`Paddle preview path alias ${normalize(paddlePreviewContractFiles[0])} fails closed`, () => {
+    assert.deepEqual(
+      classifyChanges([
+        normalize(paddlePreviewContractFiles[0]),
+        ...paddlePreviewContractFiles.slice(1),
+      ]),
+      previewRequiresConfigured,
+    );
+  });
+}
+test("unrelated billing changes do not inherit the Paddle preview exemption", () => {
+  assert.deepEqual(
+    classifyChanges(["src/features/billing/plan-change-api.ts"]),
+    previewRequiresConfigured,
+  );
+  assert.deepEqual(
+    classifyChanges(paddlePreviewContractFiles.slice(0, 9)),
+    previewRequiresConfigured,
+  );
+  assert.deepEqual(
+    classifyChanges([
+      ...paddlePreviewContractFiles.slice(0, -1),
+      paddlePreviewContractFiles[0],
+    ]),
+    previewRequiresConfigured,
+  );
+});

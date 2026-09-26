@@ -19,6 +19,8 @@ import {
 
 const price = (minor: number, cadence: string) =>
   `${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(minor / 100)} USD ${cadence === "annual" ? "charged annually" : "charged monthly"}`;
+const quoteMoney = (minor: number, currency: string) =>
+  `$${new Intl.NumberFormat("en-US").format(BigInt(minor) / 100n)}.${String(BigInt(minor) % 100n).padStart(2, "0")} ${currency}`;
 export function PlanChangePreviewDetails({
   preview: p,
 }: {
@@ -28,6 +30,13 @@ export function PlanChangePreviewDetails({
     <div className="space-y-3 text-sm">
       <p>Current: {price(p.currentPriceMinor, p.sourceCadence)}</p>
       <p>Target: {price(p.targetPriceMinor, p.targetCadence)}</p>
+      {p.provider === "paddle" && p.quote ? (
+        <p>
+          Paddle preview: prorated {p.quote.action} of{" "}
+          {quoteMoney(p.quote.amountMinor, p.quote.currencyCode)}. No payment
+          has been collected for this change.
+        </p>
+      ) : null}
       <p>
         {p.effectiveTiming === "immediate"
           ? "Immediate change. Expanded access starts after verified payment."
@@ -295,8 +304,8 @@ export function PlanChangePanel({
         <DialogContent>
           <DialogTitle>Confirm plan change</DialogTitle>
           <DialogDescription>
-            Review timing and list prices. Capacity and eligibility are checked
-            again when you confirm.
+            Review timing, prices, and any provider quote. Capacity and
+            eligibility are checked again when you confirm.
           </DialogDescription>
           {preview ? <PlanChangePreviewDetails preview={preview} /> : null}
           <Button disabled={busy} onClick={() => void act("apply")}>

@@ -29,6 +29,14 @@ export const planChangePreviewSchema = z
     currentPriceMinor: z.number().int().positive(),
     targetPriceMinor: z.number().int().positive(),
     currency: z.literal("USD"),
+    quote: z
+      .object({
+        action: z.enum(["charge", "credit"]),
+        amountMinor: z.number().int().safe().nonnegative(),
+        currencyCode: z.literal("USD"),
+      })
+      .strict()
+      .optional(),
     effectiveAt: z.string().datetime({ offset: true }).nullable(),
     dataQualityIssue: z.boolean(),
     blockers: z.array(
@@ -53,7 +61,22 @@ export const planChangePreviewSchema = z
         .strict(),
     ),
   })
-  .strict();
+  .strict()
+  .superRefine((preview, ctx) => {
+    if (
+      preview.provider === "paddle" &&
+      preview.effectiveTiming === "immediate" &&
+      preview.changeKind.endsWith("upgrade") &&
+      (!preview.quote ||
+        preview.quote.action !== "charge" ||
+        preview.quote.amountMinor === 0)
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["quote"],
+        message: "A positive provider charge quote is required.",
+      });
+  });
 export type PlanChangePreview = z.infer<typeof planChangePreviewSchema>;
 export const planChangeStateSchema = z
   .object({
