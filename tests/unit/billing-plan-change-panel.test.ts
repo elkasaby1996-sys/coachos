@@ -6,6 +6,7 @@ import type {
   PlanChangePreview,
   PlanChangeState,
 } from "../../src/features/billing/plan-change-contracts";
+import { planChangePreviewSchema } from "../../src/features/billing/plan-change-contracts";
 const mocks = vi.hoisted(() => ({ state: {} as PlanChangeState }));
 vi.mock("@tanstack/react-query", () => ({
   useQuery: () => ({ data: mocks.state, refetch: vi.fn() }),
@@ -35,6 +36,46 @@ const preview: PlanChangePreview = {
 const render = (element: React.ReactElement) =>
   renderToStaticMarkup(React.createElement(MemoryRouter, null, element));
 describe("plan change presentation", () => {
+  it("shows a provider charge quote without private identifiers or payment proof", () => {
+    const quoted = planChangePreviewSchema.parse({
+      ...preview,
+      provider: "paddle",
+      sourcePlanKey: "growth",
+      targetPlanKey: "scale",
+      targetCadence: "monthly",
+      changeKind: "tier_upgrade",
+      quote: { action: "charge", amountMinor: 2700, currencyCode: "USD" },
+    });
+    const html = render(
+      React.createElement(PlanChangePreviewDetails, { preview: quoted }),
+    );
+    expect(html).toContain("prorated charge of $27.00 USD");
+    expect(html).toContain("No payment has been collected");
+    expect(JSON.stringify(quoted)).not.toMatch(/sub_|ctm_|pri_|pro_|txn_/);
+    expect(html).not.toMatch(/sub_|ctm_|pri_|pro_|txn_/);
+  });
+  it("rejects a Paddle paid upgrade without a positive quote", () => {
+    const paddle = {
+      ...preview,
+      provider: "paddle",
+      sourcePlanKey: "growth",
+      targetPlanKey: "scale",
+      changeKind: "tier_upgrade",
+    };
+    expect(planChangePreviewSchema.safeParse(paddle).success).toBe(false);
+    expect(
+      planChangePreviewSchema.safeParse({
+        ...paddle,
+        quote: { action: "charge", amountMinor: 0, currencyCode: "USD" },
+      }).success,
+    ).toBe(false);
+    expect(
+      planChangePreviewSchema.safeParse({
+        ...paddle,
+        quote: { action: "credit", amountMinor: 2700, currencyCode: "USD" },
+      }).success,
+    ).toBe(false);
+  });
   it("shows annual total, payment gate and nonexact provider calculation", () => {
     const html = render(
       React.createElement(PlanChangePreviewDetails, { preview }),

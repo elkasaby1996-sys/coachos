@@ -92,7 +92,7 @@ test("maximum seat purchase blocks an incompatible plan and committed-seat reduc
     context,
     info.testId,
     "growth",
-    "monthly",
+    "annual",
     "card",
     true,
   );
@@ -118,7 +118,7 @@ test("maximum seat purchase blocks an incompatible plan and committed-seat reduc
   ).toBeDisabled();
   expect(f.patches()).toBe(1);
   await f.release(reservation.reservationId);
-  await f.preview("launch");
+  await f.preview("launch", "annual");
   await expect(
     page.getByText("Current commitments exceed the target plan.", {
       exact: false,

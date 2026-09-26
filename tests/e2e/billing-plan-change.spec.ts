@@ -30,7 +30,7 @@ test("nonowner cannot view or forge plan changes", async ({
     const r = await fetch("/functions/v1/billing-change-subscription-plan", {
       method: "POST",
       body: JSON.stringify({
-        targetPlanKey: "growth",
+        targetPlanKey: "scale",
         targetCadence: "monthly",
         operationId: crypto.randomUUID(),
       }),
@@ -62,7 +62,7 @@ test("unauthorized provider mapping remains manual review", async ({
   ).toBeVisible();
   await expect(
     page.getByRole("progressbar", { name: "Clients committed capacity" }),
-  ).toHaveAttribute("aria-valuetext", /committed of 10;/);
+  ).toHaveAttribute("aria-valuetext", /committed of 50;/);
   await expect(
     page.getByRole("button", { name: "Change plan", exact: true }),
   ).toHaveCount(0);
@@ -71,8 +71,15 @@ test("Launch upgrade waits for verified updated invoice", async ({
   page,
   context,
 }, info) => {
-  const f = await planChangeFixture(page, context, info.testId);
-  await f.preview("growth");
+  // Launch tier coverage uses its active annual mapping; monthly stays retired.
+  const f = await planChangeFixture(
+    page,
+    context,
+    info.testId,
+    "launch",
+    "annual",
+  );
+  await f.preview("growth", "annual");
   await expect(
     page.getByText("Immediate change.", { exact: false }),
   ).toBeVisible();
@@ -93,8 +100,14 @@ test("failed payment preserves Launch and recovery completes", async ({
   page,
   context,
 }, info) => {
-  const f = await planChangeFixture(page, context, info.testId);
-  await f.preview("growth");
+  const f = await planChangeFixture(
+    page,
+    context,
+    info.testId,
+    "launch",
+    "annual",
+  );
+  await f.preview("growth", "annual");
   await f.apply();
   await expect(
     page.getByText("Waiting for verified payment.", { exact: false }),
@@ -114,7 +127,7 @@ test("renewal invoice is not upgrade payment proof", async ({
   context,
 }, info) => {
   const f = await planChangeFixture(page, context, info.testId);
-  await f.preview("growth");
+  await f.preview("scale");
   await f.apply();
   await expect(
     page.getByText("Waiting for verified payment.", { exact: false }),
@@ -122,7 +135,7 @@ test("renewal invoice is not upgrade payment proof", async ({
   await f.payment(true, "renewal");
   await expect(
     page.getByRole("progressbar", { name: "Clients committed capacity" }),
-  ).toHaveAttribute("aria-valuetext", /committed of 10;/);
+  ).toHaveAttribute("aria-valuetext", /committed of 50;/);
 });
 test("Scale downgrade blocks commitments then schedules after remediation", async ({
   page,
@@ -178,9 +191,9 @@ test("monthly to annual shows full annual amount", async ({
   context,
 }, info) => {
   const f = await planChangeFixture(page, context, info.testId);
-  await f.preview("launch", "annual");
+  await f.preview("growth", "annual");
   await expect(
-    page.getByText("Target: $190.00 USD charged annually", { exact: true }),
+    page.getByText("Target: $590.00 USD charged annually", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("These list prices are not an exact charge preview.", {
@@ -224,11 +237,11 @@ test("PayPal has support guidance without provider mutation", async ({
     page,
     context,
     info.testId,
-    "launch",
+    "growth",
     "monthly",
     "paypal",
   );
-  await f.preview("growth");
+  await f.preview("scale");
   await expect(
     page.getByRole("alert").filter({ hasText: "PayPal" }),
   ).toBeVisible();
@@ -243,7 +256,7 @@ test("forged provider identifiers are rejected at browser boundary", async ({
     const r = await fetch("/functions/v1/billing-change-subscription-plan", {
       method: "POST",
       body: JSON.stringify({
-        targetPlanKey: "growth",
+        targetPlanKey: "scale",
         targetCadence: "monthly",
         operationId: crypto.randomUUID(),
         subscriptionId: "forged",
@@ -263,7 +276,7 @@ test("mobile plan preview fits and exposes no provider data", async ({
 }, info) => {
   const f = await planChangeFixture(page, context, info.testId);
   await page.setViewportSize({ width: 375, height: 812 });
-  await f.preview("growth");
+  await f.preview("scale");
   await expect(
     page.getByRole("button", { name: "Review and confirm", exact: true }),
   ).toBeVisible();
@@ -291,6 +304,22 @@ for (const cadence of ["monthly", "annual"] as const) {
     }, info) => {
       const source = downgrade ? "scale" : "growth";
       const target = downgrade ? "growth" : "scale";
+      let providerRequests = 0;
+      await context.route(
+        (url) =>
+          url.protocol === "https:" &&
+          (url.hostname === "paddle.com" ||
+            url.hostname.endsWith(".paddle.com")),
+        (route) => {
+          providerRequests++;
+          return route.abort();
+        },
+      );
+      const quote = {
+        action: "charge",
+        amountMinor: 2400,
+        currencyCode: "USD",
+      };
       const f = await planChangeFixture(
         page,
         context,
@@ -299,6 +328,7 @@ for (const cadence of ["monthly", "annual"] as const) {
         cadence,
       );
       let operation: Record<string, unknown> | null = null;
+      const beforePreview = await f.commercialCounts();
       let submitted = 0;
       const state = () => ({
         provider: "paddle",
@@ -336,6 +366,11 @@ for (const cadence of ["monthly", "annual"] as const) {
               currentPriceMinor: downgrade ? 9900 : 5900,
               targetPriceMinor: downgrade ? 5900 : 9900,
               currency: "USD",
+              ...(!downgrade
+                ? {
+                    quote,
+                  }
+                : {}),
               effectiveAt: downgrade
                 ? new Date(Date.now() + 86400000).toISOString()
                 : null,
@@ -394,6 +429,25 @@ for (const cadence of ["monthly", "annual"] as const) {
           exact: false,
         }),
       ).toBeVisible();
+      if (!downgrade) {
+        await expect(
+          page.getByText(
+            `prorated charge of $${(quote.amountMinor / 100).toFixed(2)} ${quote.currencyCode}`,
+            { exact: false },
+          ),
+        ).toBeVisible();
+        await expect(
+          page.getByText("No payment has been collected for this change.", {
+            exact: false,
+          }),
+        ).toBeVisible();
+      }
+      expect(await f.commercialCounts()).toEqual(beforePreview);
+      expect(beforePreview).toEqual({ operations: 0, applications: 0 });
+      expect(await page.locator("body").innerText()).not.toMatch(
+        /\b(?:sub|ctm|txn|pri|pro)_[a-z0-9]+/i,
+      );
+      expect(providerRequests).toBe(0);
       await f.apply();
       await expect(
         page.getByRole("progressbar", { name: "Clients committed capacity" }),
@@ -426,6 +480,7 @@ for (const cadence of ["monthly", "annual"] as const) {
       ).toBeEnabled();
       expect(submitted).toBe(1);
       expect(f.patches()).toBe(0);
+      expect(providerRequests).toBe(0);
     });
   }
 }

@@ -245,7 +245,28 @@ const paddlePlanChangeFiles = new Set([
   "tests/unit/paddle-plan-change.test.ts",
 ]);
 
+// Paddle preview-contract release: all twelve reviewed paths are required,
+// including the classifier pair. No subsets, aliases, duplicates or extra paths.
+const paddlePreviewContractFiles = new Set([
+  "src/features/billing/plan-change-contracts.ts",
+  "src/features/billing/plan-change-panel.tsx",
+  "supabase/functions/_shared/paddle-plan-change.ts",
+  "tests/e2e/billing-plan-change.spec.ts",
+  "tests/e2e/billing-coach-seats.spec.ts",
+  "tests/e2e/utils/plan-change-fixture.ts",
+  "tests/e2e/utils/plan-change-mappings.ts",
+  "tests/unit/billing-plan-change-panel.test.ts",
+  "tests/unit/paddle-plan-change.test.ts",
+  "tests/unit/plan-change-mappings.test.ts",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+]);
+
 export function classifyChanges(files) {
+  const paddlePreviewContract =
+    files.length === paddlePreviewContractFiles.size &&
+    new Set(files).size === files.length &&
+    files.every((file) => paddlePreviewContractFiles.has(file));
   const paddlePlanChange =
     new Set(files).size === files.length &&
     [...paddlePlanChangeFiles].every((file) => files.includes(file)) &&
@@ -341,6 +362,7 @@ export function classifyChanges(files) {
     // CI changes still run the full local smoke suite, but do not need to
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
+      !paddlePreviewContract &&
       !paddlePlanChange &&
       !paddleSubscriptionLifecycle &&
       !paddleOutputRedaction &&
