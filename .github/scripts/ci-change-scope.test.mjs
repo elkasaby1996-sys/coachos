@@ -3,6 +3,192 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { changedFiles, classifyChanges } from "./ci-change-scope.mjs";
 
+const prorationSettlementFiles = [
+  "config/staging-commercial-certification.json",
+  "docs/staging-commercial-deployment-manifest.md",
+  "scripts/test-paddle-proration-migration.py",
+  "supabase/functions/_shared/paddle-webhook/ingress.ts",
+  "supabase/functions/_shared/paddle-webhook/observation.ts",
+  "supabase/functions/billing-paddle-webhook/index.ts",
+  "supabase/migrations/20260926195242_paddle_proration_settlement.sql",
+  "supabase/tests/fixtures/paddle_plan_change_fixture.psql",
+  "supabase/tests/paddle_proration_settlement.sql",
+  "tests/unit/paddle-proration-settlement.test.ts",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+const prorationLocalOnly = {
+  docs_only: false,
+  configured_data_required: false,
+};
+const prorationRequiresConfigured = {
+  docs_only: false,
+  configured_data_required: true,
+};
+
+test("proration release allowlist contains exactly the twelve reviewed paths", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const declaration = source.match(
+    /const paddleProrationSettlementFiles = new Set\(\[([\s\S]*?)\]\);/,
+  );
+  assert.ok(declaration);
+  const paths = [...declaration[1].matchAll(/"([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+  assert.equal(paths.length, 12);
+  assert.equal(new Set(paths).size, 12);
+  assert.deepEqual(paths.toSorted(), prorationSettlementFiles.toSorted());
+});
+
+test("exact proration release keeps local checks without hosted account writes", () => {
+  assert.deepEqual(
+    classifyChanges(prorationSettlementFiles),
+    prorationLocalOnly,
+  );
+});
+
+test("proration release matching is order independent", () => {
+  assert.deepEqual(
+    classifyChanges([...prorationSettlementFiles].reverse()),
+    prorationLocalOnly,
+  );
+});
+
+for (const [index, file] of prorationSettlementFiles.entries()) {
+  test(`proration release rejects suffix replacement: ${file}.bak`, () => {
+    const replacement = prorationSettlementFiles.map((path) =>
+      path === file ? `${path}.bak` : path,
+    );
+    assert.equal(replacement.length, 12);
+    assert.deepEqual(classifyChanges(replacement), prorationRequiresConfigured);
+  });
+
+  test(`proration release rejects omission: ${file}`, () => {
+    assert.deepEqual(
+      classifyChanges(prorationSettlementFiles.filter((path) => path !== file)),
+      prorationRequiresConfigured,
+    );
+  });
+
+  test(`proration release rejects duplicate: ${file}`, () => {
+    assert.deepEqual(
+      classifyChanges([...prorationSettlementFiles, file]),
+      prorationRequiresConfigured,
+    );
+    // Keep cardinality at twelve: uniqueness must still be required.
+    const duplicateReplacement = [...prorationSettlementFiles];
+    duplicateReplacement[(index + 1) % prorationSettlementFiles.length] = file;
+    assert.deepEqual(
+      classifyChanges(duplicateReplacement),
+      prorationRequiresConfigured,
+    );
+  });
+
+  for (const alias of [
+    `./${file}`,
+    file.replaceAll("/", "\\"),
+    file.toUpperCase(),
+    `tests/../${file}`,
+  ]) {
+    test(`proration release rejects path alias: ${alias}`, () => {
+      assert.deepEqual(
+        classifyChanges(
+          prorationSettlementFiles.map((path) =>
+            path === file ? alias : path,
+          ),
+        ),
+        prorationRequiresConfigured,
+      );
+    });
+  }
+}
+
+test("proration implementation alone and classifier pair alone require hosted checks", () => {
+  assert.deepEqual(
+    classifyChanges(prorationSettlementFiles.slice(0, 10)),
+    prorationRequiresConfigured,
+  );
+  assert.deepEqual(
+    classifyChanges(prorationSettlementFiles.slice(10)),
+    prorationRequiresConfigured,
+  );
+});
+
+for (const file of prorationSettlementFiles.slice(0, 10)) {
+  test(`one proration file plus classifier pair cannot qualify: ${file}`, () => {
+    assert.deepEqual(
+      classifyChanges([file, ...prorationSettlementFiles.slice(10)]),
+      prorationRequiresConfigured,
+    );
+  });
+}
+
+test("all 4095 proper proration subsets fail closed, including legacy fallback paths", () => {
+  for (let mask = 0; mask < 2 ** prorationSettlementFiles.length - 1; mask++) {
+    const subset = prorationSettlementFiles.filter(
+      (_, index) => (mask & (1 << index)) !== 0,
+    );
+    assert.deepEqual(
+      classifyChanges(subset),
+      prorationRequiresConfigured,
+      JSON.stringify(subset),
+    );
+  }
+});
+
+for (const file of [
+  ".github/workflows/ci.yml",
+  "package-lock.json",
+  "package.json",
+  "supabase/migrations/20260927195242_paddle_proration_settlement.sql",
+  "supabase/functions/_shared/paddle-plan-change.ts",
+  "supabase/functions/billing-change-subscription-plan/index.ts",
+  "tests/unit/paddle-plan-change.test.ts",
+  "docs/unrelated.md",
+  "src/features/billing/plan-change-panel.tsx",
+  ".codex/environments/environment.toml",
+]) {
+  test(`proration release rejects addition: ${file}`, () => {
+    assert.deepEqual(
+      classifyChanges([...prorationSettlementFiles, file]),
+      prorationRequiresConfigured,
+    );
+  });
+}
+
+for (const [original, replacement] of [
+  [
+    "supabase/migrations/20260926195242_paddle_proration_settlement.sql",
+    "supabase/migrations/20260927195242_paddle_proration_settlement.sql",
+  ],
+  [
+    "tests/unit/paddle-proration-settlement.test.ts",
+    "tests/unit/paddle-proration-settlement-v2.test.ts",
+  ],
+  [
+    "supabase/functions/billing-paddle-webhook/index.ts",
+    "supabase/functions/paddle-webhook/index.ts",
+  ],
+  [
+    "docs/staging-commercial-deployment-manifest.md",
+    "docs/staging-commercial-deployment-manifest-v2.md",
+  ],
+]) {
+  test(`proration release rejects lookalike: ${replacement}`, () => {
+    assert.deepEqual(
+      classifyChanges(
+        prorationSettlementFiles.map((file) =>
+          file === original ? replacement : file,
+        ),
+      ),
+      prorationRequiresConfigured,
+    );
+  });
+}
+
 test("documentation changes complete CI without either E2E suite", () => {
   assert.deepEqual(classifyChanges(["docs/design.md", "docs/nested/a b.md"]), {
     docs_only: true,
