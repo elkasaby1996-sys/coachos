@@ -227,6 +227,29 @@ describe("correlated proration observation", () => {
   });
   // Structural parsing cannot know which provider reference is source or target.
   // Swapped/same signs MUST fail the operation-bound SQL tests, not be guessed here.
+  it.each([
+    [-1, -1],
+    [2, -2],
+  ])(
+    "retains structural quantities %s/%s for trusted SQL validation",
+    async (target, source) => {
+      for (const reverse of [false, true]) {
+        const value = event();
+        value.data.items[0]!.quantity = target;
+        value.data.items[1]!.quantity = source;
+        if (reverse) value.data.items.reverse();
+        const result = await verify(value);
+        if (
+          result.kind !== "supported" ||
+          result.observation.kind !== "transaction.completed"
+        )
+          throw new Error("Expected structurally valid transaction");
+        expect(result.observation.items.map((item) => item.quantity)).toEqual(
+          reverse ? [source, target] : [target, source],
+        );
+      }
+    },
+  );
   it("does not derive payment from catalogue difference", async () => {
     const value = event();
     value.data.details.totals.grand_total = "6123";

@@ -715,7 +715,7 @@
       },
       {
         "filename": "20260926195242_paddle_proration_settlement.sql",
-        "sha256": "ffbb4d89371bfbd85007d8bc1d12dd25b6bf7f439aac329c49bc1a19b3411494"
+        "sha256": "9a543d9d41977207ff4cb38ffb58cf53dab78bf20a1915d5e84b53db280671fd"
       }
     ],
     "expectedLatestMigration": "20260926195242_paddle_proration_settlement.sql"

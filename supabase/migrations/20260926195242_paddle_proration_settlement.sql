@@ -30,6 +30,9 @@ begin
    select 1 from public.billing_operations_v2 op
    where op.operation_id::text=o->>'planChangeOperationId'
     and op.provider='paddle' and op.environment='test' and op.operation_kind='plan_change'
+    -- A committed dispatch or unresolved payment may converge from genuine
+    -- webhooks, including an ambiguous response; terminal/support states may not.
+    and op.status in ('provider_pending','awaiting_payment','ambiguous')
     and op.billing_account_id=account and op.subscription_id=sub.id
     and op.effective_timing='immediate' and op.source_cadence=op.target_cadence
     and op.source_additional_seats=0 and op.target_additional_seats=0),false);
