@@ -1,0 +1,33 @@
+-- Synthetic local-only seat fixtures. Production transport is never called.
+create function pg_temp.paddle_seat_snapshot(u uuid,n integer) returns jsonb language sql as $$
+ select jsonb_build_object('subscriptionRef',c->'subscriptionRef','customerRef',c->'customerRef','status','active','cadence',c->'cadence',
+ 'additionalSeats',c->'additionalSeats','basePriceRef',c#>'{base,priceRef}','seatPriceRef',case when (c->>'additionalSeats')::int>0 then c#>'{seat,priceRef}' else 'null'::jsonb end,
+ 'updatedAt',c->'providerUpdatedAt','periodStart',c->'periodStart','periodEnd',c->'periodEnd') from (select paddle_seat_quantity_context_v1(u,n) c) q $$;
+create function pg_temp.paddle_seat_begin(u uuid,n integer,op uuid default gen_random_uuid()) returns jsonb language plpgsql as $$
+declare result jsonb;begin
+ result:=begin_paddle_seat_quantity_v1(u,n,op,null);
+ if result->'needsSnapshot'='true'::jsonb then return begin_paddle_seat_quantity_v1(u,n,op,pg_temp.paddle_seat_snapshot(u,n));end if;
+ return result;end $$;
+create function pg_temp.paddle_seat_observation(u uuid,label text,k text default 'subscription.updated',state text default 'active',renewal boolean default false) returns jsonb language plpgsql as $$
+declare op billing_operations_v2%rowtype;o jsonb;stamp text;start_at timestamptz;end_at timestamptz;items jsonb;begin
+ select * into op from billing_operations_v2 where created_by_user_id=u and operation_kind='seat_quantity' order by provider_requested_at desc nulls last,id desc limit 1;
+ start_at:=case when renewal then op.source_period_ends_at else op.source_period_started_at end;
+ end_at:=case when renewal then (op.source_period_ends_at at time zone 'UTC'+case op.source_cadence when 'monthly' then interval '1 month' else interval '1 year' end) at time zone 'UTC' else op.source_period_ends_at end;
+ stamp:=to_char(greatest(billing_paddle_plan_now_v1(),clock_timestamp(),(select provider_updated_at from billing_subscriptions_v2 where id=op.subscription_id)+interval '1 millisecond',op.provider_requested_at+interval '1 millisecond',start_at) at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"');
+ o:=pg_temp.lifecycle_observation(u,label,k,state,stamp,to_char(start_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),to_char(end_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
+ items:=billing_paddle_seat_items_v1(op.target_base_mapping_id,op.target_seat_mapping_id,op.target_additional_seats,case when k='subscription.updated' then case when state='canceled' then 'inactive' else 'active' end end);
+ if k='transaction.completed' and not renewal then items:=billing_paddle_seat_settlement_items_v1(op.id);end if;
+ o:=o||jsonb_build_object('seatQuantityOperationId',op.operation_id,'items',items);
+ if k='transaction.completed' then o:=o||jsonb_build_object('origin',case when renewal then 'subscription_recurring' else 'subscription_update' end,'paymentTotals',jsonb_build_object('total',1200,'paid',1200,'balance',0));end if;
+ return o;
+end $$;
+create function pg_temp.paddle_seat_counts(u uuid) returns jsonb language sql as $$
+ select jsonb_build_object('approved',s.approved_additional_coach_seats,'canonical',s.account_subscription_id,'shadow',s.id,
+ 'capacity',billing_seat_effective_limit(s.billing_account_id),'growth',billing_seat_effective_limit(s.billing_account_id,true),
+ 'payments',(select count(*) from billing_payment_applications_v2 where subscription_id=s.id and application_kind='seat_increase'),
+ 'operation',(select status from billing_operations_v2 where subscription_id=s.id and operation_kind='seat_quantity' order by provider_requested_at desc nulls last,id desc limit 1))
+ from billing_subscriptions_v2 s join billing_accounts a on a.id=s.billing_account_id where a.owner_user_id=u $$;
+create function pg_temp.paddle_seat_buy(u uuid,n integer) returns text language plpgsql as $$
+begin perform pg_temp.paddle_seat_begin(u,n);perform pg_temp.lifecycle_dispatch(pg_temp.paddle_seat_observation(u,'sub-'||n));return pg_temp.lifecycle_dispatch(pg_temp.paddle_seat_observation(u,'pay-'||n,'transaction.completed'));end $$;
+create function pg_temp.paddle_seat_attempt(o jsonb) returns text language plpgsql as $$
+begin return pg_temp.lifecycle_dispatch(o);exception when others then return sqlerrm;end $$;

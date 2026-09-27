@@ -213,12 +213,14 @@ export function createPaddlePlanTransport(
       !["immediate", "period_end"].includes(timing)
     )
       fail();
+    const nextCustom = { ...custom };
+    delete nextCustom.repsync_seat_quantity_operation;
     return {
       items: [{ price_id: target.priceRef, quantity: 1 }],
       proration_billing_mode:
         timing === "immediate" ? "prorated_immediately" : "do_not_bill",
       on_payment_failure: "prevent_change",
-      custom_data: { ...custom, repsync_plan_change_operation: operation },
+      custom_data: { ...nextCustom, repsync_plan_change_operation: operation },
     };
   }
   return {

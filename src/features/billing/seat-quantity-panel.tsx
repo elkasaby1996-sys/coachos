@@ -75,8 +75,10 @@ export function SeatQuantityPreviewDetails({
             : `Reduction takes effect at renewal${p.effectiveAt ? ` on ${new Date(p.effectiveAt).toLocaleDateString()}` : ""}. New invitations use the lower limit immediately.`}
       </p>
       <p>
-        Proration, taxes and credits are calculated by Lemon Squeezy. These
-        recurring list totals are not an exact charge preview.
+        Proration, taxes and credits are calculated by{" "}
+        {p.provider === "paddle" ? "Paddle" : "Lemon Squeezy"}. These recurring
+        list totals are not an exact charge preview. No payment has been
+        collected by this preview.
       </p>
       {!p.eligible && <p role="alert">{seatQuantityMessage(p.errorCode)}</p>}
       {p.capacityBlocked && (
@@ -164,6 +166,12 @@ export function SeatQuantityPanel({
       {state.isLoading && <p role="status">Loading coach seats…</p>}
       {state.error && <p role="alert">Coach-seat details are unavailable.</p>}
       {s && <SeatQuantitySummary summary={s} />}
+      {state.data?.blockingOperation && (
+        <p role="status">
+          A plan change is pending. Coach-seat changes are unavailable until it
+          completes.
+        </p>
+      )}
       {s?.manualReview && (
         <p role="alert">
           {seatQuantityMessage("BILLING_SEAT_QUANTITY_MANUAL_REVIEW")}
@@ -184,6 +192,7 @@ export function SeatQuantityPanel({
                   )}
           </p>
           {op.status === "scheduled" &&
+            state.data?.canCancel !== false &&
             op.effectiveAt &&
             Date.parse(op.effectiveAt) > Date.now() && (
               <Button
@@ -196,7 +205,7 @@ export function SeatQuantityPanel({
             )}
         </div>
       )}
-      {s && !open && !s.manualReview && (
+      {s && !open && !s.manualReview && !state.data?.blockingOperation && (
         <div className="space-y-3">
           <label className="block text-sm" htmlFor="coach-seat-count">
             Additional coach seats

@@ -1246,6 +1246,140 @@ for (const files of [paddlePlanChangeFiles, paddlePlanChangePrFiles]) {
   }
 }
 
+const paddleCoachSeatFiles = [
+  "supabase/functions/_shared/billing-seat-quantity.ts",
+  "supabase/functions/_shared/billing-runtime.ts",
+  "supabase/functions/_shared/billing-handlers.ts",
+  "supabase/functions/_shared/paddle-webhook/contract.ts",
+  "supabase/functions/_shared/paddle-webhook/observation.ts",
+  "src/features/billing/seat-quantity-contracts.ts",
+  "src/features/billing/seat-quantity-panel.tsx",
+  "tests/unit/billing-seat-quantity-panel.test.ts",
+  "config/staging-commercial-certification.json",
+  "docs/staging-commercial-deployment-manifest.md",
+  "supabase/functions/_shared/paddle-seat-quantity.ts",
+  "supabase/migrations/20260927133343_paddle_coach_seats.sql",
+  "supabase/tests/paddle_seat_quantity.sql",
+  "supabase/tests/fixtures/paddle_seat_fixture.psql",
+  "tests/unit/paddle-seat-quantity.test.ts",
+  "tests/e2e/paddle-coach-seats.spec.ts",
+  "tests/e2e/utils/paddle-seat-fixture.ts",
+  "scripts/test-paddle-seat-concurrency.py",
+  "docs/paddle-coach-seats.md",
+  "supabase/functions/_shared/paddle-plan-change.ts",
+  "supabase/tests/billing_verified_evidence.sql",
+  "tests/unit/paddle-plan-change.test.ts",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+const paddleCoachSeatImplementationFiles = paddleCoachSeatFiles.slice(0, -2);
+const paddleCoachSeatLocalOnly = {
+  docs_only: false,
+  configured_data_required: false,
+};
+const paddleCoachSeatConfigured = {
+  docs_only: false,
+  configured_data_required: true,
+};
+
+test("Paddle coach-seat release requires the exact 24-path inventory", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const entries = [
+    ...source
+      .match(/const paddleCoachSeatFiles = new Set\(\[([\s\S]*?)\]\);/)[1]
+      .matchAll(/"([^"]+)"/g),
+  ].map((match) => match[1]);
+  assert.deepEqual(entries, paddleCoachSeatFiles);
+  assert.equal(entries.length, 24);
+  assert.deepEqual(classifyChanges(entries), paddleCoachSeatLocalOnly);
+  assert.deepEqual(
+    classifyChanges([...entries].reverse()),
+    paddleCoachSeatLocalOnly,
+  );
+});
+
+for (const omitted of paddleCoachSeatFiles) {
+  test(`Paddle coach-seat release missing ${omitted} fails closed`, () => {
+    assert.deepEqual(
+      classifyChanges(paddleCoachSeatFiles.filter((file) => file !== omitted)),
+      paddleCoachSeatConfigured,
+    );
+  });
+}
+
+for (const duplicate of paddleCoachSeatFiles) {
+  test(`Paddle coach-seat release duplicate ${duplicate} fails closed`, () => {
+    assert.deepEqual(
+      classifyChanges([...paddleCoachSeatFiles, duplicate]),
+      paddleCoachSeatConfigured,
+    );
+  });
+}
+
+for (const extra of [
+  "src/app.tsx",
+  "supabase/migrations/20260927140000_unreviewed.sql",
+  ".github/workflows/ci.yml",
+  "package.json",
+  ".codex/environments/environment.toml",
+  ".env.production",
+  "docs/paddle-plan-changes.md",
+]) {
+  test(`Paddle coach-seat release plus ${extra} fails closed`, () => {
+    assert.deepEqual(
+      classifyChanges([...paddleCoachSeatFiles, extra]),
+      paddleCoachSeatConfigured,
+    );
+  });
+}
+
+test("Paddle coach-seat classifier pair and implementation-only subsets fail closed", () => {
+  assert.deepEqual(
+    classifyChanges(paddleCoachSeatFiles.slice(-2)),
+    paddleCoachSeatConfigured,
+  );
+  assert.deepEqual(
+    classifyChanges(paddleCoachSeatImplementationFiles),
+    paddleCoachSeatConfigured,
+  );
+  assert.deepEqual(
+    classifyChanges([
+      "config/staging-commercial-certification.json",
+      "docs/staging-commercial-deployment-manifest.md",
+      ".github/scripts/ci-change-scope.mjs",
+      ".github/scripts/ci-change-scope.test.mjs",
+    ]),
+    paddleCoachSeatConfigured,
+  );
+});
+
+for (const replacement of [
+  "supabase/migrations/20260927133343_paddle_coach_seats.sql.bak",
+  "supabase/functions/_shared/paddle-seat-quantity-v2.ts",
+  "./supabase/functions/_shared/paddle-seat-quantity.ts",
+  "SUPABASE/FUNCTIONS/_SHARED/PADDLE-SEAT-QUANTITY.TS",
+  "supabase\\functions\\_shared\\paddle-seat-quantity.ts",
+]) {
+  test(`Paddle coach-seat replacement ${replacement} fails closed`, () => {
+    assert.deepEqual(
+      classifyChanges(
+        paddleCoachSeatFiles.map((file) =>
+          file === "supabase/functions/_shared/paddle-seat-quantity.ts" ||
+          (replacement.endsWith(".bak") &&
+            file ===
+              "supabase/migrations/20260927133343_paddle_coach_seats.sql")
+            ? replacement
+            : file,
+        ),
+      ),
+      paddleCoachSeatConfigured,
+    );
+  });
+}
+
 const paddlePreviewContractFiles = [
   "src/features/billing/plan-change-contracts.ts",
   "src/features/billing/plan-change-panel.tsx",

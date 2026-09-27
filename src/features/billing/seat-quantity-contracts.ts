@@ -18,6 +18,9 @@ const summary = {
 export const seatQuantityStateSchema = z
   .object({
     available: z.boolean(),
+    provider: z.literal("paddle").optional(),
+    canCancel: z.boolean().optional(),
+    blockingOperation: z.literal("plan_change").nullable().optional(),
     summary: z
       .object({ ...summary, growthLimit: count, manualReview: z.boolean() })
       .strict()
@@ -49,6 +52,7 @@ export const seatQuantityStateSchema = z
 export const seatQuantityPreviewSchema = z
   .object({
     ...summary,
+    provider: z.literal("paddle").optional(),
     targetAdditionalSeats: count,
     currentProviderQuantity: count,
     targetProviderQuantity: count,

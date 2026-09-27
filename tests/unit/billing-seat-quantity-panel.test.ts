@@ -132,3 +132,40 @@ describe("coach-seat presentation", () => {
       expect(html).toContain("lower growth limit remains");
   });
 });
+
+it("Paddle copy names the provider without claiming settlement", () => {
+  const html = render(
+    React.createElement(SeatQuantityPreviewDetails, {
+      preview: { ...preview, provider: "paddle" },
+    }),
+  );
+  expect(html).toContain("Paddle");
+  expect(html).not.toContain("Lemon Squeezy");
+  expect(html).toContain("No payment has been collected");
+});
+it("Paddle hides reduction cancellation and displays plan conflict", () => {
+  mocks.state = {
+    available: true,
+    provider: "paddle",
+    canCancel: false,
+    blockingOperation: "plan_change",
+    summary,
+    operation: {
+      id: "a0700000-0000-4000-8000-000000000001",
+      status: "scheduled",
+      direction: "reduction",
+      targetAdditionalSeats: 0,
+      effectiveAt: "2099-10-20T00:00:00Z",
+      errorCode: null,
+    },
+  };
+  const html = render(
+    React.createElement(SeatQuantityPanel, {
+      owner: true,
+      refresh: async () => {},
+    }),
+  );
+  expect(html).not.toContain("Cancel scheduled reduction");
+  expect(html).toContain("A plan change is pending");
+  expect(html).not.toContain("Preview seat change");
+});

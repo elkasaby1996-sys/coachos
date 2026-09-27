@@ -716,9 +716,13 @@
       {
         "filename": "20260926195242_paddle_proration_settlement.sql",
         "sha256": "9a543d9d41977207ff4cb38ffb58cf53dab78bf20a1915d5e84b53db280671fd"
+      },
+      {
+        "filename": "20260927133343_paddle_coach_seats.sql",
+        "sha256": "17040c88f205532b8226e221fd2a06c992760ac8909020ab3b12152750506e89"
       }
     ],
-    "expectedLatestMigration": "20260926195242_paddle_proration_settlement.sql"
+    "expectedLatestMigration": "20260927133343_paddle_coach_seats.sql"
   },
   "functions": {
     "billing": [

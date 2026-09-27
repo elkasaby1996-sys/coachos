@@ -110,9 +110,9 @@ select is((select jsonb_agg(resolve_account_entitlements(id)-'computedAt' order 
 select is((select to_jsonb(p) from billing_runtime_policy p),(select policy from proof_before),'runtime policy and both disabled flags unchanged');
 select is((select count(*) from billing_payment_applications_v2),0::bigint,'no payment applications created');
 select is((select count(*) from billing_subscriptions_v2 where account_subscription_id is not null or approved_additional_coach_seats<>0),0::bigint,'canonical linkage and seats remain impossible');
-select throws_ok($$update billing_subscriptions_v2 set approved_additional_coach_seats=1 where environment='test'$$,'P0001','BILLING_V2_IDENTITY_IMMUTABLE','verified transaction does not remove seat hard stop');
+select throws_ok($$update billing_subscriptions_v2 set approved_additional_coach_seats=1 where environment='test'$$,'P0001','PADDLE_SEAT_APPROVAL_PROOF','generic verified transaction cannot authorize purchased seats');
 select ok(exists(select 1 from pg_trigger where tgrelid='billing_subscriptions_v2'::regclass and tgname='paddle_initial_link_guard' and tgenabled='O'),'canonical linkage proof guard enabled');
-select ok(exists(select 1 from pg_constraint where conrelid='billing_subscriptions_v2'::regclass and conname='billing_v2_seat_approval_disabled'),'approved-seat zero CHECK retained');
+select ok(exists(select 1 from pg_trigger where tgrelid='billing_subscriptions_v2'::regclass and tgname='paddle_seat_approval_guard' and tgenabled='O' and (tgtype & 1)=1 and (tgtype & 2)=2 and (tgtype & 4)=4 and (tgtype & 16)=16),'row-level proof guard protects approved seats on INSERT and UPDATE');
 select is((select count(*) from pg_constraint where conrelid='billing_payment_applications_v2'::regclass and confrelid='billing_verified_evidence_v2'::regclass),0::bigint,'new verified ledger has no payment-application FK path');
 select * from finish();
 rollback;

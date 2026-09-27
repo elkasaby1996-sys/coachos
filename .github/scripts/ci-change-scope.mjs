@@ -294,7 +294,47 @@ const paddleProrationSettlementFiles = new Set([
   ".github/scripts/ci-change-scope.test.mjs",
 ]);
 
+// PADDLE-SEATS-01: only this complete reviewed release, including both
+// classifier files, may skip configured hosted-account mutation checks.
+// Any subset, duplicate, alias, near-match or extra path fails closed.
+const paddleCoachSeatFiles = new Set([
+  "supabase/functions/_shared/billing-seat-quantity.ts",
+  "supabase/functions/_shared/billing-runtime.ts",
+  "supabase/functions/_shared/billing-handlers.ts",
+  "supabase/functions/_shared/paddle-webhook/contract.ts",
+  "supabase/functions/_shared/paddle-webhook/observation.ts",
+  "src/features/billing/seat-quantity-contracts.ts",
+  "src/features/billing/seat-quantity-panel.tsx",
+  "tests/unit/billing-seat-quantity-panel.test.ts",
+  "config/staging-commercial-certification.json",
+  "docs/staging-commercial-deployment-manifest.md",
+  "supabase/functions/_shared/paddle-seat-quantity.ts",
+  "supabase/migrations/20260927133343_paddle_coach_seats.sql",
+  "supabase/tests/paddle_seat_quantity.sql",
+  "supabase/tests/fixtures/paddle_seat_fixture.psql",
+  "tests/unit/paddle-seat-quantity.test.ts",
+  "tests/e2e/paddle-coach-seats.spec.ts",
+  "tests/e2e/utils/paddle-seat-fixture.ts",
+  "scripts/test-paddle-seat-concurrency.py",
+  "docs/paddle-coach-seats.md",
+  "supabase/functions/_shared/paddle-plan-change.ts",
+  "supabase/tests/billing_verified_evidence.sql",
+  "tests/unit/paddle-plan-change.test.ts",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+]);
+
 export function classifyChanges(files) {
+  const paddleCoachSeat =
+    files.length === paddleCoachSeatFiles.size &&
+    new Set(files).size === files.length &&
+    files.every((file) => paddleCoachSeatFiles.has(file));
+  if (
+    !paddleCoachSeat &&
+    files.every((file) => paddleCoachSeatFiles.has(file))
+  ) {
+    return { docs_only: false, configured_data_required: true };
+  }
   const paddleProrationSettlement =
     files.length === paddleProrationSettlementFiles.size &&
     new Set(files).size === files.length &&
@@ -410,6 +450,7 @@ export function classifyChanges(files) {
     // CI changes still run the full local smoke suite, but do not need to
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
+      !paddleCoachSeat &&
       !paddleProrationSettlement &&
       !paddlePreviewBridge &&
       !paddlePreviewContract &&
