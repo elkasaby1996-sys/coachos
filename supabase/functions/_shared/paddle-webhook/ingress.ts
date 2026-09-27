@@ -6,6 +6,35 @@ import {
 } from "./index.ts";
 
 type Environment = (name: string) => string | undefined;
+const rejectionCodes = new Set([
+  "configuration",
+  "request_invalid",
+  "body_too_large",
+  "signature_header_invalid",
+  "timestamp_outside_tolerance",
+  "signature_invalid",
+  "event_invalid",
+  "receipt_invalid",
+  "verification_failed",
+]);
+/** Never serialize errors or request/database values, even on unexpected failures. */
+export function logPaddleWebhookRejection(
+  stage: "configuration" | "verification" | "ingestion" | "dispatch",
+  error: unknown,
+  status: 400 | 413 | 503,
+): void {
+  try {
+    const code =
+      error instanceof PaddleWebhookError && rejectionCodes.has(error.code)
+        ? error.code
+        : "verification_failed";
+    console.warn(
+      JSON.stringify({ event: "paddle_webhook_rejected", stage, code, status }),
+    );
+  } catch {
+    // Observability must never change acknowledgement/retry behavior.
+  }
+}
 export function webhookConfiguration(
   env: Environment,
 ): PaddleWebhookConfiguration {
@@ -142,13 +171,15 @@ export function createPaddleWebhookIngress(
         rawBody: await rawBody(request),
       });
     } catch (error) {
-      return response(
+      const status =
         error instanceof PaddleWebhookError && error.code === "body_too_large"
           ? 413
-          : 400,
-      );
+          : 400;
+      logPaddleWebhookRejection("verification", error, status);
+      return response(status);
     }
     if (result.kind === "unsupported") return response(200);
+    let stage: "ingestion" | "dispatch" = "ingestion";
     try {
       const stored = await database.rpc(
         "ingest_verified_paddle_event_v1",
@@ -157,21 +188,27 @@ export function createPaddleWebhookIngress(
       if (
         stored.error ||
         !ingestionResult(stored.data, result.observation.eventType)
-      )
+      ) {
+        logPaddleWebhookRejection(stage, undefined, 503);
         return response(503);
+      }
       // Separate awaited requests: retained evidence commits before authority.
       {
+        stage = "dispatch";
         const dispatched = await database.rpc(
           "reconcile_paddle_initial_purchase_event_v1",
           {
             p_event: stored.data.eventId,
           },
         );
-        if (dispatched.error || !dispatcherResult(dispatched.data))
+        if (dispatched.error || !dispatcherResult(dispatched.data)) {
+          logPaddleWebhookRejection(stage, undefined, 503);
           return response(503);
+        }
       }
       return response(200);
-    } catch {
+    } catch (error) {
+      logPaddleWebhookRejection(stage, error, 503);
       return response(503);
     }
   };

@@ -712,9 +712,13 @@
       {
         "filename": "20260924113658_paddle_plan_changes.sql",
         "sha256": "b586c062378083e23239880906d7401475e646ad891af1d353bec9af1a8fd81d"
+      },
+      {
+        "filename": "20260926195242_paddle_proration_settlement.sql",
+        "sha256": "9a543d9d41977207ff4cb38ffb58cf53dab78bf20a1915d5e84b53db280671fd"
       }
     ],
-    "expectedLatestMigration": "20260924113658_paddle_plan_changes.sql"
+    "expectedLatestMigration": "20260926195242_paddle_proration_settlement.sql"
   },
   "functions": {
     "billing": [

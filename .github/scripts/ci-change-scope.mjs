@@ -276,7 +276,37 @@ const paddlePreviewBridgeFiles = new Set([
   ".github/scripts/ci-change-scope.test.mjs",
 ]);
 
+// One reviewed proration-settlement release, including both classifier files.
+// Keep quality, local smoke and DB/security checks; skip only hosted-account
+// integration for the complete inventory, never partial or mixed patches.
+const paddleProrationSettlementFiles = new Set([
+  "config/staging-commercial-certification.json",
+  "docs/staging-commercial-deployment-manifest.md",
+  "scripts/test-paddle-proration-migration.py",
+  "supabase/functions/_shared/paddle-webhook/ingress.ts",
+  "supabase/functions/_shared/paddle-webhook/observation.ts",
+  "supabase/functions/billing-paddle-webhook/index.ts",
+  "supabase/migrations/20260926195242_paddle_proration_settlement.sql",
+  "supabase/tests/fixtures/paddle_plan_change_fixture.psql",
+  "supabase/tests/paddle_proration_settlement.sql",
+  "tests/unit/paddle-proration-settlement.test.ts",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+]);
+
 export function classifyChanges(files) {
+  const paddleProrationSettlement =
+    files.length === paddleProrationSettlementFiles.size &&
+    new Set(files).size === files.length &&
+    files.every((file) => paddleProrationSettlementFiles.has(file));
+  // The legacy CI/docs/catalogue fallback would exempt some proper subsets,
+  // including the classifier pair alone. Require the complete release here.
+  if (
+    !paddleProrationSettlement &&
+    files.every((file) => paddleProrationSettlementFiles.has(file))
+  ) {
+    return { docs_only: false, configured_data_required: true };
+  }
   const paddlePreviewBridge =
     files.length === paddlePreviewBridgeFiles.size &&
     new Set(files).size === files.length &&
@@ -380,6 +410,7 @@ export function classifyChanges(files) {
     // CI changes still run the full local smoke suite, but do not need to
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
+      !paddleProrationSettlement &&
       !paddlePreviewBridge &&
       !paddlePreviewContract &&
       !paddlePlanChange &&
