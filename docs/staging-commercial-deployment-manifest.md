@@ -1,5 +1,11 @@
 # Staging commercial deployment manifest
 
+CODEX-32 appends `20260927195317_paddle_trial_paid_reconciliation.sql` for local
+review, preserving the prior 178 entries and hashes. It replaces only the Paddle
+initial-purchase reconciler to support eligible trial conversion. This entry
+does not authorize staging deployment or Purchase #3 recovery. See
+[trial-to-paid reconciliation](paddle-trial-paid-reconciliation.md).
+
 CODEX-11 appends `20260926195242_paddle_proration_settlement.sql` for local review.
 It corrects authenticated immediate plan-change proration retention and settlement
 validation without changing existing rows, grants, or historical migrations.

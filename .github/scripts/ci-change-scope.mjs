@@ -324,7 +324,34 @@ const paddleCoachSeatFiles = new Set([
   ".github/scripts/ci-change-scope.test.mjs",
 ]);
 
+// Only the complete reviewed trial-to-paid release skips hosted-account writes.
+// Include both classifier files; subsets and mixed inventories fail closed.
+const paddleTrialPaidReconciliationFiles = new Set([
+  "supabase/migrations/20260927195317_paddle_trial_paid_reconciliation.sql",
+  "supabase/tests/paddle_initial_purchase_reconciliation.sql",
+  "supabase/tests/paddle_auto_initial_purchase_reconciliation.sql",
+  "supabase/tests/fixtures/paddle_auto_reconciliation_fixture.psql",
+  "scripts/test-paddle-auto-reconciliation-concurrency.py",
+  "scripts/test-paddle-trial-paid-migration.py",
+  "config/staging-commercial-certification.json",
+  "docs/staging-commercial-deployment-manifest.md",
+  "docs/paddle-trial-paid-reconciliation.md",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+]);
+
 export function classifyChanges(files) {
+  const paddleTrialPaidReconciliation =
+    files.length === paddleTrialPaidReconciliationFiles.size &&
+    new Set(files).size === files.length &&
+    files.every((file) => paddleTrialPaidReconciliationFiles.has(file));
+  // Prevent proper subsets from inheriting the legacy CI/docs exemptions.
+  if (
+    !paddleTrialPaidReconciliation &&
+    files.every((file) => paddleTrialPaidReconciliationFiles.has(file))
+  ) {
+    return { docs_only: false, configured_data_required: true };
+  }
   const paddleCoachSeat =
     files.length === paddleCoachSeatFiles.size &&
     new Set(files).size === files.length &&
@@ -450,6 +477,7 @@ export function classifyChanges(files) {
     // CI changes still run the full local smoke suite, but do not need to
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
+      !paddleTrialPaidReconciliation &&
       !paddleCoachSeat &&
       !paddleProrationSettlement &&
       !paddlePreviewBridge &&

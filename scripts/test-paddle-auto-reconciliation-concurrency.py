@@ -40,8 +40,9 @@ def main():
     before = int(r.sql("select deadlocks from pg_stat_database where datname=current_database();"))
     setup()
 
-    def fixture():
-        return r.sql("select paddle_auto_test.auto_checkout();")
+    def fixture(trial=None):
+        argument = "" if trial is None else "'" + trial + "'"
+        return r.sql("select paddle_auto_test.auto_checkout(" + argument + ");")
 
     def ingest(u, kind):
         return f"select paddle_auto_test.auto_ingest('{u}','{kind}');"
@@ -53,9 +54,14 @@ def main():
         assert ev
         return f"set local role service_role; select reconcile_paddle_initial_purchase_event_v1('{ev}');"
 
-    def verify(u):
+    def verify(u, trial=False):
         actual = json.loads(r.sql(f"select paddle_auto_test.auto_counts('{u}');"))
-        assert actual == dict(payments=1, canonical=1, links=1, items=1, seats=0, checkout="completed"), actual
+        assert actual == dict(payments=1, canonical=2 if trial else 1, links=1, items=1, seats=0, checkout="completed"), actual
+        if trial:
+            assert r.sql(f"""select count(*) from account_subscription_events e join billing_accounts a
+on a.id=e.billing_account_id where a.owner_user_id='{u}' and event_type='subscription.converted_to_paid';""") == "1"
+            assert r.sql(f"""select count(*) from account_subscriptions s join billing_accounts a
+on a.id=s.billing_account_id where a.owner_user_id='{u}' and subscription_kind='trial' and status='canceled';""") == "1"
 
     for first, second in (("transaction.completed", "subscription.created"), ("subscription.created", "transaction.completed")):
         u = fixture()
@@ -100,6 +106,42 @@ join commercial_plan_versions p on p.id=m.plan_version_id where p.plan_key='grow
         r.race("LS conflict" if ls else "canonical conflict", canonical, dispatch(u), "PADDLE_RECONCILIATION_CANONICAL_CONFLICT")
         counts = json.loads(r.sql(f"select paddle_auto_test.auto_counts('{u}');"))
         assert counts == dict(payments=0, canonical=1, links=0, items=0, seats=0, checkout="ready"), counts
+
+    for state in ("trialing", "trial_recovery"):
+        for first, second in (("transaction.completed", "subscription.created"), ("subscription.created", "transaction.completed")):
+            u = fixture(state)
+            r.race(state + " paired ingress " + first, ingest(u, first), ingest(u, second))
+            r.race(state + " same-purchase dispatch", dispatch(u, first), dispatch(u, second))
+            verify(u, trial=True)
+            r.race(state + " duplicate ingress " + first, ingest(u, first), ingest(u, first))
+            r.race(state + " duplicate dispatch " + first, dispatch(u, first), dispatch(u, first))
+            verify(u, trial=True)
+
+    # Supported canonical writers and capacity admissions serialize on the same
+    # billing account. Exercise both winners; observe lock waits, not sleeps.
+    for conversion_first in (False, True):
+        u = fixture("trialing")
+        r.sql(ingest(u, "transaction.completed") + ingest(u, "subscription.created"))
+        capacity = f"select lock_capacity_owners(array['{u}'::uuid]);"
+        first, second = (dispatch(u), capacity) if conversion_first else (capacity, dispatch(u))
+        r.race("capacity lock with trial conversion " + str(conversion_first), first, second)
+        verify(u, trial=True)
+
+    for conversion_first in (False, True):
+        u = fixture("trialing")
+        r.sql(ingest(u, "transaction.completed") + ingest(u, "subscription.created"))
+        acct = r.sql(f"select id from billing_accounts where owner_user_id='{u}';")
+        writer = f"""select billing_guard_lock('{acct}','test');
+update account_subscriptions set status='canceled',canceled_at=now(),status_changed_at=now()
+where billing_account_id='{acct}' and subscription_kind='trial' and status='trialing';
+insert into account_subscriptions(billing_account_id,plan_version_id,subscription_kind,status,source)
+select '{acct}',id,'paid','active','manual' from commercial_plan_versions where plan_key='growth' and status='active';"""
+        first, second = (dispatch(u), writer) if conversion_first else (writer, dispatch(u))
+        r.race("canonical writer with trial conversion " + str(conversion_first), first, second,
+               "23505" if conversion_first else "PADDLE_RECONCILIATION_CANONICAL_CONFLICT")
+        if conversion_first:
+            verify(u, trial=True)
+        assert r.sql(f"select count(*) from account_subscriptions where billing_account_id='{acct}' and status='active';") == "1"
 
     after = int(r.sql("select deadlocks from pg_stat_database where datname=current_database();"))
     assert after == before
