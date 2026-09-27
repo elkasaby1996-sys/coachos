@@ -41,9 +41,30 @@ function planOperation(data: Record<string, unknown>) {
     return fail("event_invalid");
   return { planChangeOperationId: id };
 }
+function seatOperation(data: Record<string, unknown>) {
+  const custom = data.custom_data;
+  if (
+    !custom ||
+    typeof custom !== "object" ||
+    Array.isArray(custom) ||
+    !("repsync_seat_quantity_operation" in custom)
+  )
+    return {};
+  if ("repsync_plan_change_operation" in custom) return fail("event_invalid");
+  const id = custom.repsync_seat_quantity_operation;
+  if (
+    typeof id !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)
+  )
+    return fail("event_invalid");
+  return { seatQuantityOperationId: id };
+}
 function planPayment(data: Record<string, unknown>) {
   if (
-    !planOperation(data).planChangeOperationId ||
+    !(
+      planOperation(data).planChangeOperationId ||
+      seatOperation(data).seatQuantityOperationId
+    ) ||
     !data.details ||
     !Array.isArray(data.payments)
   )
@@ -197,7 +218,7 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
   const data = object(envelope.data);
   if (base.eventType === "transaction.completed") {
     if (data.status !== "completed") fail("event_invalid");
-    const operation = planOperation(data);
+    const operation = { ...planOperation(data), ...seatOperation(data) };
     return {
       ...base,
       kind: "transaction.completed",
@@ -212,8 +233,9 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
       // Only settlement SQL can bind either sign to the operation's mappings.
       items: items(
         data.items,
-        !!operation.planChangeOperationId &&
-          data.origin === "subscription_update",
+        !!(
+          operation.planChangeOperationId || operation.seatQuantityOperationId
+        ) && data.origin === "subscription_update",
       ),
       ...("origin" in data ? { origin: reference(data.origin) } : {}),
       ...("billing_period" in data
@@ -257,6 +279,7 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
           : null,
       items: rows,
       ...planOperation(data),
+      ...seatOperation(data),
       ...(base.eventType === "subscription.updated" ? lifecycle(data) : {}),
     };
   }

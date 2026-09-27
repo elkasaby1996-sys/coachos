@@ -79,6 +79,18 @@ function setup(value: unknown = data(true), status = 200) {
   };
 }
 describe("server-only Paddle plan transport", () => {
+  it("replaces the previous seat marker after all seats have been removed", async () => {
+    const { transport, fetcher } = setup();
+    await transport.update(context, target, "immediate", operation, {
+      retained: "synthetic",
+      repsync_seat_quantity_operation: operation,
+    });
+    const body = JSON.parse(String(fetcher.mock.calls[0]![1]!.body));
+    expect(body.custom_data).toEqual({
+      retained: "synthetic",
+      repsync_plan_change_operation: operation,
+    });
+  });
   it("rejects live configuration before IO", () => {
     const f = vi.fn();
     expect(() =>

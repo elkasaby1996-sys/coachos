@@ -1,3 +1,4 @@
+import { handlePaddleSeatAction } from "./paddle-seat-quantity.ts";
 import {
   BillingError,
   boundedBody,
@@ -89,6 +90,16 @@ export async function handleSeatQuantity(
       JSON.parse(new TextDecoder().decode(await boundedBody(request, 4096))),
       action,
     );
+    if (
+      deps.paddleSeats &&
+      (await deps.serviceRpc("paddle_plan_change_route_v1", {
+        p_owner: owner.id,
+      }))
+    ) {
+      return reply(
+        await handlePaddleSeatAction(deps, owner.id, token, action, input),
+      );
+    }
     const config = deps.config();
     if (!config?.commercial?.seats)
       throw new BillingError("BILLING_SEAT_QUANTITY_PROVIDER_FAILED", 503);

@@ -92,3 +92,10 @@ The inventory contains 174 migrations, ending with
 apply migrations remotely or enable either Paddle policy flag. The migration
 performs no data repair; an already-processed checkout remains unchanged until
 an explicitly enabled, fully proven reconciliation call.
+
+# Local PADDLE-SEATS-01 inventory
+
+The inventory contains 178 migrations, ending with
+`20260927133343_paddle_coach_seats.sql`. All previous 177 entries and hashes
+remain unchanged. This local implementation enables no rollout flag and authorizes
+no deployment or provider action. See [Paddle coach seats](paddle-coach-seats.md).

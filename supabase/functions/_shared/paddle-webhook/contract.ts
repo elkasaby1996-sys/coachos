@@ -10,6 +10,7 @@ export type PaddleEventEnvelope = {
   /** Exact observed provider timestamp, including fractional precision/offset. */
   occurredAt: string;
   planChangeOperationId?: string;
+  seatQuantityOperationId?: string;
 };
 export type PaddleWebhookItem = {
   priceRef: string;

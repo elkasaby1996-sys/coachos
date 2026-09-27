@@ -1,3 +1,4 @@
+import { createPaddleSeatTransport } from "./paddle-seat-quantity.ts";
 import { createLemonSqueezyCommercialPorts } from "./lemon-squeezy-reconciliation.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.0";
 import { BillingError } from "./lemon-squeezy.ts";
@@ -53,6 +54,12 @@ export function billingDependencies(): BillingDependencies {
       return data;
     };
   return {
+    paddleSeats: () =>
+      createPaddleSeatTransport(
+        env("PADDLE_ENVIRONMENT") === "sandbox" ? "test" : "",
+        env("PADDLE_SANDBOX_API_KEY"),
+        fetch,
+      ),
     paddlePlans: () =>
       createPaddlePlanTransport(
         env("PADDLE_ENVIRONMENT") === "sandbox" ? "test" : "",
