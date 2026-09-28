@@ -724,9 +724,13 @@
       {
         "filename": "20260927195317_paddle_trial_paid_reconciliation.sql",
         "sha256": "45df3652fa77eff915998a47da35cd7373e98687da12a5b989f1fa7f91732c2b"
+      },
+      {
+        "filename": "20260928072848_paddle_initial_period_bootstrap.sql",
+        "sha256": "8ad294fe7a78b98a72dbf85b7512cd0507e79548574b644774a928f8aa6446b4"
       }
     ],
-    "expectedLatestMigration": "20260927195317_paddle_trial_paid_reconciliation.sql"
+    "expectedLatestMigration": "20260928072848_paddle_initial_period_bootstrap.sql"
   },
   "functions": {
     "billing": [
