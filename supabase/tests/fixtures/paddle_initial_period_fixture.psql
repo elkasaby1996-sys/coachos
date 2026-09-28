@@ -1,0 +1,47 @@
+-- Synthetic local observations; historical mode runs the prior reconciler body.
+create function pg_temp.period_pending_owner(period jsonb default '{"startsAt":"2026-09-20T00:00:00Z","endsAt":"2026-10-20T00:00:00Z"}')
+returns uuid language plpgsql as $$
+declare u uuid:=pg_temp.auto_checkout();
+begin
+ perform pg_temp.webhook_ingest(pg_temp.auto_observation(u,'transaction.completed')
+ ||case when period is null then '{}'::jsonb else jsonb_build_object('origin','web','billingPeriod',period) end);
+ perform pg_temp.auto_ingest(u,'subscription.created');
+ return u;
+end $$;
+create function pg_temp.period_historical_activate(u uuid) returns text language plpgsql as $$
+declare body text:=pg_get_functiondef('public.reconcile_paddle_initial_purchase_v1(uuid,text)'::regprocedure); result text;
+begin
+ execute replace(body,'perform public.bootstrap_paddle_initial_period_v1(s.id);','');
+ result:=pg_temp.auto_dispatch(u,'subscription.created');
+ execute body;
+ return result;
+end $$;
+create function pg_temp.period_owner(trial_state text default null,historical boolean default false,
+ period jsonb default '{"startsAt":"2026-09-20T00:00:00Z","endsAt":"2026-10-20T00:00:00Z"}',
+ delta jsonb default '{}') returns uuid language plpgsql as $$
+declare u uuid:=pg_temp.auto_checkout(trial_state); body text;
+begin
+ perform pg_temp.webhook_ingest(pg_temp.auto_observation(u,'transaction.completed')
+ ||jsonb_build_object('origin','web','billingPeriod',period)||delta);
+ perform pg_temp.auto_ingest(u,'subscription.created');
+ if historical then
+ body:=pg_get_functiondef('public.reconcile_paddle_initial_purchase_v1(uuid,text)'::regprocedure);
+ execute replace(body,'perform public.bootstrap_paddle_initial_period_v1(s.id);','');
+ end if;
+ perform pg_temp.auto_dispatch(u,'subscription.created');
+ if historical then execute body; end if;
+ return u;
+end $$;
+create function pg_temp.period_subscription(u uuid) returns uuid language sql as $$
+ select id from public.billing_subscriptions_v2 where provider_subscription_ref='synthetic/sub/'||u
+$$;
+create function pg_temp.period_snapshot(u uuid) returns jsonb language sql as $$
+ select jsonb_build_object('shadow',to_jsonb(s),'canonical',to_jsonb(a),
+ 'payment',(select jsonb_agg(to_jsonb(p) order by p.id) from billing_payment_applications_v2 p where p.subscription_id=s.id),
+ 'evidence',(select jsonb_agg(to_jsonb(e) order by e.id) from billing_evidence_v2 e where e.subscription_id=s.id),
+ 'checkout',(select jsonb_agg(to_jsonb(c) order by c.id) from billing_checkouts_v2 c where c.billing_account_id=s.billing_account_id),
+ 'record',(select to_jsonb(b) from billing_paddle_initial_period_bootstraps b where b.subscription_id=s.id),
+ 'events',(select jsonb_agg(to_jsonb(e) order by e.id) from account_subscription_events e where e.billing_account_id=s.billing_account_id),
+ 'operations',(select jsonb_agg(to_jsonb(o) order by o.id) from billing_operations_v2 o where o.billing_account_id=s.billing_account_id))
+ from billing_subscriptions_v2 s join account_subscriptions a on a.id=s.account_subscription_id where s.id=pg_temp.period_subscription(u)
+$$;

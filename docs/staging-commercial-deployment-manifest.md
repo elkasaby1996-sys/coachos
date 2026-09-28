@@ -1,5 +1,12 @@
 # Staging commercial deployment manifest
 
+CODEX-41 appends `20260928072848_paddle_initial_period_bootstrap.sql` for local
+review, preserving the prior 179 entries and hashes. It adds a private period
+proof and explicit service bootstrap from the already-consumed authenticated
+initial settlement. Migration application performs no subscription backfill.
+This entry does not authorize deployment or Purchase #3 recovery. See
+[initial period bootstrap](paddle-initial-period-bootstrap.md).
+
 CODEX-32 appends `20260927195317_paddle_trial_paid_reconciliation.sql` for local
 review, preserving the prior 178 entries and hashes. It replaces only the Paddle
 initial-purchase reconciler to support eligible trial conversion. This entry

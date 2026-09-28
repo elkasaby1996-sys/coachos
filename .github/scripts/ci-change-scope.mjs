@@ -340,7 +340,47 @@ const paddleTrialPaidReconciliationFiles = new Set([
   ".github/scripts/ci-change-scope.test.mjs",
 ]);
 
+// PADDLE-INITIAL-PERIOD-01: only this complete reviewed ten-file release,
+// including both classifier files, may skip configured hosted-account writes.
+// Keep quality, local smoke and Supabase CI; partial or mixed patches fail closed.
+const paddleInitialPeriodBootstrapFiles = new Set([
+  "supabase/migrations/20260928072848_paddle_initial_period_bootstrap.sql",
+  "supabase/tests/paddle_initial_period_bootstrap.sql",
+  "supabase/tests/fixtures/paddle_initial_period_fixture.psql",
+  "scripts/test-paddle-initial-period-concurrency.py",
+  "scripts/test-paddle-initial-period-migration.py",
+  "config/staging-commercial-certification.json",
+  "docs/staging-commercial-deployment-manifest.md",
+  "docs/paddle-initial-period-bootstrap.md",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+]);
+
+// These six paths belong only to this release. Shared config, manifest and CI
+// paths must remain usable by other reviewed release inventories.
+const paddleInitialPeriodBootstrapAnchorFiles = new Set([
+  "supabase/migrations/20260928072848_paddle_initial_period_bootstrap.sql",
+  "supabase/tests/paddle_initial_period_bootstrap.sql",
+  "supabase/tests/fixtures/paddle_initial_period_fixture.psql",
+  "scripts/test-paddle-initial-period-concurrency.py",
+  "scripts/test-paddle-initial-period-migration.py",
+  "docs/paddle-initial-period-bootstrap.md",
+]);
+
 export function classifyChanges(files) {
+  const paddleInitialPeriodBootstrap =
+    files.length === paddleInitialPeriodBootstrapFiles.size &&
+    new Set(files).size === files.length &&
+    files.every((file) => paddleInitialPeriodBootstrapFiles.has(file));
+  if (
+    !paddleInitialPeriodBootstrap &&
+    // Reject mixed releases before any legacy exemption can accept them. Keep
+    // the pure-subset guard for shared-only subsets with no specific anchor.
+    (files.some((file) => paddleInitialPeriodBootstrapAnchorFiles.has(file)) ||
+      files.every((file) => paddleInitialPeriodBootstrapFiles.has(file)))
+  ) {
+    return { docs_only: false, configured_data_required: true };
+  }
   const paddleTrialPaidReconciliation =
     files.length === paddleTrialPaidReconciliationFiles.size &&
     new Set(files).size === files.length &&
@@ -477,6 +517,7 @@ export function classifyChanges(files) {
     // CI changes still run the full local smoke suite, but do not need to
     // mutate configured remote accounts. Unknown paths require all checks.
     configured_data_required:
+      !paddleInitialPeriodBootstrap &&
       !paddleTrialPaidReconciliation &&
       !paddleCoachSeat &&
       !paddleProrationSettlement &&

@@ -1755,3 +1755,358 @@ for (const replacement of [
     );
   });
 }
+
+const paddleInitialPeriodBootstrapFiles = [
+  "supabase/migrations/20260928072848_paddle_initial_period_bootstrap.sql",
+  "supabase/tests/paddle_initial_period_bootstrap.sql",
+  "supabase/tests/fixtures/paddle_initial_period_fixture.psql",
+  "scripts/test-paddle-initial-period-concurrency.py",
+  "scripts/test-paddle-initial-period-migration.py",
+  "config/staging-commercial-certification.json",
+  "docs/staging-commercial-deployment-manifest.md",
+  "docs/paddle-initial-period-bootstrap.md",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+const initialPeriodLocalOnly = {
+  docs_only: false,
+  configured_data_required: false,
+};
+const initialPeriodConfigured = {
+  docs_only: false,
+  configured_data_required: true,
+};
+
+test("initial-period classifier contains exactly the ten reviewed paths", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const declaration = source.match(
+    /const paddleInitialPeriodBootstrapFiles = new Set\(\[([\s\S]*?)\]\);/,
+  );
+  assert.ok(declaration);
+  const entries = [...declaration[1].matchAll(/"([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+  assert.equal(entries.length, 10);
+  assert.equal(new Set(entries).size, 10);
+  assert.deepEqual(entries, paddleInitialPeriodBootstrapFiles);
+});
+
+test("exact initial-period release keeps local CI in either order", () => {
+  for (const files of [
+    paddleInitialPeriodBootstrapFiles,
+    [...paddleInitialPeriodBootstrapFiles].reverse(),
+  ]) {
+    assert.deepEqual(classifyChanges(files), initialPeriodLocalOnly);
+  }
+});
+
+test("initial-period implementation and classifier pair alone fail closed", () => {
+  assert.deepEqual(
+    classifyChanges(paddleInitialPeriodBootstrapFiles.slice(0, 8)),
+    initialPeriodConfigured,
+  );
+  assert.deepEqual(
+    classifyChanges(paddleInitialPeriodBootstrapFiles.slice(8)),
+    initialPeriodConfigured,
+  );
+});
+
+test("all 1023 proper initial-period subsets and prefixes fail closed", () => {
+  let checked = 0;
+  for (
+    let mask = 0;
+    mask < 2 ** paddleInitialPeriodBootstrapFiles.length - 1;
+    mask++
+  ) {
+    const subset = paddleInitialPeriodBootstrapFiles.filter(
+      (_, index) => (mask & (1 << index)) !== 0,
+    );
+    assert.deepEqual(
+      classifyChanges(subset),
+      initialPeriodConfigured,
+      JSON.stringify(subset),
+    );
+    checked++;
+  }
+  assert.equal(checked, 1023);
+  for (
+    let length = 0;
+    length < paddleInitialPeriodBootstrapFiles.length;
+    length++
+  ) {
+    assert.deepEqual(
+      classifyChanges(paddleInitialPeriodBootstrapFiles.slice(0, length)),
+      initialPeriodConfigured,
+    );
+  }
+});
+
+for (const [index, file] of paddleInitialPeriodBootstrapFiles.entries()) {
+  test(`initial-period release missing ${file} fails closed`, () => {
+    assert.deepEqual(
+      classifyChanges(
+        paddleInitialPeriodBootstrapFiles.filter((path) => path !== file),
+      ),
+      initialPeriodConfigured,
+    );
+  });
+
+  test(`initial-period duplicate ${file} fails closed`, () => {
+    assert.deepEqual(
+      classifyChanges([...paddleInitialPeriodBootstrapFiles, file]),
+      initialPeriodConfigured,
+    );
+    const replacement = [...paddleInitialPeriodBootstrapFiles];
+    replacement[(index + 1) % replacement.length] = file;
+    assert.equal(replacement.length, 10);
+    assert.equal(new Set(replacement).size, 9);
+    assert.deepEqual(classifyChanges(replacement), initialPeriodConfigured);
+  });
+
+  for (const alias of [
+    `./${file}`,
+    file.replaceAll("/", "\\"),
+    file.toUpperCase(),
+    `tests/../${file}`,
+    `${file}.bak`,
+  ]) {
+    test(`initial-period alias ${alias} fails closed`, () => {
+      assert.deepEqual(
+        classifyChanges(
+          paddleInitialPeriodBootstrapFiles.map((path) =>
+            path === file ? alias : path,
+          ),
+        ),
+        initialPeriodConfigured,
+      );
+    });
+  }
+}
+
+for (const extra of [
+  "docs/unrelated.md",
+  ".github/workflows/ci.yml",
+  "package.json",
+  "supabase/migrations/20260928000000_unreviewed.sql",
+  "supabase/migrations/20260927195317_paddle_trial_paid_reconciliation.sql",
+  "supabase/migrations/20260927133343_paddle_coach_seats.sql",
+  "supabase/migrations/20260926195242_paddle_proration_settlement.sql",
+]) {
+  test(`initial-period release plus ${extra} fails closed`, () => {
+    assert.deepEqual(
+      classifyChanges([...paddleInitialPeriodBootstrapFiles, extra]),
+      initialPeriodConfigured,
+    );
+  });
+}
+
+for (const [original, replacement] of [
+  [
+    "supabase/migrations/20260928072848_paddle_initial_period_bootstrap.sql",
+    "supabase/migrations/20260928072849_paddle_initial_period_bootstrap.sql",
+  ],
+  [
+    "docs/paddle-initial-period-bootstrap.md",
+    "docs/paddle-initial-period-bootstraps.md",
+  ],
+]) {
+  test(`initial-period near-match ${replacement} fails closed`, () => {
+    assert.deepEqual(
+      classifyChanges(
+        paddleInitialPeriodBootstrapFiles.map((path) =>
+          path === original ? replacement : path,
+        ),
+      ),
+      initialPeriodConfigured,
+    );
+  });
+}
+
+test("initial-period release mixed with another exempt Paddle release fails closed", () => {
+  for (const otherRelease of [
+    paddleTrialPaidReconciliationFiles,
+    paddleCoachSeatFiles,
+    prorationSettlementFiles,
+  ]) {
+    assert.deepEqual(
+      classifyChanges([
+        ...new Set([...paddleInitialPeriodBootstrapFiles, ...otherRelease]),
+      ]),
+      initialPeriodConfigured,
+    );
+  }
+});
+
+const initialPeriodAnchorFiles = [
+  "supabase/migrations/20260928072848_paddle_initial_period_bootstrap.sql",
+  "supabase/tests/paddle_initial_period_bootstrap.sql",
+  "supabase/tests/fixtures/paddle_initial_period_fixture.psql",
+  "scripts/test-paddle-initial-period-concurrency.py",
+  "scripts/test-paddle-initial-period-migration.py",
+  "docs/paddle-initial-period-bootstrap.md",
+];
+
+test("CODEX-50: bootstrap document cannot exempt mixed coach runtime/config", () => {
+  assert.deepEqual(
+    classifyChanges([
+      "supabase/functions/_shared/billing-runtime.ts",
+      "config/staging-commercial-certification.json",
+      "docs/paddle-initial-period-bootstrap.md",
+    ]),
+    initialPeriodConfigured,
+  );
+});
+
+test("initial-period anchors are exactly the six release-specific paths", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const declaration = source.match(
+    /const paddleInitialPeriodBootstrapAnchorFiles = new Set\(\[([\s\S]*?)\]\);/,
+  );
+  assert.ok(declaration);
+  const anchors = [...declaration[1].matchAll(/"([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual(anchors, initialPeriodAnchorFiles);
+  for (const inventory of source.matchAll(
+    /const (\w+Files) = new Set\(\[([\s\S]*?)\]\);/g,
+  )) {
+    if (
+      inventory[1] === "paddleInitialPeriodBootstrapFiles" ||
+      inventory[1] === "paddleInitialPeriodBootstrapAnchorFiles"
+    ) {
+      continue;
+    }
+    const paths = [...inventory[2].matchAll(/"([^"]+)"/g)].map(
+      (match) => match[1],
+    );
+    for (const anchor of initialPeriodAnchorFiles) {
+      assert.ok(!paths.includes(anchor), `${inventory[1]} shares ${anchor}`);
+    }
+  }
+});
+
+for (const anchor of initialPeriodAnchorFiles) {
+  for (const shared of [
+    "config/staging-commercial-certification.json",
+    "docs/staging-commercial-deployment-manifest.md",
+  ]) {
+    test(`initial-period anchor ${anchor} blocks legacy runtime + ${shared}`, () => {
+      assert.deepEqual(
+        classifyChanges([
+          "supabase/functions/_shared/billing-runtime.ts",
+          shared,
+          anchor,
+        ]),
+        initialPeriodConfigured,
+      );
+    });
+  }
+}
+
+const initialPeriodPriorReleaseCases = [
+  ["foundation", foundationFiles],
+  ["evidence", evidenceFiles],
+  ["catalogue", catalogueFiles],
+  ["retirement", retirementFiles],
+  ["activation", activationPrFiles],
+  ["URL compatibility", compatibilityPrFiles],
+  ["shared runtime", sharedRuntimeFiles],
+  ["pre-workspace access", billingPreWorkspaceAccessFiles],
+  ["identity supersession", paddleIdentitySupersessionFiles],
+  ["initial reconciliation", reconciliationFiles],
+  ["automatic reconciliation", autoReconciliationFiles],
+  ["output redaction", outputRedactionFiles],
+  ["identifier redaction", projectIdentifierRedactionFiles],
+  ["subscription lifecycle", lifecycleFiles],
+  ["plan change", paddlePlanChangeFiles],
+  ["preview contract", paddlePreviewContractFiles],
+  ["preview bridge", paddlePreviewBridgeFiles],
+  ["proration", prorationSettlementFiles],
+  ["coach seats", paddleCoachSeatFiles],
+  ["trial paid", paddleTrialPaidReconciliationFiles],
+];
+
+for (const [name, files] of initialPeriodPriorReleaseCases) {
+  test(`initial-period guard preserves previous ${name} exemption`, () => {
+    for (const inventory of [
+      files,
+      [...new Set([...files, ...paddleInitialPeriodBootstrapFiles.slice(8)])],
+    ]) {
+      assert.deepEqual(classifyChanges(inventory), initialPeriodLocalOnly);
+    }
+  });
+
+  test(`previous ${name} release plus any bootstrap anchor fails closed`, () => {
+    for (const anchor of initialPeriodAnchorFiles) {
+      assert.deepEqual(
+        classifyChanges([...files, anchor]),
+        initialPeriodConfigured,
+        anchor,
+      );
+    }
+  });
+}
+
+for (const partial of [
+  ["supabase/functions/_shared/billing-runtime.ts"],
+  [
+    "supabase/functions/_shared/billing-runtime.ts",
+    "config/staging-commercial-certification.json",
+  ],
+  ["docs/paddle-trial-paid-reconciliation.md"],
+  ["docs/paddle-coach-seats.md"],
+  ["supabase/functions/_shared/paddle-webhook/ingress.ts"],
+  [
+    "config/staging-commercial-certification.json",
+    "docs/staging-commercial-deployment-manifest.md",
+    ".github/scripts/ci-change-scope.mjs",
+    ".github/scripts/ci-change-scope.test.mjs",
+  ],
+]) {
+  test(`partial release ${partial.join(", ")} plus bootstrap anchor fails closed`, () => {
+    for (const anchor of initialPeriodAnchorFiles) {
+      assert.deepEqual(
+        classifyChanges([...partial, anchor]),
+        initialPeriodConfigured,
+        anchor,
+      );
+    }
+  });
+}
+
+test("exact initial-period ten plus legacy billing runtime fails closed", () => {
+  assert.deepEqual(
+    classifyChanges([
+      ...paddleInitialPeriodBootstrapFiles,
+      "supabase/functions/_shared/billing-runtime.ts",
+    ]),
+    initialPeriodConfigured,
+  );
+});
+
+test("shared paths without bootstrap anchors retain existing behavior", () => {
+  const shared = [
+    "config/staging-commercial-certification.json",
+    "docs/staging-commercial-deployment-manifest.md",
+    ".github/scripts/ci-change-scope.mjs",
+    ".github/scripts/ci-change-scope.test.mjs",
+  ];
+  for (let mask = 0; mask < 2 ** shared.length; mask++) {
+    const files = shared.filter((_, index) => (mask & (1 << index)) !== 0);
+    assert.deepEqual(classifyChanges(files), initialPeriodConfigured);
+  }
+  assert.deepEqual(classifyChanges(["docs/unrelated.md"]), {
+    docs_only: true,
+    configured_data_required: false,
+  });
+  assert.deepEqual(
+    classifyChanges(["src/unrelated.ts"]),
+    initialPeriodConfigured,
+  );
+});
