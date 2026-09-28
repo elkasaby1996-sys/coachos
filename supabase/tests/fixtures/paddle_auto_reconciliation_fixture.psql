@@ -1,7 +1,23 @@
 -- Synthetic local fixtures. Caller loads catalogue, legacy and webhook helpers.
-create function pg_temp.auto_checkout() returns uuid language plpgsql as $$
+create function pg_temp.auto_trial(u uuid, trial_state text) returns void language plpgsql as $$
+declare a uuid; p commercial_trial_policy_versions%rowtype; started timestamptz;
+begin
+ select id into strict a from billing_accounts where owner_user_id=u;
+ if trial_state='trialing' then
+ perform start_account_trial_for_owner(u,'first_workspace');
+ elsif trial_state='trial_recovery' then
+ select * into strict p from commercial_trial_policy_versions where status='active';
+ started:=now()-make_interval(days=>p.duration_days)-interval '1 hour';
+ insert into account_subscriptions(billing_account_id,plan_version_id,trial_policy_version_id,
+ subscription_kind,status,source,trial_started_at,trial_ends_at,trial_recovery_ends_at)
+ values(a,p.feature_plan_version_id,p.id,'trial',trial_state,'workspace_transfer',started,
+ started+make_interval(days=>p.duration_days),started+make_interval(days=>p.duration_days+p.recovery_days));
+ else raise exception 'SYNTHETIC_TRIAL_STATE'; end if;
+end $$;
+create function pg_temp.auto_checkout(trial_state text default null) returns uuid language plpgsql as $$
 declare u uuid:=pg_temp.guard_owner(); j jsonb;
 begin
+ if trial_state is not null then perform pg_temp.auto_trial(u,trial_state); end if;
  update billing_runtime_policy set paddle_sales_enabled=true;
  j:=begin_paddle_checkout_v1(u,'growth','monthly',0,gen_random_uuid(),true,true,'2026-09-18','2026-09-18');
  perform mark_paddle_checkout_ready_v1(u,(j->>'attemptReference')::uuid,(j->>'operationReference')::uuid,

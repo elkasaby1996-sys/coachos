@@ -720,9 +720,13 @@
       {
         "filename": "20260927133343_paddle_coach_seats.sql",
         "sha256": "17040c88f205532b8226e221fd2a06c992760ac8909020ab3b12152750506e89"
+      },
+      {
+        "filename": "20260927195317_paddle_trial_paid_reconciliation.sql",
+        "sha256": "45df3652fa77eff915998a47da35cd7373e98687da12a5b989f1fa7f91732c2b"
       }
     ],
-    "expectedLatestMigration": "20260927133343_paddle_coach_seats.sql"
+    "expectedLatestMigration": "20260927195317_paddle_trial_paid_reconciliation.sql"
   },
   "functions": {
     "billing": [

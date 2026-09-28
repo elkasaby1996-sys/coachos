@@ -80,7 +80,12 @@ from (values
 select ok(pg_temp.reject_case(pg_temp.mutate_observation('transaction.completed','{items}',jsonb_build_array(pg_temp.webhook_observation()#>'{items,0}',pg_temp.webhook_observation()#>'{items,0}'))),'extra recurring item denied');
 select ok(pg_temp.reject_case($$alter table billing_paddle_checkout_snapshots disable trigger user; update billing_paddle_checkout_snapshots set base_product_ref='synthetic/wrong'$$),'snapshot provenance mismatch denied');
 select ok(pg_temp.reject_case($$insert into account_subscriptions(billing_account_id,plan_version_id,subscription_kind,status,source) select billing_account_id,plan_version_id,'paid','active','manual' from billing_checkouts_v2$$),'existing canonical obligation denied');
-select ok(pg_temp.reject_case($$select start_account_trial_for_owner(u,'first_workspace') from attempt$$),'existing trial is not canceled or replaced');
+savepoint eligible_trial;
+select start_account_trial_for_owner(u,'first_workspace') from attempt;
+select lives_ok('select pg_temp.reconcile()','eligible trial converts through the existing proof chain');
+select is((select count(*)::int from account_subscriptions where subscription_kind='trial' and status='canceled'),1,'original trial retained as canceled');
+select is((select count(*)::int from account_subscriptions where subscription_kind='paid' and status='active' and billing_account_id=(select billing_account_id from billing_checkouts_v2)),1,'exactly one paid canonical replaces trial');
+rollback to eligible_trial;
 select ok(pg_temp.reject_case($$insert into account_subscriptions(billing_account_id,plan_version_id,subscription_kind,status,source) select billing_account_id,plan_version_id,'paid','grace','manual' from billing_checkouts_v2$$),'existing grace obligation denied');
 select ok(pg_temp.reject_case($$alter table billing_checkouts_v2 disable trigger user; update billing_checkouts_v2 set requested_additional_seats=1,seat_mapping_id=(select id from billing_price_mappings where canonical_key='coach-seat' and cadence='monthly'),seat_mapping_kind='addon'$$),'positive-seat checkout denied');
 select ok(pg_temp.reject_case($$update billing_subscriptions_v2 set provider_updated_at=provider_updated_at+interval '1 second'$$),'current identity requires exact retained subscription revision');

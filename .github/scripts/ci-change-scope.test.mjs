@@ -1584,3 +1584,174 @@ test("unrelated billing subset cannot inherit bridge exemption", () => {
     previewRequiresConfigured,
   );
 });
+
+const paddleTrialPaidReconciliationFiles = [
+  "supabase/migrations/20260927195317_paddle_trial_paid_reconciliation.sql",
+  "supabase/tests/paddle_initial_purchase_reconciliation.sql",
+  "supabase/tests/paddle_auto_initial_purchase_reconciliation.sql",
+  "supabase/tests/fixtures/paddle_auto_reconciliation_fixture.psql",
+  "scripts/test-paddle-auto-reconciliation-concurrency.py",
+  "scripts/test-paddle-trial-paid-migration.py",
+  "config/staging-commercial-certification.json",
+  "docs/staging-commercial-deployment-manifest.md",
+  "docs/paddle-trial-paid-reconciliation.md",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+const trialPaidLocalOnly = {
+  docs_only: false,
+  configured_data_required: false,
+};
+const trialPaidConfigured = {
+  docs_only: false,
+  configured_data_required: true,
+};
+
+test("trial-to-paid source inventory equals the eleven unique reviewed paths", () => {
+  const source = readFileSync(
+    new URL("./ci-change-scope.mjs", import.meta.url),
+    "utf8",
+  );
+  const declaration = source.match(
+    /const paddleTrialPaidReconciliationFiles = new Set\(\[([\s\S]*?)\]\);/,
+  );
+  assert.ok(declaration);
+  const entries = [...declaration[1].matchAll(/"([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+  assert.equal(entries.length, 11);
+  assert.equal(new Set(entries).size, 11);
+  assert.equal(paddleTrialPaidReconciliationFiles.length, 11);
+  assert.equal(new Set(paddleTrialPaidReconciliationFiles).size, 11);
+  assert.deepEqual(
+    entries.toSorted(),
+    paddleTrialPaidReconciliationFiles.toSorted(),
+  );
+});
+
+test("exact trial-to-paid release keeps local CI in either order", () => {
+  for (const files of [
+    paddleTrialPaidReconciliationFiles,
+    [...paddleTrialPaidReconciliationFiles].reverse(),
+  ]) {
+    assert.deepEqual(classifyChanges(files), trialPaidLocalOnly);
+  }
+});
+
+test("trial-to-paid implementation alone and classifier pair fail closed", () => {
+  assert.deepEqual(
+    classifyChanges(paddleTrialPaidReconciliationFiles.slice(0, 9)),
+    trialPaidConfigured,
+  );
+  assert.deepEqual(
+    classifyChanges(paddleTrialPaidReconciliationFiles.slice(9)),
+    trialPaidConfigured,
+  );
+});
+
+test("all 2047 proper trial-to-paid subsets fail closed", () => {
+  let checked = 0;
+  for (
+    let mask = 0;
+    mask < 2 ** paddleTrialPaidReconciliationFiles.length - 1;
+    mask++
+  ) {
+    const subset = paddleTrialPaidReconciliationFiles.filter(
+      (_, index) => (mask & (1 << index)) !== 0,
+    );
+    assert.deepEqual(
+      classifyChanges(subset),
+      trialPaidConfigured,
+      JSON.stringify(subset),
+    );
+    checked++;
+  }
+  assert.equal(checked, 2047);
+});
+
+for (const [index, file] of paddleTrialPaidReconciliationFiles.entries()) {
+  test(`trial-to-paid omission fails closed: ${file}`, () => {
+    assert.deepEqual(
+      classifyChanges(
+        paddleTrialPaidReconciliationFiles.filter((path) => path !== file),
+      ),
+      trialPaidConfigured,
+    );
+  });
+
+  test(`trial-to-paid duplicate additions and every replacement fail closed: ${file}`, () => {
+    assert.deepEqual(
+      classifyChanges([...paddleTrialPaidReconciliationFiles, file]),
+      trialPaidConfigured,
+    );
+    for (
+      let replaced = 0;
+      replaced < paddleTrialPaidReconciliationFiles.length;
+      replaced++
+    ) {
+      if (replaced === index) continue;
+      const files = [...paddleTrialPaidReconciliationFiles];
+      files[replaced] = file;
+      assert.equal(files.length, 11);
+      assert.equal(new Set(files).size, 10);
+      assert.deepEqual(classifyChanges(files), trialPaidConfigured);
+    }
+  });
+
+  for (const replacement of [
+    `./${file}`,
+    file.replaceAll("/", "\\"),
+    file.toUpperCase(),
+    `tests/../${file}`,
+    `${file}.bak`,
+  ]) {
+    test(`trial-to-paid alias or suffix fails closed: ${replacement}`, () => {
+      assert.deepEqual(
+        classifyChanges(
+          paddleTrialPaidReconciliationFiles.map((path) =>
+            path === file ? replacement : path,
+          ),
+        ),
+        trialPaidConfigured,
+      );
+    });
+  }
+}
+
+for (const extra of [
+  ".github/workflows/ci.yml",
+  "package.json",
+  "package-lock.json",
+  "docs/unrelated.md",
+  "docs/paddle-plan-changes.md",
+  "src/app.tsx",
+  "supabase/functions/_shared/paddle-webhook/ingress.ts",
+  "supabase/migrations/20260928000000_unrelated.sql",
+  "supabase/migrations/20260928195317_paddle_trial_paid_reconciliation.sql",
+  "tests/e2e/checkin-submit-review.smoke.spec.ts",
+  ".github/workflows/supabase-ci.yml",
+  ".codex/environments/environment.toml",
+]) {
+  test(`trial-to-paid unrelated addition fails closed: ${extra}`, () => {
+    assert.deepEqual(
+      classifyChanges([...paddleTrialPaidReconciliationFiles, extra]),
+      trialPaidConfigured,
+    );
+  });
+}
+
+for (const replacement of [
+  "supabase/migrations/20260928195317_paddle_trial_paid_reconciliation.sql",
+  "supabase/migrations/20260927195317_paddle_trial_paid_reconciliation_v2.sql",
+  "supabase/migrations/20260928000000_unrelated.sql",
+]) {
+  test(`trial-to-paid migration lookalike fails closed: ${replacement}`, () => {
+    assert.deepEqual(
+      classifyChanges([
+        replacement,
+        ...paddleTrialPaidReconciliationFiles.slice(1),
+      ]),
+      trialPaidConfigured,
+    );
+  });
+}
