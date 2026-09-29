@@ -13,6 +13,9 @@ export type PaddleSeatContext = {
   periodStart: string;
   periodEnd: string;
   providerUpdatedAt: string;
+  // Exact retained RFC3339 resource revision, never the event-ordering watermark.
+  // Explicit null is allowed only by the database's historical-evidence guard.
+  resourceUpdatedAt: string | null;
 };
 const fail = (ambiguous = false): never => {
   throw new BillingError(
@@ -27,6 +30,28 @@ const reference = (v: string, prefix: string) => {
   if (!new RegExp(`^${prefix}_[a-z0-9]{26}$`).test(v)) fail();
   return v;
 };
+/** Match SQL's exact UTC nanosecond key without parsing away the fraction. */
+function resourceRevisionKey(value: unknown): bigint {
+  const spelling = observedTimestamp(value);
+  const fraction = /\.([0-9]{1,9})(Z|[+-][0-9]{2}:[0-9]{2})$/.exec(spelling);
+  const wholeSecond = spelling.replace(
+    /\.[0-9]{1,9}(Z|[+-][0-9]{2}:[0-9]{2})$/,
+    "$1",
+  );
+  // Validated four-digit years keep whole-second milliseconds safely integral.
+  // Date handles only the offset/calendar; the original fraction stays exact.
+  const milliseconds = Date.parse(wholeSecond);
+  if (!Number.isSafeInteger(milliseconds)) fail();
+  return (
+    BigInt(milliseconds) * 1_000_000n +
+    BigInt((fraction?.[1] ?? "").padEnd(9, "0"))
+  );
+}
+export function comparePaddleResourceRevisions(a: unknown, b: unknown): number {
+  const left = resourceRevisionKey(a),
+    right = resourceRevisionKey(b);
+  return left < right ? -1 : left > right ? 1 : 0;
+}
 /** Sandbox only. Private mappings, bounded IO and exactly one dispatch; no retries. */
 export function createPaddleSeatTransport(
   environment: string,
@@ -135,6 +160,7 @@ export function createPaddleSeatTransport(
     const d = object(value),
       period = object(d.current_billing_period),
       cycle = object(d.billing_cycle);
+    const updatedAt = observedTimestamp(d.updated_at);
     const time = (x: unknown) => Date.parse(observedTimestamp(x));
     if (
       (preview
@@ -151,7 +177,8 @@ export function createPaddleSeatTransport(
       time(period.starts_at) !== time(c.periodStart) ||
       time(period.ends_at) !== time(c.periodEnd) ||
       time(d.next_billed_at) !== time(c.periodEnd) ||
-      time(d.updated_at) < time(c.providerUpdatedAt) ||
+      (c.resourceUpdatedAt !== null &&
+        comparePaddleResourceRevisions(updatedAt, c.resourceUpdatedAt) < 0) ||
       !Array.isArray(d.items) ||
       d.items.length !== (n === 0 ? 1 : 2)
     )

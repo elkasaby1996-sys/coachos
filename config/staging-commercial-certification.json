@@ -728,9 +728,13 @@
       {
         "filename": "20260928072848_paddle_initial_period_bootstrap.sql",
         "sha256": "8ad294fe7a78b98a72dbf85b7512cd0507e79548574b644774a928f8aa6446b4"
+      },
+      {
+        "filename": "20260929073334_paddle_seat_resource_freshness.sql",
+        "sha256": "244b679b95ec94b15d642cc2e3584def269f2067620ba62a259c37dedcb84e8d"
       }
     ],
-    "expectedLatestMigration": "20260928072848_paddle_initial_period_bootstrap.sql"
+    "expectedLatestMigration": "20260929073334_paddle_seat_resource_freshness.sql"
   },
   "functions": {
     "billing": [

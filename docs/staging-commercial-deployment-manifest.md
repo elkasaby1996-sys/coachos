@@ -1,5 +1,12 @@
 # Staging commercial deployment manifest
 
+CODEX-63 appends `20260929073334_paddle_seat_resource_freshness.sql` for local
+review, preserving all 180 historical migration entries and hashes. The derived
+seat resource watermark corrects the GET/context clock comparison without
+rewriting evidence or changing lifecycle/plan ordering. Deployment and another
+certification attempt require separate review and authorization. See
+[seat resource freshness](paddle-seat-resource-freshness.md).
+
 CODEX-41 appends `20260928072848_paddle_initial_period_bootstrap.sql` for local
 review, preserving the prior 179 entries and hashes. It adds a private period
 proof and explicit service bootstrap from the already-consumed authenticated

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import {
+  comparePaddleResourceRevisions,
   createPaddleSeatTransport,
   handlePaddleSeatAction,
   type PaddleSeatContext,
@@ -24,6 +25,7 @@ const context: PaddleSeatContext = {
   periodStart: "2026-09-20T00:00:00Z",
   periodEnd: "2026-10-20T00:00:00Z",
   providerUpdatedAt: "2026-09-27T00:00:00Z",
+  resourceUpdatedAt: "2026-09-27T00:00:00Z",
 };
 function data(n = 0, c = context) {
   const cycle = {
@@ -67,7 +69,233 @@ function setup(value: unknown = data()) {
     transport: createPaddleSeatTransport("test", "pdl_sdbx_synthetic", fetcher),
   };
 }
+// These golden vectors also appear in paddle_seat_resource_freshness.sql.
+// Ordering is GET relative to authority; no full epoch value is a JS Number.
+const exactRevisionVectors = [
+  ["offset-positive", "2026-09-29T10:00:00Z", "2026-09-29T13:00:00+03:00", 0],
+  ["offset-negative", "2026-09-29T10:00:00Z", "2026-09-29T05:00:00-05:00", 0],
+  [
+    "fraction-spelling",
+    "2026-09-29T10:00:00.1Z",
+    "2026-09-29T10:00:00.100000000Z",
+    0,
+  ],
+  [
+    "stale-99ns",
+    "2026-09-29T10:00:00.123456799Z",
+    "2026-09-29T10:00:00.123456700Z",
+    -1,
+  ],
+  [
+    "exact-current",
+    "2026-09-29T10:00:00.123456799Z",
+    "2026-09-29T10:00:00.123456799Z",
+    0,
+  ],
+  [
+    "newer-1ns",
+    "2026-09-29T10:00:00.123456799Z",
+    "2026-09-29T10:00:00.123456800Z",
+    1,
+  ],
+  [
+    "rounding-boundary",
+    "2026-09-29T10:00:00.123999999Z",
+    "2026-09-29T10:00:00.123999999Z",
+    0,
+  ],
+  [
+    "offset-rollover",
+    "2026-09-29T23:00:00.123456789Z",
+    "2026-09-30T02:00:00.123456789+03:00",
+    0,
+  ],
+  [
+    "negative-rollover",
+    "2026-09-29T00:00:00.123456789Z",
+    "2026-09-28T19:00:00.123456789-05:00",
+    0,
+  ],
+  [
+    "stale-sub-millisecond",
+    "2026-09-29T10:00:00.123900Z",
+    "2026-09-29T10:00:00.123800Z",
+    -1,
+  ],
+  [
+    "pre-epoch",
+    "1960-01-01T00:00:00.123456789Z",
+    "1959-12-31T19:00:00.123456789-05:00",
+    0,
+  ],
+  [
+    "fraction-1",
+    "2026-09-29T10:00:00.1Z",
+    "2026-09-29T13:00:00.100000000+03:00",
+    0,
+  ],
+  [
+    "fraction-2",
+    "2026-09-29T10:00:00.12Z",
+    "2026-09-29T13:00:00.120000000+03:00",
+    0,
+  ],
+  [
+    "fraction-3",
+    "2026-09-29T10:00:00.123Z",
+    "2026-09-29T13:00:00.123000000+03:00",
+    0,
+  ],
+  [
+    "fraction-4",
+    "2026-09-29T10:00:00.1234Z",
+    "2026-09-29T13:00:00.123400000+03:00",
+    0,
+  ],
+  [
+    "fraction-5",
+    "2026-09-29T10:00:00.12345Z",
+    "2026-09-29T13:00:00.123450000+03:00",
+    0,
+  ],
+  [
+    "fraction-6",
+    "2026-09-29T10:00:00.123456Z",
+    "2026-09-29T13:00:00.123456000+03:00",
+    0,
+  ],
+  [
+    "fraction-7",
+    "2026-09-29T10:00:00.1234567Z",
+    "2026-09-29T13:00:00.123456700+03:00",
+    0,
+  ],
+  [
+    "fraction-8",
+    "2026-09-29T10:00:00.12345678Z",
+    "2026-09-29T13:00:00.123456780+03:00",
+    0,
+  ],
+  [
+    "fraction-9",
+    "2026-09-29T10:00:00.123456789Z",
+    "2026-09-29T13:00:00.123456789+03:00",
+    0,
+  ],
+] as const;
+describe("exact Paddle resource revision contract", () => {
+  it.each(exactRevisionVectors)(
+    "%s comparator preserves full precision",
+    (_label, authority, snapshot, expected) => {
+      expect(comparePaddleResourceRevisions(snapshot, authority)).toBe(
+        expected,
+      );
+      expect(comparePaddleResourceRevisions(authority, snapshot)).toBe(
+        expected === 0 ? 0 : -expected,
+      );
+    },
+  );
+  it.each(exactRevisionVectors)(
+    "%s retrieve enforces exact freshness",
+    async (_label, authority, snapshot, expected) => {
+      const c = { ...context, resourceUpdatedAt: authority };
+      const { transport, fetcher } = setup({
+        ...data(0, c),
+        updated_at: snapshot,
+      });
+      const result = transport.retrieve(c);
+      if (expected < 0) await expect(result).rejects.toThrow();
+      else await expect(result).resolves.toBeDefined();
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each([
+    null,
+    undefined,
+    "",
+    "2026-02-30T00:00:00Z",
+    "2026-09-29T10:00:00.1234567890Z",
+    "2026-09-29T10:00:00",
+    "2026-09-29T10:00:60Z",
+  ])("rejects invalid revision %s on either side", (value) => {
+    expect(() =>
+      comparePaddleResourceRevisions(value, context.providerUpdatedAt),
+    ).toThrow();
+    expect(() =>
+      comparePaddleResourceRevisions(context.providerUpdatedAt, value),
+    ).toThrow();
+  });
+});
 describe("Paddle seat transport", () => {
+  it.each([null, "2026-09-27T00:00:00Z"])(
+    "ignores a later event watermark with resource watermark %s",
+    async (resourceUpdatedAt) => {
+      const c = {
+        ...context,
+        providerUpdatedAt: "2026-09-28T00:00:00Z",
+        resourceUpdatedAt,
+      };
+      await expect(setup(data()).transport.retrieve(c)).resolves.toBeDefined();
+    },
+  );
+  it("rejects a GET behind a comparable authenticated resource revision", async () => {
+    const c = { ...context, resourceUpdatedAt: "2026-09-28T00:00:00Z" };
+    await expect(setup(data()).transport.retrieve(c)).rejects.toThrow();
+  });
+  it.each([undefined, null, "", "invalid", "2026-02-30T00:00:00Z"])(
+    "requires a real GET updated_at even with no historical resource revision (%s)",
+    async (updated_at) => {
+      await expect(
+        setup({ ...data(), updated_at }).transport.retrieve({
+          ...context,
+          resourceUpdatedAt: null,
+        }),
+      ).rejects.toThrow();
+    },
+  );
+  it("fails closed against an old database context missing the new contract", async () => {
+    const c = { ...context };
+    Reflect.deleteProperty(c, "resourceUpdatedAt");
+    await expect(setup(data()).transport.retrieve(c)).rejects.toThrow();
+  });
+  it.each([
+    ["subscription", "id", "different"],
+    ["customer", "customer_id", "different"],
+    ["status", "status", "past_due"],
+    ["collection", "collection_mode", "manual"],
+    ["schedule", "scheduled_change", {}],
+    ["cancellation", "canceled_at", context.periodStart],
+    ["pause", "paused_at", context.periodStart],
+    ["frequency", "billing_cycle.frequency", 2],
+    ["interval", "billing_cycle.interval", "year"],
+    ["period start", "current_billing_period.starts_at", context.periodEnd],
+    ["period end", "current_billing_period.ends_at", context.periodStart],
+    ["next billed", "next_billed_at", context.periodStart],
+    ["items array", "items", {}],
+    ["quantity", "items.0.quantity", 2],
+    ["item status", "items.0.status", "inactive"],
+    ["price identity", "items.0.price.id", "different"],
+    ["product identity", "items.0.price.product_id", "different"],
+    ["currency", "items.0.price.unit_price.currency_code", "EUR"],
+    ["amount", "items.0.price.unit_price.amount", "1"],
+    ["recurrence frequency", "items.0.price.billing_cycle.frequency", 2],
+    ["recurrence interval", "items.0.price.billing_cycle.interval", "year"],
+    ["custom type", "custom_data", []],
+    ["custom size", "custom_data", { value: "x".repeat(8193) }],
+  ])(
+    "historical fallback still rejects independent %s drift",
+    async (_name, path, value) => {
+      // Each case starts from an independently cloned, otherwise valid snapshot.
+      const d = structuredClone(data());
+      const keys = String(path).split(".");
+      let parent: object = d;
+      for (const key of keys.slice(0, -1)) parent = Reflect.get(parent, key);
+      Reflect.set(parent, keys.at(-1)!, value);
+      await expect(
+        setup(d).transport.retrieve({ ...context, resourceUpdatedAt: null }),
+      ).rejects.toThrow();
+    },
+  );
   it.each([0, 1, 2, 3, 4, 5])(
     "target %i uses additional-only quantity",
     async (n) => {
@@ -189,7 +417,7 @@ describe("Paddle seat transport", () => {
   it("timeout is non-dispatchable and never retried", async () => {
     vi.useFakeTimers();
     try {
-      const f = vi.fn<typeof fetch>(() => new Promise(() => {}));
+      const f = vi.fn<typeof fetch>(() => new Promise<Response>(() => {}));
       const result = createPaddleSeatTransport(
         "test",
         "pdl_sdbx_synthetic",
@@ -254,6 +482,33 @@ function dependencies() {
   return { deps, transport, calls };
 }
 describe("Paddle seat orchestration", () => {
+  it.each(["stale", "missing", "malformed"])(
+    "%s GET creates no durable operation or PATCH",
+    async (kind) => {
+      const { deps } = dependencies();
+      const d = data();
+      if (kind === "stale") d.updated_at = "2026-09-26T00:00:00Z";
+      if (kind === "missing") Reflect.deleteProperty(d, "updated_at");
+      if (kind === "malformed") d.updated_at = "invalid";
+      const { transport, fetcher } = setup(d);
+      deps.paddleSeats = () => transport;
+      await expect(
+        handlePaddleSeatAction(deps, operation, "synthetic", "apply", {
+          targetAdditionalSeats: 1,
+          operationId: operation,
+        }),
+      ).rejects.toThrow();
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(fetcher.mock.calls[0]![1]?.method).toBe("GET");
+      const begins = vi
+        .mocked(deps.serviceRpc)
+        .mock.calls.filter(
+          ([name]) => name === "begin_paddle_seat_quantity_v1",
+        );
+      expect(begins).toHaveLength(1);
+      expect(begins[0]![1].p_snapshot).toBeNull();
+    },
+  );
   it("routes before LS config and commits before PATCH", async () => {
     const { deps, calls } = dependencies();
     const r = await handleSeatQuantity(
