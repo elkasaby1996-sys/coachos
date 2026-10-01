@@ -1,14 +1,13 @@
-import { createPaddleSeatTransport } from "./paddle-seat-quantity.ts";
 import { createLemonSqueezyCommercialPorts } from "./lemon-squeezy-reconciliation.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.0";
-import { BillingError } from "./lemon-squeezy.ts";
+import { BillingError } from "./billing-common.ts";
 import { createLemonSqueezyBillingBoundary } from "./lemon-squeezy-adapter.ts";
 import type { BillingDependencies, Rpc } from "./billing-handlers.ts";
 import { portalCodes } from "./billing-portal.ts";
 import { planChangeCodes } from "./billing-plan-change.ts";
 import { seatQuantityCodes } from "./billing-seat-quantity.ts";
 import { paddleCheckoutRpcError } from "./paddle-checkout-rpc.ts";
-import { createPaddlePlanTransport } from "./paddle-plan-change.ts";
+import { paddleProviderRegistry } from "./paddle-runtime-provider.ts";
 
 const safeDatabaseCodes = new Set([
   ...portalCodes,
@@ -23,6 +22,10 @@ const safeDatabaseCodes = new Set([
   "BILLING_CHECKOUT_OPERATION_CONFLICT",
   "BILLING_CHECKOUT_CREATION_AMBIGUOUS",
   "BILLING_CHECKOUT_EXPIRED",
+  "BILLING_PAYMENT_METHOD_UNAVAILABLE",
+  "BILLING_PAYMENT_METHOD_AMBIGUOUS",
+  "BILLING_PAYMENT_METHOD_AUTHORITY_CHANGED",
+  "BILLING_PAYMENT_METHOD_RESULT_INVALID",
 ]);
 export function billingDependencies(): BillingDependencies {
   const env = (name: string) => Deno.env.get(name)?.trim() ?? "";
@@ -54,18 +57,30 @@ export function billingDependencies(): BillingDependencies {
       return data;
     };
   return {
+    paymentMethodTransport: (provider, environment) =>
+      paddleProviderRegistry
+        .forSubscription(provider)
+        .createPaymentMethodTransport(
+          env("PADDLE_ENVIRONMENT") === "sandbox" ? environment : "",
+          env("PADDLE_SANDBOX_PAYMENT_METHOD_API_KEY"),
+          fetch,
+        ),
     paddleSeats: () =>
-      createPaddleSeatTransport(
-        env("PADDLE_ENVIRONMENT") === "sandbox" ? "test" : "",
-        env("PADDLE_SANDBOX_API_KEY"),
-        fetch,
-      ),
+      paddleProviderRegistry
+        .forSubscription("paddle")
+        .createSeatTransport(
+          env("PADDLE_ENVIRONMENT") === "sandbox" ? "test" : "",
+          env("PADDLE_SANDBOX_API_KEY"),
+          fetch,
+        ),
     paddlePlans: () =>
-      createPaddlePlanTransport(
-        env("PADDLE_ENVIRONMENT") === "sandbox" ? "test" : "",
-        env("PADDLE_SANDBOX_API_KEY"),
-        fetch,
-      ),
+      paddleProviderRegistry
+        .forSubscription("paddle")
+        .createPlanTransport(
+          env("PADDLE_ENVIRONMENT") === "sandbox" ? "test" : "",
+          env("PADDLE_SANDBOX_API_KEY"),
+          fetch,
+        ),
     config: () => {
       const environment = env("BILLING_PROVIDER_ENVIRONMENT"),
         apiKey = env("LEMONSQUEEZY_API_KEY"),

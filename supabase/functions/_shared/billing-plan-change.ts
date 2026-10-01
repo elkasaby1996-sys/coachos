@@ -108,12 +108,14 @@ export async function handlePlanChange(
       if (Object.keys(input).length)
         throw new BillingError("BILLING_INVALID_INPUT");
     } else planChangeRequest(input);
-    if (
-      deps.paddlePlans &&
-      (await deps.serviceRpc("paddle_plan_change_route_v1", {
-        p_owner: owner.id,
-      }))
-    ) {
+    const paddleRoute = await deps.serviceRpc("paddle_plan_change_route_v1", {
+      p_owner: owner.id,
+    });
+    if (typeof paddleRoute !== "boolean")
+      throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
+    if (paddleRoute) {
+      if (!deps.paddlePlans)
+        throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
       const result = await handlePaddlePlanAction(
         deps,
         owner.id,
@@ -138,6 +140,12 @@ export async function handlePlanChange(
       p_owner: owner.id,
       p_environment: config.environment,
     });
+    // The legacy path is for an explicitly stored legacy subscription only.
+    if (
+      ctx?.subscription?.provider !== "lemonsqueezy" ||
+      ctx?.mapping?.provider !== "lemonsqueezy"
+    )
+      throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
     const id = ctx.subscription.provider_subscription_id;
     const current = await subscriptions.withItem(
       await subscriptions.retrieve(id),

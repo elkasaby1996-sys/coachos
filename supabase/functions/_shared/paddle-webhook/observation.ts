@@ -7,6 +7,7 @@ import type {
   PaddleLifecycleObservation,
 } from "./contract.ts";
 import { fail } from "./signature.ts";
+import { financialObservation } from "./financial-observation.ts";
 
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -165,8 +166,16 @@ function lifecycle(data: Record<string, unknown>): PaddleLifecycleObservation {
   }
   return result;
 }
-function items(value: unknown, planSettlement = false): PaddleWebhookItem[] {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 32)
+function items(
+  value: unknown,
+  planSettlement = false,
+  nonFinancial = false,
+): PaddleWebhookItem[] {
+  if (
+    !Array.isArray(value) ||
+    value.length < (nonFinancial ? 0 : 1) ||
+    value.length > 32
+  )
     return fail("event_invalid");
   return value.map((raw) => {
     const item = object(raw),
@@ -216,18 +225,71 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
     occurredAt: observedTimestamp(envelope.occurred_at),
   };
   const data = object(envelope.data);
-  if (base.eventType === "transaction.completed") {
-    if (data.status !== "completed") fail("event_invalid");
+  if (
+    [
+      "transaction.completed",
+      "transaction.past_due",
+      "transaction.payment_failed",
+      "transaction.updated",
+      "transaction.paid",
+      "transaction.canceled",
+    ].includes(base.eventType)
+  ) {
+    if (
+      typeof data.status !== "string" ||
+      ![
+        "draft",
+        "ready",
+        "billed",
+        "past_due",
+        "paid",
+        "completed",
+        "canceled",
+      ].includes(data.status) ||
+      (base.eventType === "transaction.completed" &&
+        data.status !== "completed") ||
+      (base.eventType === "transaction.past_due" &&
+        data.status !== "past_due") ||
+      (base.eventType === "transaction.paid" && data.status !== "paid") ||
+      (base.eventType === "transaction.canceled" && data.status !== "canceled")
+    )
+      fail("event_invalid");
+    // Cancellation is retained as invalidation even when voided totals no longer
+    // satisfy the collectible-payment equation. It never supplies debt authority.
+    const financial =
+      base.eventType !== "transaction.canceled" &&
+      (data.origin === "subscription_recurring" ||
+        (base.eventType === "transaction.completed" &&
+          data.origin === "subscription_payment_method_change")) &&
+      data.details !== undefined
+        ? financialObservation(data, observedTimestamp, reference)
+        : undefined;
     const operation = { ...planOperation(data), ...seatOperation(data) };
     return {
       ...base,
-      kind: "transaction.completed",
+      kind: base.eventType as
+        | "transaction.completed"
+        | "transaction.past_due"
+        | "transaction.payment_failed"
+        | "transaction.updated"
+        | "transaction.paid"
+        | "transaction.canceled",
       ...operation,
-      ...planPayment(data),
+      ...(base.eventType === "transaction.canceled" ? {} : planPayment(data)),
+      ...(financial
+        ? {
+            financial,
+            paymentTotals: {
+              total: Number(financial.totals.grandTotal),
+              paid: Number(financial.captured),
+              balance: Number(financial.totals.balance),
+            },
+          }
+        : {}),
       transactionRef: reference(data.id),
       subscriptionRef: nullableReference(data.subscription_id),
       customerRef: nullableReference(data.customer_id),
-      status: "completed",
+      status: data.status,
       currency: currency(data.currency_code),
       // Proration transactions describe a delta, not current subscription state.
       // Only settlement SQL can bind either sign to the operation's mappings.
@@ -236,6 +298,7 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
         !!(
           operation.planChangeOperationId || operation.seatQuantityOperationId
         ) && data.origin === "subscription_update",
+        data.origin === "subscription_payment_method_change",
       ),
       ...("origin" in data ? { origin: reference(data.origin) } : {}),
       ...("billing_period" in data
@@ -245,9 +308,12 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
   }
   if (
     base.eventType === "subscription.created" ||
-    base.eventType === "subscription.updated"
+    base.eventType === "subscription.updated" ||
+    base.eventType === "subscription.past_due"
   ) {
     const status = data.status;
+    if (base.eventType === "subscription.past_due" && status !== "past_due")
+      fail("event_invalid");
     if (
       status !== "active" &&
       status !== "trialing" &&
@@ -280,7 +346,24 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
       items: rows,
       ...planOperation(data),
       ...seatOperation(data),
-      ...(base.eventType === "subscription.updated" ? lifecycle(data) : {}),
+      ...(base.eventType !== "subscription.created" ? lifecycle(data) : {}),
+    };
+  }
+  if (
+    base.eventType === "adjustment.created" ||
+    base.eventType === "adjustment.updated"
+  ) {
+    if (typeof data.status !== "string" || !/^[a-z_]{2,40}$/.test(data.status))
+      fail("event_invalid");
+    return {
+      ...base,
+      kind: base.eventType,
+      adjustmentRef: reference(data.id),
+      transactionRef: reference(data.transaction_id),
+      customerRef: nullableReference(data.customer_id),
+      subscriptionRef: nullableReference(data.subscription_id),
+      status: data.status,
+      resourceUpdatedAt: observedTimestamp(data.updated_at),
     };
   }
   return { ...base, kind: "unsupported", reason: "event_type_not_supported" };
@@ -289,7 +372,7 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
 export function eventProof(
   observation: PaddleSupportedEventObservation,
 ): EventProof {
-  const transaction = observation.kind === "transaction.completed";
+  const transaction = "transactionRef" in observation;
   return {
     schema: "billing-proof-v2",
     validator: "paddle-contract-v1",

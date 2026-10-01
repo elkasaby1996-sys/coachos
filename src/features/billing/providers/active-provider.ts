@@ -1,11 +1,9 @@
-import { lemonSqueezyBrowserProvider } from "./lemon-squeezy";
 import { paddleBrowserProvider } from "./paddle";
 
-// Build-time selection only. Missing/unknown values preserve the existing LS default.
+// The browser can enable the reviewed Paddle entrypoint, but cannot choose a
+// different company to process a payment. The server owns checkout authority.
 export function selectBillingBrowserProvider(value: unknown) {
-  return value === "paddle"
-    ? paddleBrowserProvider
-    : lemonSqueezyBrowserProvider;
+  return value === "paddle" ? paddleBrowserProvider : null;
 }
 export const billingBrowserProvider = selectBillingBrowserProvider(
   import.meta.env.VITE_BILLING_PROVIDER,

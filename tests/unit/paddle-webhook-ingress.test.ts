@@ -110,11 +110,19 @@ describe("trusted Paddle ingress", () => {
       error: null,
       data: { status: "disabled" },
     }));
+    rpc.mockImplementationOnce(async () => ({
+      error: null,
+      data: { status: "not_applicable" },
+    }));
     release({ error: null, data: storedEvent });
     const response = await pending;
-    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenCalledTimes(3);
     expect(rpc.mock.calls[1]).toEqual([
       "reconcile_paddle_initial_purchase_event_v1",
+      { p_event: storedEvent.eventId },
+    ]);
+    expect(rpc.mock.calls[2]).toEqual([
+      "reconcile_billing_payment_method_preparation_v1",
       { p_event: storedEvent.eventId },
     ]);
     expect(response.status).toBe(200);
@@ -132,12 +140,20 @@ describe("trusted Paddle ingress", () => {
     const rpc = vi
       .fn()
       .mockResolvedValueOnce({ error: null, data: storedEvent })
-      .mockResolvedValueOnce({ error: null, data: { status } });
+      .mockResolvedValueOnce({ error: null, data: { status } })
+      .mockResolvedValueOnce({
+        error: null,
+        data: { status: "not_applicable" },
+      });
     const result = await createPaddleWebhookIngress(config, { rpc })(request());
     expect(result.status).toBe(200);
     expect(await result.text()).toBe("accepted");
     expect(rpc.mock.calls[1]).toEqual([
       "reconcile_paddle_initial_purchase_event_v1",
+      { p_event: storedEvent.eventId },
+    ]);
+    expect(rpc.mock.calls[2]).toEqual([
+      "reconcile_billing_payment_method_preparation_v1",
       { p_event: storedEvent.eventId },
     ]);
   });
@@ -180,7 +196,11 @@ describe("trusted Paddle ingress", () => {
         error: null,
         data: { ...storedEvent, reused: true },
       })
-      .mockResolvedValueOnce({ error: null, data: { status: "reused" } });
+      .mockResolvedValueOnce({ error: null, data: { status: "reused" } })
+      .mockResolvedValueOnce({
+        error: null,
+        data: { status: "not_applicable" },
+      });
     const handle = createPaddleWebhookIngress(config, { rpc });
     expect((await handle(request())).status).toBe(503);
     expect((await handle(request())).status).toBe(200);
@@ -233,6 +253,40 @@ describe("trusted Paddle ingress", () => {
       { p_event: storedEvent.eventId },
     ]);
   });
+  it("revisits a payment-method preparation after an applied subscription update", async () => {
+    const value = event();
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({
+        error: null,
+        data: { ...storedEvent, eventType: "subscription.updated" },
+      })
+      .mockResolvedValueOnce({ error: null, data: { status: "applied" } })
+      .mockResolvedValueOnce({ error: null, data: { status: "completed" } });
+    const result = await createPaddleWebhookIngress(config, { rpc })(
+      request({
+        ...value,
+        event_type: "subscription.updated",
+        data: {
+          ...value.data,
+          id: "synthetic/subscription",
+          customer_id: "synthetic/customer",
+          status: "active",
+          items: value.data.items.map((item) => ({
+            ...item,
+            status: "active",
+          })),
+        },
+      }),
+    );
+    expect(result.status).toBe(200);
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual([
+      "ingest_verified_paddle_event_v1",
+      "reconcile_paddle_initial_purchase_event_v1",
+      "reconcile_billing_payment_method_preparation_v1",
+    ]);
+    expect(rpc.mock.calls[2]?.[1]).toEqual({ p_event: storedEvent.eventId });
+  });
   it.each([null, new Error("private failure")])(
     "retries persistence failure",
     async (error) => {
@@ -259,7 +313,7 @@ describe("trusted Paddle ingress", () => {
   });
   it("acknowledges authenticated unsupported events without evidence", async () => {
     const rpc = vi.fn();
-    const value = { ...event(), event_type: "transaction.updated" };
+    const value = { ...event(), event_type: "transaction.billed" };
     expect(
       (await createPaddleWebhookIngress(config, { rpc })(request(value)))
         .status,

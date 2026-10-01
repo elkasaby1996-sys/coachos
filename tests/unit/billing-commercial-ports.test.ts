@@ -121,6 +121,8 @@ export function commercialFixture() {
   };
   const serviceRpc = vi.fn(
     async (name: string, args: Record<string, unknown>) => {
+      // Read-only provider routing is not part of the durable parity trace.
+      if (name === "paddle_plan_change_route_v1") return false;
       trace.push([name, structuredClone(args)]);
       if (name === "get_billing_provider_store") return "1";
       if (name === "record_billing_webhook_delivery")
@@ -129,6 +131,7 @@ export function commercialFixture() {
       if (name.endsWith("_context"))
         return {
           subscription: {
+            provider: "lemonsqueezy",
             provider_subscription_id: "3",
             provider_customer_id: "2",
             provider_store_id: "1",
@@ -137,6 +140,7 @@ export function commercialFixture() {
             first_subscription_item_id: "9",
             approved_additional_coach_seats: 0,
           },
+          mapping: { provider: "lemonsqueezy" },
         };
       if (name.startsWith("begin_"))
         return {

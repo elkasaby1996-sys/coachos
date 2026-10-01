@@ -2,6 +2,11 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
+vi.mock("../../src/features/billing/providers/active-provider", () => ({
+  billingBrowserProvider: {
+    checkoutFunction: "billing-create-paddle-checkout",
+  },
+}));
 vi.mock("../../src/features/billing/use-billing-checkout", () => ({
   useBillingCheckout: () => ({
     state: { refetch: vi.fn() },

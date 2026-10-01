@@ -2,13 +2,13 @@ import {
   assertServer,
   type ServerEnvironmentReader,
 } from "./paddle-catalogue/config.ts";
-import { createPaddleSandboxCheckoutTransport } from "./paddle-checkout/index.ts";
 import {
   createPaddleCheckoutOrchestrator,
   PaddleOrchestrationError,
 } from "./paddle-checkout-orchestration.ts";
 import type { BillingDependencies } from "./billing-handlers.ts";
-import { boundedBody } from "./lemon-squeezy.ts";
+import { boundedBody } from "./billing-common.ts";
+import { paddleProviderRegistry } from "./paddle-runtime-provider.ts";
 
 export type PaddleCheckoutRuntime = Pick<
   BillingDependencies,
@@ -116,7 +116,7 @@ export async function handlePaddleCheckout(
       const hosted = deps.readEnvironment(
         "PADDLE_SANDBOX_HOSTED_CHECKOUT_LAUNCH_URL",
       );
-      transport = createPaddleSandboxCheckoutTransport({
+      transport = paddleProviderRegistry.forNewSales().createCheckoutTransport({
         fetch: deps.fetch,
         readEnvironment: deps.readEnvironment,
         paymentPageUrl:

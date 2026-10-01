@@ -90,12 +90,14 @@ export async function handleSeatQuantity(
       JSON.parse(new TextDecoder().decode(await boundedBody(request, 4096))),
       action,
     );
-    if (
-      deps.paddleSeats &&
-      (await deps.serviceRpc("paddle_plan_change_route_v1", {
-        p_owner: owner.id,
-      }))
-    ) {
+    const paddleRoute = await deps.serviceRpc("paddle_plan_change_route_v1", {
+      p_owner: owner.id,
+    });
+    if (typeof paddleRoute !== "boolean")
+      throw new BillingError("BILLING_SEAT_QUANTITY_PROVIDER_FAILED", 503);
+    if (paddleRoute) {
+      if (!deps.paddleSeats)
+        throw new BillingError("BILLING_SEAT_QUANTITY_PROVIDER_FAILED", 503);
       return reply(
         await handlePaddleSeatAction(deps, owner.id, token, action, input),
       );
@@ -106,6 +108,11 @@ export async function handleSeatQuantity(
     const { subscriptions, reconciliation: proof, seats } = config.commercial;
     const base = { p_owner: owner.id, p_environment: config.environment };
     const ctx = await deps.serviceRpc("billing_seat_quantity_context", base);
+    if (
+      ctx?.subscription?.provider !== "lemonsqueezy" ||
+      ctx?.mapping?.provider !== "lemonsqueezy"
+    )
+      throw new BillingError("BILLING_SEAT_QUANTITY_PROVIDER_FAILED", 503);
     const id = ctx.subscription.provider_subscription_id;
     const current = await subscriptions.retrieve(id);
     let verified = await subscriptions.withItem(current, action !== "refresh");

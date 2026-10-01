@@ -16,18 +16,8 @@ import {
   parsePortalSubscription,
 } from "../../supabase/functions/_shared/lemon-squeezy";
 import type { BillingDependencies } from "../../supabase/functions/_shared/billing-handlers";
-import {
-  customerPortalLinkResponseSchema,
-  portalLinkRequestSchema,
-} from "../../src/features/billing/portal-contracts";
-import { safePortalError } from "../../src/features/billing/portal-errors";
+import { safePaymentMethodError } from "../../src/features/billing/payment-method-errors";
 import { redactHostedPaymentUrls } from "../../src/lib/redact-hosted-payment-urls";
-import {
-  cleanPortalReturn,
-  portalReturnState,
-  PORTAL_POLL_DURATION_MS,
-  PORTAL_POLL_MS,
-} from "../../src/features/billing/portal-return-state";
 
 const owner = "a0600000-0000-4000-8000-000000000001";
 const expiry = Math.floor(Date.now() / 1000) + 3600;
@@ -142,7 +132,6 @@ describe("customer portal server boundary", () => {
     "destination",
   ])("rejects extra %s", async (key) => {
     const input = { purpose: "manage_billing", [key]: "forged" };
-    expect(portalLinkRequestSchema.safeParse(input).success).toBe(false);
     expect(() => portalPurpose(input)).toThrow();
     const { deps, provider } = fixture();
     expect((await handleCustomerPortalLink(request(input), deps)).status).toBe(
@@ -307,9 +296,6 @@ describe("signed URL validation and telemetry", () => {
             "3",
           );
           expect(result).toEqual({ purpose, portalUrl: value });
-          expect(customerPortalLinkResponseSchema.parse(result)).toEqual(
-            result,
-          );
         }
       },
     );
@@ -487,7 +473,7 @@ describe("signed URL validation and telemetry", () => {
         false,
       );
       expect(
-        JSON.stringify(safePortalError({ message: signed })).includes(
+        JSON.stringify(safePaymentMethodError({ message: signed })).includes(
           "signature",
         ),
       ).toBe(false);
@@ -497,37 +483,7 @@ describe("signed URL validation and telemetry", () => {
     },
   );
 });
-describe("portal return and isolation", () => {
-  const current = {
-    linked: true,
-    status: "active" as const,
-    cancelAtPeriodEnd: false,
-    currentPeriodEndsAt: null,
-    reconciliationStatus: "processed" as const,
-    errorCode: null,
-    revision: "one",
-    pending: false,
-  };
-  it("query hint never means success and cleanup preserves unrelated params", () => {
-    expect(portalReturnState(undefined, current, true)).toBe("checking");
-    expect(portalReturnState(current, current, false)).toBe(
-      "no_detected_change",
-    );
-    expect(
-      cleanPortalReturn(
-        new URLSearchParams("portal=return&tab=billing"),
-      ).toString(),
-    ).toBe("tab=billing");
-  });
-  it("uses canonical transitions and bounded polling", () => {
-    expect(
-      portalReturnState({ ...current, cancelAtPeriodEnd: true }, current, true),
-    ).toBe("resumed");
-    expect(
-      portalReturnState(current, { ...current, pending: true }, false),
-    ).toBe("reconciliation_pending");
-    expect(PORTAL_POLL_DURATION_MS / PORTAL_POLL_MS).toBe(15);
-  });
+describe("billing browser isolation", () => {
   it.each([
     "src/lib/auth.tsx",
     "src/lib/auth-callback.ts",
@@ -542,9 +498,9 @@ describe("portal return and isolation", () => {
       ),
     ).toBe(false);
   });
-  it("mutation cache and storage never receive the returned URL", () => {
+  it("mutation cache and storage never receive the continuation", () => {
     const source = readFileSync(
-      "src/features/billing/use-customer-portal.ts",
+      "src/features/billing/use-payment-method-update.ts",
       "utf8",
     );
     expect(source).not.toMatch(

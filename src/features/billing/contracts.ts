@@ -23,7 +23,7 @@ export const paddleCheckoutRequestSchema = z.strictObject({
 export type PaddleCheckoutRequest = z.infer<typeof paddleCheckoutRequestSchema>;
 export const hostedCheckoutUrlSchema = z
   .url()
-  .refine(billingBrowserProvider.acceptsCheckoutUrl);
+  .refine((url) => billingBrowserProvider?.acceptsCheckoutUrl(url) === true);
 export const checkoutResponseSchema = z.strictObject({
   checkoutUrl: hostedCheckoutUrlSchema,
   checkoutAttemptId: z.uuid(),

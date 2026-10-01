@@ -25,7 +25,10 @@ if (configuredWorkers && !/^[1-9]\d*$/.test(configuredWorkers)) {
 
 export default defineConfig({
   testDir: "tests/e2e",
-  testIgnore: "**/paddle-checkout.spec.ts",
+  testIgnore: [
+    "**/paddle-checkout.spec.ts",
+    "**/paddle-payment-method.spec.ts",
+  ],
   timeout: 90_000,
   fullyParallel: false,
   retries: 0,
@@ -46,6 +49,7 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: false,
         timeout: 120_000,
+        env: { VITE_BILLING_PROVIDER: "paddle", VITE_SENTRY_DSN: "" },
       }
     : undefined,
   projects: [

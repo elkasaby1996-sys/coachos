@@ -170,6 +170,64 @@ export interface CustomerPortalCapability {
     destination(): { url: string; expiresAt?: string };
   }>;
 }
+/** Private server capability. A checkout token is released only after durable
+ * preparation and a fresh canonical authority check. */
+export type PaymentMethodUpdateIdentity = ProviderIdentity & {
+  customerReference: ProviderReference;
+  subscriptionReference: ProviderReference;
+};
+export type PaymentMethodUpdateMode = "update_only" | "settle_existing_balance";
+export type PaymentMethodUpdateItem = {
+  priceReference: ProviderReference;
+  productReference: ProviderReference;
+  quantity: number;
+  unitAmountMinor: string;
+};
+export type PaymentMethodUpdateExpectation = {
+  identity: PaymentMethodUpdateIdentity;
+  mode: PaymentMethodUpdateMode;
+  items: readonly PaymentMethodUpdateItem[];
+  obligation?: {
+    transactionReference: ProviderReference;
+    amountMinor: string;
+    currency: string;
+    period: { startsAt: string; endsAt: string };
+  };
+};
+export type PaymentMethodDispatchPermit = {
+  /** Returns true once, after a committed service-side dispatch claim. */
+  consume(): boolean;
+};
+export type PreparedPaymentMethodUpdate = {
+  transactionReference: ProviderReference;
+  effect:
+    | { kind: "update_only" }
+    | {
+        kind: "settle_existing_balance";
+        amountMinor: string;
+        currency: string;
+      };
+  normalizedResultSha256: string;
+  status: "checkout_ready" | "settlement_pending";
+  /** One-use opaque Paddle.js transaction token, never a provider URL. */
+  release(): {
+    kind: "provider_checkout";
+    provider: BillingProviderKey;
+    environment: BillingEnvironment;
+    token: string;
+  };
+};
+export interface PaymentMethodUpdateCapability {
+  validateConfiguration(): void;
+  prepare(
+    expectation: PaymentMethodUpdateExpectation,
+    permit: PaymentMethodDispatchPermit,
+  ): Promise<PreparedPaymentMethodUpdate>;
+  inspect(
+    expectation: PaymentMethodUpdateExpectation,
+    transactionReference: ProviderReference,
+  ): Promise<PreparedPaymentMethodUpdate>;
+}
 export interface SubscriptionCancellationCapability {
   cancel(input: {
     subscriptionReference: ProviderReference;
@@ -189,6 +247,7 @@ export type BillingAdapter = {
     transactions?: TransactionRetrievalCapability;
     webhooks?: WebhookVerificationCapability;
     customerPortal?: CustomerPortalCapability;
+    paymentMethodUpdate?: PaymentMethodUpdateCapability;
     cancellation?: SubscriptionCancellationCapability;
   };
 };

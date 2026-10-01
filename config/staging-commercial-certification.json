@@ -732,9 +732,17 @@
       {
         "filename": "20260929073334_paddle_seat_resource_freshness.sql",
         "sha256": "244b679b95ec94b15d642cc2e3584def269f2067620ba62a259c37dedcb84e8d"
+      },
+      {
+        "filename": "20260930201815_billing_payment_recovery_authority.sql",
+        "sha256": "62ba9579e81cdabee15a1ece78a220a39f1707f2037bef3b53baaee71a651e21"
+      },
+      {
+        "filename": "20261001063502_billing_payment_method_update.sql",
+        "sha256": "5d0e851e3789668bcf0e3a83da443e42a0d29abe34929b87926a067ebd12ba9e"
       }
     ],
-    "expectedLatestMigration": "20260929073334_paddle_seat_resource_freshness.sql"
+    "expectedLatestMigration": "20261001063502_billing_payment_method_update.sql"
   },
   "functions": {
     "billing": [

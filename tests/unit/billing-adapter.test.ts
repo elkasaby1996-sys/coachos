@@ -25,9 +25,9 @@ import {
   type BillingDependencies,
 } from "../../supabase/functions/_shared/billing-handlers";
 import { PUBLIC_PLAN_KEYS } from "../../src/features/commercial-catalogue/contracts";
-import { billingBrowserProvider } from "../../src/features/billing/providers/active-provider";
+import { selectBillingBrowserProvider } from "../../src/features/billing/providers/active-provider";
 import { hostedCheckoutUrlSchema } from "../../src/features/billing/contracts";
-import { createBillingCheckout } from "../../src/features/billing/checkout-api";
+import { legalSiteConfig } from "../../src/lib/legal-site";
 
 const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("../../src/lib/supabase", () => ({
@@ -671,45 +671,46 @@ describe("thin compatibility delegation", () => {
       }
     },
   );
-  it("preserves browser checkout routing and URL trust policy", () => {
-    expect(billingBrowserProvider.checkoutFunction).toBe(
-      "billing-create-lemon-squeezy-checkout",
-    );
+  it("keeps the legacy adapter isolated from active browser checkout", () => {
+    expect(selectBillingBrowserProvider("lemonsqueezy")).toBeNull();
+    expect(selectBillingBrowserProvider(undefined)).toBeNull();
     expect(
-      hostedCheckoutUrlSchema.parse("https://demo.lemonsqueezy.com/checkout/x"),
-    ).toBe("https://demo.lemonsqueezy.com/checkout/x");
+      hostedCheckoutUrlSchema.safeParse(
+        "https://demo.lemonsqueezy.com/checkout/x",
+      ).success,
+    ).toBe(false);
     expect(
       hostedCheckoutUrlSchema.safeParse(
         "https://another-provider.test/checkout/x",
       ).success,
     ).toBe(false);
   });
-  it("invokes the unchanged browser checkout endpoint and returns only the validated response", async () => {
+  it("rejects legacy browser checkout input without invoking an endpoint", async () => {
     invoke.mockReset();
-    const data = {
-      checkoutUrl: "https://demo.lemonsqueezy.com/checkout/x",
-      checkoutAttemptId: uuid,
-      expiresAt: expiry,
-    };
-    invoke.mockResolvedValue({ data, error: null });
+    vi.stubEnv("VITE_BILLING_PROVIDER", "lemon_squeezy");
+    vi.resetModules();
+    const { createBillingCheckout } =
+      await import("../../src/features/billing/checkout-api");
     const input = {
       planKey: "growth" as const,
       cadence: "annual" as const,
       operationId: uuid,
     };
-    await expect(createBillingCheckout(input)).resolves.toEqual(data);
-    expect(invoke).toHaveBeenCalledExactlyOnceWith(
-      "billing-create-lemon-squeezy-checkout",
-      { body: input },
-    );
+    await expect(createBillingCheckout(input as never)).rejects.toMatchObject({
+      code: "BILLING_PROVIDER_NOT_CONFIGURED",
+    });
+    expect(invoke).not.toHaveBeenCalled();
   });
   it("still rejects untrusted checkout destinations returned by the server", async () => {
     invoke.mockReset();
+    vi.stubEnv("VITE_BILLING_PROVIDER", "paddle");
+    vi.resetModules();
+    const { createBillingCheckout } =
+      await import("../../src/features/billing/checkout-api");
     invoke.mockResolvedValue({
       data: {
+        status: "ready",
         checkoutUrl: "https://evil.test/checkout/x",
-        checkoutAttemptId: uuid,
-        expiresAt: expiry,
       },
       error: null,
     });
@@ -717,9 +718,16 @@ describe("thin compatibility delegation", () => {
       createBillingCheckout({
         planKey: "growth",
         cadence: "monthly",
-        operationId: uuid,
+        additionalCoachSeats: 0,
+        legal: {
+          termsAccepted: true,
+          refundAcknowledged: true,
+          termsVersion: legalSiteConfig.version,
+          refundVersion: legalSiteConfig.version,
+        },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ code: "PADDLE_CHECKOUT_RECOVERY_REQUIRED" });
+    expect(invoke).toHaveBeenCalledOnce();
   });
   it("keeps handler output and durable RPC arguments identical via the compatibility path", async () => {
     async function run(useBoundary: boolean) {

@@ -1,9 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.0";
 import {
-  createPaddleWebhookIngress,
   logPaddleWebhookRejection,
   webhookConfiguration,
 } from "../_shared/paddle-webhook/ingress.ts";
+import { paddleProviderRegistry } from "../_shared/paddle-runtime-provider.ts";
 
 Deno.serve(async (request) => {
   if (request.method !== "POST")
@@ -15,9 +15,11 @@ Deno.serve(async (request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } },
     );
-    return await createPaddleWebhookIngress(config, {
-      rpc: async (name, args) => client.rpc(name, args),
-    })(request);
+    return await paddleProviderRegistry
+      .forSubscription("paddle")
+      .createWebhookIngress(config, {
+        rpc: async (name, args) => client.rpc(name, args),
+      })(request);
   } catch (error) {
     logPaddleWebhookRejection("configuration", error, 503);
     return new Response("unavailable", {

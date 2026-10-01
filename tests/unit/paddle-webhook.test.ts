@@ -540,7 +540,7 @@ describe("event envelope and conservative observations", () => {
   });
   it.each([
     "customer.created",
-    "transaction.payment_failed",
+    "transaction.billed",
     "subscription.activated",
     "Provider.Future:Case",
   ])("returns authenticated unsupported observation for %s", async (type) => {

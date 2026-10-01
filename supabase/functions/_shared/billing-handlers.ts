@@ -1,28 +1,29 @@
+import { BillingError, boundedBody, object } from "./billing-common.ts";
 import {
-  BillingError,
-  boundedBody,
   checkoutRequest,
   hostedCheckoutUrl,
-  object,
   type BillingProvider,
   type CheckoutOperation,
-  type Environment,
 } from "./lemon-squeezy.ts";
 import type { BillingCommercialPorts } from "./billing-commercial-ports.ts";
-import type { BillingAdapter } from "./billing-provider.ts";
+import type { BillingAdapter, BillingEnvironment } from "./billing-provider.ts";
 
 export type Rpc = (name: string, args: Record<string, unknown>) => Promise<any>;
 export type BillingConfig = {
-  environment: Environment;
+  environment: BillingEnvironment;
   appBaseUrl: string;
   webhookSecret: string;
   provider: BillingProvider;
-  /** Neutral capabilities; legacy provider remains for checkout compatibility only. */
+  /** Legacy capabilities remain for historical subscriptions and portal access. */
   adapter?: BillingAdapter;
   commercial?: BillingCommercialPorts;
   portalAllowedHosts?: string;
 };
 export type BillingDependencies = {
+  paymentMethodTransport?: (
+    provider: string,
+    environment: string,
+  ) => import("./billing-provider.ts").PaymentMethodUpdateCapability;
   paddleSeats?: () => import("./paddle-seat-quantity.ts").PaddleSeatTransport;
   paddlePlans?: () => import("./paddle-plan-change.ts").PaddlePlanTransport;
   config: () => BillingConfig | null;

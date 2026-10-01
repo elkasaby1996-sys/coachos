@@ -51,15 +51,18 @@ function fixture() {
     return current;
   });
   const service = vi.fn(async (name: string) => {
+    if (name === "paddle_plan_change_route_v1") return false;
     if (name === "billing_plan_change_context")
       return {
         subscription: {
+          provider: "lemonsqueezy",
           provider_subscription_id: "3",
           provider_customer_id: "2",
           provider_store_id: "1",
           provider_variant_id: "5",
           provider_price_id: "6",
         },
+        mapping: { provider: "lemonsqueezy" },
       };
     if (
       name === "begin_billing_plan_change" ||
@@ -206,6 +209,7 @@ describe("controlled plan change boundary", () => {
     ).toBe(200);
     expect(f.update).not.toHaveBeenCalled();
     expect(f.service.mock.calls.map((c) => c[0])).toEqual([
+      "paddle_plan_change_route_v1",
       "billing_plan_change_context",
       "preview_billing_plan_change",
     ]);
@@ -218,6 +222,38 @@ describe("controlled plan change boundary", () => {
     );
     expect(f.service).not.toHaveBeenCalled();
   });
+  it("does not fall through to legacy when a Paddle subscription lacks its transport", async () => {
+    const f = fixture();
+    const original = f.deps.serviceRpc;
+    f.deps.serviceRpc = (name, args) =>
+      name === "paddle_plan_change_route_v1"
+        ? Promise.resolve(true)
+        : original(name, args);
+    expect((await handlePlanChange(f.request(), f.deps, "apply")).status).toBe(
+      503,
+    );
+    expect(f.service.mock.calls.map((call) => call[0])).not.toContain(
+      "billing_plan_change_context",
+    );
+    expect(f.update).not.toHaveBeenCalled();
+  });
+  it("rejects unknown stored legacy provider identity", async () => {
+    const f = fixture();
+    const original = f.deps.serviceRpc;
+    f.deps.serviceRpc = async (name, args) => {
+      const result = await original(name, args);
+      return name === "billing_plan_change_context"
+        ? {
+            ...result,
+            subscription: { ...result.subscription, provider: "unknown" },
+          }
+        : result;
+    };
+    expect((await handlePlanChange(f.request(), f.deps, "apply")).status).toBe(
+      503,
+    );
+    expect(f.update).not.toHaveBeenCalled();
+  });
   it("PayPal never creates an operation or calls PATCH", async () => {
     const f = fixture();
     f.setCurrent({ ...snapshot, payment_processor: "paypal" });
@@ -226,13 +262,14 @@ describe("controlled plan change boundary", () => {
       code: "BILLING_PLAN_CHANGE_PAYPAL_UNSUPPORTED",
     });
     expect(f.update).not.toHaveBeenCalled();
-    expect(f.service.mock.calls).toHaveLength(1);
+    expect(f.service.mock.calls).toHaveLength(2);
   });
   it("persists dispatch before provider mutation", async () => {
     const f = fixture();
     const r = await handlePlanChange(f.request(), f.deps, "apply");
     expect(r.status).toBe(200);
     expect(f.service.mock.calls.map((c) => c[0])).toEqual([
+      "paddle_plan_change_route_v1",
       "billing_plan_change_context",
       "begin_billing_plan_change",
       "finish_billing_plan_change",
