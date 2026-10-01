@@ -190,6 +190,7 @@ export function PtHubSettingsBillingTab() {
           description="Update your payment method and check verified billing status."
         >
           <BillingManagementPanel
+            subscription={subscription}
             owner={entitlementsQuery.data.billingAccount.canManageBilling}
             refresh={refreshPaymentMethodBilling}
           />

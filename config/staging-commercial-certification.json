@@ -740,9 +740,13 @@
       {
         "filename": "20261001063502_billing_payment_method_update.sql",
         "sha256": "5d0e851e3789668bcf0e3a83da443e42a0d29abe34929b87926a067ebd12ba9e"
+      },
+      {
+        "filename": "20261001162923_billing_payment_method_state_alignment.sql",
+        "sha256": "868fcfcf86ae7f03c172c40b08632dc5043ffd9b18d3b4c951d27ee5fd9203a4"
       }
     ],
-    "expectedLatestMigration": "20261001063502_billing_payment_method_update.sql"
+    "expectedLatestMigration": "20261001162923_billing_payment_method_state_alignment.sql"
   },
   "functions": {
     "billing": [
@@ -750,6 +754,7 @@
       "billing-create-paddle-checkout",
       "billing-lemon-squeezy-webhook",
       "billing-create-customer-portal-link",
+      "billing-update-payment-method",
       "billing-preview-plan-change",
       "billing-change-subscription-plan",
       "billing-cancel-scheduled-plan-change",
@@ -775,7 +780,8 @@
     "billing-cancel-scheduled-seat-change": true,
     "billing-refresh-coach-seat-change": true,
     "open-wearables": true,
-    "exercise-dataset-search": true
+    "exercise-dataset-search": true,
+    "billing-update-payment-method": true
   },
   "requiredSecretNames": [
     "SUPABASE_ACCESS_TOKEN",

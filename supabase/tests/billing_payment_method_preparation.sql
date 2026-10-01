@@ -44,8 +44,8 @@ select ok(has_function_privilege('authenticated','get_my_billing_payment_method_
  'owner may call reference-free projection');
 select set_config('request.jwt.claim.sub',(select u::text from payment_method_cases where label='past_due'),true);
 set local role authenticated;
-select is(get_my_billing_payment_method_state_v1()->>'available','true',
- 'authenticated owner can read a safe availability projection');
+select is(get_my_billing_payment_method_state_v1()->>'available','false',
+ 'authenticated safe state does not advertise a claimed provider dispatch');
 select ok(position('synthetic' in get_my_billing_payment_method_state_v1()::text)=0,
  'owner projection contains no provider references');
 reset role;

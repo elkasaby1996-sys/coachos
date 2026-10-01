@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
+import type { AccountSubscriptionSummary } from "../account-entitlements/contracts";
 import {
-  billingRecoveryState,
-  type BillingProviderSummary,
-} from "./billing-management-contracts";
-import {
-  useBillingProviderSummary,
   usePaymentMethodState,
   usePaymentMethodUpdateMutation,
 } from "./use-payment-method-update";
@@ -23,9 +19,13 @@ import {
 export function BillingRecoveryMessage({
   summary,
 }: {
-  summary?: BillingProviderSummary;
+  summary?: AccountSubscriptionSummary;
 }) {
-  const state = billingRecoveryState(summary);
+  const state = !summary
+    ? "unavailable"
+    : summary.cancelAtPeriodEnd
+      ? "cancellation_scheduled"
+      : summary.effectiveStatus;
   return (
     <div role="status" className="space-y-2 text-sm">
       {state === "active" ? <p>Your paid subscription is active.</p> : null}
@@ -35,7 +35,7 @@ export function BillingRecoveryMessage({
           when recovery is available.
         </p>
       ) : null}
-      {state === "grace" ? (
+      {state === "grace" || state === "restricted" ? (
         <p>
           Payment is overdue. Your account is in existing-delivery-only access.
           Contact support if payment recovery is unavailable.
@@ -56,24 +56,19 @@ export function BillingRecoveryMessage({
           when available.
         </p>
       ) : null}
-      {state === "manual_review" ? (
-        <p>
-          Your billing needs manual review. Your previous plan has been
-          preserved. Please contact support.
-        </p>
-      ) : null}
     </div>
   );
 }
 type Phase = "idle" | "checkout" | "verifying" | "pending" | "refreshed";
 export function BillingManagementPanel({
   owner,
+  subscription,
   refresh,
 }: {
   owner: boolean;
+  subscription?: AccountSubscriptionSummary;
   refresh: () => Promise<unknown>;
 }) {
-  const summary = useBillingProviderSummary(owner);
   const state = usePaymentMethodState(owner);
   const mutation = usePaymentMethodUpdateMutation();
   const [phase, setPhase] = useState<Phase>("idle");
@@ -82,8 +77,7 @@ export function BillingManagementPanel({
   const busy = useRef(false);
   const launched = useRef(false);
   const wasPastDue = useRef(false);
-  const refetchSummary = summary.refetch,
-    refetchState = state.refetch;
+  const refetchState = state.refetch;
   useEffect(
     () =>
       paymentMethodBrowserRegistry.subscribe((signal) => {
@@ -110,16 +104,10 @@ export function BillingManagementPanel({
       }
       inFlight = true;
       try {
-        const [s, p] = await Promise.all([
-          refetchSummary(),
-          refetchState(),
-          refresh(),
-        ]);
+        const [p] = await Promise.all([refetchState(), refresh()]);
         if (stopped) return;
-        if (s.isError || p.isError) throw new Error("unavailable");
-        if (
-          paymentMethodRecoveryConfirmed(wasPastDue.current, p.data, s.data)
-        ) {
+        if (p.isError) throw new Error("unavailable");
+        if (paymentMethodRecoveryConfirmed(wasPastDue.current, p.data)) {
           stopped = true;
           launched.current = false;
           setPhase("refreshed");
@@ -150,18 +138,8 @@ export function BillingManagementPanel({
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, [owner, phase, refetchSummary, refetchState, refresh]);
-  const eligible = Boolean(
-    owner &&
-    state.data?.available &&
-    summary.data?.linked &&
-    !summary.data.pending &&
-    summary.data.reconciliationStatus === "processed" &&
-    ["active", "past_due"].includes(summary.data.status ?? "") &&
-    state.data.status === summary.data.status &&
-    !state.isError &&
-    !summary.isError,
-  );
+  }, [owner, phase, refetchState, refresh]);
+  const eligible = Boolean(owner && state.data?.available && !state.isError);
   async function open() {
     if (!eligible || busy.current || phase !== "idle") return;
     busy.current = true;
@@ -183,13 +161,9 @@ export function BillingManagementPanel({
     if (busy.current) return;
     busy.current = true;
     try {
-      const [s, p] = await Promise.all([
-        refetchSummary(),
-        refetchState(),
-        refresh(),
-      ]);
-      setRefreshFailed(Boolean(s.isError || p.isError));
-      if (paymentMethodRecoveryConfirmed(wasPastDue.current, p.data, s.data))
+      const [p] = await Promise.all([refetchState(), refresh()]);
+      setRefreshFailed(Boolean(p.isError));
+      if (paymentMethodRecoveryConfirmed(wasPastDue.current, p.data))
         setPhase("refreshed");
     } catch {
       setRefreshFailed(true);
@@ -200,25 +174,24 @@ export function BillingManagementPanel({
   if (!owner) return null;
   const error =
     mutation.error ??
-    summary.error ??
     state.error ??
     (checkoutFailed ? new PaymentMethodError("client_launch") : undefined);
   return (
     <div className="space-y-3">
-      <BillingRecoveryMessage summary={summary.data} />
+      <BillingRecoveryMessage summary={subscription} />
       {state.data?.available && state.data.maySettleExistingBalance ? (
         <p className="text-sm">
           Updating your payment method may collect your existing outstanding
           balance.
         </p>
       ) : null}
-      {state.isLoading || summary.isLoading ? (
+      {state.isLoading ? (
         <p role="status" className="text-sm">
           Loading billing management…
         </p>
       ) : null}
-      {summary.data?.linked &&
-      !["expired", "canceled"].includes(summary.data.status ?? "") ? (
+      {subscription?.kind === "paid" &&
+      !["expired", "canceled"].includes(subscription.effectiveStatus) ? (
         <Button
           disabled={!eligible || mutation.isPending || phase !== "idle"}
           onClick={() => void open()}
@@ -228,7 +201,7 @@ export function BillingManagementPanel({
             : "Update payment method"}
         </Button>
       ) : null}
-      {!eligible && !state.isLoading && !summary.isLoading ? (
+      {!eligible && !state.isLoading ? (
         <p className="text-sm text-muted-foreground">
           Payment-method update is unavailable. Refresh billing or contact
           support.

@@ -1,4 +1,3 @@
-import { billingProviderSummarySchema } from "./billing-management-contracts";
 import {
   paymentMethodRequestSchema,
   paymentMethodResponseSchema,
@@ -7,18 +6,6 @@ import {
 import { safePaymentMethodError } from "./payment-method-errors";
 import { paymentMethodBrowserRegistry } from "./providers/payment-method-browser";
 
-export async function fetchBillingProviderSummary() {
-  try {
-    const { supabase } = await import("../../lib/supabase");
-    const { data, error } = await supabase.rpc(
-      "get_my_billing_provider_summary",
-    );
-    if (error) throw error;
-    return billingProviderSummarySchema.parse(data);
-  } catch (error) {
-    throw safePaymentMethodError(error);
-  }
-}
 export async function fetchPaymentMethodState() {
   try {
     const { supabase } = await import("../../lib/supabase");

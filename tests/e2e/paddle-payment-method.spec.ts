@@ -32,14 +32,14 @@ test("active update opens exact transaction, stays pending, and preserves privac
     page.getByText("Billing update is not yet confirmed.", { exact: false }),
   ).toBeVisible();
   await f.waitForReads();
-  const reads = f.fixture.summaryReads;
+  const reads = f.fixture.stateReads;
   await page.clock.fastForward(60_000);
   await f.waitForReads();
-  expect(f.fixture.summaryReads).toBe(reads);
+  expect(f.fixture.stateReads).toBe(reads);
   await page
     .getByRole("button", { name: "Refresh billing", exact: true })
     .click();
-  await expect.poll(() => f.fixture.summaryReads).toBeGreaterThan(reads);
+  await expect.poll(() => f.fixture.stateReads).toBeGreaterThan(reads);
   await f.waitForReads();
   expect(page.url()).not.toContain(syntheticTransaction);
   expect(
@@ -80,7 +80,7 @@ test("past-due checkout waits for backend recovery, not a completion callback", 
   ).toBeVisible();
   await f.waitForReads();
   f.fixture.summary.status = "active";
-  f.fixture.summary.revision = "recovered";
+  expect(f.fixture.summaryReads).toBe(0);
   f.fixture.state = {
     available: true,
     status: "active",

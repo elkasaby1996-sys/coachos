@@ -187,8 +187,8 @@ describe("apply remote-stage evidence", () => {
     ["db_push_apply", "db_push_dry_run", 3, 4, 0],
     ["function_deploy", "db_push_apply", 4, 5, 0],
     ["function_deploy", "function_deploy", 7, 8, 3],
-    ["migration_list_after", "function_deploy", 18, 19, 14],
-    ["history_validation_after", "migration_list_after", -1, 19, 14],
+    ["migration_list_after", "function_deploy", 19, 20, 15],
+    ["history_validation_after", "migration_list_after", -1, 20, 15],
   ])(
     "fails closed at %s after %s",
     async (stage, last, commandFailure, callCount, deployedCount) => {
@@ -297,7 +297,7 @@ describe("apply remote-stage evidence", () => {
       expect(JSON.stringify(snapshots) + applyFailureLine(error)).not.toContain(
         privateText,
       );
-      expect(attempted).toHaveLength(when === "before" ? 2 : 19);
+      expect(attempted).toHaveLength(when === "before" ? 2 : 20);
     },
   );
   it.each([

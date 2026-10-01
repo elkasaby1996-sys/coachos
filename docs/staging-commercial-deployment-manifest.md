@@ -1,5 +1,16 @@
 # Staging commercial deployment manifest
 
+PAY-02 R3 adds the forward-only migration
+`20261001162923_billing_payment_method_state_alignment.sql` with no backfill.
+The deployment unit contains 13 billing functions plus two nonbilling functions
+(15 total). `billing-update-payment-method` uses `verify_jwt=true`.
+`billing-create-customer-portal-link` remains allowlisted solely to overwrite an
+older deployed implementation with the inert HTTP 410 `BILLING_PORTAL_RETIRED`
+tombstone. It is not an active billing capability. No portal provider requests
+are possible through that entrypoint. The retained LS certification settings and
+historical compatibility modules remain deferred to PAY-03; this bounded change
+does not establish release readiness or authorize deployment.
+
 CODEX-63 appends `20260929073334_paddle_seat_resource_freshness.sql` for local
 review, preserving all 180 historical migration entries and hashes. The derived
 seat resource watermark corrects the GET/context clock comparison without
@@ -28,7 +39,7 @@ This manifest entry does not authorize deployment, webhook replay, or staging re
 `config/staging-commercial-certification.json` is the reviewed machine-readable source. `scripts/staging-commercial-contracts.mjs` validates every object with strict Zod schemas. Unknown fields, duplicate/missing/unreviewed functions, secret-name drift and scenario-set changes fail. schemaVersion is 1; environment is staging and providerEnvironment is test.
 
 The billing allowlist now also registers `billing-create-paddle-checkout` with
-`verify_jwt=true` (14 total functions including the two nonbilling gateways).
+`verify_jwt=true` (15 total functions including the two nonbilling gateways).
 It remains disabled without explicit server rollout configuration. Its dedicated
 checkout key and trusted URLs are conditional runtime settings, not new required
 LS deployment secrets. See [dormant Paddle checkout runtime](paddle-checkout-activation.md)

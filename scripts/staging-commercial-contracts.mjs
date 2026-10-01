@@ -8,6 +8,7 @@ export const BILLING_FUNCTIONS = [
   "billing-create-paddle-checkout",
   "billing-lemon-squeezy-webhook",
   "billing-create-customer-portal-link",
+  "billing-update-payment-method",
   "billing-preview-plan-change",
   "billing-change-subscription-plan",
   "billing-cancel-scheduled-plan-change",

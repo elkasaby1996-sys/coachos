@@ -115,3 +115,21 @@ real provider certification are still pending and require separate authorization
 SDK contracts: [initialization](https://developer.paddle.com/paddle-js/methods/paddle-initialize/),
 [existing-transaction checkout](https://developer.paddle.com/paddle-js/methods/paddle-checkout-open/),
 [client-side tokens](https://developer.paddle.com/paddle-js/about/client-side-tokens/).
+
+# PAY-02 R3 integration correction
+
+The browser uses `get_my_billing_payment_method_state_v1()` for eligibility and
+recovery verification. Its reference-free output is derived through the same
+private canonical eligibility implementation as preparation. Existing canonical
+entitlements provide display text only. Legacy provider summaries and LS linkage
+rows provide neither eligibility nor recovery confirmation.
+
+An originally past-due checkout is confirmed only when the safe backend state
+becomes eligible active/update-only after authenticated reconciliation. Active
+update-only checkouts remain unconfirmed by this projection. The 30-second
+verification boundary and transport ambiguity fencing are unchanged.
+
+The old customer-portal entrypoint is an inert compatibility tombstone. Its
+historical capability implementation is unreachable from active entrypoints and
+remains deferred to PAY-03. Future deployment must overwrite that endpoint with
+the tombstone; no remote retirement or certification has occurred here.

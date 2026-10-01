@@ -385,28 +385,20 @@ describe("immediate launch privacy and authority", () => {
       status: "active" as const,
       maySettleExistingBalance: false,
     };
-    const summary = {
-      linked: true,
-      status: "active" as const,
-      reconciliationStatus: "processed" as const,
-      pending: false,
-      cancelAtPeriodEnd: false,
-      currentPeriodEndsAt: null,
-      errorCode: null,
-      revision: "new",
-    };
-    expect(paymentMethodRecoveryConfirmed(false, state, summary)).toBe(false);
-    expect(paymentMethodRecoveryConfirmed(true, state, summary)).toBe(true);
+    expect(paymentMethodRecoveryConfirmed(false, state)).toBe(false);
+    expect(paymentMethodRecoveryConfirmed(true, state)).toBe(true);
     expect(
-      paymentMethodRecoveryConfirmed(true, state, {
-        ...summary,
-        pending: true,
+      paymentMethodRecoveryConfirmed(true, {
+        available: false,
+        reason: "not_available",
+        maySettleExistingBalance: false,
       }),
     ).toBe(false);
     expect(
-      paymentMethodRecoveryConfirmed(true, state, {
-        ...summary,
-        reconciliationStatus: "manual_review",
+      paymentMethodRecoveryConfirmed(true, {
+        available: true,
+        status: "past_due",
+        maySettleExistingBalance: true,
       }),
     ).toBe(false);
     expect(PAYMENT_METHOD_POLL_DURATION_MS / PAYMENT_METHOD_POLL_MS).toBe(15);
@@ -423,6 +415,11 @@ describe("immediate launch privacy and authority", () => {
       const source = readFileSync(`src/features/billing/${path}`, "utf8");
       expect(source).not.toMatch(
         /localStorage|sessionStorage|indexedDB|setQueryData|location\.assign|console\.|Sentry|forNewSales|PADDLE_SANDBOX_API_KEY|PAYMENT_METHOD_API_KEY|CHECKOUT_API_KEY|portal=return/,
+      );
+    }
+    for (const path of [...paths, "payment-method-verification.ts"]) {
+      expect(readFileSync(`src/features/billing/${path}`, "utf8")).not.toMatch(
+        /get_my_billing_provider_summary|useBillingProviderSummary|fetchBillingProviderSummary/,
       );
     }
     const hook = readFileSync(

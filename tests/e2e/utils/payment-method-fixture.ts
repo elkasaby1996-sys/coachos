@@ -20,7 +20,9 @@ export async function gotoBilling(
     ? page.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&
-          response.url().endsWith("/rpc/get_my_billing_provider_summary"),
+          response
+            .url()
+            .endsWith("/rpc/get_my_billing_payment_method_state_v1"),
       )
     : undefined;
   await page.goto(path);
@@ -51,7 +53,7 @@ export async function paymentMethodFixture(
     );
   const coach = await seedEntitlementCoach(`payment-method-${scope}`, true);
   const summary: BillingProviderSummary = {
-    linked: true,
+    linked: false,
     status,
     cancelAtPeriodEnd: false,
     currentPeriodEndsAt: "2027-01-01T00:00:00Z",
@@ -115,7 +117,7 @@ export async function paymentMethodFixture(
     "**/rest/v1/rpc/get_my_billing_provider_summary",
     (route) => {
       fixture.summaryReads++;
-      return route.fulfill({ json: summary });
+      return route.abort();
     },
   );
   await context.route(
@@ -152,13 +154,10 @@ export async function paymentMethodFixture(
       await route.fulfill({ response: await route.fetch() });
     },
   );
-  await context.route(
-    "**/functions/v1/billing-create-customer-portal-link",
-    (route) => {
+  page.on("request", (request) => {
+    if (request.url().includes("/billing-create-customer-portal-link"))
       fixture.portalRequests++;
-      return route.fulfill({ status: 410, json: { code: "retired" } });
-    },
-  );
+  });
   await context.route(
     "**/functions/v1/billing-update-payment-method",
     (route) => {

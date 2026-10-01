@@ -27,6 +27,7 @@ test("owner sees RepSync action, never broad portal or portal-return polling", a
   ).toHaveCount(0);
   expect(f.fixture.requests).toBe(0);
   expect(f.fixture.portalRequests).toBe(0);
+  expect(f.fixture.summaryReads).toBe(0);
   await f.waitForReads();
 });
 test("nonowner has no payment-method action", async ({ page, context }) => {
@@ -52,11 +53,15 @@ test("manual review preserves capacity and disables payment action", async ({
     .evaluateAll((bars) =>
       bars.map((bar) => bar.getAttribute("aria-valuetext")),
     );
-  f.fixture.summary.reconciliationStatus = "manual_review";
+  f.fixture.state = {
+    available: false,
+    reason: "not_available",
+    maySettleExistingBalance: false,
+  };
   f.fixture.summary.errorCode = "BILLING_UNAPPROVED_PLAN_CHANGE";
   await gotoBilling(page);
   await expect(
-    page.getByText("Your billing needs manual review.", { exact: false }),
+    page.getByText("Payment-method update is unavailable.", { exact: false }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Update payment method", exact: true }),
