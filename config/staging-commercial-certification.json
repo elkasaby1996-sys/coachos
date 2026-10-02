@@ -744,9 +744,13 @@
       {
         "filename": "20261001162923_billing_payment_method_state_alignment.sql",
         "sha256": "868fcfcf86ae7f03c172c40b08632dc5043ffd9b18d3b4c951d27ee5fd9203a4"
+      },
+      {
+        "filename": "20261001224659_lemon_squeezy_retirement_disposition.sql",
+        "sha256": "44ec4d966219ef2da14241a08ef5604062a4bb09de52a7acee02b7f1eddf3437"
       }
     ],
-    "expectedLatestMigration": "20261001162923_billing_payment_method_state_alignment.sql"
+    "expectedLatestMigration": "20261001224659_lemon_squeezy_retirement_disposition.sql"
   },
   "functions": {
     "billing": [

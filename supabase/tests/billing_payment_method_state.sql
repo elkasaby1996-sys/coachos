@@ -56,8 +56,38 @@ create temp table state_preparation as select u,(begin_billing_payment_method_pr
 select is(pg_temp.method_state(u)->>'available','true','unclaimed current reservation remains eligible') from state_preparation;
 select claim_billing_payment_method_dispatch_v1(u,id,repeat('a',64)) from state_preparation;
 select is(pg_temp.method_state(u)->>'available','false','claimed creating preparation cannot advertise another dispatch') from state_preparation;
+savepoint preparation_case;
+select is(record_billing_payment_method_preparation_result_v1(u,id,repeat('a',64),'txn_'||repeat('7',26),
+ 'paddle-payment-method-transaction-v1',repeat('7',64))->>'status','ready','verified result makes preparation ready') from state_preparation;
+select is(pg_temp.method_state(u)->>'available','true','current ready preparation remains resumable') from state_preparation;
+select is(pg_temp.lifecycle_dispatch(pg_temp.lifecycle_observation(u,'state-ready-new-authority','subscription.updated','active',
+ '2026-10-22T12:00:00Z','2026-09-20T00:00:00Z','2026-10-20T00:00:00Z')),'applied','authenticated newer authority is applied') from state_preparation;
+select ok((select authority_revision from billing_payment_method_preparations_v2 where billing_payment_method_preparations_v2.id=state_preparation.id)
+ is distinct from resolve_owned_billing_payment_method_context_v1(u)->>'authorityRevision',
+ 'ready reservation is stale while private owner authority remains eligible') from state_preparation;
+select is(pg_temp.method_state(u)->>'available','false','stale ready preparation cannot advertise a new action') from state_preparation;
+rollback to preparation_case;
 select fail_billing_payment_method_preparation_v1(id,repeat('a',64),'provider_ambiguous') from state_preparation;
 select is(pg_temp.method_state(u)->>'available','false','ambiguous preparation is unavailable') from state_preparation;
+
+-- Insert an unclaimed, already expired reservation using the real current
+-- authority tuple. No production trigger or settlement rule is bypassed.
+create temp table expired_state_owner as select pg_temp.plan_owner() u;
+insert into billing_payment_method_preparations_v2(billing_account_id,canonical_subscription_id,subscription_id,customer_id,
+ created_by_user_id,provider,environment,provider_subscription_ref,provider_customer_ref,mode,authority_revision,
+ authority_snapshot,creation_lease_expires_at,created_at,status)
+select (ctx->>'accountId')::uuid,(ctx->>'canonicalId')::uuid,(ctx->>'subscriptionId')::uuid,(ctx->>'customerId')::uuid,
+ u,'paddle','test',ctx->>'subscriptionRef',ctx->>'customerRef',ctx->>'mode',ctx->>'authorityRevision',ctx,
+ clock_timestamp()-interval '1 minute',clock_timestamp()-interval '2 minutes','creating'
+from expired_state_owner cross join lateral (select resolve_owned_billing_payment_method_context_v1(u) ctx) current_authority;
+select is(pg_temp.method_state(u)->>'available','true','expired unclaimed creation lease permits a fresh action') from expired_state_owner;
+select is((select status from billing_payment_method_preparations_v2 where created_by_user_id=u),'creating',
+ 'safe projection does not expire or rewrite the reservation') from expired_state_owner;
+update billing_payment_method_preparations_v2 set dispatch_token_sha256=repeat('e',64),provider_requested_at=created_at
+ where created_by_user_id=(select u from expired_state_owner);
+select is(pg_temp.method_state(u)->>'available','false','expired claimed creation lease cannot advertise redispatch') from expired_state_owner;
+select is((select status from billing_payment_method_preparations_v2 where created_by_user_id=u),'creating',
+ 'inspection preserves expired dispatch evidence') from expired_state_owner;
 
 select is(pg_temp.method_state(pg_temp.guard_owner())->>'available','false','nonowner with no paid billing authority has no action');
 select * from finish();
