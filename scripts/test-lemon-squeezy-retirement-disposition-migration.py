@@ -68,7 +68,7 @@ update billing_runtime_policy set entitlement_environment='test';"""
             if population == "blocked":
                 extra = """insert into actors(name,id) values('pending',pg_temp.coach('growth'));
 select public.begin_billing_plan_change(id,'test','scale','monthly',operation,pg_temp.snapshot(id)) from actors where name='pending';
-update billing_provider_webhook_deliveries set processing_status='deferred',processed_at=null,last_error_code='BILLING_RECONCILIATION_DEFERRED' where delivery_fingerprint=repeat('b',64);"""
+update billing_provider_webhook_deliveries set processing_status='deferred',processed_at=null,last_error_code='BILLING_RECONCILIATION_DEFERRED' where id=(select delivery from retirement_anchor);"""
             r.sql("begin;" + fixture + extra + "commit;")
             before_functions, before_data, before_authority = functions(), data(), authority()
             result = subprocess.run([harness.NPX, "supabase@latest", "migration", "up", "--local", "--yes", "--workdir", str(harness.WORK)], capture_output=True, text=True, timeout=240)
@@ -91,7 +91,7 @@ update billing_provider_webhook_deliveries set processing_status='deferred',proc
             results.append({"population": population, "dataAndIdentityHashesUnchanged": True,
                             "existingFunctionsACLsConstraintsTriggersUnchanged": True,
                             "terminalOperationsReadable": True, "report": report})
-        print(json.dumps({"historicalMigrationsUnchanged": 184, "migrationCount": 185,
+        print(json.dumps({"historicalMigrationsUnchanged": 184, "migrationCount": 185, "retirementScope": "ls-rooted",
                           "populations": results, "providerCalls": 0}))
     finally:
         harness.reset()

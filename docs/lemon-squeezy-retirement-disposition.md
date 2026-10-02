@@ -1,29 +1,37 @@
 # Lemon Squeezy retirement disposition (PAY-03B)
 
-The destination is Paddle-only active servicing with retained LS history. PAY-03A
-could not establish whether staging has unresolved LS obligations. PAY-03B adds a
-database inspection contract; it does **not** retire any runtime, disable ingress,
-transfer accounts, cancel subscriptions, rebill customers or mutate providers.
+Architecture B is an LS-rooted retained-state classifier. It answers: at this
+statement snapshot and inspection instant, does any surviving Lemon Squeezy
+obligation lack native proven closure, or does relevant ownership/cross-ledger
+ambiguity prevent that conclusion?
 
-## Contract and authority
+Paddle financial correctness is outside this authority. Paddle evidence never
+settles LS debt, checkout admission, subscription lifecycle, webhook work,
+plan/seat mutation, or canonical terminality. Separate Paddle certification may
+remain a rollout prerequisite. This function does not authorize runtime retirement.
+
+## Contract and security
 
 `public.inspect_lemon_squeezy_retirement_disposition_v1(p_as_of timestamptz)` reads
-both `test` and `live` legacy ledgers in one statement snapshot. The caller must
-supply the actual finite inspection instant. Null or infinity blocks. The same
-snapshot and instant give the same result; passing a future date is not acceptable
-inspection evidence. No environment/account filter can hide obligations.
+both test and live LS history in one statement snapshot. Supply the actual finite
+UTC inspection instant; null or infinity blocks. Future dates must not be used to
+age away obligations. This is inspection of the currently retained snapshot,
+not reconstruction of an earlier database. Equal snapshot and cutoff are deterministic.
 
-Migration `20261001224659_lemon_squeezy_retirement_disposition.sql` is migration 185. It creates only this function, its comment and its grants. Migrations 1–184,
-existing records, history guards and runtime functions remain unchanged.
+The undeployed migration `20261001224659_lemon_squeezy_retirement_disposition.sql`
+is migration 185 and is rewritten in place. Migrations 1–184 remain immutable;
+there is no migration 186. Contrary shared-deployment evidence requires stopping
+before further edits. Migration 185 adds only the function, comment, and grants.
+It changes no existing row, runtime writer, trigger, constraint, ACL, or RLS policy.
 
-The SQL function is `STABLE`, `SECURITY DEFINER`, with fixed `search_path=pg_catalog`
-and fully qualified relation references. It contains only SELECTs, calls no mutation
-helper, expires no leases and takes no servicing locks. EXECUTE is revoked from
-PUBLIC, anon and authenticated; only service_role is explicitly granted EXECUTE
-(the database owner retains administrative authority). Private table permissions
-are unchanged. No browser or Edge endpoint is added.
+The function is SQL `STABLE`, `SECURITY DEFINER`, with fixed
+`search_path=pg_catalog` and fully qualified relations. Its body consists of
+SELECTs. It calls no servicing/guard helper, expires no checkout, takes no
+servicing lock, and reads no runtime flags. EXECUTE is revoked from PUBLIC, anon,
+and authenticated; service_role receives the only explicit grant. The database
+owner retains administrative access. No browser or Edge endpoint is added.
 
-The report contains exactly these fields:
+Exactly five fields and ten blocker categories remain:
 
 ```json
 {
@@ -46,224 +54,376 @@ The report contains exactly these fields:
 }
 ```
 
-Every positive category produces its corresponding outcome, in the order below.
-`SAFE_TO_RETIRE` appears alone only when all counts are zero. Counts overlap:
-one subscription can require servicing, have debt and need manual review. Within
-payment/dispatch/review categories, counts are evidence rows across ledgers, not
-distinct customers or distinct debts. Never sum counts into a customer total.
-No emails, record/provider identifiers, URLs, hashes, payloads or secrets appear.
+Positive counts produce their existing outcomes in the category order above.
+`SAFE_TO_RETIRE` appears alone only when every count is zero and inventory
+coverage is complete. Counts overlap and are deduplicated by category plus row
+or scoped resource identity. They are not customer totals or amounts owed.
+The report contains no identifiers, emails, URLs, hashes, payloads, or secrets.
 
-| Count               | Outcome                                | Blocking rule                                                                                                                                                                                                                                                                             |
-| ------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| subscriptions       | BLOCKED_BY_ACTIVE_SUBSCRIPTION         | Every provider subscription without the terminal closure proof below                                                                                                                                                                                                                      |
-| paymentObligations  | BLOCKED_BY_PAYMENT_OBLIGATION          | Provider `past_due`/`unpaid`; canonical `past_due`/`grace`/`restricted`; operations `awaiting_payment` or retained PAYMENT_FAILED without payment confirmation; unresolved failed/pending invoice evidence                                                                                |
-| checkouts           | BLOCKED_BY_CHECKOUT                    | Every attempt without the terminal proof below, including `creating`, `ready`, `ambiguous`, unknown state and every locally expired attempt                                                                                                                                               |
-| planOperations      | BLOCKED_BY_PLAN_OPERATION              | All states except `completed`, `canceled`, `failed`; retained AMBIGUOUS error blocks even a terminal label                                                                                                                                                                                |
-| seatOperations      | BLOCKED_BY_SEAT_OPERATION              | Same exact operation rule                                                                                                                                                                                                                                                                 |
-| webhookWork         | BLOCKED_BY_WEBHOOK_RECONCILIATION      | Every delivery without the durable drain proof below                                                                                                                                                                                                                                      |
-| ambiguousDispatches | BLOCKED_BY_AMBIGUOUS_PROVIDER_DISPATCH | Checkout `creating`/`ambiguous`, explicit creation ambiguity, unproven `failed`, or `expired` without verified creation evidence; operation `provider_pending`/`cancel_pending`/`ambiguous`, retained AMBIGUOUS error, or dispatched `requested`/`manual_review`                          |
-| manualReview        | BLOCKED_BY_MANUAL_REVIEW               | Subscription reconciliation `manual_review`, operation `manual_review` or MANUAL_REVIEW error, ignored delivery without the safe drain proof                                                                                                                                              |
-| canonicalConflicts  | BLOCKED_BY_CANONICAL_CONFLICT          | LS origin/link remains nonterminal or future cancellation; a linked canonical is also owned by Paddle or has the wrong origin; billing_provider canonical has no origin                                                                                                                   |
-| unknownStates       | BLOCKED_BY_UNKNOWN_STATE               | Unexpected status/provider/environment, missing subscription linkage/origin, inconsistent reconciliation errors, unproven completed checkout, missing/unrecognized canonical origin, unresolved terminal webhook error/milestone or unexpected invoice status; invalid inspection instant |
+`unknownStates` means unknown/corrupt retained state **relevant to LS retirement**:
+LS evidence/reference failure, unresolved shared attribution, relevant cross-ledger
+ambiguity, or coverage failure. It does not mean arbitrary corruption anywhere
+in billing. Invalid terminal subscriptions, completed checkouts without native
+resulting-subscription closure, and unresolved origin-only canonicals remain unknown.
 
-## Exact legacy states and terminal history
+## Inventory and attribution
 
-Provider statuses are `active`, `paused`, `past_due`, `unpaid`, `cancelled`,
-`expired`. Reconciliation is `processed` or `manual_review`. Subscription closure
-requires provider `cancelled` or `expired`, reconciliation `processed` with no
-error, a linked same-account paid billing-provider canonical `canceled` or
-`expired`, and `lemonsqueezy.v1` origin. Both provider terminal states require an
-actual finite `provider_ends_at <= inspection instant`, equal to the canonical
-period end and later than its start. The canonical expiry/cancellation milestone
-must also be finite and passed. `cancelled` needs `provider_cancelled=true`.
-A canonical period-end cancellation also needs a known ended period.
-Thus active/paused/debt, future cancellation, missing linkage and inconsistent
-provider/canonical combinations block regardless of age. Historical superseded
-canonical rows can remain unlinked because a plan change retains old authority.
+The pipeline is discovery → total facts → integrity → capability → LS resource
+authority → native succession/disposition → contributions → coverage → report.
 
-Canonical states accepted by this contract are `trialing`, `trial_recovery`,
-`active`, `past_due`, `grace`, `restricted`, `canceled`, `expired`, `superseded`.
-Nonterminal LS canonical authority blocks even if a provider end date passed.
-Valid Paddle-owned canonicals are not LS obligations. Historical `billing.v2`
-origins resolve recursively through same-account, same-origin paid canonical
-successors under the existing append-only supersession contract. Each superseded
-hop needs its retained finite, passed milestone. The chain must end at a current,
-processed Paddle shadow with verified-provider customer ownership, retained
-evidence, matching canonical state/period facts and consistent shadow lineage.
-A visited-ID path stops cycles. Missing, cross-account or cyclic successors,
-conflicting shadows and unresolved current authority block as unknown; superseded
-rows are not ignored. Unrelated manual/trial access is not LS history.
+Every physical row in these ten native tables enters inventory before any provider,
+environment, status, time, or relationship filter:
 
-Checkout statuses are `creating`, `ready`, `completed`, `failed`, `ambiguous`,
-`expired`. A `completed` attempt must resolve its exact subscription, environment
-and account; that subscription is independently inspected. A `failed` attempt
-needs no provider checkout ID and explicit `BILLING_CHECKOUT_CREATION_FAILED` or
-`BILLING_VARIANT_MAPPING_MISMATCH`. Every `expired` attempt blocks checkout
-retirement: the retained schema has no provider closure proof. The existing
-reconciler can admit a delayed purchase created within the original checkout
-window, even after local expiry. Age, expected expiry and absence of a later
-webhook never prove closure. Verified creation evidence only distinguishes a
-known provider checkout from ambiguous dispatch; it does not settle the attempt.
-Where expiry evidence is compared, the exact final legacy rule is
-`floor(extract(epoch from provider_expires_at)) = floor(extract(epoch from expected_expires_at))`.
-Different fractions in the same second are equivalent; preceding/following
-seconds are not. A known expired checkout has a checkout blocker without a false
-ambiguous-dispatch blocker. Missing/mismatched creation evidence also blocks
-dispatch; explicit retained ambiguity always blocks.
+- `billing_provider_customers`
+- `billing_provider_variant_mappings`
+- `billing_quantity_price_contracts`
+- `billing_provider_subscriptions`
+- `billing_checkout_attempts`
+- `billing_plan_change_operations`
+- `billing_plan_change_events`
+- `billing_seat_quantity_operations`
+- `billing_seat_quantity_events`
+- `billing_provider_webhook_deliveries`
 
-Both operation tables accept exactly `requested`, `provider_pending`,
-`awaiting_payment`, `scheduled`, `cancel_pending`, `completed`, `canceled`, `failed`,
-`ambiguous`, `manual_review`. Completed/canceled/failed history alone does not
-block; retained ambiguity, manual-review or unconfirmed payment-failure evidence
-still does. Even an overdue `scheduled` operation remains servicing work.
-Creation leases block while creating and after expiry until explicit disposition;
-no timestamp comparison proves whether dispatch happened.
+Every `billing_canonical_origins` row enters attribution independently.
+`lemonsqueezy.v1` is an LS anchor; unsupported attribution is unresolved.
+Canonical discovery unions native subscription/operation references, origins,
+and provider-sourced canonical/event references. Successor traversal starts from
+LS anchors and discovers edges in both directions before validating account,
+status, origin, or target existence. Physical v2 links establish structural
+routing or relevant conflict facts; pure v2 canonicals do not seed successor
+traversal. Missing LS-relevant targets fail the retained referring row.
 
-Catalogue/customer/history rows alone do not block. Mapping and quantity-contract
-statuses `draft`, `active`, `retired` are recognized configuration, not customer
-obligations; unexpected catalogue state still blocks as unknown.
+Shared subscription events are discovered independently through canonical
+parents, typed LS operation/checkout metadata, and unresolved provider semantics.
+A subscription event on an LS account also survives lost parent/source attribution.
+An inner join to a parent never determines whether that event exists.
+Required LS account/commercial references enter integrity assessment without
+recursively importing other billing history through account or plan identity.
 
-## Webhook drain and payment evidence
+A shared provider canonical routes outside LS through all of:
 
-Legacy processing statuses are `received`, `processed`, `ignored`, `deferred`,
-`failed`. `received`, `deferred`, `failed` always block. A delivery is drained only
-with `processed_at` and either:
+1. Compatible same-account `billing.v2` origin and valid provenance times.
+2. No surviving LS anchor, including native operation or semantic references.
+3. A direct same-account physical `billing_subscriptions_v2` canonical link, **or**
+   a same-account `billing_operations_v2.source_account_subscription_id` witness
+   backed by its actual same-account v2 subscription and matching identity scope.
 
-- `processed` with no error; or
-- `ignored` with no error, `BILLING_WEBHOOK_UNSUPPORTED_EVENT`, or
-  `BILLING_RECONCILIATION_STALE`.
+The historical v2 plan writer preserves this operation-source witness when moving
+the subscription link. A `billing.v2` label or successor path alone is insufficient.
+Missing structural provenance remains unknown; routing is not payment certification.
+Shared events with positive v2 parent and typed-reference attribution are excluded
+from LS audit authority. Physical Paddle-only operation audits are not LS roots.
 
-These are the current reconciler's explicit safe ignore reasons. Other ignored
-errors may represent manual review even though there is no webhook `manual_review`
-status; they block webhook work, review and unknown state. A terminal status
-without its durable milestone or with an unexpected error is not drained.
+The inspector does not read Paddle payment applications, financial evidence,
+subscription items, catalogue evidence, operation audits, authenticated receipts,
+or webhook observations/deliveries. Independent corruption in those tables leaves
+the retirement report identical when attribution/conflict facts are unchanged,
+including on an account with fully terminal LS history.
 
-A processed payment-failed delivery may be drained while its invoice still blocks
-payment disposition. Failed/pending invoice evidence is closed only by durable
-processed `subscription_payment_success`/`subscription_payment_recovered`, status
-`paid`, with trusted invoice identity on **both** observations and the same
-provider/environment/resource ID/subscription/customer. A newer payment for
-another invoice is insufficient.
+## Native closure and servicing
 
-The identity predicate derives provenance from the reviewed, closed set of
-admission writers, not from object-ID equality. Signed webhook ingress in
-`billing-handlers.ts` verifies the event before `deliveryArguments` retains the
-actual invoice resource ID. Both historical `finish_billing_plan_change` API
-writers instead emit `subscription_payment_success` with `object_id` equal to the
-subscription ID; API invoice normalization explicitly omits the invoice ID.
-Therefore failed/recovered invoice event shapes are exclusive to signed ingress;
-success observations are eligible only outside the entire overlapping API shape.
-Success with `object_id = subscription_id` is insufficient even if it might
-actually have been signed. The predicate additionally requires a numeric resource
-identity, retained matching payload subscription/customer/store/environment,
-existing scoped subscription, and the admission fingerprint. The fingerprint
-binds the stored admission scope; it does not independently prove a signature.
-No current snapshot hash, event timing, billing reason or API adjustment can
-recover an omitted invoice identity. Ambiguous API evidence remains historical
-context and cannot clear debt. This relies on the immutable reviewed writer set;
-any future admission writer requires re-review of the predicate.
+Valid customers, draft/active/retired mappings, price contracts, and historical
+commercial records may remain. Their presence alone is not servicing work;
+malformed scope or required historical contracts remain unknown.
 
-Invoice statuses recognized by current ingress are `pending`, `paid`, `void`,
-`refunded`, `partial_refund`. Positive string-type/known-value classification
-uses `IS TRUE`; missing keys, JSON null, SQL NULL extraction and unsupported
-values block as unknown. Unsupported values omitted by the normalizer therefore
-remain uncertain. Supported invoice observations also need a retained scoped
-subscription/customer. Explicit unsupported-event ignore disposition is retained.
-Void/refund evidence does not
-automatically extinguish retained failed-invoice evidence. This conservative
-contract does not invent a debt waiver or provider-side settlement proof.
+A subscription closes only through valid LS identity/account/store/environment,
+customer/mapping/history, quantity, finite revision/reconciliation evidence,
+processed error-free reconciliation, and:
 
-Ambiguity is never disposed by age, newest timestamp, assumed success/failure or
-deletion. Explicit disposition needs a separately reviewed contract; PAY-03B has
-no write authority for it. A positive result describes retained database evidence,
-not a provider audit or authorization to mutate provider objects.
+- Provider `expired`, or `cancelled` with cancellation flag true.
+- Finite provider end at/before cutoff, after provider creation.
+- Linked same-account paid LS-origin canonical in `expired`/`canceled` state.
+- Matching canonical/provider end and finite passed terminal milestone.
+- No unresolved successor, opposite-ledger canonical ownership, or newer LS
+  lifecycle contradiction.
 
-## Local verification and reusable upgrade fixture
+Canonical period start must precede end when present. A null start is accepted
+only through the installed completed-plan successor lineage that legitimately
+writes it. It is not a blanket exemption for missing period evidence.
+Independent checkout, mutation, invoice, webhook, ambiguity, and review obligations
+still receive their own blockers even when the subscription is terminal.
 
-`supabase/tests/lemon_squeezy_retirement_disposition.sql` exercises the exact
-states, overlap, grant denial, unknown-state injection rolled back in disposable
-transactions, invoice identity matching and read-only hashes.
-`supabase/tests/fixtures/lemon_squeezy_retirement_history.psql` creates only synthetic
-identities/mappings/quantity contracts, realistic completed plan/seat history,
-superseded canonical history, canceled/expired subscriptions, completed checkout
-and processed webhooks. Existing RPCs generate operation/reconciliation
-evidence; fixture-only direct transitions create ended synthetic history with
-all production guards intact. The caller owns the transaction.
+A superseded LS canonical needs a finite, acyclic, same-account LS-origin chain.
+Every hop must retain the completed LS plan operation with its source/target
+plans/mappings, persistent provider subscription, and required audit/milestones.
+The endpoint must have complete native LS terminal proof. Cross-provider
+succession cannot discharge LS, even when Paddle ownership is fully valid.
 
-`python scripts/test-lemon-squeezy-retirement-disposition-migration.py` runs terminal
-and blocked populations, plus simultaneous terminal test/live history, across migration 184→185 in the hardcoded disposable
-`repsync_reconciliation01` project. It compares all public table and synthetic auth
-user hashes, existing function bodies/ACLs, table ACL/RLS settings, constraints and
-triggers. It proves terminal operations stay readable and the report counts are
-exact. It accepts no remote connection parameter and reconstructs the disposable
-DB afterward. The fixture is reusable for the eventual retirement migration.
+Checkout states are exactly `creating`, `ready`, `completed`, `failed`, `ambiguous`,
+`expired`. Completion requires the exact resulting same-account/environment LS
+subscription **and its independent native terminal closure**. No-dispatch failure
+requires the installed definitive creation-failure/mapping-mismatch contract and
+absence of a provider checkout ID. Local expiry never proves provider closure:
+a delayed purchase can still be reconciled. Epoch-second expiry equivalence
+classifies retained creation evidence only; it does not close checkout admission.
+Terminal checkout timestamps, result references, and hosted URL state must match
+the installed state constraints. Every retained completion reference must resolve
+to the same-account/provider/environment subscription, including on a failed row.
+No-dispatch failure cannot retain a completion result or completion milestone.
 
-PAY-02's state test additionally covers current ready, stale ready after genuine
-authenticated authority change, expired unclaimed and expired claimed creation
-leases. These tests
-change no payment runtime or settlement authority.
+Plan/seat operation states are exactly `requested`, `provider_pending`,
+`awaiting_payment`, `scheduled`, `cancel_pending`, `completed`, `canceled`,
+`failed`, `ambiguous`, `manual_review`. Terminal labels need writer-required
+relationships, classification, audit, and finite milestones. Invalid terminal
+operations contribute both operation and unknown blockers. Retained ambiguity,
+manual review, and unconfirmed payment failure cannot be erased by a terminal label.
 
-The permanent disposition suite promotes all six rollback probes: API invoice
-collision and legitimate signed settlement; delayed purchase after expired
-checkout; four missing/null/unsupported status forms; missing/future/passed and
-contradictory subscription ends; production Paddle supersession plus broken,
-cross-account/cyclic chains; and the three expiry precision boundaries. Real
-synthetic test/live rows coexist and independently block. Positive known-state
-classification covers provider/environment/status, operation domains, ingress
-event/resource domains and canonical origins. Failed joins and nullable values
-contribute to `unknownStates`. A dedicated case asserts all ten outcomes together
-in their exact order and verifies every count is positive.
+Every plan/seat audit row independently requires its actual operation and scoped
+provider ancestry, recognized vocabulary, finite occurrence time, and compatible
+terminal transition. Plans retain requested/current-state audit and provider-applied
+audit when required. Applied or completed immediate operations require the
+awaiting-payment witness; period-end paths require the scheduled witness. Seat
+operations always retain their provider-pending admission audit. Canceled plan
+and seat paths require scheduled and cancellation-request audits as well as the
+terminal audit. Canceled seats also retain a finite `cancel_requested_at` at or
+before the cutoff; historical cancellation does not require a newly retained
+provider snapshot or revision. Completed period-end operations must be due at
+the inspection cutoff. Future effective dates remain valid on open or canceled
+history. Direct provider-pending failure does not require application evidence.
+Deleting mandatory admission, intermediate, or terminal audit evidence blocks work.
 
-`RETIREMENT_GATE_TRUSTED` is **not self-certified**. Astra re-review is still
-required. PAY-03B-FIX corrects the uncommitted migration 185 in place and does not
-authorize runtime retirement.
+Every selected shared **subscription event** needs an existing non-null same-account
+canonical parent. Validate event/source vocabulary, historical statuses, typed
+metadata, and finite occurrence time. Created-plan metadata must match the parent;
+LS supersession metadata must name the explaining completed LS operation;
+paid-conversion metadata must name its completed LS checkout/resulting subscription.
+Historical `to_status` need not equal today's status. Legitimate nullable metadata
+such as `previousKind` remains compatible. Identical Paddle event names alone do
+not establish LS provenance.
 
-Local correction verification on 2026-10-02:
+## Chronology closure — 2026-10-03
 
-| Proof                                                    | Result                                                                                               |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Permanent disposition SQL (original coverage plus F1–F6) | 178 assertions passed                                                                                |
-| PAY-02 payment-method state SQL                          | 33 assertions passed; four preparation states retained                                               |
-| Full local DB suite                                      | 39 files, 4,057 assertions passed                                                                    |
-| Populated 184→185 upgrade                                | Three populations passed; all table/auth-user value hashes and existing authority settings unchanged |
-| Historical migration preservation                        | All 184 predecessors match HEAD; count remains 185                                                   |
-| Reconciliation/concurrency regressions                   | Seven harnesses, 57 cases passed, zero deadlocks/provider calls                                      |
-| PAY-02 preparation concurrency                           | Two cases passed, zero deadlocks/provider calls                                                      |
-| Manifest unit contract                                   | 72 tests passed; approved latest migration/hash validated                                            |
-| DB lint                                                  | Zero findings                                                                                        |
-| Repository lint                                          | Zero errors; three existing warnings                                                                 |
-| Prettier and `git diff --check`                          | Passed                                                                                               |
+The exact 13 saved chronology probes are all **A — real inspector defects**.
+Each changes one side of a timestamp pair retained by the installed writer.
+All initially returned `SAFE_TO_RETIRE` with zero unknown blockers; each now
+blocks with unknown-state evidence. There are no B, C, or D cases among these
+13: none is a valid paired history, a duplicate of the R1 event-presence rule,
+or unrelated Paddle corruption. Original reviewer evidence remains intact.
 
-Final migration 185 SHA256:
-`44ec4d966219ef2da14241a08ef5604062a4bb09de52a7acee02b7f1eddf3437`.
-The disposable database was reconstructed through all 185 migrations after the
-races, with zero synthetic users and both Paddle flags disabled. Existing Windows
-pipe-finalizer warnings in the cross-ledger harness were nonfatal; every race
-assertion passed. No runtime source, reviewed predecessor migration, remote
-project, provider state or Git commit was changed.
+Writer references in the table use P and S plus exact line numbers:
 
-## Separately authorized staging evidence and PAY-03C/D/E
+- **P:** [controlled plan writer](</C:/Users/G a m e r s/OneDrive/Documents/Projects/COACHos/coachos/supabase/migrations/20260911030000_controlled_plan_changes.sql:94>).
+  Operation `requested_at` defaults to `now()` at line 25; audit time defaults
+  to `now()` at line 50. Admission uses `clock_timestamp()` at 181–182.
+  The trigger at 97–99 inserts the status/application audit. Initial application
+  preserves `coalesce(provider_applied_at,now())` at 219. Paid completion assigns
+  both payment and completion from `now()` at 235.
+- **S:** [additional-seat writer](</C:/Users/G a m e r s/OneDrive/Documents/Projects/COACHos/coachos/supabase/migrations/20260912020000_additional_coach_seats.sql:114>).
+  The matching defaults are at 67 and 86; admission uses `clock_timestamp()` at
+  199–203. Audit insertion is at 116. Application captures `now()` at 245;
+  paid completion captures payment/completion together at 250.
 
-No remote access or report collector is added here. A later task must explicitly
-authorize read-only inspection of a named staging project and first verify the
-reviewed migration/schema against the reviewed commit. In a read-only consistent
-snapshot, an authorized service/admin caller can invoke this same function with
-the actual UTC inspection instant. Retain only:
+P-operation/P-audit mean `billing_plan_change_operations` and
+`billing_plan_change_events`; their probe control is a completed growth-to-scale
+upgrade. S-operation/S-audit mean `billing_seat_quantity_operations` and
+`billing_seat_quantity_events`; their control is a completed increase from zero
+to one additional seat. In the result column, `SAFE(0) → BLOCK(n)` gives the
+actual before/after result and exact `unknownStates` count. Every expected
+result is BLOCK with a positive unknown count.
 
-- the report's ten blocker counts, all outcomes and safe/blocked verdict;
-- contract/schema version, migration count/version and applied inspection-function
-  version (185 / `20261001224659` for this contract);
-- actual UTC inspection timestamp and reviewed commit SHA;
-- a safe environment label (`staging`) and inspection-completion classification.
+| ID / exact saved case                                                      | Resource    | Mutation                                                          | Class / writer invariant                                              | Writer evidence | Actual before → after |
+| -------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------- | --------------------------------------------------------------------- | --------------- | --------------------- |
+| CH01 / `pre_request_billing_plan_change_operations_provider_applied_at`    | P-operation | `provider_applied_at = provider_requested_at - 1 day`             | A / application audit = provider_applied_at                           | P219/99         | SAFE(0) → BLOCK(4)    |
+| CH02 / `pre_request_billing_plan_change_operations_payment_confirmed_at`   | P-operation | `payment_confirmed_at = provider_requested_at - 1 day`            | A / payment_confirmed_at = completed_at                               | P235            | SAFE(0) → BLOCK(2)    |
+| CH03 / `pre_request_billing_plan_change_operations_completed_at`           | P-operation | `completed_at = provider_requested_at - 1 day`                    | A / completion audit = completed_at; paid completion timestamps agree | P235/97         | SAFE(0) → BLOCK(3)    |
+| CH04 / `pre_request_billing_seat_quantity_operations_provider_applied_at`  | S-operation | `provider_applied_at = provider_requested_at - 1 day`             | A / application audit = provider_applied_at                           | S245/116        | SAFE(0) → BLOCK(3)    |
+| CH05 / `pre_request_billing_seat_quantity_operations_payment_confirmed_at` | S-operation | `payment_confirmed_at = provider_requested_at - 1 day`            | A / payment_confirmed_at = completed_at                               | S250            | SAFE(0) → BLOCK(2)    |
+| CH06 / `pre_request_billing_seat_quantity_operations_completed_at`         | S-operation | `completed_at = provider_requested_at - 1 day`                    | A / completion audit = completed_at; paid completion timestamps agree | S250/116        | SAFE(0) → BLOCK(3)    |
+| CH07 / `audit_before_request_billing.plan_change_requested`                | P-audit     | `billing.plan_change_requested: occurred_at = 1900-01-01Z`        | A / occurred_at = requested_at                                        | P25/50/97       | SAFE(0) → BLOCK(3)    |
+| CH08 / `audit_before_request_billing.plan_change_awaiting_payment`         | P-audit     | `billing.plan_change_awaiting_payment: occurred_at = 1900-01-01Z` | A / occurred_at = provider_applied_at                                 | P219/50/99      | SAFE(0) → BLOCK(3)    |
+| CH09 / `audit_before_request_billing.plan_change_provider_applied`         | P-audit     | `billing.plan_change_provider_applied: occurred_at = 1900-01-01Z` | A / occurred_at = provider_applied_at                                 | P219/50/99      | SAFE(0) → BLOCK(3)    |
+| CH10 / `audit_before_request_billing.plan_change_completed`                | P-audit     | `billing.plan_change_completed: occurred_at = 1900-01-01Z`        | A / occurred_at = completed_at                                        | P235/50/97      | SAFE(0) → BLOCK(3)    |
+| CH11 / `audit_before_request_billing.seat_provider_pending`                | S-audit     | `billing.seat_provider_pending: occurred_at = 1900-01-01Z`        | A / occurred_at = requested_at                                        | S67/86/116      | SAFE(0) → BLOCK(3)    |
+| CH12 / `audit_before_request_billing.seat_awaiting_payment`                | S-audit     | `billing.seat_awaiting_payment: occurred_at = 1900-01-01Z`        | A / occurred_at = provider_applied_at                                 | S245/86/116     | SAFE(0) → BLOCK(3)    |
+| CH13 / `audit_before_request_billing.seat_completed`                       | S-audit     | `billing.seat_completed: occurred_at = 1900-01-01Z`               | A / occurred_at = completed_at                                        | S250/86/116     | SAFE(0) → BLOCK(3)    |
 
-Do not retain customer/provider identifiers, result row samples, webhook payloads,
-signed URLs, credentials or secret values. An error, missing contract/version or
-incomplete inspection is blocked; it is never equivalent to zero counts.
+The gate checks these exact pairs in both operation authority and independent
+retained audit integrity. It preserves the first application timestamp and its
+first audit across repeated application. It retains existing nullable milestone,
+period-end, cancellation, finite-time, cutoff, and provider-revision contracts.
 
-PAY-03C should obtain that separately authorized evidence and resolve any blockers
-through explicitly reviewed disposition. PAY-03D may implement runtime retirement
-only after the evidence gate and review; PAY-03E should verify preserved history,
-drainage and fail-closed runtime behavior. These are dependency boundaries, not
-claims that those later tasks have been run. Fresh ingress can change a safe report;
-later retirement must establish a reviewed admission/drain boundary and rerun the
-gate at that boundary. PAY-03 runtime retirement has **not begun**.
+**Historical clock compatibility:** `now()` is a transaction timestamp;
+`provider_requested_at` uses the wall clock. Application/payment/completion and
+audit may legitimately precede dispatch when begin and finish share a transaction.
+A transaction begun before admission can also apply after admission commits,
+recording a timestamp before the operation's `requested_at`. Two real local
+sessions produced both plan and seat controls with that ordering; both passed.
+The permanent tests preserve both patterns. No generic lower bound against
+`requested_at` or `provider_requested_at`, and no global phase ordering, was added.
+A field that disagrees with its own audit, or payment that disagrees with its
+same-action completion, remains malformed regardless of that allowed ordering.
+
+There are 28 new permanent assertions: six milestone clock-compatibility checks,
+seven audit clock-compatibility checks, all 13 exact defect mutations, and two
+coherent earlier-application transaction controls. The focused original probes
+pass 13/13 with safe baselines; the complete 378-case reviewer matrix now matches
+all expectations. No unexplained chronology case remains.
+
+## Quantity and lifecycle schemas
+
+The installed steady-state arithmetic is:
+
+`provider quantity = 1 + approved_additional_coach_seats`
+
+The base is one provider unit, not the plan's included coach-seat entitlement.
+Nonzero approved additions require retained native completed approval history.
+The operation's target additions must not exceed the historical source plan's
+`max_coach_seats - included_coach_seats` bound. Capped effective-limit arithmetic
+cannot authorize a larger target. This uses the operation's historical plan,
+preserving valid approval history across later plan changes.
+There is no plan-change arithmetic exception.
+
+An observed target quantity can be explained by exactly one valid open LS seat
+operation with the same account/subscription/historical mapping/price contract,
+source/target arithmetic, current source approval, retained item identity and
+applied snapshot/revision/audit evidence, and installed direction/timing/proration.
+It still blocks retirement. Unexplained drift, including terminal drift, is unknown.
+Paddle quantities cannot resolve it.
+
+The eight lifecycle names are `subscription_plan_changed`, `subscription_created`,
+`subscription_updated`, `subscription_cancelled`, `subscription_resumed`,
+`subscription_expired`, `subscription_paused`, `subscription_unpaused`.
+Object type must be `subscriptions`, with object ID equal to subscription ID.
+Two closed historical payload shapes are accepted:
+
+| Shape                                         | Required keys                                                                                                     | Optional keys                                                  |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Full ingress                                  | `store_id`, `test_mode`, `subscription_id`, `customer_id`, `created_at`, `updated_at`, `product_id`, `variant_id` | `billing_account_id`, `checkout_attempt_id`, `plan_version_id` |
+| Reduced API-compatible `subscription_updated` | Exactly the first six keys above                                                                                  | None                                                           |
+
+Reject every unlisted key, including lifecycle `status`, `price_id`, and
+`billing_reason`. Provider IDs are positive decimal JSON strings in the installed
+safe-integer domain. Test mode is a matching boolean. Times are safely parsed,
+finite zoned JSON strings, bound to delivery columns, with created ≤ updated ≤
+cutoff. Optional UUIDs are non-null typed strings with valid historical relations.
+Product/variant match the subscription's legitimate historical mapping lineage.
+Arrays, JSON null, numbers, extra keys, and unsupported shapes block.
+
+The retained schema cannot distinguish legitimate reduced API context from ingress
+with both product/variant fields erased. Reduced context never provides positive
+terminal or financial authority. Raw LS body/snapshot preimages are not retained;
+validate their hash form and retained fingerprint binding without inventing signature
+or preimage authentication.
+
+## Webhook drainage and invoice authority
+
+Preserve all existing LS invoice authority rules. Supported payment names are
+`subscription_payment_success`, `subscription_payment_failed`, and
+`subscription_payment_recovered`. Trusted invoice identity depends on the closed
+reviewed admission writers. API success with subscription ID used as object ID is
+limited context and cannot settle even a numerically colliding signed invoice.
+
+Identity-proven observations group by exact provider/environment/store/resource/
+subscription/customer scope. Provider resource revisions determine the head;
+receipt, processing, row ID, and insertion order do not. Resource creation must
+agree. The greatest revision needs a processed, error-free paid success/recovery
+witness and compatible observations at that revision. Equal/newer contradictions,
+future/malformed proof, conflicting ownership, and required witness loss block.
+Invoice revisions are not compared with subscription revisions. Another invoice's
+payment, API context, refund/void context, or Paddle evidence cannot waive debt.
+
+Durable processed or explicitly permitted ignored/stale/unsupported delivery
+handling is separate from invoice closure. Supported names cannot use the
+unsupported-event exemption. Undrained work and unexpected errors remain blockers.
+
+## Relevant cross-ledger conflicts and limits
+
+Read underlying headers with the existing guard semantics; call no guard functions.
+Check same-canonical opposite-ledger ownership, conflicting origins, simultaneous
+current claims, checkout operation-key reuse/open checkout conflicts, operation-key
+collisions/open-operation conflicts, and explicit v2 source references touching LS.
+Native plan and seat operations also share the same account/operation-key
+namespace: a collision blocks even when both operations are completed. Reuse of
+the same key on different accounts remains valid.
+Bad facts necessary to decide a relevant conflict remain unknown. A lone open
+Paddle operation beside fully closed LS history is not LS servicing work.
+
+Coverage checks total/exclusive row assessments, duplicate/missing identities,
+scoped invoice authority, and contribution identities. The bounded corruption
+contract covers surviving LS roots, required evidence/references, shared attribution,
+and relevant conflicts. It excludes unrelated Paddle corruption, complete erasure
+of every LS trace, coherent forgery of all provenance, unavailable raw preimages,
+and provider activity not retained in this database.
+
+No explicit disposition record or override is implemented. Irreducible ambiguity
+remains blocked pending a separately reviewed contract binding obligations,
+snapshot/cutoff, evidence, action, authority, and invalidation. An external signed
+artifact cannot silently override this SQL result.
+
+## Local verification and staging use
+
+Permanent retirement suites are `lemon_squeezy_retirement_disposition.sql`,
+`lemon_squeezy_retirement_v2.sql`, and `lemon_squeezy_retirement_ls_rooted.sql`.
+They preserve LS F/R/invoice/checkout regressions, add V2R1-7/8/9 controls,
+exercise structural routing/conflicts, and explicitly prove Paddle invariance
+with zero LS roots and terminal LS on the same/different account. Corruption
+bypass is restricted to synthetic rollback-only test subtransactions.
+
+The populated-upgrade script uses only the hardcoded disposable local
+`repsync_reconciliation01` project. Terminal, blocked, and mixed-environment
+populations cross 184→185 while comparing all retained row/value hashes,
+identities/history/evidence, pre-185 functions/ACLs, RLS, constraints, and triggers.
+The isolated database is reconstructed afterward. Full DB, PAY-02, eight
+regression/concurrency harnesses, manifest/hash checks, lint, formatting, and
+independent reviewer-probe replays complete validation.
+
+The local implementation verification completed on 2026-10-03 against migration
+185 normalized SHA-256
+`2c126c7eb51f668f27f98539c5ae8fef194f987782fdbd5376818cb1d762688f`.
+The manifest pins that exact hash. The installed disposable-database function
+body matched the source; its security/EXECUTE contract and five-field/ten-category
+report were checked independently. Migrations 1–184 matched HEAD and all 185
+migrations reconstructed successfully.
+
+| Verification                       | Result                                                 |
+| ---------------------------------- | ------------------------------------------------------ |
+| Retirement SQL                     | 284 + 115 + 229 = 628 assertions passed                |
+| PAY-02 state SQL                   | 33 assertions passed                                   |
+| Full database suite                | 41 files, 4,507 assertions passed                      |
+| Populated 184→185 upgrades         | All three populations passed preservation checks       |
+| Regression/concurrency harnesses   | Eight harnesses, 59 cases passed, zero deadlocks       |
+| Manifest tests and validation      | 72 tests passed; validation returned `valid: true`     |
+| Database lint                      | Zero findings                                          |
+| Repository lint                    | Zero errors; three existing warnings                   |
+| Prettier and `git diff --check`    | Passed                                                 |
+| Independent rollback probe replays | 234 LS + 47 Paddle/mixed + 104 historical = 385 passed |
+
+Permanent coverage includes 40 full-report Paddle invariance comparisons: 25
+cover payment applications, evidence, operation audits, items, and catalogue
+amounts with zero LS roots or terminal LS on the same/different account; 15
+preserve broader unrelated Paddle erasure/corruption controls. Two further
+controls isolate unrelated v2 successor traversal and incoming cross-origin LS
+references. LS F1–F6, R2/R3, and V2R1-7/8/9 behavior remains covered. Of the 104
+historical reviewer scripts, 101 retained their verdict expectations; only three
+Paddle-only cases changed to the approved out-of-scope result. No LS expectation
+was relaxed.
+
+LS-ROOTED-R1 corrective verification retained all six saved reproducers: each
+writer-shaped control remains safe and each reported mutation now blocks. The
+permanent suite adds 38 assertions, including required intermediate audit,
+future-dated open/canceled history, historical cancellation without a newly
+retained snapshot, different-account key reuse, and the exact seat-cap boundary.
+The chronology follow-up classified and fixed all 13 remaining exact mutations.
+The reviewer's complete 378-case matrix now matches every expectation, including
+all 12 cases supporting the six R1 findings and all 13 chronology cases. All 75
+full-report Paddle financial invariance comparisons remain unchanged. The gate
+validates writer timestamp pairs and does not impose general clock ordering.
+
+All database work used the dedicated disposable `repsync_reconciliation01`
+project. Final state had no fixture users, LS/v2 subscriptions, or LS deliveries,
+and both Paddle runtime flags were disabled. No staging/production/provider
+access or runtime retirement occurred. The working-tree implementation remains
+uncommitted for independent review.
+
+`RETIREMENT_GATE_TRUSTED` is NOT self-certified. Independent **Astra Max** review
+of the exact candidate/hash remains required. Implementation verification does
+not assess staging and does not begin LS runtime retirement.
+
+A later task must explicitly authorize read-only inspection of a named staging
+project. Verify the reviewed deployed schema/function first; retain only the
+count-only report, contract/version, actual cutoff, reviewed commit/migration
+hash, and completion classification. Missing evidence or errors are blocked.
+Separate Paddle certification remains separately interpretable. Operational
+retirement additionally requires a reviewed admission/drain boundary and fresh
+inspection; fresh ingress can change a passing snapshot.
