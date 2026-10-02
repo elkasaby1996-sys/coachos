@@ -295,6 +295,15 @@ plan_operation_facts as (
       and change_kind in ('tier_upgrade','cadence_upgrade','combined_upgrade','tier_downgrade','cadence_downgrade','combined_downgrade')
       and effective_timing in ('immediate','period_end') and proration_mode in ('invoice_immediately','disable_prorations') and provider_payment_processor='card'
       and status in ('requested','provider_pending','awaiting_payment','scheduled','cancel_pending','completed','canceled','failed','ambiguous','manual_review')
+      -- Terminal milestones are exclusive; only immediate completion is paid.
+      -- ambiguous_at may survive a later resolution and is not a terminal flag.
+      and (status='completed')=(completed_at is not null)
+      and (status='canceled')=(canceled_at is not null)
+      and (status='failed')=(failed_at is not null)
+      and (status='completed' and effective_timing='immediate')=(payment_confirmed_at is not null)
+      and (effective_timing='period_end')=(effective_at is not null)
+      and (status<>'failed' or error_code='BILLING_PLAN_CHANGE_PROVIDER_FAILED'
+        and provider_applied_at is null and provider_updated_at is null and provider_snapshot_sha256 is null)
       and (error_code is null or error_code in ('BILLING_PLAN_CHANGE_PROVIDER_FAILED','BILLING_PLAN_CHANGE_PROVIDER_AMBIGUOUS','BILLING_PLAN_CHANGE_MANUAL_REVIEW','BILLING_PLAN_CHANGE_PAYMENT_FAILED','BILLING_PLAN_CHANGE_UNAPPROVED_PROVIDER_STATE'))) is true domain_valid,
     (exists(select 1 from accounts a where a.id=o.billing_account_id and a.owner_user_id=o.created_by_user_id)
       and exists(select 1 from subscription_facts s where s.id=o.billing_provider_subscription_id and s.billing_account_id=o.billing_account_id
@@ -318,12 +327,14 @@ plan_operation_facts as (
       and (o.provider_applied_at is null and o.status not in ('completed','canceled','cancel_pending') or exists(
         select 1 from public.billing_plan_change_events e where e.operation_id=o.id and e.event_type=
           case o.effective_timing when 'immediate' then 'billing.plan_change_awaiting_payment' else 'billing.plan_change_scheduled' end
-          and (o.effective_timing<>'immediate' or e.occurred_at=o.provider_applied_at)))
+          and e.occurred_at=o.provider_applied_at))
       and (o.status not in ('canceled','cancel_pending') or o.effective_timing='period_end' and exists(
         select 1 from public.billing_plan_change_events e where e.operation_id=o.id and e.event_type='billing.plan_change_cancel_requested'))
       and exists(select 1 from public.billing_plan_change_events e where e.operation_id=o.id and e.event_type='billing.plan_change_'||
         case o.status when 'provider_pending' then 'requested' when 'cancel_pending' then 'cancel_requested' when 'ambiguous' then 'manual_review' else o.status end
-        and (o.status<>'completed' or e.occurred_at=o.completed_at))) is true relationship_valid,
+        and case o.status when 'completed' then e.occurred_at=o.completed_at
+          when 'canceled' then e.occurred_at=o.canceled_at when 'failed' then e.occurred_at=o.failed_at
+          when 'scheduled' then e.occurred_at=o.provider_applied_at else true end)) is true relationship_valid,
     (isfinite(requested_at) and requested_at<=p_as_of and isfinite(provider_requested_at) and provider_requested_at<=p_as_of
       and (provider_applied_at is null or isfinite(provider_applied_at) and provider_applied_at<=p_as_of)
       -- Paid completion assigns both fields from now() in the same action.
@@ -333,13 +344,22 @@ plan_operation_facts as (
       and (status<>'completed' or isfinite(completed_at) and completed_at<=p_as_of and isfinite(provider_updated_at) and provider_updated_at>=provider_requested_at and provider_applied_at is not null and (effective_timing<>'immediate' or payment_confirmed_at is not null))
       and (status<>'canceled' or isfinite(canceled_at) and canceled_at<=p_as_of)
       and (status<>'failed' or isfinite(failed_at) and failed_at<=p_as_of)
-      and (effective_timing<>'period_end' or isfinite(effective_at) and (status<>'completed' or effective_at<=p_as_of))) is true time_valid,
+      and (ambiguous_at is null or isfinite(ambiguous_at) and ambiguous_at<=p_as_of)
+      -- due and completed_at use the same transaction now() in the apply writer.
+      and (effective_timing<>'period_end' or isfinite(effective_at) and (status<>'completed' or effective_at<=completed_at))) is true time_valid,
     ((provider_snapshot_sha256 is null or provider_snapshot_sha256 ~ '^[0-9a-f]{64}$') and (status<>'completed' or provider_snapshot_sha256 is not null)) is true provenance_valid
   from public.billing_plan_change_operations o
 ), seat_operation_facts as (
   select o.*,
     (direction in ('increase','reduction') and effective_timing in ('immediate','period_end') and proration_mode in ('invoice_immediately','disable_prorations')
       and status in ('requested','provider_pending','awaiting_payment','scheduled','cancel_pending','completed','canceled','failed','ambiguous','manual_review')
+      and (status='completed')=(completed_at is not null)
+      and (status='canceled')=(canceled_at is not null)
+      and (status='completed' and direction='increase')=(payment_confirmed_at is not null)
+      and (effective_timing='period_end')=(effective_at is not null)
+      -- Direct failure is before application; there is no historical failed_at.
+      and (status<>'failed' or error_code='BILLING_SEAT_QUANTITY_PROVIDER_FAILED'
+        and provider_applied_at is null and provider_updated_at is null and provider_snapshot_sha256 is null and cancel_requested_at is null)
       and source_additional_seats>=0 and target_additional_seats>=0 and source_quantity::bigint=1+source_additional_seats::bigint and target_quantity::bigint=1+target_additional_seats::bigint
       and source_quantity<>target_quantity and (direction='increase')=(target_quantity>source_quantity)
       and (direction='increase')=(effective_timing='immediate') and (effective_timing='immediate')=(proration_mode='invoice_immediately')
@@ -353,6 +373,7 @@ plan_operation_facts as (
             and a.plan_version_id=m.plan_version_id and a.subscription_kind='paid' and a.storage_contract='lemonsqueezy.v1'))
       and exists(select 1 from public.billing_quantity_price_contracts c where c.id=o.quantity_price_contract_id and c.variant_mapping_id=o.variant_mapping_id)
       and exists(select 1 from canonical_raw a join plans p on p.id=a.plan_version_id where a.id=o.account_subscription_id
+        and o.source_additional_seats::bigint<=p.max_coach_seats::bigint-p.included_coach_seats::bigint
         and o.target_additional_seats::bigint<=p.max_coach_seats::bigint-p.included_coach_seats::bigint
         and o.source_effective_limit=least(p.max_coach_seats,p.included_coach_seats::bigint+o.source_additional_seats::bigint)
         and o.target_effective_limit=least(p.max_coach_seats,p.included_coach_seats::bigint+o.target_additional_seats::bigint))
@@ -360,11 +381,17 @@ plan_operation_facts as (
       and (o.provider_applied_at is null and o.status not in ('completed','canceled','cancel_pending') or exists(
         select 1 from public.billing_seat_quantity_events e where e.operation_id=o.id and e.event_type=
           case o.direction when 'increase' then 'billing.seat_awaiting_payment' else 'billing.seat_scheduled' end
-          and (o.direction<>'increase' or e.occurred_at=o.provider_applied_at)))
+          and e.occurred_at=o.provider_applied_at))
       and (o.status not in ('canceled','cancel_pending') or o.direction='reduction' and exists(
         select 1 from public.billing_seat_quantity_events e where e.operation_id=o.id and e.event_type='billing.seat_cancel_pending'))
       and exists(select 1 from public.billing_seat_quantity_events e where e.operation_id=o.id and e.event_type='billing.seat_'||o.status
-        and (o.status<>'completed' or e.occurred_at=o.completed_at))) is true relationship_valid,
+        and case o.status when 'completed' then e.occurred_at=o.completed_at
+          when 'canceled' then e.occurred_at=o.canceled_at when 'scheduled' then e.occurred_at=o.provider_applied_at else true end)
+      and (o.status<>'failed' or exists(select 1 from public.billing_seat_quantity_events state_event
+        join public.billing_seat_quantity_events error_event on error_event.operation_id=state_event.operation_id
+          and error_event.occurred_at=state_event.occurred_at
+        where state_event.operation_id=o.id and state_event.event_type='billing.seat_failed'
+          and error_event.event_type='BILLING_SEAT_QUANTITY_PROVIDER_FAILED'))) is true relationship_valid,
     (isfinite(requested_at) and requested_at<=p_as_of and isfinite(provider_requested_at) and provider_requested_at<=p_as_of
       and (provider_applied_at is null or isfinite(provider_applied_at) and provider_applied_at<=p_as_of)
       and (payment_confirmed_at is null or isfinite(payment_confirmed_at) and payment_confirmed_at<=p_as_of and payment_confirmed_at=completed_at)
@@ -373,7 +400,7 @@ plan_operation_facts as (
       and (cancel_requested_at is null or isfinite(cancel_requested_at) and cancel_requested_at<=p_as_of)
       and (status not in ('canceled','cancel_pending') or cancel_requested_at is not null)
       and (status<>'canceled' or isfinite(canceled_at) and canceled_at<=p_as_of)
-      and (effective_timing<>'period_end' or isfinite(effective_at) and (status<>'completed' or effective_at<=p_as_of))) is true time_valid,
+      and (effective_timing<>'period_end' or isfinite(effective_at) and (status<>'completed' or effective_at<=completed_at))) is true time_valid,
     ((provider_snapshot_sha256 is null or provider_snapshot_sha256 ~ '^[0-9a-f]{64}$') and (status<>'completed' or provider_snapshot_sha256 is not null)) is true provenance_valid
   from public.billing_seat_quantity_operations o
 ),
@@ -447,21 +474,36 @@ quantity_facts as (
   select 'plan_event' kind,x.id::text id,(x.event_type in ('billing.plan_change_requested','billing.plan_change_awaiting_payment','billing.plan_change_scheduled','billing.plan_change_cancel_requested','billing.plan_change_completed','billing.plan_change_canceled','billing.plan_change_failed','billing.plan_change_manual_review','billing.plan_change_provider_applied')) is true domain_valid,
     (exists(select 1 from public.billing_plan_change_operations o where o.id=x.operation_id and exists(select 1 from public.billing_provider_subscriptions b where b.id=o.billing_provider_subscription_id and b.billing_account_id=o.billing_account_id)
       and (x.event_type not in ('billing.plan_change_completed','billing.plan_change_canceled','billing.plan_change_failed') or x.event_type='billing.plan_change_'||o.status)
+      and (x.event_type<>'billing.plan_change_awaiting_payment' or o.effective_timing='immediate')
+      and (x.event_type not in ('billing.plan_change_scheduled','billing.plan_change_cancel_requested','billing.plan_change_canceled') or o.effective_timing='period_end')
       and (x.event_type<>'billing.plan_change_provider_applied' or o.provider_applied_at is not null))) is true relationship_valid,
     (isfinite(x.occurred_at) and x.occurred_at<=p_as_of and exists(select 1 from public.billing_plan_change_operations o where o.id=x.operation_id
       and case x.event_type when 'billing.plan_change_requested' then x.occurred_at=o.requested_at
         when 'billing.plan_change_awaiting_payment' then x.occurred_at=o.provider_applied_at
+        when 'billing.plan_change_scheduled' then x.occurred_at=o.provider_applied_at
         when 'billing.plan_change_provider_applied' then x.occurred_at=o.provider_applied_at
-        when 'billing.plan_change_completed' then x.occurred_at=o.completed_at else true end)) is true time_valid,(true) is true provenance_valid
+        when 'billing.plan_change_completed' then x.occurred_at=o.completed_at
+        when 'billing.plan_change_canceled' then x.occurred_at=o.canceled_at
+        when 'billing.plan_change_failed' then x.occurred_at=o.failed_at else true end)) is true time_valid,(true) is true provenance_valid
   from public.billing_plan_change_events x
   union all
   select 'seat_event' kind,x.id::text id,(x.event_type in ('billing.seat_requested','billing.seat_provider_pending','billing.seat_awaiting_payment','billing.seat_scheduled','billing.seat_cancel_pending','billing.seat_completed','billing.seat_canceled','billing.seat_failed','billing.seat_ambiguous','billing.seat_manual_review','BILLING_SEAT_QUANTITY_PROVIDER_FAILED','BILLING_SEAT_QUANTITY_PROVIDER_AMBIGUOUS','BILLING_SEAT_QUANTITY_MANUAL_REVIEW','BILLING_SEAT_QUANTITY_PAYMENT_FAILED','BILLING_SEAT_QUANTITY_UNAPPROVED_DRIFT','BILLING_SEAT_QUANTITY_AWAITING_PAYMENT')) is true domain_valid,
     (exists(select 1 from public.billing_seat_quantity_operations o where o.id=x.operation_id and exists(select 1 from public.billing_provider_subscriptions b where b.id=o.billing_provider_subscription_id and b.billing_account_id=o.billing_account_id)
-      and (x.event_type not in ('billing.seat_completed','billing.seat_canceled','billing.seat_failed') or x.event_type='billing.seat_'||o.status))) is true relationship_valid,
+      and (x.event_type not in ('billing.seat_completed','billing.seat_canceled','billing.seat_failed') or x.event_type='billing.seat_'||o.status)
+      and (x.event_type<>'billing.seat_awaiting_payment' or o.direction='increase')
+      and (x.event_type not in ('billing.seat_scheduled','billing.seat_cancel_pending','billing.seat_canceled') or o.direction='reduction')
+      and (x.event_type<>'BILLING_SEAT_QUANTITY_PROVIDER_FAILED' or o.status in ('failed','cancel_pending','canceled')))) is true relationship_valid,
     (isfinite(x.occurred_at) and x.occurred_at<=p_as_of and exists(select 1 from public.billing_seat_quantity_operations o where o.id=x.operation_id
       and case x.event_type when 'billing.seat_provider_pending' then x.occurred_at=o.requested_at
         when 'billing.seat_awaiting_payment' then x.occurred_at=o.provider_applied_at
-        when 'billing.seat_completed' then x.occurred_at=o.completed_at else true end)) is true time_valid,(true) is true provenance_valid
+        when 'billing.seat_scheduled' then x.occurred_at=o.provider_applied_at
+        when 'billing.seat_completed' then x.occurred_at=o.completed_at
+        when 'billing.seat_canceled' then x.occurred_at=o.canceled_at
+        when 'billing.seat_failed' then exists(select 1 from public.billing_seat_quantity_events e
+          where e.operation_id=o.id and e.event_type='BILLING_SEAT_QUANTITY_PROVIDER_FAILED' and e.occurred_at=x.occurred_at)
+        when 'BILLING_SEAT_QUANTITY_PROVIDER_FAILED' then o.status<>'failed' or exists(select 1 from public.billing_seat_quantity_events e
+          where e.operation_id=o.id and e.event_type='billing.seat_failed' and e.occurred_at=x.occurred_at)
+        else true end)) is true time_valid,(true) is true provenance_valid
   from public.billing_seat_quantity_events x
   union all
   select 'account_event' kind,x.id::text id,

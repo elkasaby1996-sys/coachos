@@ -179,7 +179,7 @@ and seat paths require scheduled and cancellation-request audits as well as the
 terminal audit. Canceled seats also retain a finite `cancel_requested_at` at or
 before the cutoff; historical cancellation does not require a newly retained
 provider snapshot or revision. Completed period-end operations must be due at
-the inspection cutoff. Future effective dates remain valid on open or canceled
+their own completion timestamp, which must be at or before the inspection cutoff. Future effective dates remain valid on open or canceled
 history. Direct provider-pending failure does not require application evidence.
 Deleting mandatory admission, intermediate, or terminal audit evidence blocks work.
 
@@ -260,6 +260,40 @@ coherent earlier-application transaction controls. The focused original probes
 pass 13/13 with safe baselines; the complete 378-case reviewer matrix now matches
 all expectations. No unexplained chronology case remains.
 
+## LS-R2 writer-contract corrections — 2026-10-03
+
+Migration 185 is corrected in place for five final-review findings. The LS-rooted
+inventory, attribution boundary, invoice authority, ten blocker categories, and
+Paddle financial exclusions remain unchanged. The installed historical writers
+are the source of each rule; their definitions are unchanged.
+
+| Finding | Required retained contract                                                                                                                                                                                                                                                                                                                                               | Permanent checks                                                                                                                                                                                                                            |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1      | Plan scheduled audit = first `provider_applied_at`; canceled audit = `canceled_at`; failed audit = `failed_at`. Seat scheduled audit = first `provider_applied_at`; canceled audit = `canceled_at`. Canceled seats retain first application.                                                                                                                             | Each missing/mismatched pair independently blocks; coherent earlier action timestamps remain valid.                                                                                                                                         |
+| F2      | Plan completed/canceled/failed milestones correspond exactly to their status. Seat completed/canceled milestones correspond exactly to their status. Paid completion exists only for completed immediate plan changes or seat increases; period-end paths retain no payment milestone. Direct failure retains its exact error code and no application/revision/snapshot. | Each terminal milestone and payment contradiction blocks. Resolved ambiguous dispatch may retain finite `ambiguous_at`; historical seat cancellation need not retain a fresh snapshot.                                                      |
+| F3      | Completed period-end plan and seat operations satisfy `effective_at <= completed_at`.                                                                                                                                                                                                                                                                                    | Before/equal boundaries pass; +1 microsecond and +1 hour before a later inspection cutoff block. Future effective dates on valid open/canceled history remain compatible.                                                                   |
+| F4      | Definitive seat failure retains both `billing.seat_failed` and `BILLING_SEAT_QUANTITY_PROVIDER_FAILED` on the same operation at the exact same finite time.                                                                                                                                                                                                              | Either witness missing, wrong vocabulary/parent, or mismatched time blocks. No seat `failed_at` column is invented. A failed cancellation attempt followed by successful cancellation remains valid without a definitive seat-failed event. |
+| F5      | Source and target additions fit the exact historical plan/version capacity, with provider quantity `1 + additions`.                                                                                                                                                                                                                                                      | Below/exact historical capacity pass; max+1 and 99 source additions block, including retired plans with a smaller current public replacement. Existing valid reductions remain safe.                                                        |
+
+Audit timing is validated independently for every surviving event and in the
+operation's positive closure proof. Path-specific vocabulary rejects immediate
+operations carrying scheduled/cancellation history and period-end operations
+carrying awaiting-payment history. Definitive seat failure pairs its two audits
+because the historical writer has no failure milestone column. A provider-failure
+audit from a cancellation attempt remains compatible with canceled reduction
+history; it cannot authorize a direct failure without the paired state audit.
+
+These are same-action equalities and terminal-state shapes, not a global chronology
+rule. `now()` may precede admission/dispatch wall-clock timestamps in a legitimate
+long-lived transaction. First application and its audit may also precede paid
+completion in a later transaction. Neither permitted history is rejected.
+
+The rooted suite adds 127 assertions to its prior 229, including the exact 32
+false-safe final-fresh mutations and the mixed invoice/chronology case whose
+unknown-state contribution was previously missing. The five saved standalone
+reproductions retain writer-shaped safe controls and isolate each correction.
+No previous expectation or assertion is weakened.
+
 ## Quantity and lifecycle schemas
 
 The installed steady-state arithmetic is:
@@ -268,9 +302,10 @@ The installed steady-state arithmetic is:
 
 The base is one provider unit, not the plan's included coach-seat entitlement.
 Nonzero approved additions require retained native completed approval history.
-The operation's target additions must not exceed the historical source plan's
-`max_coach_seats - included_coach_seats` bound. Capped effective-limit arithmetic
-cannot authorize a larger target. This uses the operation's historical plan,
+Both the operation's source and target additions must not exceed the exact
+historical source plan/version's `max_coach_seats - included_coach_seats` bound.
+Capped effective-limit arithmetic cannot authorize an impossible source approval
+or a larger target. This uses the operation's historical plan,
 preserving valid approval history across later plan changes.
 There is no plan-change arithmetic exception.
 
@@ -370,24 +405,24 @@ independent reviewer-probe replays complete validation.
 
 The local implementation verification completed on 2026-10-03 against migration
 185 normalized SHA-256
-`2c126c7eb51f668f27f98539c5ae8fef194f987782fdbd5376818cb1d762688f`.
+`813c1473da644bbc862a787eca5cc0bc6ad07983a76843a99ebb63448e14618e`.
 The manifest pins that exact hash. The installed disposable-database function
 body matched the source; its security/EXECUTE contract and five-field/ten-category
 report were checked independently. Migrations 1–184 matched HEAD and all 185
 migrations reconstructed successfully.
 
-| Verification                       | Result                                                 |
-| ---------------------------------- | ------------------------------------------------------ |
-| Retirement SQL                     | 284 + 115 + 229 = 628 assertions passed                |
-| PAY-02 state SQL                   | 33 assertions passed                                   |
-| Full database suite                | 41 files, 4,507 assertions passed                      |
-| Populated 184→185 upgrades         | All three populations passed preservation checks       |
-| Regression/concurrency harnesses   | Eight harnesses, 59 cases passed, zero deadlocks       |
-| Manifest tests and validation      | 72 tests passed; validation returned `valid: true`     |
-| Database lint                      | Zero findings                                          |
-| Repository lint                    | Zero errors; three existing warnings                   |
-| Prettier and `git diff --check`    | Passed                                                 |
-| Independent rollback probe replays | 234 LS + 47 Paddle/mixed + 104 historical = 385 passed |
+| Verification                       | Result                                                   |
+| ---------------------------------- | -------------------------------------------------------- |
+| Retirement SQL                     | 284 + 115 + 356 = 755 assertions passed                  |
+| PAY-02 state SQL                   | 33 assertions passed                                     |
+| Full database suite                | 41 files, 4,634 assertions passed                        |
+| Populated 184→185 upgrades         | All three populations passed preservation checks         |
+| Regression/concurrency harnesses   | Eight harnesses, 59 cases passed, zero deadlocks         |
+| Manifest tests and validation      | 72 tests passed; validation returned `valid: true`       |
+| Database lint                      | Zero findings                                            |
+| Repository lint                    | Zero errors; three existing warnings                     |
+| Prettier and `git diff --check`    | Passed                                                   |
+| Independent rollback probe replays | 956 prior cases passed; 135 new independent cases passed |
 
 Permanent coverage includes 40 full-report Paddle invariance comparisons: 25
 cover payment applications, evidence, operation audits, items, and catalogue
@@ -409,6 +444,39 @@ The reviewer's complete 378-case matrix now matches every expectation, including
 all 12 cases supporting the six R1 findings and all 13 chronology cases. All 75
 full-report Paddle financial invariance comparisons remain unchanged. The gate
 validates writer timestamp pairs and does not impose general clock ordering.
+
+LS-R2 corrective verification closed all 33 unexpected final-review results: 32
+isolated false-safe mutations now block with unknown-state evidence, and the
+mixed invoice/chronology case retains its independent unknown-state contribution.
+All five standalone reproductions have safe writer controls and blocked mutated
+reports. The 956 retained reviewer cases passed: 378 R1/chronology-bank cases,
+six standalone R1 confirmations, 385 older LS/Paddle/historical cases, and 187
+final-review cases. This count excludes the five standalone R2 confirmations.
+
+New independent rollback-only correction probes passed 135/135. They vary audit
+pair times in both directions, remove individual witnesses, mutate terminal
+milestones independently, test the completion-time due boundary, and exercise
+source approval below/at/above retired historical capacity. Legitimate coherent
+earlier action times, finite resolved ambiguity, and historical cancellation
+remain compatible. Four real transaction controls also passed: plan and seat
+application by a transaction begun before admission, and first application
+retained across a later paid-completion transaction. No global ordering floor
+was introduced.
+
+All 40 permanent full-report Paddle invariance comparisons passed. The R1/final
+review banks additionally preserved 75 + 18 = 93 full-report financial invariance
+comparisons across zero-LS, different-account, and same-account LS populations.
+Paddle payment applications, financial evidence, operation audits, items, and
+catalogue mutations never supplied LS closure authority.
+
+The actual starting branch was `codex/billing-provider-payment-methods` at
+`986057a4b1517e17c36e77d1c7c3a5c62e29462a`, with a clean tree containing the reviewed
+candidate. The task brief's earlier HEAD and dirty-tree description were stale;
+its migration-185 hash matched the starting candidate exactly. No contrary
+shared-deployment evidence appeared. HEAD and branch remain unchanged. This
+correction changes only migration 185, its manifest hash, the rooted SQL suite,
+and this document; the other four original PAY-03B paths and every historical
+runtime writer remain unchanged.
 
 All database work used the dedicated disposable `repsync_reconciliation01`
 project. Final state had no fixture users, LS/v2 subscriptions, or LS deliveries,
