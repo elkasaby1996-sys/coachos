@@ -747,7 +747,7 @@
       },
       {
         "filename": "20261001224659_lemon_squeezy_retirement_disposition.sql",
-        "sha256": "813c1473da644bbc862a787eca5cc0bc6ad07983a76843a99ebb63448e14618e"
+        "sha256": "3f816915ce9af6e1dd5a53eee7fb7958a891385af3261319d391338dac36ca84"
       }
     ],
     "expectedLatestMigration": "20261001224659_lemon_squeezy_retirement_disposition.sql"

@@ -289,7 +289,72 @@ webhook_normalized as (
       or status='failed' and provider_checkout_id is null and error_code in ('BILLING_CHECKOUT_CREATION_FAILED','BILLING_VARIANT_MAPPING_MISMATCH')) is true terminal_proof
   from public.billing_checkout_attempts c
 ),
-plan_operation_facts as (
+-- Admission stores capacity observations, not a provider identity snapshot.
+-- Validate the exact retained JSON contracts without inventing provider fields.
+operation_snapshots(kind,id,snapshot) as (
+  select 'plan',id,preflight_snapshot from public.billing_plan_change_operations
+  union all select 'seat',id,preflight_snapshot from public.billing_seat_quantity_operations
+), snapshot_facts as (
+  select x.kind,x.id,(case when jsonb_typeof(x.snapshot)='object' then
+    case x.kind when 'seat' then
+      x.snapshot ?& array['actual','pending','reserved','committed']
+      and x.snapshot-array['actual','pending','reserved','committed']='{}'::jsonb
+      and not exists(select 1 from jsonb_each(x.snapshot) f where jsonb_typeof(f.value)<>'number' or f.value::text !~ '^[0-9]+$')
+      and case when not exists(select 1 from jsonb_each(x.snapshot) f where jsonb_typeof(f.value)<>'number' or f.value::text !~ '^[0-9]+$') then
+        (x.snapshot->>'committed')::numeric=(x.snapshot->>'actual')::numeric+(x.snapshot->>'pending')::numeric+(x.snapshot->>'reserved')::numeric
+        and not exists(select 1 from jsonb_each(x.snapshot) f where f.value::text::numeric>9223372036854775807) else false end
+    else
+      x.snapshot ?& array['dimensions','hasAnyDataQualityIssue']
+      and x.snapshot-array['dimensions','hasAnyDataQualityIssue']='{}'::jsonb
+      and jsonb_typeof(x.snapshot->'hasAnyDataQualityIssue')='boolean'
+      and case when jsonb_typeof(x.snapshot->'dimensions')='array' then
+        jsonb_array_length(x.snapshot->'dimensions')=4
+        and (select count(distinct d->>'key') from jsonb_array_elements(x.snapshot->'dimensions') d)=4
+        and not exists(select 1 from jsonb_array_elements(x.snapshot->'dimensions') d where
+          (case when jsonb_typeof(d)='object' then
+            d->>'key' in ('counted_clients','coach_seats','active_workspaces','published_packages')
+            and d ?& array['key','actual','pending','reserved','committed','limit','remaining','utilizationPercent','state','overBy','wouldExceedNext','dataQualityIssue']
+            and d-array['key','actual','pending','reserved','committed','limit','remaining','utilizationPercent','state','overBy','wouldExceedNext','dataQualityIssue',
+              'included','aboveIncludedBy']='{}'::jsonb
+            and (d->>'key'<>'coach_seats' or d ?& array['included','aboveIncludedBy'])
+            and (d->>'key'='coach_seats' or not d ?| array['included','aboveIncludedBy'])
+            and jsonb_typeof(d->'key')='string' and jsonb_typeof(d->'dataQualityIssue')='boolean'
+            and d->>'state' in ('unavailable','unlimited','over_limit','at_limit','approaching','available')
+            and jsonb_typeof(d->'wouldExceedNext') in ('boolean','null')
+            and jsonb_typeof(d->'utilizationPercent') in ('number','null')
+            and not exists(select 1 from jsonb_each(d) f where f.key in ('actual','pending','reserved','committed','overBy')
+              and (jsonb_typeof(f.value)<>'number' or f.value::text !~ '^[0-9]+$'))
+            and not exists(select 1 from jsonb_each(d) f where f.key in ('limit','remaining','included','aboveIncludedBy')
+              and not (jsonb_typeof(f.value)='null' or jsonb_typeof(f.value)='number' and f.value::text ~ '^[0-9]+$'))
+            and case when not exists(select 1 from jsonb_each(d) f where f.key in ('actual','pending','reserved','committed','overBy')
+              and (jsonb_typeof(f.value)<>'number' or f.value::text !~ '^[0-9]+$')) then
+                (d->>'committed')::numeric=(d->>'actual')::numeric+(d->>'pending')::numeric+(d->>'reserved')::numeric
+                and not exists(select 1 from jsonb_each(d) f where f.key in ('actual','pending','reserved','committed','overBy') and f.value::text::numeric>9223372036854775807)
+              else false end
+          else false end) is not true)
+        and x.snapshot->'hasAnyDataQualityIssue'=to_jsonb(exists(select 1 from jsonb_array_elements(x.snapshot->'dimensions') d where d->'dataQualityIssue'='true'::jsonb))
+      else false end
+    end else false end) is true snapshot_valid
+  from operation_snapshots x
+), plan_audit_counts as (
+  select operation_id,event_type,count(*) n from public.billing_plan_change_events group by operation_id,event_type
+), seat_audit_counts as (
+  select operation_id,event_type,count(*) n from public.billing_seat_quantity_events group by operation_id,event_type
+), plan_carried_seats as (
+  -- The native admission guard serializes plan/seat operations on the account.
+  -- A prior completed seat admission therefore settled before this plan was
+  -- admitted. Use dispatch wall-clock order, never transaction milestone order
+  -- or a clamped/display preflight limit. Later purchases cannot change history.
+  select o.id,coalesce(h.approval,0)::bigint approval,coalesce(h.coherent,true) coherent
+  from public.billing_plan_change_operations o left join lateral (
+    select min(s.target_additional_seats) approval,min(s.target_additional_seats)=max(s.target_additional_seats) coherent
+    from public.billing_seat_quantity_operations s where s.billing_provider_subscription_id=o.billing_provider_subscription_id
+      and s.billing_account_id=o.billing_account_id and s.status='completed'
+      and s.provider_requested_at=(select max(p.provider_requested_at) from public.billing_seat_quantity_operations p
+        where p.billing_provider_subscription_id=o.billing_provider_subscription_id and p.billing_account_id=o.billing_account_id
+          and p.status='completed' and p.provider_requested_at<=o.provider_requested_at)
+  ) h on true
+), plan_operation_facts as (
   select o.*,
     (source_cadence in ('monthly','annual') and target_cadence in ('monthly','annual')
       and change_kind in ('tier_upgrade','cadence_upgrade','combined_upgrade','tier_downgrade','cadence_downgrade','combined_downgrade')
@@ -304,7 +369,12 @@ plan_operation_facts as (
       and (effective_timing='period_end')=(effective_at is not null)
       and (status<>'failed' or error_code='BILLING_PLAN_CHANGE_PROVIDER_FAILED'
         and provider_applied_at is null and provider_updated_at is null and provider_snapshot_sha256 is null)
-      and (error_code is null or error_code in ('BILLING_PLAN_CHANGE_PROVIDER_FAILED','BILLING_PLAN_CHANGE_PROVIDER_AMBIGUOUS','BILLING_PLAN_CHANGE_MANUAL_REVIEW','BILLING_PLAN_CHANGE_PAYMENT_FAILED','BILLING_PLAN_CHANGE_UNAPPROVED_PROVIDER_STATE'))) is true domain_valid,
+      and (error_code is null or error_code in ('BILLING_PLAN_CHANGE_PROVIDER_FAILED','BILLING_PLAN_CHANGE_PROVIDER_AMBIGUOUS','BILLING_PLAN_CHANGE_MANUAL_REVIEW','BILLING_PLAN_CHANGE_PAYMENT_FAILED','BILLING_PLAN_CHANGE_UNAPPROVED_PROVIDER_STATE'))
+      -- Cancellation clears errors. Immediate paid completion clears them;
+      -- a due period-end application may complete on a payment-failed event.
+      and (status<>'canceled' or error_code is null)
+      and (status<>'completed' or error_code is null or effective_timing='period_end' and error_code='BILLING_PLAN_CHANGE_PAYMENT_FAILED')
+      and exists(select 1 from snapshot_facts f where f.kind='plan' and f.id=o.id and f.snapshot_valid)) is true domain_valid,
     (exists(select 1 from accounts a where a.id=o.billing_account_id and a.owner_user_id=o.created_by_user_id)
       and exists(select 1 from subscription_facts s where s.id=o.billing_provider_subscription_id and s.billing_account_id=o.billing_account_id
         and exists(select 1 from canonical_paths cp where cp.root_id=o.source_account_subscription_id and cp.id=s.account_subscription_id)
@@ -315,12 +385,16 @@ plan_operation_facts as (
       and exists(select 1 from canonical_raw a where a.id=o.source_account_subscription_id and a.billing_account_id=o.billing_account_id
         and a.subscription_kind='paid' and a.storage_contract='lemonsqueezy.v1' and a.plan_version_id=o.source_plan_version_id)
       and exists(select 1 from public.billing_plan_change_events e where e.operation_id=o.id and e.event_type='billing.plan_change_requested' and e.occurred_at=o.requested_at)
+      and not exists(select 1 from plan_audit_counts e where e.operation_id=o.id and e.n<>1)
       and exists(select 1 from plans source_plan cross join plans target_plan where source_plan.id=o.source_plan_version_id and target_plan.id=o.target_plan_version_id
         and (source_plan.plan_key,o.source_cadence)<>(target_plan.plan_key,o.target_cadence)
         and not (array_position(array['launch','growth','scale'],target_plan.plan_key)>array_position(array['launch','growth','scale'],source_plan.plan_key) and o.source_cadence='annual' and o.target_cadence='monthly')
         and o.effective_timing=case when array_position(array['launch','growth','scale'],target_plan.plan_key)<array_position(array['launch','growth','scale'],source_plan.plan_key) or o.source_cadence='annual' and o.target_cadence='monthly' then 'period_end' else 'immediate' end
         and o.proration_mode=case when o.effective_timing='period_end' then 'disable_prorations' else 'invoice_immediately' end
-        and o.change_kind=(case when source_plan.plan_key=target_plan.plan_key then 'cadence' when o.source_cadence=o.target_cadence then 'tier' else 'combined' end)||case when o.effective_timing='period_end' then '_downgrade' else '_upgrade' end)
+        and o.change_kind=(case when source_plan.plan_key=target_plan.plan_key then 'cadence' when o.source_cadence=o.target_cadence then 'tier' else 'combined' end)||case when o.effective_timing='period_end' then '_downgrade' else '_upgrade' end
+        and exists(select 1 from plan_carried_seats h where h.id=o.id and h.coherent and h.approval>=0
+          and h.approval<=source_plan.max_coach_seats::bigint-source_plan.included_coach_seats::bigint
+          and h.approval<=target_plan.max_coach_seats::bigint-target_plan.included_coach_seats::bigint))
       and (o.provider_applied_at is null or exists(select 1 from public.billing_plan_change_events e where e.operation_id=o.id and e.event_type='billing.plan_change_provider_applied' and e.occurred_at=o.provider_applied_at))
       -- The installed apply writer records its intermediate state even when it
       -- completes in the same call; cancellation necessarily traverses scheduled.
@@ -330,6 +404,10 @@ plan_operation_facts as (
           and e.occurred_at=o.provider_applied_at))
       and (o.status not in ('canceled','cancel_pending') or o.effective_timing='period_end' and exists(
         select 1 from public.billing_plan_change_events e where e.operation_id=o.id and e.event_type='billing.plan_change_cancel_requested'))
+      -- Dispatch ambiguity writes this pair together. A later cancellation
+      -- failure can overwrite ambiguous_at without a new manual-review event.
+      and (o.ambiguous_at is null or exists(select 1 from public.billing_plan_change_events e where e.operation_id=o.id and e.event_type='billing.plan_change_cancel_requested')
+        or exists(select 1 from public.billing_plan_change_events e where e.operation_id=o.id and e.event_type='billing.plan_change_manual_review' and e.occurred_at=o.ambiguous_at))
       and exists(select 1 from public.billing_plan_change_events e where e.operation_id=o.id and e.event_type='billing.plan_change_'||
         case o.status when 'provider_pending' then 'requested' when 'cancel_pending' then 'cancel_requested' when 'ambiguous' then 'manual_review' else o.status end
         and case o.status when 'completed' then e.occurred_at=o.completed_at
@@ -363,7 +441,9 @@ plan_operation_facts as (
       and source_additional_seats>=0 and target_additional_seats>=0 and source_quantity::bigint=1+source_additional_seats::bigint and target_quantity::bigint=1+target_additional_seats::bigint
       and source_quantity<>target_quantity and (direction='increase')=(target_quantity>source_quantity)
       and (direction='increase')=(effective_timing='immediate') and (effective_timing='immediate')=(proration_mode='invoice_immediately')
-      and (error_code is null or error_code in ('BILLING_SEAT_QUANTITY_PROVIDER_FAILED','BILLING_SEAT_QUANTITY_PROVIDER_AMBIGUOUS','BILLING_SEAT_QUANTITY_MANUAL_REVIEW','BILLING_SEAT_QUANTITY_PAYMENT_FAILED','BILLING_SEAT_QUANTITY_UNAPPROVED_DRIFT','BILLING_SEAT_QUANTITY_AWAITING_PAYMENT'))) is true domain_valid,
+      and (error_code is null or error_code in ('BILLING_SEAT_QUANTITY_PROVIDER_FAILED','BILLING_SEAT_QUANTITY_PROVIDER_AMBIGUOUS','BILLING_SEAT_QUANTITY_MANUAL_REVIEW','BILLING_SEAT_QUANTITY_PAYMENT_FAILED','BILLING_SEAT_QUANTITY_UNAPPROVED_DRIFT','BILLING_SEAT_QUANTITY_AWAITING_PAYMENT'))
+      and (status not in ('completed','canceled') or error_code is null)
+      and exists(select 1 from snapshot_facts f where f.kind='seat' and f.id=o.id and f.snapshot_valid)) is true domain_valid,
     (exists(select 1 from accounts a where a.id=o.billing_account_id and a.owner_user_id=o.created_by_user_id)
       and exists(select 1 from subscription_facts s join public.billing_provider_variant_mappings m on m.id=o.variant_mapping_id
         where s.id=o.billing_provider_subscription_id and s.billing_account_id=o.billing_account_id
@@ -378,9 +458,16 @@ plan_operation_facts as (
         and o.source_effective_limit=least(p.max_coach_seats,p.included_coach_seats::bigint+o.source_additional_seats::bigint)
         and o.target_effective_limit=least(p.max_coach_seats,p.included_coach_seats::bigint+o.target_additional_seats::bigint))
       and exists(select 1 from public.billing_seat_quantity_events e where e.operation_id=o.id and e.event_type='billing.seat_provider_pending' and e.occurred_at=o.requested_at)
+      and not exists(select 1 from seat_audit_counts e where e.operation_id=o.id and e.n<>1)
       and (o.provider_applied_at is null and o.status not in ('completed','canceled','cancel_pending') or exists(
         select 1 from public.billing_seat_quantity_events e where e.operation_id=o.id and e.event_type=
           case o.direction when 'increase' then 'billing.seat_awaiting_payment' else 'billing.seat_scheduled' end
+          and e.occurred_at=o.provider_applied_at))
+      -- The first paid-increase application writes a state and an error audit.
+      -- A first failed-payment event retains PAYMENT_FAILED through recovery.
+      and (o.direction<>'increase' or o.provider_applied_at is null or exists(
+        select 1 from public.billing_seat_quantity_events e where e.operation_id=o.id
+          and e.event_type in ('BILLING_SEAT_QUANTITY_AWAITING_PAYMENT','BILLING_SEAT_QUANTITY_PAYMENT_FAILED')
           and e.occurred_at=o.provider_applied_at))
       and (o.status not in ('canceled','cancel_pending') or o.direction='reduction' and exists(
         select 1 from public.billing_seat_quantity_events e where e.operation_id=o.id and e.event_type='billing.seat_cancel_pending'))
@@ -473,6 +560,7 @@ quantity_facts as (
   union all
   select 'plan_event' kind,x.id::text id,(x.event_type in ('billing.plan_change_requested','billing.plan_change_awaiting_payment','billing.plan_change_scheduled','billing.plan_change_cancel_requested','billing.plan_change_completed','billing.plan_change_canceled','billing.plan_change_failed','billing.plan_change_manual_review','billing.plan_change_provider_applied')) is true domain_valid,
     (exists(select 1 from public.billing_plan_change_operations o where o.id=x.operation_id and exists(select 1 from public.billing_provider_subscriptions b where b.id=o.billing_provider_subscription_id and b.billing_account_id=o.billing_account_id)
+      and exists(select 1 from plan_audit_counts e where e.operation_id=x.operation_id and e.event_type=x.event_type and e.n=1)
       and (x.event_type not in ('billing.plan_change_completed','billing.plan_change_canceled','billing.plan_change_failed') or x.event_type='billing.plan_change_'||o.status)
       and (x.event_type<>'billing.plan_change_awaiting_payment' or o.effective_timing='immediate')
       and (x.event_type not in ('billing.plan_change_scheduled','billing.plan_change_cancel_requested','billing.plan_change_canceled') or o.effective_timing='period_end')
@@ -484,11 +572,15 @@ quantity_facts as (
         when 'billing.plan_change_provider_applied' then x.occurred_at=o.provider_applied_at
         when 'billing.plan_change_completed' then x.occurred_at=o.completed_at
         when 'billing.plan_change_canceled' then x.occurred_at=o.canceled_at
-        when 'billing.plan_change_failed' then x.occurred_at=o.failed_at else true end)) is true time_valid,(true) is true provenance_valid
+        when 'billing.plan_change_failed' then x.occurred_at=o.failed_at
+        when 'billing.plan_change_manual_review' then o.ambiguous_at is null
+          or exists(select 1 from public.billing_plan_change_events e where e.operation_id=o.id and e.event_type='billing.plan_change_cancel_requested')
+          or x.occurred_at=o.ambiguous_at else true end)) is true time_valid,(true) is true provenance_valid
   from public.billing_plan_change_events x
   union all
   select 'seat_event' kind,x.id::text id,(x.event_type in ('billing.seat_requested','billing.seat_provider_pending','billing.seat_awaiting_payment','billing.seat_scheduled','billing.seat_cancel_pending','billing.seat_completed','billing.seat_canceled','billing.seat_failed','billing.seat_ambiguous','billing.seat_manual_review','BILLING_SEAT_QUANTITY_PROVIDER_FAILED','BILLING_SEAT_QUANTITY_PROVIDER_AMBIGUOUS','BILLING_SEAT_QUANTITY_MANUAL_REVIEW','BILLING_SEAT_QUANTITY_PAYMENT_FAILED','BILLING_SEAT_QUANTITY_UNAPPROVED_DRIFT','BILLING_SEAT_QUANTITY_AWAITING_PAYMENT')) is true domain_valid,
     (exists(select 1 from public.billing_seat_quantity_operations o where o.id=x.operation_id and exists(select 1 from public.billing_provider_subscriptions b where b.id=o.billing_provider_subscription_id and b.billing_account_id=o.billing_account_id)
+      and exists(select 1 from seat_audit_counts e where e.operation_id=x.operation_id and e.event_type=x.event_type and e.n=1)
       and (x.event_type not in ('billing.seat_completed','billing.seat_canceled','billing.seat_failed') or x.event_type='billing.seat_'||o.status)
       and (x.event_type<>'billing.seat_awaiting_payment' or o.direction='increase')
       and (x.event_type not in ('billing.seat_scheduled','billing.seat_cancel_pending','billing.seat_canceled') or o.direction='reduction')
@@ -499,6 +591,15 @@ quantity_facts as (
         when 'billing.seat_scheduled' then x.occurred_at=o.provider_applied_at
         when 'billing.seat_completed' then x.occurred_at=o.completed_at
         when 'billing.seat_canceled' then x.occurred_at=o.canceled_at
+        when 'BILLING_SEAT_QUANTITY_AWAITING_PAYMENT' then o.direction='increase' and x.occurred_at=o.provider_applied_at
+        when 'billing.seat_ambiguous' then exists(select 1 from public.billing_seat_quantity_events e
+          where e.operation_id=o.id and e.event_type='BILLING_SEAT_QUANTITY_PROVIDER_AMBIGUOUS' and e.occurred_at=x.occurred_at)
+        when 'BILLING_SEAT_QUANTITY_PROVIDER_AMBIGUOUS' then o.cancel_requested_at is not null or exists(select 1 from public.billing_seat_quantity_events e
+          where e.operation_id=o.id and e.event_type='billing.seat_ambiguous' and e.occurred_at=x.occurred_at)
+        when 'billing.seat_manual_review' then exists(select 1 from public.billing_seat_quantity_events e
+          where e.operation_id=o.id and e.event_type='BILLING_SEAT_QUANTITY_MANUAL_REVIEW' and e.occurred_at=x.occurred_at)
+        when 'BILLING_SEAT_QUANTITY_MANUAL_REVIEW' then o.cancel_requested_at is not null or exists(select 1 from public.billing_seat_quantity_events e
+          where e.operation_id=o.id and e.event_type='billing.seat_manual_review' and e.occurred_at=x.occurred_at)
         when 'billing.seat_failed' then exists(select 1 from public.billing_seat_quantity_events e
           where e.operation_id=o.id and e.event_type='BILLING_SEAT_QUANTITY_PROVIDER_FAILED' and e.occurred_at=x.occurred_at)
         when 'BILLING_SEAT_QUANTITY_PROVIDER_FAILED' then o.status<>'failed' or exists(select 1 from public.billing_seat_quantity_events e

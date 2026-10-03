@@ -294,6 +294,64 @@ unknown-state contribution was previously missing. The five saved standalone
 reproductions retain writer-shaped safe controls and isolate each correction.
 No previous expectation or assertion is weakened.
 
+## LS-R3 retained-history corrections — 2026-10-03
+
+The R3 review at committed candidate `18edd336d070fe887ec94ae275fdb083ecaf9bf0`
+found six further integrity gaps. Migration 185 is corrected in place; the
+historical runtime writers and migrations 1–184 remain unchanged. The reviewer
+artifacts are preserved unchanged outside the repository.
+
+| Finding | Retained contract                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R3-01   | An applied seat increase retains its first application state audit and a same-action `AWAITING_PAYMENT` or `PAYMENT_FAILED` error audit. A first failed-payment application retains the latter through recovery. A later payment-failure audit need not equal the first application's timestamp.                                                                                                  |
+| R3-02   | Dispatch ambiguity on a plan retains the manual-review audit paired with `ambiguous_at`. Cancellation failures can overwrite that milestone without writing another manual-review event, so the rule is path-specific. Seat ambiguity/manual-review state and error audits retain their same-action pairs; cancellation failures may retain an error without a new ambiguity/manual-review state. |
+| R3-03   | Closed operation errors match the actual writer path, as shown below. Historical payment failure does not become paid closure merely because the operation completed.                                                                                                                                                                                                                             |
+| R3-04   | A plan transition carries the approval established by the last completed native seat admission before its own admission. That approval fits both exact historical source and target plan versions. Later purchases or reductions cannot rewrite the approval carried by an earlier plan transition.                                                                                               |
+| R3-05   | Plan preflight evidence retains the two historical keys, four distinct named capacity dimensions, typed capacity observations and coherent committed counts. Seat preflight evidence retains its four typed count fields. Null, arrays, scalars, missing fields, extra keys and incoherent counts fail closed. No provider identity fields are invented in these capacity snapshots.              |
+| R3-06   | Every native plan/seat audit type is unique per operation, matching the historical table constraints and `ON CONFLICT DO NOTHING` writers. Duplicate rows fail integrity even when their row IDs differ and their timestamps agree.                                                                                                                                                               |
+
+| Terminal operation path                       | Allowed current operation error              |
+| --------------------------------------------- | -------------------------------------------- |
+| Plan immediate paid completion                | Null                                         |
+| Plan period-end completion                    | Null or `BILLING_PLAN_CHANGE_PAYMENT_FAILED` |
+| Plan cancellation                             | Null                                         |
+| Plan direct failure before application        | `BILLING_PLAN_CHANGE_PROVIDER_FAILED`        |
+| Seat paid increase / due reduction completion | Null                                         |
+| Seat cancellation                             | Null                                         |
+| Seat direct failure before application        | `BILLING_SEAT_QUANTITY_PROVIDER_FAILED`      |
+
+An unpaid completed period-end plan with a retained payment-failure error remains
+blocked by its payment obligation while its history is structurally valid.
+Immediate plan and seat failure/recovery controls complete through the installed
+writers and retain compatible historical audits. This is not a universal
+requirement for null errors on every terminal row.
+
+The account admission guard forbids simultaneous native plan/seat work. Therefore
+the last completed seat admission with a dispatch wall clock at or before the
+plan admission settled before that plan was admitted. Its exact approved target
+count supplies carried approval; a tie with conflicting counts fails closed.
+The predicate uses neither a clamped display limit nor the subscription's later
+approved count. It does not order transaction timestamps against dispatch clocks.
+Retired plan versions remain authoritative; smaller public replacements are not.
+
+The reviewer's excluded `ambiguous_at` deletion is kept compatible. The installed
+reconciler can write plan manual-review history without that milestone and later
+complete through verified payment. A universal requirement would reject a valid
+writer-shaped history. Removing a mandatory witness with a surviving ambiguity
+milestone, or breaking a seat state/error pair, still blocks.
+
+The LS-rooted test file retains every prior assertion and its final pgTAP plan.
+Its temporary helpers now execute each inspection through a one-shot SPI plan,
+and this test transaction disables JIT. Repeated rollback-only DDL previously
+invalidated cached inspection plans while the outer probe query retained them.
+The original 356 assertions completed under a 1.5 GiB container guard with sampled
+usage below 283 MiB after this test-only change. Production inspector settings and
+logic were not changed to reduce test cost. The shared fixture report helper uses
+the same execution method; all cutoff, mutation and assertion semantics remain.
+
+The final implementation remains subject to independent Astra review.
+`RETIREMENT_GATE_TRUSTED` is not self-certified; staging retirement is not assessed.
+
 ## Quantity and lifecycle schemas
 
 The installed steady-state arithmetic is:
@@ -403,13 +461,15 @@ The isolated database is reconstructed afterward. Full DB, PAY-02, eight
 regression/concurrency harnesses, manifest/hash checks, lint, formatting, and
 independent reviewer-probe replays complete validation.
 
-The local implementation verification completed on 2026-10-03 against migration
-185 normalized SHA-256
+### Historical R2 verification
+
+The prior R2 implementation reported local verification on 2026-10-03 against
+the superseded migration-185 normalized SHA-256
 `813c1473da644bbc862a787eca5cc0bc6ad07983a76843a99ebb63448e14618e`.
-The manifest pins that exact hash. The installed disposable-database function
-body matched the source; its security/EXECUTE contract and five-field/ten-category
-report were checked independently. Migrations 1–184 matched HEAD and all 185
-migrations reconstructed successfully.
+The following table preserves that historical report, not current certification.
+R3 subsequently found the six defects above and could not complete its native
+LS-rooted/full run on this machine. The corrected candidate is pinned by the
+manifest to `3f816915ce9af6e1dd5a53eee7fb7958a891385af3261319d391338dac36ca84`.
 
 | Verification                       | Result                                                   |
 | ---------------------------------- | -------------------------------------------------------- |
@@ -483,6 +543,56 @@ project. Final state had no fixture users, LS/v2 subscriptions, or LS deliveries
 and both Paddle runtime flags were disabled. No staging/production/provider
 access or runtime retirement occurred. The working-tree implementation remains
 uncommitted for independent review.
+
+### Current R3 correction verification
+
+PAY-03B-LS-R3-FIX started clean on `codex/billing-provider-payment-methods` at
+`18edd336d070fe887ec94ae275fdb083ecaf9bf0`. The corrected migration-185 normalized
+SHA-256 is `3f816915ce9af6e1dd5a53eee7fb7958a891385af3261319d391338dac36ca84`.
+The following checks completed locally on 2026-10-03 against this candidate:
+
+| Verification                            | Result                                                                                                                                                   |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Retirement SQL                          | 284 + 115 + 629 = 1,028 assertions passed                                                                                                                |
+| PAY-02 state SQL                        | 33 assertions passed                                                                                                                                     |
+| Full database suite                     | 41 files, 4,907 assertions passed; valid final pgTAP plans                                                                                               |
+| Clean reconstruction                    | All 185 migrations applied; installed inspector matches normalized candidate source                                                                      |
+| Populated 184→185 upgrades              | All three populations passed row/history and existing authority preservation                                                                             |
+| Required regression/concurrency         | Eight harnesses, 59 cases passed, zero deadlocks                                                                                                         |
+| Additional payment-recovery concurrency | 14 cases passed, zero deadlocks                                                                                                                          |
+| Manifest tests and hashes               | 72 tests passed; `valid: true`; all 185 repository/disposable hashes match                                                                               |
+| Database lint                           | Zero findings                                                                                                                                            |
+| Repository lint                         | Zero errors; three existing warnings                                                                                                                     |
+| Prettier and `git diff --check`         | Passed                                                                                                                                                   |
+| Retained R3 reviewer replay             | 394/394 expected outcomes; all 63 confirmed false-safe variants now block                                                                                |
+| Prior regression replay                 | All 33 R2 cases, six R1 families and 13 chronology cases remain fixed                                                                                    |
+| Isolated confirmations                  | 13 former false-safe cases block, three controls safe, one debt/integrity composition retains both contributions                                         |
+| Fresh independent correction probes     | 62/62 expected: 57 corruptions block, five compatible controls safe                                                                                      |
+| Paddle financial invariance             | 48 complete-report equality comparisons and two LS-debt controls passed; 40 permanent comparisons retained                                               |
+| Security/report contract                | Service-role read-only invocation succeeds; anon/authenticated denied; stable, fixed `pg_catalog` search path; finite/null/infinite cutoff controls pass |
+
+The 629-assertion LS-rooted file preserves all original 356 assertions and adds
+273 permanent assertions. No test was removed, skipped or split away. The full
+suite completes using the test-only one-shot inspection helpers above; the
+production inspector was not changed for test execution cost.
+
+The replay count uses the available R3 artifacts, permanent regressions and
+reconstructed writer controls. It does not claim recovery of the old machine's
+unavailable temporary 956-case bank. The excluded plan ambiguity-milestone deletion
+remains compatible, and a native expired subscription's retained future renewal
+is likewise a writer-compatible control, not a new false-safe requirement.
+Debt plus missing payment witness retains both payment and unknown-state blockers.
+
+HEAD and branch remain unchanged. Exactly five files are modified, unstaged and
+uncommitted: migration 185, its manifest, this document, the LS-rooted suite and
+its reusable history fixture. There are no staged or untracked files. Migrations
+1–184 and all historical runtime writers remain unchanged; no migration 186 was
+added. The original R3 reviewer artifacts match their task-start hashes.
+
+The final disposable database has a 185-entry ledger, no fixture users, native
+LS/v2 subscriptions or LS deliveries, and both Paddle runtime flags disabled.
+The temporary memory guard is removed and database JIT is restored to its default
+`on` setting. No staging, production, provider or deployment access occurred.
 
 `RETIREMENT_GATE_TRUSTED` is NOT self-certified. Independent **Astra Max** review
 of the exact candidate/hash remains required. Implementation verification does

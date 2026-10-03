@@ -1,5 +1,8 @@
 -- PAY-03B LS-rooted boundary: synthetic local rollback-only corruption probes.
 begin;
+-- Repeated rollback-only DDL invalidates the inspector's very large plan.
+-- Keep test compilation bounded; production JIT settings are unchanged.
+set local jit=off;
 create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions;
 select no_plan();
@@ -8,7 +11,10 @@ declare report jsonb;
 begin
  begin
   execute mutation;
-  report:=inspect_lemon_squeezy_retirement_disposition_v1(coalesce(inspection_at,clock_timestamp()));
+  -- A one-shot SPI plan is released after each corruption probe. A cached
+  -- PL/pgSQL expression retains invalidated plans until the outer query ends.
+  execute 'select public.inspect_lemon_squeezy_retirement_disposition_v1($1)'
+    into report using coalesce(inspection_at,clock_timestamp());
   raise exception using errcode='ZX001',message='rollback LS-rooted probe';
  exception when sqlstate 'ZX001' then return report;
  end;
@@ -359,6 +365,249 @@ select ok(pg_temp.ls_unknown(pg_temp.ls_probe(format($m$
 $m$,relation))),'LS-R2 immediate path has no period-end effective milestone: '||relation)
 from unnest(array['billing_plan_change_operations','billing_seat_quantity_operations']) relation;
 select is(pg_temp.retirement_report()->>'safeToRetire','true','LS-R2 correction probes leave terminal controls unchanged');
+
+-- LS-R3-FIX: real writer paths, independent witnesses and corrupted retention.
+create function pg_temp.r3_resolve(kind text,mode text) returns uuid language plpgsql as $$
+declare u uuid:=pg_temp.coach('growth'); op uuid;
+begin
+ if kind='plan' then
+  perform begin_billing_plan_change(u,'test','scale','monthly',gen_random_uuid(),pg_temp.snapshot(u));
+  select id into op from billing_plan_change_operations where created_by_user_id=u;
+  if mode='ambiguity' then perform fail_billing_plan_change(u,op,true);
+  else
+   -- The reconciler's retained-operation fallback (S682), with its real audit
+   -- trigger. A separate unresolved rejected webhook is not part of this control.
+   update billing_plan_change_operations set status='manual_review',error_code='BILLING_PLAN_CHANGE_MANUAL_REVIEW',updated_at=now() where id=op;
+  end if;
+  perform finish_billing_plan_change(u,'test',pg_temp.snapshot(u,'scale'),pg_temp.invoice(u));
+ else
+  perform begin_billing_seat_quantity(u,'test',1,gen_random_uuid(),pg_temp.seat_snapshot(u,1));
+  select id into op from billing_seat_quantity_operations where created_by_user_id=u;
+  if mode='ambiguity' then perform fail_billing_seat_quantity(u,op,true);
+  else
+   update billing_seat_quantity_operations set status='manual_review',error_code='BILLING_SEAT_QUANTITY_MANUAL_REVIEW',updated_at=now() where id=op;
+  end if;
+  perform finish_billing_plan_change(u,'test',pg_temp.seat_snapshot(u,2),pg_temp.invoice(u));
+ end if;
+ perform pg_temp.retirement_close(u);
+ return u;
+end $$;
+create temp table r3_resolutions(kind text,mode text,u uuid);
+insert into r3_resolutions select kind,mode,pg_temp.r3_resolve(kind,mode)
+from unnest(array['plan','seat']) kind cross join unnest(array['ambiguity','manual_review']) mode;
+select is(pg_temp.retirement_report()->>'safeToRetire','true','LS-R3 four writer-shaped ambiguity/manual-review resolutions remain safe');
+select ok(exists(select 1 from billing_plan_change_operations o join r3_resolutions r on r.u=o.created_by_user_id
+ where r.kind='plan' and r.mode='manual_review' and o.ambiguous_at is null and exists(select 1 from billing_plan_change_events e where e.operation_id=o.id and e.event_type='billing.plan_change_manual_review')),
+ 'LS-R3 actual resolved manual review need not retain ambiguous_at');
+select is(pg_temp.ls_probe($m$
+ set local session_replication_role=replica;
+ update billing_plan_change_operations set ambiguous_at=null where created_by_user_id=(select u from r3_resolutions where kind='plan' and mode='ambiguity');
+$m$),pg_temp.retirement_report(),'LS-R3 reviewer-excluded ambiguous_at deletion remains compatible with alternate writer history');
+
+select ok(pg_temp.ls_unknown(pg_temp.ls_probe(format($m$
+ set local session_replication_role=replica;
+ %s billing_seat_quantity_events %s where operation_id in(select id from billing_seat_quantity_operations where created_by_user_id=(select id from actors where name='terminal-seat')) and event_type=%L;
+$m$,action,assignment,event))),'LS-R3 paid seat witness '||event||' / '||label)
+from (values('delete from','','missing'),('update','set occurred_at=occurred_at-interval ''1 microsecond''','earlier'),
+ ('update','set occurred_at=occurred_at+interval ''1 second''','later')) mutations(action,assignment,label)
+cross join unnest(array['billing.seat_awaiting_payment','BILLING_SEAT_QUANTITY_AWAITING_PAYMENT']) event;
+select ok((r#>>'{blockers,paymentObligations}')::bigint>0 and (r#>>'{blockers,unknownStates}')::bigint>0,
+ 'LS-R3 debt and missing historical payment witness retain independent contributions') from (select pg_temp.ls_probe($m$
+ select pg_temp.retirement_invoice(id,'subscription_payment_failed','979001','pending') from actors where name='terminal-checkout';
+ set local session_replication_role=replica;
+ delete from billing_seat_quantity_events where event_type='BILLING_SEAT_QUANTITY_AWAITING_PAYMENT';
+$m$) r) q;
+
+create function pg_temp.r3_recovery(kind text) returns uuid language plpgsql as $$
+declare u uuid:=pg_temp.coach(case when kind in ('seat','plan') then 'growth' else 'scale' end); op uuid; b uuid;
+begin
+ if kind='seat' then
+  perform begin_billing_seat_quantity(u,'test',1,gen_random_uuid(),pg_temp.seat_snapshot(u,1));
+  select id into b from billing_provider_subscriptions where billing_account_id=(select id from billing_accounts where owner_user_id=u);
+  perform apply_verified_billing_seat_quantity(b,pg_temp.seat_snapshot(u,2),'subscription_payment_failed',pg_temp.invoice(u,'updated','pending'));
+  perform finish_billing_plan_change(u,'test',pg_temp.seat_snapshot(u,2),pg_temp.invoice(u));
+ elsif kind='plan' then
+  perform begin_billing_plan_change(u,'test','scale','monthly',gen_random_uuid(),pg_temp.snapshot(u));
+  select id into op from billing_plan_change_operations where created_by_user_id=u;
+  perform apply_verified_billing_plan_change(op,pg_temp.snapshot(u,'scale'),'subscription_payment_failed',pg_temp.invoice(u,'updated','pending'));
+  perform finish_billing_plan_change(u,'test',pg_temp.snapshot(u,'scale'),pg_temp.invoice(u));
+ else
+  perform begin_billing_plan_change(u,'test','growth','monthly',gen_random_uuid(),pg_temp.snapshot(u));
+  select id into op from billing_plan_change_operations where created_by_user_id=u;
+  set constraints all immediate;set constraints all deferred;set local session_replication_role=replica;
+  update billing_plan_change_operations set effective_at=now()-interval '1 second' where id=op;
+  set local session_replication_role=origin;
+  perform apply_verified_billing_plan_change(op,pg_temp.snapshot(u,'growth'),'subscription_payment_failed',pg_temp.invoice(u,'updated','pending'));
+ end if;
+ perform pg_temp.retirement_close(u);
+ return u;
+end $$;
+create temp table r3_recovery_controls as select kind,pg_temp.r3_recovery(kind) u from unnest(array['plan','seat']) kind;
+select is(pg_temp.retirement_report()->>'safeToRetire','true','LS-R3 actual alternate payment-failure/recovery histories remain safe');
+select ok(exists(select 1 from billing_seat_quantity_events e join billing_seat_quantity_operations o on o.id=e.operation_id
+ where o.created_by_user_id=(select u from r3_recovery_controls where kind='seat') and e.event_type='BILLING_SEAT_QUANTITY_PAYMENT_FAILED' and e.occurred_at=o.provider_applied_at)
+ and not exists(select 1 from billing_seat_quantity_events e join billing_seat_quantity_operations o on o.id=e.operation_id
+ where o.created_by_user_id=(select u from r3_recovery_controls where kind='seat') and e.event_type='BILLING_SEAT_QUANTITY_AWAITING_PAYMENT'),
+ 'LS-R3 first failed-payment seat application retains its alternate exact witness');
+select ok(r#>>'{blockers,unknownStates}'='0' and r#>>'{blockers,planOperations}'='0' and r#>>'{blockers,paymentObligations}'='1' and r->>'safeToRetire'='false',
+ 'LS-R3 due plan payment-failure error is compatible but retains its unpaid obligation') from (select pg_temp.ls_probe($m$
+ select pg_temp.r3_recovery('plan_due_failed') u into temp table r3_due_failed;
+ do $$begin if not exists(select 1 from billing_plan_change_operations where created_by_user_id=(select u from r3_due_failed)
+   and status='completed' and error_code='BILLING_PLAN_CHANGE_PAYMENT_FAILED') then raise exception 'missing retained due payment failure';end if;end $$;
+$m$) r) q;
+select ok(pg_temp.ls_unknown(pg_temp.ls_probe(format($m$
+ set local session_replication_role=replica;
+ %s billing_seat_quantity_events %s where operation_id in(select id from billing_seat_quantity_operations where created_by_user_id=(select u from r3_recovery_controls where kind='seat')) and event_type='BILLING_SEAT_QUANTITY_PAYMENT_FAILED';
+$m$,action,assignment))),'LS-R3 alternate first payment witness / '||label)
+from (values('delete from','','missing'),('update','set occurred_at=occurred_at-interval ''1 second''','earlier'),
+ ('update','set occurred_at=occurred_at+interval ''1 microsecond''','later')) mutations(action,assignment,label);
+
+select ok(pg_temp.ls_unknown(pg_temp.ls_probe(format($m$
+ set local session_replication_role=replica;
+ %s %I %s where operation_id in(select id from %I where created_by_user_id=(select u from r3_resolutions where kind=%L and mode=%L)) and event_type=%L;
+$m$,action,events,assignment,operations,kind,mode,event))),'LS-R3 resolved witness '||kind||' / '||mode||' / '||event||' / '||label)
+from (values
+ ('plan','ambiguity','billing_plan_change_events','billing_plan_change_operations','billing.plan_change_manual_review'),
+ ('seat','ambiguity','billing_seat_quantity_events','billing_seat_quantity_operations','billing.seat_ambiguous'),
+ ('seat','ambiguity','billing_seat_quantity_events','billing_seat_quantity_operations','BILLING_SEAT_QUANTITY_PROVIDER_AMBIGUOUS'),
+ ('seat','manual_review','billing_seat_quantity_events','billing_seat_quantity_operations','billing.seat_manual_review'),
+ ('seat','manual_review','billing_seat_quantity_events','billing_seat_quantity_operations','BILLING_SEAT_QUANTITY_MANUAL_REVIEW')
+) witnesses(kind,mode,events,operations,event)
+cross join (values('delete from','','missing'),('update','set occurred_at=occurred_at-interval ''1 second''','earlier'),
+ ('update','set occurred_at=occurred_at+interval ''1 microsecond''','later')) mutations(action,assignment,label);
+
+select ok(pg_temp.ls_unknown(pg_temp.ls_probe(format($m$
+ set local session_replication_role=replica;
+ update %I set error_code=%L where status=%L and effective_timing=%L;
+$m$,relation,code,state,timing))),'LS-R3 terminal error matrix '||relation||' / '||state||' / '||timing)
+from (values('billing_plan_change_operations','BILLING_PLAN_CHANGE_PROVIDER_FAILED'),
+ ('billing_seat_quantity_operations','BILLING_SEAT_QUANTITY_PROVIDER_FAILED')) families(relation,code)
+cross join (values('completed','immediate'),('completed','period_end'),('canceled','period_end')) paths(state,timing);
+
+select ok(case when cap=0 then pg_temp.ls_unknown(r) else r=pg_temp.retirement_report() end,
+ 'LS-R3 carried approval=1 against historical target capacity '||cap) from (
+ select cap,pg_temp.ls_probe(format('set local session_replication_role=replica;update commercial_plan_versions set max_coach_seats=included_coach_seats+%s where id=(select target_plan_version_id from billing_plan_change_operations where created_by_user_id=(select u from native_controls where name=''combo''));',cap)) r
+ from unnest(array[0,1,2]) cap) q;
+select is(pg_temp.ls_probe($m$
+ set constraints all immediate;set constraints all deferred;set local session_replication_role=replica;
+ update commercial_plan_versions set status='retired',is_public=false,is_most_popular=false,retired_at=now()
+ where id=(select target_plan_version_id from billing_plan_change_operations where created_by_user_id=(select u from native_controls where name='combo'));
+ insert into commercial_plan_versions select (jsonb_populate_record(null::commercial_plan_versions,to_jsonb(p)||jsonb_build_object('id',gen_random_uuid(),'version',p.version+100,'status','active','is_public',true,'retired_at',null,'max_coach_seats',p.included_coach_seats))).*
+ from commercial_plan_versions p where id=(select target_plan_version_id from billing_plan_change_operations where created_by_user_id=(select u from native_controls where name='combo'));
+$m$),pg_temp.retirement_report(),'LS-R3 carried approval uses retired target version, never a smaller replacement');
+select is(pg_temp.ls_probe($m$
+ select pg_temp.coach('launch') u into temp table r3_later;
+ select begin_billing_plan_change(u,'test','growth','monthly',gen_random_uuid(),pg_temp.snapshot(u)) from r3_later;
+ select finish_billing_plan_change(u,'test',pg_temp.snapshot(u,'growth'),pg_temp.invoice(u)) from r3_later;
+ select pg_temp.buy(u,(select max_coach_seats-included_coach_seats from commercial_plan_versions where plan_key='growth' and status='active')) from r3_later;
+ select pg_temp.retirement_close(u) from r3_later;
+$m$),pg_temp.retirement_report(),'LS-R3 later large seat purchase cannot invalidate an earlier source-plan admission');
+
+create function pg_temp.r3_transition(path text,n integer,complete_due boolean default true) returns uuid language plpgsql as $$
+declare source_plan text:=case when path='tier_downgrade' then 'scale' else 'growth' end;
+ source_cadence text:=case when path='cadence_downgrade' then 'annual' else 'monthly' end;
+ target_plan text:=case when path='tier_upgrade' then 'scale' else 'growth' end;
+ target_cadence text:=case when path='cadence_upgrade' then 'annual' else 'monthly' end;
+ u uuid; op uuid; target_version uuid:=gen_random_uuid(); target_mapping uuid:=gen_random_uuid();
+ p commercial_plan_versions%rowtype; m billing_provider_variant_mappings%rowtype; c billing_quantity_price_contracts%rowtype;
+ variant_id text; price_id text; contract jsonb; observed jsonb;
+begin
+ u:=pg_temp.coach(source_plan,source_cadence);
+ perform pg_temp.buy(u,n);
+ -- Give this control its own historical target version. Lowering a shared
+ -- growth version would also corrupt the unrelated three-seat baseline.
+ select * into strict p from commercial_plan_versions where plan_key=target_plan and status='active';
+ select * into strict m from billing_provider_variant_mappings where plan_version_id=p.id and cadence=target_cadence and environment='test';
+ select * into strict c from billing_quantity_price_contracts where variant_mapping_id=m.id;
+ set constraints all immediate;set constraints all deferred;set local session_replication_role=replica;
+ update commercial_plan_versions set status='retired',is_public=false,is_most_popular=false,retired_at=now() where id=p.id;
+ insert into commercial_plan_versions select (jsonb_populate_record(null::commercial_plan_versions,to_jsonb(p)||jsonb_build_object('id',target_version,'version',p.version+100,'is_most_popular',false))).*;
+ variant_id:=(980000+(select count(*) from billing_provider_variant_mappings))::text;
+ price_id:=(981000+(select count(*) from billing_provider_variant_mappings))::text;
+ insert into billing_provider_variant_mappings select (jsonb_populate_record(null::billing_provider_variant_mappings,to_jsonb(m)||jsonb_build_object('id',target_mapping,'plan_version_id',target_version,'provider_variant_id',variant_id,'provider_price_id',price_id))).*;
+ contract:=c.normalized_price_contract||jsonb_build_object('variant_id',variant_id,'price_id',price_id);
+ insert into billing_quantity_price_contracts select (jsonb_populate_record(null::billing_quantity_price_contracts,to_jsonb(c)||jsonb_build_object('id',gen_random_uuid(),'variant_mapping_id',target_mapping,'normalized_price_contract',contract,'price_contract_sha256',encode(extensions.digest(contract::text,'sha256'),'hex')))).*;
+ set local session_replication_role=origin;
+ perform begin_billing_plan_change(u,'test',target_plan,target_cadence,gen_random_uuid(),pg_temp.seat_snapshot(u,1+n));
+ select id into op from billing_plan_change_operations where created_by_user_id=u;
+ -- Retrieve the approved target observation AFTER dispatch; a pre-dispatch
+ -- observation correctly falls back to the source mapping and is rejected.
+ observed:=pg_temp.seat_snapshot(u,1+n)||jsonb_build_object('product_id',m.provider_product_id,'variant_id',variant_id,'price_id',price_id);
+ observed:=jsonb_set(observed,'{verified_item,price_id}',to_jsonb(price_id));
+ perform finish_billing_plan_change(u,'test',observed,pg_temp.invoice(u));
+ if exists(select 1 from billing_plan_change_operations where id=op and status='scheduled') then
+  if not complete_due then return u; end if;
+  set constraints all immediate;set constraints all deferred;set local session_replication_role=replica;
+  update billing_plan_change_operations set effective_at=now()-interval '1 second' where id=op;
+  set local session_replication_role=origin;
+  perform finish_billing_plan_change(u,'test',observed||jsonb_build_object('updated_at',clock_timestamp()),null);
+ end if;
+ perform pg_temp.retirement_close(u);
+ return u;
+end $$;
+select ok(case when cap<n then pg_temp.ls_unknown(r) else r=pg_temp.retirement_report() end,
+ 'LS-R3 carried approval '||n||' / '||path||' / target capacity '||cap) from (
+ select path,n,cap,pg_temp.ls_probe(format($m$
+ select pg_temp.r3_transition(%L,%s) u into temp table r3_target;
+ set constraints all immediate;set constraints all deferred;set local session_replication_role=replica;
+ update commercial_plan_versions set max_coach_seats=included_coach_seats+%s
+ where id=(select target_plan_version_id from billing_plan_change_operations where created_by_user_id=(select u from r3_target));
+$m$,path,n,cap)) r from (values('tier_upgrade',2),('tier_downgrade',1),('cadence_upgrade',1),('cadence_downgrade',1)) paths(path,n)
+ cross join unnest(array[0,1,2,3]) cap) q;
+select ok(r#>>'{blockers,unknownStates}'='0' and (r#>>'{blockers,planOperations}')::bigint>0,
+ 'LS-R3 genuinely scheduled plan carries valid historical approval') from (select pg_temp.ls_probe($m$
+ select pg_temp.r3_transition('tier_downgrade',1,false);
+$m$) r) q;
+select ok(pg_temp.ls_unknown(r) and (r#>>'{blockers,planOperations}')::bigint>0,
+ 'LS-R3 scheduled target cannot hide impossible carried approval') from (select pg_temp.ls_probe($m$
+ select pg_temp.r3_transition('tier_downgrade',1,false) u into temp table r3_scheduled;
+ set constraints all immediate;set constraints all deferred;set local session_replication_role=replica;
+ update commercial_plan_versions set max_coach_seats=included_coach_seats
+ where id=(select target_plan_version_id from billing_plan_change_operations where created_by_user_id=(select u from r3_scheduled));
+$m$) r) q;
+
+select ok(pg_temp.ls_unknown(pg_temp.ls_probe(format($m$
+ set local session_replication_role=replica;
+ alter table %I alter column preflight_snapshot drop not null;
+ select pg_temp.ls_corrupt(%L,%L,%L);
+$m$,relation,relation,'preflight_snapshot='||value,'created_by_user_id=(select '||field||' from '||controls||' where name='''||actor||''')'||suffix))),
+ 'LS-R3 mandatory preflight '||actor||' / '||value)
+from (values
+ ('billing_plan_change_operations','actors','id','terminal-plan',''),
+ ('billing_plan_change_operations','native_controls','u','plan_due',''),
+ ('billing_plan_change_operations','native_controls','u','plan_cancel',''),
+ ('billing_plan_change_operations','native_controls','u','plan_failed',''),
+ ('billing_seat_quantity_operations','actors','id','terminal-seat',''),
+ ('billing_seat_quantity_operations','native_controls','u','seat_due',' and direction=''reduction'''),
+ ('billing_seat_quantity_operations','native_controls','u','seat_cancel',' and direction=''reduction'''),
+ ('billing_seat_quantity_operations','native_controls','u','seat_failed','')
+) paths(relation,controls,field,actor,suffix)
+cross join unnest(array['null','''[]''::jsonb','''1''::jsonb','''true''::jsonb','''{}''::jsonb','''{"unexpected":1}''::jsonb']) value;
+select ok(pg_temp.ls_unknown(pg_temp.ls_probe(format($m$
+ set local session_replication_role=replica;
+ update %I set preflight_snapshot=preflight_snapshot-%L;
+$m$,relation,field))),'LS-R3 retained preflight requires field '||relation||' / '||field)
+from (values('billing_plan_change_operations','dimensions'),('billing_plan_change_operations','hasAnyDataQualityIssue'),
+ ('billing_seat_quantity_operations','actual'),('billing_seat_quantity_operations','pending'),
+ ('billing_seat_quantity_operations','reserved'),('billing_seat_quantity_operations','committed')) fields(relation,field);
+
+create function pg_temp.r3_duplicate(events text,op uuid,event text,delta interval) returns void language plpgsql as $$
+declare c record;
+begin
+ set local session_replication_role=replica;
+ for c in select conname from pg_constraint where conrelid=('public.'||events)::regclass and contype='u' loop
+  execute format('alter table public.%I drop constraint %I',events,c.conname);
+ end loop;
+ execute format('insert into public.%I(operation_id,event_type,occurred_at) select operation_id,event_type,occurred_at+$1 from public.%I where operation_id=$2 and event_type=$3',events,events) using delta,op,event;
+end $$;
+create temp table r3_audit_inventory as
+ select distinct 'billing_plan_change_events' events,operation_id,event_type from billing_plan_change_events
+ union all select distinct 'billing_seat_quantity_events',operation_id,event_type from billing_seat_quantity_events;
+select ok(pg_temp.ls_unknown(pg_temp.ls_probe(format('select pg_temp.r3_duplicate(%L,%L,%L,%L::interval)',events,operation_id,event_type,delta))),
+ 'LS-R3 audit uniqueness '||events||' / '||event_type||' / '||delta)
+from r3_audit_inventory
+cross join unnest(array['0 seconds','1 microsecond']) delta;
+select is(pg_temp.retirement_report()->>'safeToRetire','true','LS-R3 corruption probes roll back and preserve all valid controls');
 rollback to native_writer_controls;
 select ok(pg_temp.ls_unknown(pg_temp.ls_probe(format('set local session_replication_role=replica;select pg_temp.ls_corrupt(%L,%L)',relation,assignment))),
  'unconditional physical root: '||relation||' / '||assignment) from (values

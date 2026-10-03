@@ -63,7 +63,12 @@ begin
    provider_ends_at=now()-interval '1 second',provider_renews_at=null where billing_account_id=(select id from billing_accounts where owner_user_id=u);
 end $$;
 create function pg_temp.retirement_report() returns jsonb language plpgsql as $$
-begin return public.inspect_lemon_squeezy_retirement_disposition_v1(clock_timestamp()); end
+declare report jsonb;
+begin
+ execute 'select public.inspect_lemon_squeezy_retirement_disposition_v1($1)'
+   into report using clock_timestamp();
+ return report;
+end
 $$;
 -- Production signed-ingress-shaped invoice admission, followed by real reconciliation.
 -- No signature/provider request is performed: all retained proof is synthetic.
