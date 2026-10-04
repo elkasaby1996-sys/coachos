@@ -159,9 +159,14 @@ for (const complimentary of [false, true])
     });
     await expect(
       page.getByRole("button", {
-        name: /portal|cancel subscription|purchase seats|payment method/i,
+        name: /portal|cancel subscription|purchase seats/i,
       }),
     ).toHaveCount(0);
+    // Canonical paid access exposes the reviewed payment-method action, but
+    // this fixture has no provider payment-method authority to enable it.
+    await expect(
+      page.getByRole("button", { name: "Update payment method", exact: true }),
+    ).toBeDisabled();
     await page.screenshot({
       path: info.outputPath("billing-confirmed.png"),
       fullPage: true,

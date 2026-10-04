@@ -9,6 +9,7 @@ import { trackRpcReads } from "./rpc-readiness";
 import type { BillingProviderSummary } from "../../../src/features/billing/billing-management-contracts";
 import type { PaymentMethodState } from "../../../src/features/billing/payment-method-contracts";
 import { ACCESS_MODE_BY_STATUS } from "../../../src/features/account-entitlements/contracts";
+import { assertPaymentMethodFixtureTarget } from "./payment-method-fixture-target";
 
 export const syntheticTransaction = `txn_${"a".repeat(26)}`;
 export async function gotoBilling(
@@ -41,21 +42,7 @@ export async function paymentMethodFixture(
   owner = true,
   launchFailure = false,
 ) {
-  const api = new URL(process.env.E2E_SUPABASE_API_URL ?? "");
-  const disposablePort =
-    process.env.PAY04_DISPOSABLE_LOCAL === "1" ? "58431" : "57431";
-  if (
-    api.protocol !== "http:" ||
-    api.username ||
-    api.password ||
-    ![
-      ["127.0.0.1", disposablePort],
-      ["localhost", disposablePort],
-    ].some(([host, port]) => api.hostname === host && api.port === port)
-  )
-    throw new Error(
-      "Payment-method browser fixtures require the explicitly bound disposable local API.",
-    );
+  assertPaymentMethodFixtureTarget(process.env);
   const coach = await seedEntitlementCoach(`payment-method-${scope}`, true);
   const summary: BillingProviderSummary = {
     linked: false,
