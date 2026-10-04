@@ -1,5 +1,7 @@
 # Billing security and privacy
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 The public webhook has `verify_jwt=false`; authentication is raw-body HMAC-SHA256 using `X-Signature`. The handler accepts POST, bounds the body to 256 KiB while streaming, reads bytes once, verifies via Web Crypto, and only then parses JSON. `X-Event-Name` must match `meta.event_name`. Configured environment and private-mapping Store must match. Malformed/signature failures return 400; transient provider/database failures return 5xx; processed, replayed, ignored and deferred events return 200.
 
 Lemon Squeezy does not provide a documented unique delivery-event ID. The fingerprint is `sha256(environment + "\n" + event_name + "\n" + sha256(rawBytes))`, unique with provider/environment. Only the digest and allowlisted normalized fields are persisted. The database recomputes fingerprint parity, locks reconciliation and permits failed deliveries to retry. Raw body whitespace changes the fingerprint, but canonical snapshot comparison still prevents duplicate subscription effects.

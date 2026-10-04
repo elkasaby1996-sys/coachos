@@ -9,7 +9,7 @@ import {
 import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { BillingCheckoutPanel } from "../../../../features/billing/checkout-panel";
-import { CustomerPortalPanel } from "../../../../features/billing/customer-portal-panel";
+import { BillingManagementPanel } from "../../../../features/billing/billing-management-panel";
 import { PlanChangePanel } from "../../../../features/billing/plan-change-panel";
 import { SeatQuantityPanel } from "../../../../features/billing/seat-quantity-panel";
 import {
@@ -37,6 +37,11 @@ export function PtHubSettingsBillingTab() {
       queryClient.invalidateQueries({ queryKey: ["billing"] }),
     ]);
   }, [refetchEntitlements, refetchCapacity, queryClient]);
+  // The payment-method panel refetches its own safe billing queries. Avoid
+  // invalidating them again while its bounded verification read is in flight.
+  const refreshPaymentMethodBilling = useCallback(async () => {
+    await Promise.all([refetchEntitlements(), refetchCapacity()]);
+  }, [refetchEntitlements, refetchCapacity]);
   const dateLabel = (value: string) =>
     new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
       new Date(value),
@@ -152,12 +157,14 @@ export function PtHubSettingsBillingTab() {
               entitlementsQuery.data.billingAccount.requestedPaidPlanKey
             }
             subscription={subscription}
+            billingUnavailable={entitlementsQuery.data.billingUnavailable}
             refresh={refreshBilling}
           />
         ) : null}
       </SettingsSectionCard>
 
       {entitlementsQuery.data?.billingAccount.canManageBilling &&
+      !entitlementsQuery.data.billingUnavailable &&
       subscription?.kind === "paid" ? (
         <div id="coach-seats">
           <SettingsSectionCard
@@ -170,6 +177,7 @@ export function PtHubSettingsBillingTab() {
       ) : null}
 
       {entitlementsQuery.data?.billingAccount.canManageBilling &&
+      !entitlementsQuery.data.billingUnavailable &&
       subscription?.kind === "paid" ? (
         <SettingsSectionCard
           title="Plan changes"
@@ -182,11 +190,12 @@ export function PtHubSettingsBillingTab() {
       {entitlementsQuery.data?.billingAccount.canManageBilling ? (
         <SettingsSectionCard
           title="Billing management"
-          description="Open subscription recovery options when a provider connection is available."
+          description="Update your payment method and check verified billing status."
         >
-          <CustomerPortalPanel
+          <BillingManagementPanel
+            subscription={subscription}
             owner={entitlementsQuery.data.billingAccount.canManageBilling}
-            refresh={refreshBilling}
+            refresh={refreshPaymentMethodBilling}
           />
         </SettingsSectionCard>
       ) : null}

@@ -454,7 +454,10 @@ describe("Paddle HTTP runtime with real orchestration and mocked provider HTTP",
         }),
       ).toBe(`PADDLE_CHECKOUT_${code}`);
     expect(
-      readFileSync("supabase/functions/_shared/billing-runtime.ts", "utf8"),
+      readFileSync(
+        "supabase/functions/_shared/billing-runtime-dependencies.ts",
+        "utf8",
+      ),
     ).toContain("paddleCheckoutRpcError(name, error)");
   });
   it.each([

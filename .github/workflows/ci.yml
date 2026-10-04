@@ -40,6 +40,15 @@ jobs:
       - name: Test CI change classification
         run: node --test .github/scripts/ci-change-scope.test.mjs
 
+      - name: Enforce Paddle-only runtime and retirement deployment contracts
+        run: node scripts/validate-billing-retirement.mjs
+
+      - name: Billing Edge type checks
+        run: node scripts/billing-edge-typecheck.mjs
+
+      - name: Full unit regression gate including LS-negative and Paddle behavior
+        run: npm run test:unit
+
       - name: Classify changed files
         id: scope
         run: node .github/scripts/ci-change-scope.mjs
@@ -144,6 +153,7 @@ jobs:
 
       - name: Run default four-worker smoke gate
         env:
+          REPSYNC_E2E_DISPOSABLE_LOCAL: "1"
           E2E_BASE_URL: ""
           E2E_PT_EMAIL: ""
           E2E_PT_PASSWORD: ""

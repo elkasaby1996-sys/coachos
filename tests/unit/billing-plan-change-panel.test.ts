@@ -19,23 +19,44 @@ import {
   PlanChangePreviewDetails,
 } from "../../src/features/billing/plan-change-panel";
 const preview: PlanChangePreview = {
+  provider: "paddle",
   sourcePlanKey: "launch",
   sourceCadence: "monthly",
   targetPlanKey: "growth",
   targetCadence: "annual",
   changeKind: "combined_upgrade",
   effectiveTiming: "immediate",
-  prorationMode: "invoice_immediately",
+  billingTreatment: "charge_now",
   currentPriceMinor: 1900,
   targetPriceMinor: 59000,
   currency: "USD",
   effectiveAt: null,
   dataQualityIssue: false,
   blockers: [],
+  quote: { action: "charge", amountMinor: 2700, currencyCode: "USD" },
 };
 const render = (element: React.ReactElement) =>
   renderToStaticMarkup(React.createElement(MemoryRouter, null, element));
 describe("plan change presentation", () => {
+  it.each([undefined, "lemonsqueezy", "unknown"])(
+    "does not render controls for %s",
+    (provider) => {
+      mocks.state = {
+        provider,
+        linked: true,
+        cadence: "monthly",
+        eligible: true,
+        operation: null,
+      } as PlanChangeState;
+      const html = render(
+        React.createElement(PlanChangePanel, { owner: true, refresh: vi.fn() }),
+      );
+      expect(html).not.toContain("Lemon Squeezy");
+      expect(html).not.toContain("Preview plan change");
+      expect(html).not.toContain("Confirm");
+      expect(html).not.toContain("<select");
+    },
+  );
   it("shows a provider charge quote without private identifiers or payment proof", () => {
     const quoted = planChangePreviewSchema.parse({
       ...preview,
@@ -61,6 +82,7 @@ describe("plan change presentation", () => {
       sourcePlanKey: "growth",
       targetPlanKey: "scale",
       changeKind: "tier_upgrade",
+      quote: undefined,
     };
     expect(planChangePreviewSchema.safeParse(paddle).success).toBe(false);
     expect(
@@ -105,7 +127,7 @@ describe("plan change presentation", () => {
         },
       }),
     );
-    expect(html).toContain("Proration is disabled");
+    expect(html).toContain("Your current plan continues until then.");
     expect(html).toContain("55");
     expect(html).toContain('href="/pt-hub/clients"');
     expect(html).toContain("Review clients.");
@@ -119,6 +141,7 @@ describe("plan change presentation", () => {
     "manual_review",
   ] as const)("renders %s recovery state", (status) => {
     mocks.state = {
+      provider: "paddle",
       linked: true,
       cadence: "monthly",
       eligible: false,
@@ -141,9 +164,7 @@ describe("plan change presentation", () => {
     );
     expect(html).toContain(status.replace(/_/g, " "));
     expect(html).toContain("Refresh plan change");
-    expect(html.includes("Cancel scheduled change")).toBe(
-      status === "scheduled",
-    );
+    expect(html).not.toContain("Cancel scheduled change");
     expect(html).not.toMatch(
       /Buy seats|Refund|Coupon|customer_portal_update_subscription/,
     );

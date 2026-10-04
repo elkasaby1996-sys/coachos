@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import {
   PUBLIC_PLAN_SNAPSHOT_V1,
@@ -7,121 +6,81 @@ import {
 } from "../commercial-catalogue/public-plan-snapshot";
 import type { PublicPlanKey } from "../commercial-catalogue/contracts";
 import { BillingCheckoutError } from "./checkout-errors";
-import {
-  checkoutReturnAttempt,
-  checkoutReturnState,
-} from "./checkout-return-state";
 import { useBillingCheckout } from "./use-billing-checkout";
-import { usesPaddleCheckout } from "./providers/active-provider";
+import { billingBrowserProvider } from "./providers/active-provider";
 import { legalSiteConfig } from "../../lib/legal-site";
 
 export function BillingCheckoutPanel({
   owner,
   requestedPlan,
   subscription,
-  refresh,
+  billingUnavailable = false,
 }: {
   owner: boolean;
   requestedPlan: PublicPlanKey;
   subscription: { kind: string | null; effectiveStatus: string } | undefined;
+  billingUnavailable?: boolean;
   refresh: () => Promise<unknown>;
 }) {
-  const [search, setSearch] = useSearchParams();
-  const attempt = usesPaddleCheckout ? null : checkoutReturnAttempt(search);
   const [additionalCoachSeats, setAdditionalCoachSeats] = useState(0);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [refundAcknowledged, setRefundAcknowledged] = useState(false);
   const [plan, setPlan] = useState<PublicPlanKey>(requestedPlan);
   const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
-  const [pollUntil, setPollUntil] = useState(() =>
-    attempt ? Date.now() + 30_000 : 0,
-  );
-  const [now, setNow] = useState(Date.now);
   const [redirecting, setRedirecting] = useState(false);
   const lock = useRef(false);
-  const operation = useRef<{
-    plan: PublicPlanKey;
-    cadence: string;
-    id: string;
-  }>();
-  const billing = useBillingCheckout(
-    attempt,
-    Boolean(attempt && now < pollUntil),
-    owner,
-  );
-  const returnState = checkoutReturnState(
-    attempt,
-    billing.state.data,
-    subscription,
-  );
+  const billing = useBillingCheckout();
   const paid =
     subscription?.kind === "paid" &&
     ["active", "past_due", "grace", "restricted"].includes(
       subscription.effectiveStatus,
     );
-  useEffect(() => {
-    if (!attempt || returnState !== "finalizing" || now >= pollUntil) return;
-    const timer = window.setTimeout(() => {
-      setNow(Date.now());
-      void refresh();
-    }, 2_000);
-    return () => window.clearTimeout(timer);
-  }, [attempt, returnState, now, pollUntil, refresh]);
-  useEffect(() => {
-    if (returnState !== "confirmed") return;
-    const next = new URLSearchParams(search);
-    next.delete("checkout");
-    next.delete("attempt");
-    setSearch(next, { replace: true });
-    void refresh();
-  }, [returnState, search, setSearch, refresh]);
   const selected = PUBLIC_PLAN_SNAPSHOT_V1.find((p) => p.planKey === plan)!;
   const blocked =
     billing.create.error instanceof BillingCheckoutError &&
     billing.create.error.blocksNewCheckout;
-  const consentMissing =
-    usesPaddleCheckout && (!termsAccepted || !refundAcknowledged);
+  const consentMissing = !termsAccepted || !refundAcknowledged;
   async function start() {
-    if (!owner || paid || lock.current || blocked || consentMissing) return;
-    lock.current = true;
     if (
-      !operation.current ||
-      operation.current.plan !== plan ||
-      operation.current.cadence !== cadence ||
-      ["expired", "failed"].includes(billing.state.data?.status ?? "")
+      !owner ||
+      billingUnavailable ||
+      paid ||
+      !billingBrowserProvider ||
+      lock.current ||
+      blocked ||
+      consentMissing
     )
-      operation.current = { plan, cadence, id: crypto.randomUUID() };
+      return;
+    lock.current = true;
     try {
-      const result = await billing.create.mutateAsync(
-        usesPaddleCheckout
-          ? {
-              planKey: plan,
-              cadence,
-              additionalCoachSeats,
-              legal: {
-                termsAccepted: true,
-                refundAcknowledged: true,
-                termsVersion: legalSiteConfig.version,
-                refundVersion: legalSiteConfig.version,
-              },
-            }
-          : {
-              planKey: plan,
-              cadence,
-              operationId: operation.current.id,
-            },
-      );
+      const result = await billing.create.mutateAsync({
+        planKey: plan,
+        cadence,
+        additionalCoachSeats,
+        legal: {
+          termsAccepted: true,
+          refundAcknowledged: true,
+          termsVersion: legalSiteConfig.version,
+          refundVersion: legalSiteConfig.version,
+        },
+      });
       setRedirecting(true);
       window.location.assign(result.checkoutUrl);
     } catch {
       lock.current = false;
-      if (!usesPaddleCheckout) void billing.state.refetch();
     }
   }
   if (!owner)
     return (
       <p className="text-sm text-muted-foreground">
         Only the account owner can start a subscription.
+      </p>
+    );
+  if (billingUnavailable)
+    return (
+      <p role="alert" className="text-sm text-danger">
+        Billing could not be verified. Refresh billing or contact support before
+        starting a subscription.
       </p>
     );
   return (
@@ -132,29 +91,12 @@ export function BillingCheckoutPanel({
           above.
         </p>
       ) : null}
-      {returnState === "finalizing" ? (
-        <div role="status" className="space-y-2 text-sm">
-          <p>
-            Finalizing your subscription. We are waiting for verified payment
-            confirmation.
-          </p>
-          {now >= pollUntil ? (
-            <p>This is taking longer than expected. Refresh to check again.</p>
-          ) : null}
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setNow(Date.now());
-              setPollUntil(Date.now() + 30_000);
-              void billing.state.refetch();
-              void refresh();
-            }}
-          >
-            Refresh subscription
-          </Button>
-        </div>
+      {!paid && !billingBrowserProvider ? (
+        <p role="alert" className="text-sm text-danger">
+          Subscription checkout is currently unavailable.
+        </p>
       ) : null}
-      {!paid && returnState !== "finalizing" ? (
+      {!paid && billingBrowserProvider ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-2 text-sm font-medium">
@@ -190,7 +132,7 @@ export function BillingCheckoutPanel({
             </label>
           </div>
           <p className="text-sm font-medium">
-            {usesPaddleCheckout ? "Base plan: " : null}
+            Base plan:{" "}
             {formatCommercialPrice(
               cadence === "annual"
                 ? selected.annualPriceMinor
@@ -204,67 +146,65 @@ export function BillingCheckoutPanel({
           <p className="text-sm text-muted-foreground">
             Applicable taxes are calculated at checkout
           </p>
-          {usesPaddleCheckout ? (
-            <fieldset
-              className="space-y-3"
-              disabled={billing.create.isPending || redirecting || blocked}
-            >
-              <legend className="sr-only">Checkout acknowledgements</legend>
-              <label className="block space-y-2 text-sm font-medium">
-                Additional coach seats
-                <input
-                  type="number"
-                  min={0}
-                  max={5}
-                  step={1}
-                  className="ui-input block min-h-11 w-full"
-                  value={additionalCoachSeats}
-                  onChange={(e) =>
-                    setAdditionalCoachSeats(e.target.valueAsNumber)
-                  }
-                />
-              </label>
-              <p className="text-sm text-muted-foreground">
-                Additional seat pricing is confirmed at checkout.
-              </p>
-              <label className="flex min-h-11 items-center gap-3 text-sm">
-                <input
-                  type="checkbox"
-                  checked={termsAccepted}
-                  onChange={(e) => setTermsAccepted(e.target.checked)}
-                />
-                <span>
-                  I accept the{" "}
-                  <a
-                    className="underline"
-                    href="/terms"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Terms of Service
-                  </a>
-                </span>
-              </label>
-              <label className="flex min-h-11 items-center gap-3 text-sm">
-                <input
-                  type="checkbox"
-                  checked={refundAcknowledged}
-                  onChange={(e) => setRefundAcknowledged(e.target.checked)}
-                />
-                <span>
-                  I acknowledge the{" "}
-                  <a
-                    className="underline"
-                    href="/refunds"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Refund Policy
-                  </a>
-                </span>
-              </label>
-            </fieldset>
-          ) : null}
+          <fieldset
+            className="space-y-3"
+            disabled={billing.create.isPending || redirecting || blocked}
+          >
+            <legend className="sr-only">Checkout acknowledgements</legend>
+            <label className="block space-y-2 text-sm font-medium">
+              Additional coach seats
+              <input
+                type="number"
+                min={0}
+                max={5}
+                step={1}
+                className="ui-input block min-h-11 w-full"
+                value={additionalCoachSeats}
+                onChange={(e) =>
+                  setAdditionalCoachSeats(e.target.valueAsNumber)
+                }
+              />
+            </label>
+            <p className="text-sm text-muted-foreground">
+              Additional seat pricing is confirmed at checkout.
+            </p>
+            <label className="flex min-h-11 items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+              />
+              <span>
+                I accept the{" "}
+                <a
+                  className="underline"
+                  href="/terms"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Terms of Service
+                </a>
+              </span>
+            </label>
+            <label className="flex min-h-11 items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={refundAcknowledged}
+                onChange={(e) => setRefundAcknowledged(e.target.checked)}
+              />
+              <span>
+                I acknowledge the{" "}
+                <a
+                  className="underline"
+                  href="/refunds"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Refund Policy
+                </a>
+              </span>
+            </label>
+          </fieldset>
           <Button
             onClick={() => void start()}
             disabled={
@@ -282,17 +222,11 @@ export function BillingCheckoutPanel({
           </Button>
         </>
       ) : null}
-      {billing.create.error || billing.state.error ? (
+      {billing.create.error ? (
         <p role="alert" className="text-sm text-danger">
-          {(billing.create.error ?? billing.state.error) instanceof
-          BillingCheckoutError
-            ? (billing.create.error ?? billing.state.error)?.message
+          {billing.create.error instanceof BillingCheckoutError
+            ? billing.create.error.message
             : "Billing is currently unavailable."}
-        </p>
-      ) : null}
-      {returnState === "stopped" ? (
-        <p role="status" className="text-sm">
-          This checkout has ended. You can start a new subscription checkout.
         </p>
       ) : null}
     </div>

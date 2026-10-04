@@ -1,5 +1,6 @@
 // Ordered, closed vocabulary shared by apply execution and evidence validation.
 export const REMOTE_STAGES = Object.freeze([
+  "read_only_inventory",
   "link",
   "migration_list_before",
   "history_validation_before",
@@ -8,9 +9,11 @@ export const REMOTE_STAGES = Object.freeze([
   "function_deploy",
   "migration_list_after",
   "history_validation_after",
+  "post_deploy_inventory",
   "deployment_complete",
 ]);
 export const REMOTE_STAGE_ERRORS = Object.freeze({
+  read_only_inventory: "RETIREMENT_READ_ONLY_PREFLIGHT_FAILED",
   link: "SUPABASE_LINK_FAILED",
   migration_list_before: "MIGRATION_LIST_FAILED",
   history_validation_before: "REMOTE_HISTORY_VALIDATION_FAILED",
@@ -19,6 +22,7 @@ export const REMOTE_STAGE_ERRORS = Object.freeze({
   function_deploy: "FUNCTION_DEPLOY_FAILED",
   migration_list_after: "FINAL_MIGRATION_LIST_FAILED",
   history_validation_after: "FINAL_HISTORY_VALIDATION_FAILED",
+  post_deploy_inventory: "RETIREMENT_POST_DEPLOY_VERIFICATION_FAILED",
   deployment_complete: "UNKNOWN_REMOTE_FAILURE",
 });
 export const REMOTE_ERROR_CODES = Object.freeze(

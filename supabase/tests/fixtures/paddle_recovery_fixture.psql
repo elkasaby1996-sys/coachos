@@ -1,0 +1,54 @@
+-- Synthetic local fixture; every effect uses production ingress and guards.
+\ir billing_catalogue_fixture.psql
+\ir billing_v2_legacy_seed.psql
+\ir billing_cross_ledger_helpers.psql
+\ir paddle_webhook_fixture.psql
+\ir paddle_auto_reconciliation_fixture.psql
+\ir paddle_lifecycle_fixture.psql
+\ir paddle_plan_change_fixture.psql
+\ir paddle_seat_fixture.psql
+select pg_temp.catalogue_publish(pg_temp.catalogue(k,c)) from unnest(array['launch','growth','scale','coach-seat']) k cross join unnest(array['monthly','annual']) c;
+update billing_runtime_policy set paddle_reconciliation_enabled=true;
+
+create function pg_temp.recovery_observation(u uuid,label text,k text default 'transaction.past_due',stamp text default '2026-10-20T12:00:00Z') returns jsonb language plpgsql as $$
+declare s billing_subscriptions_v2%rowtype;o jsonb;amount numeric;paid boolean:=k in ('transaction.paid','transaction.completed');state text;
+begin
+ select * into s from billing_subscriptions_v2 where provider_subscription_ref='synthetic/sub/'||u;
+ state:=case when k='subscription.updated' then 'active' when k like 'subscription.%' then 'past_due' when k='transaction.completed' then 'completed' when k='transaction.paid' then 'paid' when k='transaction.canceled' then 'canceled' else 'past_due' end;
+ o:=pg_temp.lifecycle_observation(u,'recovery/'||label,case when k like 'transaction.%' then 'transaction.completed' else 'subscription.updated' end,state,stamp);
+ o:=o||jsonb_build_object('kind',k,'eventType',k,'items',billing_paddle_seat_items_v1(billing_paddle_current_mapping_v1(s.id),billing_paddle_current_seat_mapping_v1(s.id),s.approved_additional_coach_seats,case when k like 'subscription.%' then 'active' end));
+ if k like 'transaction.%' then
+  select sum((i#>>'{unitPrice,amount}')::numeric*(i->>'quantity')::numeric) into amount from jsonb_array_elements(o->'items') i;
+  o:=o||jsonb_build_object('transactionRef','synthetic/debt/'||u,'status',state,'paymentTotals',jsonb_build_object('total',amount,'paid',case when paid then amount else 0 end,'balance',case when paid then 0 else amount end),
+  'financial',jsonb_build_object('resourceUpdatedAt',stamp,'collectionMode','automatic','captured',case when paid then amount::text else '0' end,
+   'totals',jsonb_build_object('subtotal',amount::text,'tax','0','discount','0','total',amount::text,'credit','0','creditToBalance','0','grandTotal',amount::text,'balance',case when paid then '0' else amount::text end),
+   'payments',jsonb_build_array(jsonb_build_object('attemptReference','synthetic/failed/'||u,'amount',amount::text,'status','error'))||case when paid then jsonb_build_array(jsonb_build_object('attemptReference','synthetic/captured/'||u,'amount',amount::text,'status','captured')) else '[]'::jsonb end));
+ end if;
+ return o;
+end $$;
+create function pg_temp.recovery_ingest(o jsonb) returns uuid language plpgsql as $$
+declare p jsonb;begin
+ if o->>'kind'='subscription.updated' then return pg_temp.lifecycle_ingest(o);end if;
+ p:=jsonb_build_object('schema','billing-proof-v2','validator','paddle-contract-v1','provider',o->'provider','environment',o->'environment','kind','event','source','webhook','evidenceClass','authenticated_provider',
+ 'identity',jsonb_build_object('customerRef',o->'customerRef','subscriptionRef',o->'subscriptionRef','transactionRef',case when o ? 'transactionRef' then o->'transactionRef' else 'null'::jsonb end),
+ 'eventEvidence',jsonb_build_object('eventRef',o->'eventRef','eventName',o->'kind','resourceType',case when o ? 'transactionRef' then 'transaction' else 'subscription' end,'resourceRef',case when o ? 'transactionRef' then o->'transactionRef' else o->'subscriptionRef' end,'occurredAt',to_char((o->>'occurredAt')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')));
+ return (ingest_verified_paddle_recovery_event_v1(p,encode(extensions.digest(o::text,'sha256'),'hex'),o->>'notificationRef',o)->>'eventId')::uuid;
+end $$;
+create function pg_temp.recovery_dispatch(o jsonb) returns text language sql as $$
+ select case when o->>'kind'='subscription.updated' then reconcile_paddle_initial_purchase_event_v1(pg_temp.recovery_ingest(o)) else reconcile_paddle_payment_recovery_event_v1(pg_temp.recovery_ingest(o)) end->>'status'
+$$;
+create function pg_temp.recovery_owner(extras integer default 0) returns uuid language plpgsql as $$
+declare u uuid:=pg_temp.plan_owner();begin
+ if extras>0 and pg_temp.paddle_seat_buy(u,extras)<>'applied' then raise exception 'RECOVERY_FIXTURE_SEAT_SETUP';end if;
+ if pg_temp.recovery_dispatch(pg_temp.recovery_observation(u,'subpast','subscription.past_due','2026-10-20T11:00:00Z'))<>'applied' then raise exception 'RECOVERY_FIXTURE_PAST_DUE_SETUP';end if;
+ return u;
+end $$;
+create function pg_temp.obligation(u uuid) returns jsonb language sql as $$
+ select resolve_billing_outstanding_obligation_v1(account_subscription_id) from billing_subscriptions_v2 where provider_subscription_ref='synthetic/sub/'||u
+$$;
+create function pg_temp.recovery_counts(u uuid) returns jsonb language sql as $$
+ select jsonb_build_object('renewal',(select count(*) from billing_payment_applications_v2 where subscription_id=s.id and application_kind='renewal'),
+ 'seatPayments',(select count(*) from billing_payment_applications_v2 where subscription_id=s.id and application_kind='seat_increase'),
+ 'approved',s.approved_additional_coach_seats,'capacity',billing_seat_effective_limit(s.billing_account_id),'status',a.status,'periodEnd',a.current_period_ends_at)
+ from billing_subscriptions_v2 s join account_subscriptions a on a.id=s.account_subscription_id where s.provider_subscription_ref='synthetic/sub/'||u
+$$;

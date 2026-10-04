@@ -5,6 +5,7 @@ a connection URL, remote project, arbitrary container or existing app database.
 The retired certification harness runs at its historical migration boundary.
 """
 import importlib.util
+import os
 import shutil
 import subprocess
 import tempfile
@@ -14,11 +15,30 @@ ROOT = Path(__file__).resolve().parent.parent
 WORK = Path(tempfile.gettempdir()) / "repsync-paddle-reconciliation01"
 NPX = shutil.which("npx.cmd") or shutil.which("npx")
 CONTAINER = "supabase_db_repsync_reconciliation01"
+if os.environ.get("PAY04_DISPOSABLE_LOCAL") == "1":
+    WORK = Path(tempfile.gettempdir()) / "repsync-pay04-v2-local"
+    CONTAINER = "supabase_db_repsync_pay04_v2"
+
+
+def assert_local():
+    expected = "repsync_pay04_v2" if CONTAINER == "supabase_db_repsync_pay04_v2" else "repsync_reconciliation01"
+    assert WORK.resolve() == (Path(tempfile.gettempdir()) / ("repsync-pay04-v2-local" if expected == "repsync_pay04_v2" else "repsync-paddle-reconciliation01")).resolve()
+    assert f"project_id = '{expected}'" in (WORK / "supabase/config.toml").read_text()
+
+
+def cli_command(*args):
+    # Optional installed/cached local CLI for offline, reproducible proofs.
+    binary = os.environ.get("PAY03B_SUPABASE_LOCAL_CLI")
+    if binary:
+        path = Path(binary)
+        assert path.is_absolute() and path.is_file() and path.name in ("supabase", "supabase.exe")
+        return [str(path), *args]
+    return [NPX, "supabase@latest", *args]
 
 
 def reset(version=None):
-    assert "project_id = 'repsync_reconciliation01'" in (WORK / "supabase/config.toml").read_text()
-    args = [NPX, "supabase@latest", "db", "reset", "--local", "--workdir", str(WORK), "--yes"]
+    assert_local()
+    args = cli_command("db", "reset", "--local", "--workdir", str(WORK), "--yes")
     if version:
         args += ["--version", version]
     result = subprocess.run(args, capture_output=True, text=True, timeout=240)
@@ -34,6 +54,13 @@ def main():
         ("test-paddle-webhook-concurrency.py", None),
         ("test-paddle-identity-supersession-concurrency.py", None),
         ("test-paddle-reconciliation-concurrency.py", None),
+        ("test-paddle-auto-reconciliation-concurrency.py", None),
+        ("test-paddle-lifecycle-concurrency.py", None),
+        ("test-paddle-plan-change-concurrency.py", None),
+        ("test-paddle-seat-concurrency.py", None),
+        ("test-paddle-initial-period-concurrency.py", None),
+        ("test-paddle-payment-recovery-concurrency.py", None),
+        ("test-paddle-payment-method-preparation-concurrency.py", None),
         ("test-paddle-cert-fixture-concurrency.py", "20260920221934"),
     ]
     try:
@@ -45,6 +72,8 @@ def main():
             spec.loader.exec_module(module)
             runner = getattr(module, "r", module)
             runner.COMMAND[3] = CONTAINER
+            if hasattr(runner, "CONTAINER"):
+                runner.CONTAINER = CONTAINER
             module.main()
             print("PASS " + name, flush=True)
     finally:

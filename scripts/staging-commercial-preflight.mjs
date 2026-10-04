@@ -22,6 +22,11 @@ import {
 } from "./staging-commercial-plan.mjs";
 import { validateProviderMappings } from "./staging-commercial-provider.mjs";
 import { scanRedaction } from "./staging-commercial-evidence.mjs";
+import {
+  retirementEvidenceSchema,
+  validateRetirementEvidence,
+  functionArtifactDigest,
+} from "./billing-retirement-release.mjs";
 
 export const authorizationSchema = z.strictObject({
   reviewedCommit: sha,
@@ -40,9 +45,8 @@ export const authorizationSchema = z.strictObject({
   remoteSecretNamesPresent: z.array(z.string()),
   providerEnvironment: z.literal("test"),
   billingAppOrigin: z.string(),
-  portalAllowedHosts: z.array(z.string()).min(1),
-  portalControlsReviewed: z.literal(true),
-  webhookTestStoreReviewed: z.literal(true),
+  paddleSandboxReviewed: z.literal(true),
+  retirement: retirementEvidenceSchema,
   rollbackReviewed: z.literal(true),
 });
 export function validateApplyAuthorization(raw, manifest, inputs, commit) {
@@ -75,18 +79,10 @@ export function validateApplyAuthorization(raw, manifest, inputs, commit) {
       ),
     "REMOTE_SECRET_ATTESTATION_MISSING",
   );
-  requireCheck(
-    auth.portalAllowedHosts.every(
-      (host) =>
-        /^(?:[a-z0-9-]+\.)+[a-z]{2,}$/.test(host) &&
-        !/localhost|\.local$|\.internal$/.test(host),
-    ),
-    "PORTAL_HOST_INVALID",
-  );
   validateProviderMappings(auth.providerMappings);
   requireCheck(
     auth.providerMappings.mappings.every((m) =>
-      [m.storeRef, m.productRef, m.variantRef, m.priceRef].every((r) =>
+      [m.productRef, m.priceRef, m.seatProductRef, m.seatPriceRef].every((r) =>
         r.startsWith("sha256:"),
       ),
     ),
@@ -97,6 +93,14 @@ export function validateApplyAuthorization(raw, manifest, inputs, commit) {
     auth.approvedRemoteVersions,
     auth.approvedRemoteVersions,
   );
+  validateRetirementEvidence(auth.retirement, {
+    environment: "staging",
+    commit,
+    project: inputs.project,
+    approvedRemoteVersions: auth.approvedRemoteVersions,
+    manifest,
+    functionArtifactSha256: functionArtifactDigest(process.cwd()),
+  });
   return auth;
 }
 export function requireGreenUnits(result) {
@@ -165,6 +169,10 @@ export const PREFLIGHT_CODES = [
   "ORIGIN_MISMATCH",
   "MIGRATION_HISTORY_REQUIRED",
   "REMOTE_MIGRATION_DRIFT",
+  "RETIREMENT_EVIDENCE_INVALID",
+  "RETIREMENT_ENVIRONMENT_BINDING_MISMATCH",
+  "RETIREMENT_EVIDENCE_STALE",
+  "RETIREMENT_PENDING_MIGRATIONS_MISMATCH",
 ];
 const count = z.number().int().nonnegative().nullable();
 const version = z

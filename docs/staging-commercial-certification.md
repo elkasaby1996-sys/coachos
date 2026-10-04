@@ -1,161 +1,37 @@
-# Staging commercial certification
+# Paddle-only staging retirement and certification
 
-PR-PRICE-11 Phase A is local preparation. No staging commercial scenario has been run. Local fixtures never certify a real test purchase, deployed webhook, staging billing or production readiness.
+This is a future separately authorized procedure, not an execution record. RepSync is pre-launch; LS was synthetic development/staging Test Mode work. Paddle is the sole future commercial provider. Remote deployed state remains unassessed.
 
-## Audit and deliberate gate
+## Local-only gates
 
-Base: `7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7`, fetched from origin/main. It contains PR-PRICE-10 public catalogue v2 (three plans, two saleable public features, no public add-ons), PR-PRICE-09 quantity billing, PR-PRICE-08 access enforcement and the PR-PRICE-05/06/07 Checkout, webhook, portal and plan foundations.
+Run node scripts/validate-billing-retirement.mjs, staging:commercial:validate, full units, CI classification, billing Edge checks, TypeScript/build, lint, formatting and diff check. Local fixtures/SQL/units are not real provider certification. Supabase CI retains the full local DB suite, including LS-negative ACL/definer, history, trial/free and cross-ledger tests.
 
-The previous staging workflow repeated npm ci, lint, build, full units and CLI setup. It linked using SUPABASE_PROJECT_ID, pushed all pending migrations and deployed only open-wearables and exercise-dataset-search. All eleven billing entrypoints were omitted although all eleven JWT entries existed. Open Wearables relied on the JWT default; Phase A makes that true contract explicit.
+The phase planner emits a local sanitized plan. The protected workflow uses `scripts/staging-release.mjs preflight` with version-2 phase authorization and recovery documents; preflight observes only staging and performs no mutation. Older standalone commercial/retirement validators remain local regression tools and cannot authorize the phased release.
 
-Baseline full units: 1,784 tests, 1,771 passing and 13 failures in nine files, no skips. **Apply requires a restored, fully green full suite.** No failure exemptions, retries, skipped tests, count-only allowlist, continue-on-error or production permission follow from this harness. Exact failure identities are retained in the verification report to detect regressions; they are not an apply waiver.
+## Before mutation
 
-CI runs lint/format/build and local plus configured-account browser checks. Release readiness is manual and uses configured secrets; verify:release itself runs lint, format, build and browser smoke, not units. Supabase CI starts a local DB, lints and runs pgTAP. The existing manual migration-status workflow links then lists the remote ledger. The backup workflow dumps roles/schema/data to a seven-day artifact; it does not back up Storage objects. Neither workflow was invoked. Production workflow behavior is unchanged and is not authorized by this PR.
+1. Under named read-only authorization, privately inventory target project/origin, every remote function/version/JWT setting, secret names/digests without values, schema/function/ACL metadata, migration prefix and synthetic LS classification. Preserve aggregate/hash evidence publicly, raw inventory privately.
+2. Require clean exact reviewed main SHA, required-base ancestry, all186 hashes and complete deployment contracts. Any staged/unstaged/untracked or identity drift stops.
+3. Bind a private backup at most24 hours old to commit/project/environment; require a reviewed disposable restore-proof digest. A digest alone does not prove recoverability.
+4. Construct a fresh strict `STAGING_RELEASE_AUTHORIZATION` envelope and exact-byte `STAGING_RELEASE_RECOVERY_BUNDLE`. Bind the selected fixed phase, actual execution commit, frozen payload, start/end prefixes, bounded artifacts, all function/containment digests and JWT contracts, inventory at most15 minutes old, configuration/classification and fresh backup/restore proof. Old commercial/retirement envelopes are rejected.
+5. Verify required names across runner, platform, function and frontend owners. LS keys/config are not required. Paddle proofs cover four products/eight prices, six plan/cadence pairs, two seat prices, money/recurrence/quantity/tax and sandbox/live separation.
+6. Protected supabase-staging/main-only preflight reruns full units, then uses read-only Supabase function/secret metadata and schema-qualified SELECTs through the Management API read-only query endpoint. Redirects are refused. Unsupported shapes, unavailable permissions, changed inventory/secret digests, unexpected billing functions or schema/ledger drift stop. Never widen grants or switch to a writable endpoint to repair preflight.
+7. Require Paddle sales/reconciliation and checkout access disabled at deployment boundary, and classificationResult=synthetic_only backed by the private staging classification evidence. Later sandbox flag activation/provider transactions require separate named authority.
 
-## Phase A commands
+Baseline requires exactly prefix180 and dry-run181–184. Separately authorized cutover starts at184, checks185 retirement before applying186, then deploys final artifacts. Supported fixed resume states180–186 require previous recovery evidence and a new envelope. Other or divergent prefixes block; no repair exists. Inventory and authority are rechecked immediately before every mutation.
 
-```powershell
-npm run staging:commercial:validate
-npm run staging:commercial:test
-npm run staging:commercial:plan
-npm run staging:commercial:evidence
-npm run staging:commercial:catalogue
-```
+## Authorized deployment and post-verification
 
-Validate and tests need no credentials or network. The planner performs only filesystem and read-only Git operations. The default plan invocation exits 1 when confirmations are absent; it writes a safe blocked artifact. Evidence exits 1 for the unrun template. Catalogue defaults to the fixed local Docker database, assumes anon role and compares the whole v2 payload.
+The protected apply follows [the phase procedure](staging-release-phases.md): baseline with checkpoint184; a fresh recovery authorization; frozen LS tombstones and static retryable billing containment; drain; migration185 and authority checkpoint; migration186 and schema checkpoint; fourteen final billing functions and a distinct two-function nonbilling substage. Every guarded push uses its fixed disposable prefix. All three LS names are overwritten, never silently deleted.
 
-For a positive synthetic plan, set CONFIRM_COMMIT_SHA to HEAD, both STAGING_SUPABASE_PROJECT_REF and CONFIRM_PROJECT_REF to the same fake twenty-letter ref, PRODUCTION_SUPABASE_PROJECT_REF to a different fake ref, STAGING_APPLICATION_ORIGIN and CONFIRM_APP_ORIGIN to `https://staging.example.com`, and PRODUCTION_APPLICATION_ORIGIN to `https://app.example.com`. Run on a clean reviewed checkout. These examples are placeholders, not project discovery. A successful plan still reports a blocked commercial verdict. Never use synthetic target values for apply.
+Post-read inventory must show expected names/JWT flags, full186 ledger, disabled flags, no forensic inspector and no direct/transitive LS application authority. CLI success and metadata checks are not certification. Independently verify deployed source artifact/version identity, handler410/405/OPTIONS/no-store, zero provider/DB/logging side effects, retained row/value identities and Paddle owner/signature behavior. Missing probes remain not_run/blocked.
 
-The planner accepts `--manifest`, `--confirm-commit-sha`, `--confirm-project-ref`, `--confirm-app-origin`, and `--evidence-label`. Protected environment variables supply the independent target expectations. Origin must be an exact HTTPS origin with a staging DNS label, no credentials/port/path, and must differ from the production origin. Unknown production deny-values block validation; do not guess them. Custom staging domains without a staging label require a reviewed policy change.
+No provider transaction, secret/flag change, function deletion, reset or migration repair is automated. Follow [staging reset](staging-billing-reset.md), then separately authorize a fresh Paddle cohort and [matrix](paddle-only-certification.md). Natural boundaries require real provider time/evidence, not manual timestamps or row repair.
 
-## Separately authorized Phase B
+Staging envelopes never authorize production or live mode. See [configuration blockers](paddle-configuration-readiness.md) and [production separation](production-billing-retirement.md).
 
-Before migration apply, follow the [staging logical backup runbook](staging-logical-backup.md) to obtain and review the staging-bound `backupEvidenceSha256`. Database dumps exclude Storage object bytes; restore and apply remain separately reviewed operations.
+PAY-04 scope: migration 185 is unchanged retirement authority; migration 186 is trusted Launch/Growth/Scale monthly/annual activation and the bounded normalized paid-state seam. Scheduled plan/seat cancellation is intentionally unsupported (HTTP409 CANNOT_CANCEL); subscription cancellation/undo remains a separate product decision. No remote deployment or certification is implied.
 
-Use `.github/workflows/supabase-deploy-staging.yml` only after authorization naming the exact resources. Required dispatch inputs: mode (default plan), confirm_commit_sha, confirm_project_ref, confirm_app_origin and evidence_label. The workflow is main-only, serializes all staging runs and uses protected environment `supabase-staging`; configure required reviewers on that environment. Branch protection and environment protection are operational prerequisites, not created by Phase A.
+# PAY-05B release entrypoint
 
-Plan installs dependencies once, runs contract checks and writes sanitized commands. It receives no Supabase or provider credentials and installs no Supabase CLI. Preflight adds quality checks and the shared protected authorization/full-unit gate described below. Apply runs that same gate before guarded link, exact remote-prefix validation, migration dry-run/push, thirteen explicit function deploys and final ledger verification. Only apply installs pinned CLI v2.109.1 and receives the remote enable flag. No provider API, remote secret write or auth-settings write is automated. Raw CLI stdout/stderr are captured privately and are never printed or uploaded.
-
-## Safe preflight observability (PR-QUALITY-02)
-
-| Mode        | Boundary                                                                                                                                | Result                                                                             |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `plan`      | Existing local-only planner; no deploy credentials or CLI                                                                               | Sanitized proposed operations; no remote execution                                 |
-| `preflight` | Protected `supabase-staging` environment, confirmed main commit, quality prerequisites, shared Phase B authorization and full-unit gate | Sanitized gate evidence; **no remote Supabase or provider operation**              |
-| `apply`     | Same shared preflight, plus explicit apply-only remote enable flag and target binding                                                   | Remote operations become reachable only after the shared gate returns successfully |
-
-`scripts/staging-commercial-preflight.mjs` owns the pre-remote implementation. It does not import the apply module or remote guard. Its only child command is the fixed full-unit command. The preflight workflow step has no CLI setup, remote enable flag or provider command. `scripts/staging-commercial-apply.mjs` calls this shared implementation before its first remote command; failed preflight throws and blocks apply. Existing production-target denials and the minimum 1,784-test/all-green gate are unchanged.
-
-Stages, in order:
-
-1. `bundle_validation`
-2. `confirmation_validation`
-3. `workflow_boundary_validation`
-4. `phase_b_authorization_validation`
-5. `deploy_secret_presence`
-6. `npm_context_validation`
-7. `unit_command`
-8. `unit_report_validation`
-9. `final_confirmation_validation`
-10. `ready_for_remote`
-
-Both modes write `output/staging-commercial/preflight/preflight-evidence.json`. The directory is created before bundle validation, and caught failures write evidence in `finally`, including failures before units. Filesystem failure or abrupt process termination can prevent evidence creation; artifact upload uses `if-no-files-found: error` so missing evidence cannot silently pass.
-
-The strict version-1 schema includes staging/test labels, mode/outcome, commit SHA, numeric workflow run ID, last completed/failed stage, allowlisted error code, runtime versions, `phaseBValidated`, and sanitized unit results. Commit/runtime fields are nullable when not yet known or valid. `phaseBValidated` is a boolean; this name allows the existing redaction scanner to reject authorization-bearing keys without exceptions. `remoteExecuted` is always false: this artifact describes the **pre-remote gate**, including in apply mode. It does not describe later deployment outcomes.
-
-Unit evidence includes explicit process exit status (nullable when unavailable), whether the process started, report presence and SHA-256, all suite/test counts, assertion totals, non-passed counts, and nullable `greenValidated`. Raw JSON is parsed even after a nonzero exit and checked by `requireGreenUnits`; its result is recorded independently of command status. A nonzero exit always blocks apply. A completed child with a readable, structurally valid non-green report is classified as `FULL_UNIT_SUITE_NOT_GREEN` at `unit_report_validation`; launch/signal failures remain `UNIT_COMMAND_FAILED`. The prior report is removed before starting units so stale results cannot satisfy a gate.
-
-`units.nonPassedFiles` adds deduplicated repository-relative test-file identities, allowlisted statuses and failure kinds. Failed files with no assertions are `collection_error`; failed files whose assertions all passed are `suite_error`; other cases are `unknown_suite_error`. Vitest JSON provides no structured module/hook discriminator, so free-form errors are never read to infer one. Absolute in-repository paths are normalized; traversal and outside paths are excluded. `nonPassedFileCount` deduplicates accepted paths while still counting excluded non-passed records, so it equals the array length when all file identities are accepted. Conflicting duplicate records receive an unknown classification.
-
-Failing-test identities contain only repository-relative test paths and full names verified against literal `describe`/`it`/`test` declarations in source. Dynamic, parameterized, unverified or redaction-rejected names are omitted; counts still reflect those failures. No assertion messages, snapshots, expected/received values, absolute paths, child stdout/stderr, authorization documents, target identifiers, provider references or credentials enter the artifact. The complete artifact passes the existing evidence redaction scanner without relaxing it.
-
-### Error interpretation
-
-Console failures are bounded: `STAGING_PREFLIGHT_FAILED:<stage>:<allowlisted-code>` or `STAGING_APPLY_BLOCKED_OR_FAILED:<stage>:<allowlisted-code>`. Unexpected exceptions become `UNKNOWN_PRE_REMOTE_FAILURE`; original messages, stacks and child output are never printed. Apply failures after preflight use the bounded unknown fallback and must be interpreted with separate deployment evidence.
-
-| Code                                                      | Interpretation                                                                                                                              |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PHASE_B_AUTHORIZATION_INVALID`                           | Missing, malformed or schema-invalid private envelope                                                                                       |
-| `AUTHORIZATION_BINDING_MISMATCH`                          | Reviewed commit, manifest or target binding does not match                                                                                  |
-| Other allowlisted authorization/provider validation codes | A specific existing authorization contract rejected the envelope                                                                            |
-| `DEPLOY_SECRET_MISSING`                                   | A required deploy credential is absent/blank; no value is reported                                                                          |
-| `NPM_CONTEXT_REQUIRED`                                    | Entry point did not receive npm execution context                                                                                           |
-| `AUTHORIZED_STAGING_WORKFLOW_REQUIRED`                    | GitHub/main boundary or apply-only remote authorization rejected                                                                            |
-| `UNIT_COMMAND_FAILED`                                     | Child failed to start, terminated by signal, or had no usable completion status                                                             |
-| `UNIT_REPORT_MISSING`                                     | Child returned without a report; inspect exit status                                                                                        |
-| `UNIT_REPORT_UNREADABLE`                                  | Report cannot be read or parsed                                                                                                             |
-| `UNIT_REPORT_CONTRACT_FAILED`                             | Required report structure, field types or assertion-count contract is malformed/incompatible                                                |
-| `FULL_UNIT_SUITE_NOT_GREEN`                               | A structurally valid report fails a required green predicate, including failed suites; a nonzero completed child exit also remains blocking |
-| `UNKNOWN_PRE_REMOTE_FAILURE`                              | Unrecognized exception; no private exception details are published                                                                          |
-
-Preflight success prints `STAGING_PREFLIGHT_PASS_REMOTE_NOT_EXECUTED`. It does not certify deployment or commercial scenarios. Apply retains `DEPLOYMENT_COMMANDS_COMPLETE_CERTIFICATION_STILL_BLOCKED` after command completion.
-
-### Operator sequence and retention
-
-1. Review and merge the change. Confirm the exact current main SHA and staging target, and verify required reviewers on `supabase-staging`.
-2. Run mode `plan` with the reviewed dispatch inputs and review its sanitized artifact.
-3. **Regenerate and review the private Phase B authorization whenever the reviewed commit changes**, including after this PR. Bind the validated manifest and reviewed targets again. Supply private material through the protected environment without logging it.
-4. After separate operator approval, dispatch mode `preflight` with the same exact commit/project/origin confirmations. Review the sanitized preflight artifact and all quality gates. This mode performs no remote operation.
-5. Only after separate explicit authorization for the named staging resources, dispatch mode `apply` with unchanged reviewed bindings. Apply reruns the entire shared preflight; a prior passing artifact is not an exemption. Complete the existing scenario certification afterward.
-
-The workflow uploads only the exact sanitized preflight evidence file with `if: always()` for preflight/apply and retains it for **7 days**, matching plan/deployment artifacts. Missing preflight evidence fails the upload. Raw `units.json` stays ignored on the runner/local disk and is never an uploaded artifact; it is replaced on the next invocation. Child stdout/stderr from the unit process are discarded. Remove private local reports when no longer needed; ephemeral GitHub runner data is not a retained diagnostic artifact.
-
-Supply `STAGING_COMMERCIAL_AUTHORIZATION` privately through the protected environment only after review. Its strict schema is exported by `scripts/staging-commercial-apply.mjs`. It binds reviewedCommit, canonical JSON manifest SHA-256, target project/origin SHA-256, approvedRemoteVersions, backupEvidenceSha256, exact auth site/callback settings, normalized provider mappings, required name-presence attestation, billing environment/origin, portal hosts, and portal/webhook/rollback review attestations. For the manifest hash use SHA-256 of JSON.stringify of the validated JSON object. Fake provider references are rejected at apply. The envelope must be reissued after any commit, migration, manifest or target change. Attestations are operator evidence; they do not query or configure hosted settings.
-
-Auth proof must include signup enabled, confirmation enabled, exact site origin, exact `/auth/callback` redirect, an actual synthetic confirmation round-trip and denial of malicious redirect input. Validate host configuration separately before declaring CERT-AUTH-001 passed. Never push local TOML auth localhost settings to hosted auth.
-
-## Deployment allowlist
-
-- `billing-create-lemon-squeezy-checkout`
-- `billing-lemon-squeezy-webhook`
-- `billing-create-customer-portal-link`
-- `billing-preview-plan-change`
-- `billing-change-subscription-plan`
-- `billing-cancel-scheduled-plan-change`
-- `billing-refresh-plan-change`
-- `billing-preview-coach-seat-change`
-- `billing-change-coach-seat-quantity`
-- `billing-cancel-scheduled-seat-change`
-- `billing-refresh-coach-seat-change`
-- `open-wearables`
-- `exercise-dataset-search`
-
-Owner endpoints and the two nonbilling functions require JWT; the HMAC-authenticated webhook has verify_jwt=false. No directory glob controls deployment. marketing-lead-submit and sync-exercises are intentionally outside this reviewed deployment set.
-
-## Scenario matrix
-
-All scenarios are critical. The JSON manifest includes concrete prerequisites, safe inputs, steps, local/provider outcomes, required assertion codes and cleanup. Monthly and annual activation steps cover all three plans. Source: `config/staging-commercial-scenarios.json`.
-
-| ID                 | Scenario                     | Real staging status |
-| ------------------ | ---------------------------- | ------------------- |
-| CERT-DEPLOY-001    | Migration history            | not_run             |
-| CERT-DEPLOY-002    | Function allowlist           | not_run             |
-| CERT-AUTH-001      | Signup and callback redirect | not_run             |
-| CERT-CATALOGUE-001 | Anonymous v2 parity          | not_run             |
-| CERT-CHECKOUT-001  | Monthly activation           | not_run             |
-| CERT-CHECKOUT-002  | Annual activation            | not_run             |
-| CERT-WEBHOOK-001   | Signature rejection          | not_run             |
-| CERT-WEBHOOK-002   | Duplicate replay             | not_run             |
-| CERT-WEBHOOK-003   | Delayed creation             | not_run             |
-| CERT-PORTAL-001    | Portal URL security          | not_run             |
-| CERT-PORTAL-002    | Cancellation and resume      | not_run             |
-| CERT-RECOVERY-001  | Payment failure and recovery | not_run             |
-| CERT-PLAN-001      | Immediate upgrade            | not_run             |
-| CERT-PLAN-002      | Scheduled downgrade          | not_run             |
-| CERT-PLAN-003      | Cancel scheduled downgrade   | not_run             |
-| CERT-SEAT-001      | Seat increase and payment    | not_run             |
-| CERT-SEAT-002      | Seat reduction               | not_run             |
-| CERT-SEAT-003      | Cancel reduction             | not_run             |
-| CERT-ACCESS-001    | Active full access           | not_run             |
-| CERT-ACCESS-002    | Grace existing delivery      | not_run             |
-| CERT-ACCESS-003    | Expired recovery access      | not_run             |
-| CERT-SECURITY-001  | Log redaction                | not_run             |
-| CERT-ROLLBACK-001  | Rollback drill               | not_run             |
-
-Local Billing suites exercise injected provider transports and local SQL. A real staging run must separately prove provider behavior and deployed boundaries. Record fixture and staging scopes distinctly.
-
-## Authorization stop
-
-Phase A stops before any remote operation, including remote migration list or link. The generated `output/staging-commercial/plan/authorization-request.json` names the reviewed commit, full approved migration range/hashes, exact functions/secrets/scenarios, proposed command order and placeholder project, application origin, test Store and webhook endpoint. Review that artifact and fill named resources privately before requesting Phase B. It is a request, not authorization. No automatic purchase, webhook registration, mapping insertion, secret change or live operation follows from it.
-
-See [deployment manifest](staging-commercial-deployment-manifest.md), [evidence](staging-commercial-evidence.md), [rollback](staging-commercial-rollback.md), and [verification](pr-price-11-verification.md).
+The current staging release procedure is [the fixed phase model](staging-release-phases.md). Use version-2 phase authorization and recovery bundles through the protected main workflow. Baseline 180–184 deploys no functions; containment precedes 185; retirement verification precedes 186; final artifact identity verification follows schema 186. The former unbounded staging apply CLI is disabled. Successful release does not certify any commercial scenario.

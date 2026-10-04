@@ -36,6 +36,8 @@ export default async function prepareOwnedServer(config: FullConfig) {
       [
         "/src/components/layouts/pt-hub-layout.tsx",
         "/src/pages/pt-hub/overview.tsx",
+        // Prepare the billing cutover's lazy module before parallel auth/read budgets.
+        "/src/pages/pt-hub/settings/tabs/billing.tsx",
         "/src/components/layouts/client-layout.tsx",
         "/src/pages/client/home.tsx",
         // The public smoke routes assert rendered content after navigation.

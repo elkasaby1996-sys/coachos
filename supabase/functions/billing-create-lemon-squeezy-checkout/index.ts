@@ -1,3 +1,3 @@
-import { handleBillingCheckout } from "../_shared/billing-handlers.ts";
-import { billingDependencies } from "../_shared/billing-runtime.ts";
-Deno.serve((request) => handleBillingCheckout(request, billingDependencies()));
+import { handleDisabledLegacyCheckout } from "../_shared/billing-disabled-checkout.ts";
+
+Deno.serve(handleDisabledLegacyCheckout);

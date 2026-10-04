@@ -1,4 +1,5 @@
 import type { VerifiedEventV2 } from "../billing-verified-receipts-v2.ts";
+import type { PaddleFinancialObservation } from "./financial-observation.ts";
 
 export type PaddleEventEnvelope = {
   provider: "paddle";
@@ -30,19 +31,29 @@ export type PaddleLifecycleObservation = {
 export type PaddleSupportedEventObservation = PaddleEventEnvelope &
   (
     | {
-        kind: "transaction.completed";
+        kind:
+          | "transaction.completed"
+          | "transaction.past_due"
+          | "transaction.payment_failed"
+          | "transaction.updated"
+          | "transaction.paid"
+          | "transaction.canceled";
         transactionRef: string;
         subscriptionRef: string | null;
         customerRef: string | null;
-        status: "completed";
+        status: string;
         currency: string;
         origin?: string;
         billingPeriod?: PaddleBillingPeriod | null;
         paymentTotals?: { total: number; paid: number; balance: number };
+        financial?: PaddleFinancialObservation;
         items: PaddleWebhookItem[];
       }
     | (PaddleLifecycleObservation & {
-        kind: "subscription.created" | "subscription.updated";
+        kind:
+          | "subscription.created"
+          | "subscription.updated"
+          | "subscription.past_due";
         subscriptionRef: string;
         customerRef: string | null;
         status: "active" | "trialing" | "past_due" | "paused" | "canceled";
@@ -52,6 +63,15 @@ export type PaddleSupportedEventObservation = PaddleEventEnvelope &
           status: "active" | "inactive" | "trialing";
         })[];
       })
+    | {
+        kind: "adjustment.created" | "adjustment.updated";
+        adjustmentRef: string;
+        transactionRef: string;
+        customerRef: string | null;
+        subscriptionRef: string | null;
+        status: string;
+        resourceUpdatedAt: string;
+      }
   );
 export type PaddleUnsupportedEventObservation = PaddleEventEnvelope & {
   kind: "unsupported";

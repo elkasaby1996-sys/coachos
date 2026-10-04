@@ -1,4 +1,8 @@
 import { billingOutput } from "./billing-operator-output.mjs";
+import {
+  SCENARIO_ASSERTIONS,
+  UNSUPPORTED_SCENARIOS,
+} from "./billing-deployment-contract.mjs";
 import { z } from "zod";
 import { pathToFileURL } from "node:url";
 import {
@@ -19,30 +23,7 @@ import {
   readJson,
 } from "./staging-commercial-contracts.mjs";
 
-export const ASSERTION_CODES = [
-  "MIGRATION_HISTORY_MATCH",
-  "FUNCTION_DEPLOYED",
-  "AUTH_REDIRECT_MATCH",
-  "CATALOGUE_MATCH",
-  "SUBSCRIPTION_ACTIVE",
-  "INVALID_SIGNATURE_REJECTED",
-  "REPLAY_IDEMPOTENT",
-  "CREATION_RECONCILED",
-  "PORTAL_URL_VALIDATED",
-  "CANCELLATION_RESUMED",
-  "PAYMENT_RECOVERED",
-  "PLAN_UPGRADED",
-  "PLAN_SCHEDULED",
-  "PLAN_SCHEDULE_CANCELLED",
-  "SEAT_PAYMENT_APPLIED",
-  "SEAT_REDUCTION_SCHEDULED",
-  "SEAT_REDUCTION_CANCELLED",
-  "ACCESS_FULL",
-  "ACCESS_EXISTING_DELIVERY",
-  "ACCESS_RECOVERY_ONLY",
-  "REDACTION_PASSED",
-  "ROLLBACK_VERIFIED",
-];
+export const ASSERTION_CODES = [...new Set(Object.values(SCENARIO_ASSERTIONS))];
 const recordSchema = z
   .strictObject({
     scenarioId: z.enum(SCENARIO_IDS),
@@ -83,6 +64,11 @@ const recordSchema = z
     ),
   })
   .superRefine((v, ctx) => {
+    if (UNSUPPORTED_SCENARIOS.includes(v.scenarioId) && v.status === "pass")
+      ctx.addIssue({
+        code: "custom",
+        message: "UNSUPPORTED_PRODUCT_CAPABILITY_CANNOT_BE_CERTIFIED",
+      });
     if (
       v.status === "pass" &&
       (!v.assertions.length || v.assertions.some((a) => !a.passed))
@@ -203,30 +189,24 @@ export function verdict(input) {
     value.records.some((r) => ["fail", "blocked", "not_run"].includes(r.status))
   )
     return "blocked";
+  // Every scenario has a specific assertion; an unrelated assertion cannot certify it.
+  if (
+    value.records
+      .filter((r) => r.status === "pass")
+      .some(
+        (r) =>
+          !r.assertions.some(
+            (a) => a.code === SCENARIO_ASSERTIONS[r.scenarioId] && a.passed,
+          ),
+      )
+  )
+    return "blocked";
   if (
     value.records.some(
       (r) => r.status === "not_applicable" || r.scope !== "staging_test",
     )
   )
     return "conditional";
-  // Every scenario has a specific assertion; an unrelated assertion cannot certify it.
-  if (
-    value.records.some(
-      (r) =>
-        !r.assertions.some(
-          (a) =>
-            a.code ===
-              ASSERTION_CODES[
-                SCENARIO_IDS.indexOf(r.scenarioId) === 5
-                  ? 4
-                  : SCENARIO_IDS.indexOf(r.scenarioId) > 5
-                    ? SCENARIO_IDS.indexOf(r.scenarioId) - 1
-                    : SCENARIO_IDS.indexOf(r.scenarioId)
-              ] && a.passed,
-        ),
-    )
-  )
-    return "blocked";
   return "pass";
 }
 if (

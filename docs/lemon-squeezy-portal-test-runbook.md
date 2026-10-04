@@ -1,5 +1,7 @@
 # Customer Portal configuration and proof runbook
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 This PR performs no remote Supabase or Lemon Squeezy action. Local tests use synthetic provider responses, worker-isolated identities and local database transactions. They do not prove a real test-mode portal or live self-service billing.
 
 ## Required Store configuration

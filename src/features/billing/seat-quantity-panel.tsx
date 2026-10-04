@@ -1,3 +1,4 @@
+import { billingCapability } from "./provider-capabilities";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -57,6 +58,8 @@ export function SeatQuantityPreviewDetails({
 }: {
   preview: SeatQuantityPreview;
 }) {
+  if (!billingCapability(p.provider, "seatChanges"))
+    return <p role="alert">Coach-seat preview is unavailable.</p>;
   return (
     <div className="space-y-2 text-sm" aria-live="polite">
       <p>
@@ -75,10 +78,9 @@ export function SeatQuantityPreviewDetails({
             : `Reduction takes effect at renewal${p.effectiveAt ? ` on ${new Date(p.effectiveAt).toLocaleDateString()}` : ""}. New invitations use the lower limit immediately.`}
       </p>
       <p>
-        Proration, taxes and credits are calculated by{" "}
-        {p.provider === "paddle" ? "Paddle" : "Lemon Squeezy"}. These recurring
-        list totals are not an exact charge preview. No payment has been
-        collected by this preview.
+        Proration, taxes and credits are calculated by your payment provider.
+        These recurring list totals are not an exact charge preview. No payment
+        has been collected by this preview.
       </p>
       {!p.eligible && <p role="alert">{seatQuantityMessage(p.errorCode)}</p>}
       {p.capacityBlocked && (
@@ -113,11 +115,12 @@ export function SeatQuantityPanel({
   const [error, setError] = useState<string | null>(null);
   const intent = useRef<{ id: string; target: number } | null>(null);
   if (!owner) return null;
-  const s = state.data?.summary;
-  const op = state.data?.operation;
+  const supported = billingCapability(state.data?.provider, "seatChanges");
+  const s = supported ? state.data?.summary : null;
+  const op = supported ? state.data?.operation : null;
   const open = op && !["completed", "canceled", "failed"].includes(op.status);
   const run = async (action: "preview" | "apply" | "cancel" | "refresh") => {
-    if (busy) return;
+    if (busy || !supported) return;
     setBusy(true);
     setError(null);
     try {
@@ -139,6 +142,7 @@ export function SeatQuantityPanel({
                   ? { operationId: intent.current!.id }
                   : {}),
               },
+        state.data?.provider,
       );
       if (action === "preview")
         setPreview(seatQuantityPreviewSchema.parse(result));
@@ -166,7 +170,7 @@ export function SeatQuantityPanel({
       {state.isLoading && <p role="status">Loading coach seats…</p>}
       {state.error && <p role="alert">Coach-seat details are unavailable.</p>}
       {s && <SeatQuantitySummary summary={s} />}
-      {state.data?.blockingOperation && (
+      {supported && state.data?.blockingOperation && (
         <p role="status">
           A plan change is pending. Coach-seat changes are unavailable until it
           completes.
@@ -191,18 +195,6 @@ export function SeatQuantityPanel({
                         : "BILLING_SEAT_QUANTITY_PROVIDER_AMBIGUOUS"),
                   )}
           </p>
-          {op.status === "scheduled" &&
-            state.data?.canCancel !== false &&
-            op.effectiveAt &&
-            Date.parse(op.effectiveAt) > Date.now() && (
-              <Button
-                variant="secondary"
-                disabled={busy}
-                onClick={() => void run("cancel")}
-              >
-                Cancel scheduled reduction
-              </Button>
-            )}
         </div>
       )}
       {s && !open && !s.manualReview && !state.data?.blockingOperation && (
@@ -259,7 +251,7 @@ export function SeatQuantityPanel({
       )}
       <Button
         variant="secondary"
-        disabled={busy}
+        disabled={busy || !supported}
         onClick={() => void run("refresh")}
       >
         {busy ? "Checking…" : "Refresh coach seats"}

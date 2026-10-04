@@ -105,7 +105,19 @@ export interface PaddleWebhookDatabase {
     ...call:
       | [name: "ingest_verified_paddle_event_v1", args: IngestionArguments]
       | [
+          name: "ingest_verified_paddle_recovery_event_v1",
+          args: IngestionArguments,
+        ]
+      | [
+          name: "reconcile_paddle_payment_recovery_event_v1",
+          args: { p_event: string },
+        ]
+      | [
           name: "reconcile_paddle_initial_purchase_event_v1",
+          args: { p_event: string },
+        ]
+      | [
+          name: "reconcile_billing_payment_method_preparation_v1",
           args: { p_event: string },
         ]
   ): Promise<{ error: unknown; data: unknown }>;
@@ -136,10 +148,18 @@ function ingestionResult(
       "transaction.completed",
       "subscription.created",
       "subscription.updated",
+      "subscription.past_due",
+      "transaction.past_due",
+      "transaction.payment_failed",
+      "transaction.updated",
+      "transaction.paid",
+      "transaction.canceled",
+      "adjustment.created",
+      "adjustment.updated",
     ].includes(eventType)
   );
 }
-function dispatcherResult(value: unknown): boolean {
+function dispatcherResult(value: unknown): value is { status: string } {
   return (
     object(value) &&
     Object.keys(value).length === 1 &&
@@ -151,6 +171,7 @@ function dispatcherResult(value: unknown): boolean {
       "applied",
       "reused",
       "manual_review",
+      "completed",
     ].includes(value.status)
   );
 }
@@ -181,8 +202,20 @@ export function createPaddleWebhookIngress(
     if (result.kind === "unsupported") return response(200);
     let stage: "ingestion" | "dispatch" = "ingestion";
     try {
+      const recovery =
+        ![
+          "transaction.completed",
+          "subscription.created",
+          "subscription.updated",
+        ].includes(result.observation.kind) ||
+        (result.observation.kind === "transaction.completed" &&
+          ("financial" in result.observation ||
+            result.observation.origin ===
+              "subscription_payment_method_change"));
       const stored = await database.rpc(
-        "ingest_verified_paddle_event_v1",
+        recovery
+          ? "ingest_verified_paddle_recovery_event_v1"
+          : "ingest_verified_paddle_event_v1",
         verifier.ingestionArguments(result.receipt),
       );
       if (
@@ -193,15 +226,33 @@ export function createPaddleWebhookIngress(
         return response(503);
       }
       // Separate awaited requests: retained evidence commits before authority.
+      let commercialStatus: string;
       {
         stage = "dispatch";
         const dispatched = await database.rpc(
-          "reconcile_paddle_initial_purchase_event_v1",
+          recovery
+            ? "reconcile_paddle_payment_recovery_event_v1"
+            : "reconcile_paddle_initial_purchase_event_v1",
           {
             p_event: stored.data.eventId,
           },
         );
         if (dispatched.error || !dispatcherResult(dispatched.data)) {
+          logPaddleWebhookRejection(stage, undefined, 503);
+          return response(503);
+        }
+        commercialStatus = dispatched.data.status;
+      }
+      if (
+        result.observation.kind === "transaction.completed" ||
+        (result.observation.kind === "subscription.updated" &&
+          (commercialStatus === "applied" || commercialStatus === "reused"))
+      ) {
+        const preparation = await database.rpc(
+          "reconcile_billing_payment_method_preparation_v1",
+          { p_event: stored.data.eventId },
+        );
+        if (preparation.error || !dispatcherResult(preparation.data)) {
           logPaddleWebhookRejection(stage, undefined, 503);
           return response(503);
         }

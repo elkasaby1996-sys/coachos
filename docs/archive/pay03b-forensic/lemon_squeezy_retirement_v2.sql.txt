@@ -1,0 +1,296 @@
+-- PAY-03B permanent LS-rooted and metamorphic regressions.
+-- Synthetic local transaction only. Corruption probes explicitly bypass guards;
+-- each probe rolls back its subtransaction, including DDL and trigger settings.
+-- ARCHIVED: superseded forensic classifier assertions, not launch certification.
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path=public,extensions;
+select no_plan();
+\ir fixtures/lemon_squeezy_retirement_history.psql
+create function pg_temp.retirement_probe(mutation text,cutoff timestamptz default null) returns jsonb language plpgsql as $$
+declare report jsonb;
+begin
+ begin
+  execute mutation;
+  report:=inspect_lemon_squeezy_retirement_disposition_v1(coalesce(cutoff,clock_timestamp()));
+  raise exception using errcode='ZX001',message='rollback local probe';
+ exception when sqlstate 'ZX001' then return report;
+ end;
+end $$;
+create function pg_temp.retirement_admit(resource text,event text,state text,revision integer default 20,actor text default 'terminal-checkout') returns void language plpgsql as $$
+begin perform pg_temp.retirement_invoice((select id from actors where name=actor),event,resource,state,revision); end $$;
+create function pg_temp.retirement_blocked(r jsonb) returns boolean language sql as $$
+ select r->>'safeToRetire'='false' and (r#>>'{blockers,unknownStates}')::bigint>0
+$$;
+select is(pg_temp.retirement_report()->>'safeToRetire','true','V2 valid baseline covers every retained root exactly once');
+
+-- A: malformed evidence remains accounted at every provider revision.
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe(format($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_recovered','paid',%s);
+ update billing_provider_webhook_deliveries set delivery_fingerprint=repeat('e',64) where object_id='992001';
+$m$,revision))),'A/R3-2: corrupt fingerprint cannot disappear at revision '||revision) from unnest(array[19,20,21]) revision;
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe(format($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',20);
+ select pg_temp.retirement_admit('992001','subscription_payment_recovered','paid',%s);
+ update billing_provider_webhook_deliveries set delivery_fingerprint=repeat('e',64),provider_updated_at=null,
+ normalized_payload=jsonb_set(normalized_payload,'{updated_at}','"not-a-time"') where event_name='subscription_payment_recovered' and object_id='992001';
+$m$,revision))),'A: blocked debt stays blocked with malformed candidate revision '||revision) from unnest(array[19,20,21]) revision;
+
+-- B/G: surviving claims never become safe after necessary relationships/witnesses
+-- are lost. Ordinary guards are tested separately below.
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe('set local session_replication_role=replica;'||mutation)),
+ 'B/G corruption: '||label) from (values
+ ('account','delete from billing_accounts where id=(select billing_account_id from billing_provider_subscriptions limit 1)'),
+ ('customer','delete from billing_provider_customers where id=(select id from billing_provider_customers limit 1)'),
+ ('mapping','delete from billing_provider_variant_mappings where id=(select variant_mapping_id from billing_provider_subscriptions limit 1)'),
+ ('subscription','delete from billing_provider_subscriptions where billing_account_id=(select id from billing_accounts where owner_user_id=(select id from actors where name=''terminal-checkout''))'),
+ ('canonical','delete from account_subscriptions where id=(select account_subscription_id from billing_provider_subscriptions limit 1)'),
+ ('origin','delete from billing_canonical_origins where account_subscription_id=(select account_subscription_id from billing_provider_subscriptions limit 1)'),
+ ('plan operation','delete from billing_plan_change_operations'),
+ ('seat operation','delete from billing_seat_quantity_operations'),
+ ('plan event parent','update billing_plan_change_events set operation_id=gen_random_uuid()'),
+ ('seat event parent','update billing_seat_quantity_events set operation_id=gen_random_uuid()'),
+ ('plan closure event','delete from billing_plan_change_events where event_type=''billing.plan_change_completed'''),
+ ('seat closure event','delete from billing_seat_quantity_events where event_type=''billing.seat_completed'''),
+ ('account event parent','update account_subscription_events set billing_account_id=gen_random_uuid() where source=''billing_provider'''),
+ ('dangling subscription mapping','update billing_provider_subscriptions set variant_mapping_id=gen_random_uuid()'),
+ ('dangling checkout mapping','update billing_checkout_attempts set variant_mapping_id=gen_random_uuid()'),
+ ('plan source ancestry','update billing_plan_change_operations set source_account_subscription_id=(select account_subscription_id from billing_provider_subscriptions where id<>billing_plan_change_operations.billing_provider_subscription_id limit 1)'),
+ ('seat source ancestry','update billing_seat_quantity_operations set account_subscription_id=(select account_subscription_id from billing_provider_subscriptions where id<>billing_seat_quantity_operations.billing_provider_subscription_id limit 1)'),
+ ('orphan origin','update billing_canonical_origins set account_subscription_id=gen_random_uuid()'),
+ ('wrong customer scope','update billing_provider_customers set billing_account_id=gen_random_uuid()'),
+ ('wrong commercial amount','update billing_provider_variant_mappings set unit_amount_minor=unit_amount_minor+1'),
+ ('bad graduated contract','update billing_quantity_price_contracts set normalized_price_contract=jsonb_set(normalized_price_contract,''{tiers,1,unit_price}'',''0''),price_contract_sha256=encode(extensions.digest(jsonb_set(normalized_price_contract,''{tiers,1,unit_price}'',''0'')::text,''sha256''),''hex'')')
+) cases(label,mutation);
+select throws_ok('delete from billing_accounts where id=(select billing_account_id from billing_provider_subscriptions limit 1)','P0001',null,'ordinary append-only guard rejects missing account');
+select throws_ok('delete from billing_provider_customers','P0001',null,'ordinary guard rejects customer erasure');
+select throws_ok('delete from billing_provider_variant_mappings','P0001',null,'ordinary guard rejects mapping erasure');
+select throws_ok('update billing_provider_subscriptions set variant_mapping_id=gen_random_uuid()','P0002',null,'ordinary writer rejects dangling mapping');
+select throws_ok('update billing_plan_change_events set operation_id=gen_random_uuid()','P0001',null,'ordinary writer rejects event-parent corruption');
+select throws_ok('select public.record_billing_webhook_delivery(''test'',''subscription_payment_recovered'',''subscription-invoices'',''992001'',repeat(''a'',64),repeat(''e'',64),''{}'')','P0001',null,'ordinary admission rejects corrupt fingerprint');
+
+-- C/R3-1: provider proof must be finite, ordered and at/before the cutoff.
+create function pg_temp.retirement_time_probe(label text) returns jsonb language plpgsql as $$
+declare cutoff timestamptz; c timestamptz; u timestamptz; payload_c jsonb; payload_u jsonb; report jsonb;
+begin
+ begin
+  perform pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+  perform pg_temp.retirement_admit('992001','subscription_payment_recovered','paid',20);
+  cutoff:=clock_timestamp();c:=now()-interval '1 day';u:=cutoff;
+  case label
+   when 'created future' then c:=cutoff+interval '1 microsecond';u:=c;
+   when 'updated future' then u:=cutoff+interval '1 microsecond';
+   when 'both future' then c:=cutoff+interval '1 day';u:=c+interval '1 second';
+   when 'reversed' then c:=cutoff;u:=cutoff-interval '1 second';
+   when 'null created' then c:=null;
+   when 'null updated' then u:=null;
+   when 'infinite created' then c:='-infinity';
+   when 'infinite updated' then u:='infinity';
+   when 'malformed' then u:=null;
+   when 'at cutoff' then null;
+   when 'after cutoff' then u:=cutoff+interval '1 microsecond';
+   else raise exception 'unknown time test';
+  end case;
+  payload_c:=coalesce(to_jsonb(c),'null');payload_u:=case when label='malformed' then '"not-a-time"'::jsonb else coalesce(to_jsonb(u),'null') end;
+  update billing_provider_webhook_deliveries set provider_created_at=c,provider_updated_at=u,
+   normalized_payload=jsonb_set(jsonb_set(normalized_payload,'{created_at}',payload_c),'{updated_at}',payload_u)
+   where object_id='992001' and event_name='subscription_payment_recovered';
+  report:=inspect_lemon_squeezy_retirement_disposition_v1(cutoff);
+  raise exception using errcode='ZX001';
+ exception when sqlstate 'ZX001' then return report;
+ end;
+end $$;
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_time_probe(label)),'C time matrix: '||label) from unnest(array[
+ 'created future','updated future','both future','reversed','null created','null updated','infinite created','infinite updated','malformed','after cutoff']) label;
+-- Preserve immutable creation time for the exact-cutoff witness.
+select is(pg_temp.retirement_time_probe('at cutoff')->>'safeToRetire','true','C exact cutoff is inclusive');
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_recovered','paid');
+ update billing_provider_webhook_deliveries set normalized_payload=jsonb_set(normalized_payload,'{created_at}','"2026-02-30T00:00:00Z"') where object_id='992001';
+$m$)),'C invalid calendar text safely blocks without an unsafe cast');
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe($m$
+ update billing_provider_subscriptions set provider_updated_at=clock_timestamp()+interval '1 day';
+$m$)),'C future subscription proof remains retained');
+
+-- D/E/F/R3-4: authority and ignored observations are distinct from drainage.
+select is(pg_temp.retirement_probe(format($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+ select pg_temp.retirement_admit('992001','subscription_payment_recovered','paid',20);
+ select pg_temp.retirement_admit('992001','subscription_payment_success','paid',%s);
+ update billing_provider_webhook_deliveries set processing_status='ignored',last_error_code='BILLING_RECONCILIATION_STALE' where object_id='992001' and event_name='subscription_payment_success';
+$m$,revision))->>'safeToRetire','true','E benign stale paid duplicate revision '||revision) from unnest(array[19,20]) revision;
+select is(pg_temp.retirement_probe(format($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+ select pg_temp.retirement_admit('992001','subscription_payment_recovered','paid',20);
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',%s);
+ update billing_provider_webhook_deliveries set processing_status='ignored',last_error_code='BILLING_RECONCILIATION_STALE' where object_id='992001' and event_name='subscription_payment_failed' and provider_updated_at=now()-interval '1 hour'+make_interval(secs=>%s);
+$m$,revision,revision))->>'safeToRetire','false','D ignored contradictory revision '||revision) from unnest(array[20,21]) revision;
+select is(pg_temp.retirement_probe($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+ select pg_temp.retirement_admit('992001','subscription_payment_recovered','paid',20);
+ update billing_provider_webhook_deliveries set processing_status='ignored',last_error_code=null where object_id='992001' and event_name='subscription_payment_recovered';
+$m$)#>>'{blockers,paymentObligations}','1','ignored paid without processed witness cannot settle');
+select is(pg_temp.retirement_probe($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+ select pg_temp.retirement_admit('992001','subscription_payment_recovered','paid',20);
+ select pg_temp.retirement_admit('992002','subscription_payment_failed','pending',19);
+$m$)#>>'{blockers,paymentObligations}','1','F exact resolution clears only the matching debt');
+select is(pg_temp.retirement_probe($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+ select pg_temp.retirement_admit('992001','subscription_payment_recovered','paid',20);
+ delete from billing_provider_webhook_deliveries where object_id='992001' and event_name='subscription_payment_recovered';
+$m$)#>>'{blockers,paymentObligations}','1','G removing settlement witness leaves the debt claim blocked');
+select is(pg_temp.retirement_probe($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+ select pg_temp.retirement_admit('992002','subscription_payment_recovered','paid',30);
+$m$)#>>'{blockers,paymentObligations}','1','H unrelated valid paid context does not settle another resource');
+select is(pg_temp.retirement_probe($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+ select pg_temp.retirement_admit('992001','subscription_payment_recovered','paid',20);
+ select pg_temp.retirement_admit('992002','subscription_payment_recovered','paid',30);
+$m$)->>'safeToRetire','true','H unrelated context does not disturb exact settlement');
+
+-- I: all six insertion permutations of failed/paid/equivalent paid observations.
+create function pg_temp.retirement_permute(sequence integer[]) returns jsonb language plpgsql as $$
+declare n integer;report jsonb;
+begin
+ begin
+  foreach n in array sequence loop
+   perform pg_temp.retirement_admit('992001',case n when 1 then 'subscription_payment_failed' when 2 then 'subscription_payment_recovered' else 'subscription_payment_success' end,case n when 1 then 'pending' else 'paid' end,case n when 1 then 19 else 20 end);
+  end loop;
+  update billing_provider_webhook_deliveries set id=gen_random_uuid(),processed_at=case event_name when 'subscription_payment_failed' then now() else now()-interval '1 minute' end where object_id='992001';
+  report:=pg_temp.retirement_report();raise exception using errcode='ZX001';
+ exception when sqlstate 'ZX001' then return report;
+ end;
+end $$;
+select is(pg_temp.retirement_permute(sequence)->>'safeToRetire','true','I provider authority invariant to insertion/ID/processing order '||sequence::text)
+from (values(array[1,2,3]),(array[1,3,2]),(array[2,1,3]),(array[2,3,1]),(array[3,1,2]),(array[3,2,1])) permutations(sequence);
+
+-- J: runtime/sales/environment settings cannot suppress retained LS claims.
+select is(pg_temp.retirement_probe(format($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+ update billing_runtime_policy set paddle_sales_enabled=%L,entitlement_environment=%L;
+$m$,sales,environment))#>>'{blockers,paymentObligations}','1','J retained debt independent of flags '||sales::text||'/'||environment)
+from (values(true,'test'),(false,'test'),(true,'live'),(false,'live')) flags(sales,environment);
+
+-- API context and every supported lifecycle name retain their integrity duties.
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe($m$
+ select public.finish_billing_plan_change(id,'test',pg_temp.snapshot(id,null,'monthly','expired')||jsonb_build_object('ends_at',now()-interval '1 second'),pg_temp.invoice(id)) from actors where name='terminal-checkout';
+ update billing_provider_webhook_deliveries set normalized_payload=jsonb_set(normalized_payload,'{updated_at}','"broken"') where event_name='subscription_payment_success';
+$m$)),'malformed limited API context is still blocking evidence');
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe(format($m$
+ update billing_provider_webhook_deliveries set event_name=%L,delivery_fingerprint=encode(extensions.digest(environment||chr(10)||%L||chr(10)||payload_sha256,'sha256'),'hex'),processing_status='ignored',last_error_code='BILLING_WEBHOOK_UNSUPPORTED_EVENT' where id=(select delivery from retirement_anchor);
+$m$,event,event))),'supported event cannot falsely claim unsupported disposition: '||event)
+from unnest(array['subscription_created','subscription_updated','subscription_cancelled','subscription_resumed','subscription_expired','subscription_paused','subscription_unpaused','subscription_plan_changed','subscription_payment_success','subscription_payment_failed','subscription_payment_recovered']) event;
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe(format($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+ select pg_temp.retirement_admit('992001','subscription_payment_recovered','paid',20);
+ update billing_provider_webhook_deliveries set %s where object_id='992001' and event_name='subscription_payment_recovered';
+$m$,mutation))),'invoice scope corruption: '||label) from (values
+ ('customer','provider_customer_id=''998881'''),('subscription','provider_subscription_id=''998882'''),
+ ('account','normalized_payload=jsonb_set(normalized_payload,''{billing_account_id}'',to_jsonb(gen_random_uuid()::text))'),
+ ('environment','environment=''live'''),('store','normalized_payload=jsonb_set(normalized_payload,''{store_id}'',''"998883"'')')
+) cases(label,mutation);
+
+-- Historical mappings/operations remain valid; no current-plan rewrite assumption.
+select is(pg_temp.retirement_probe('update billing_provider_variant_mappings set status=''retired'',retired_at=now();update billing_quantity_price_contracts set status=''retired'',retired_at=now();')->>'safeToRetire','true','retired immutable mappings remain valid historical identities');
+select is(pg_temp.retirement_report()#>>'{blockers,unknownStates}','0','joining events and mappings does not multiply valid history contributions');
+-- Conflicting ownership of one retained invoice is never silently split safe.
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+ select pg_temp.retirement_admit('992001','subscription_payment_recovered','paid',20,'terminal-cancelled');
+$m$)),'same resource with conflicting validated owners blocks');
+select is(pg_temp.retirement_probe($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+ select pg_temp.retirement_admit('992003','subscription_payment_recovered','paid',20);
+$m$)#>>'{blockers,paymentObligations}','1','different valid resource identity cannot settle exact debt');
+create function pg_temp.retirement_history_control(kind text) returns jsonb language plpgsql as $$
+declare u uuid; report jsonb;
+begin
+ begin
+  u:=pg_temp.coach(case when kind='multiple plans' then 'launch' else 'growth' end);
+  if kind='multiple plans' then
+   perform begin_billing_plan_change(u,'test','growth','monthly',gen_random_uuid(),pg_temp.snapshot(u));
+   perform finish_billing_plan_change(u,'test',pg_temp.snapshot(u,'growth'),pg_temp.invoice(u));
+   perform begin_billing_plan_change(u,'test','scale','monthly',gen_random_uuid(),pg_temp.snapshot(u));
+   perform finish_billing_plan_change(u,'test',pg_temp.snapshot(u,'scale'),pg_temp.invoice(u));
+  elsif kind='historical seat' then
+   perform pg_temp.buy(u,1);
+   perform begin_billing_plan_change(u,'test','scale','monthly',gen_random_uuid(),pg_temp.seat_snapshot(u,2));
+   perform finish_billing_plan_change(u,'test',pg_temp.seat_snapshot(u,2,1,'scale'),pg_temp.invoice(u));
+  elsif kind='pending mapping' then
+   perform begin_billing_plan_change(u,'test','scale','monthly',gen_random_uuid(),pg_temp.snapshot(u));
+   perform finish_billing_plan_change(u,'test',pg_temp.snapshot(u,'scale'),pg_temp.invoice(u,'updated','pending'));
+  else raise exception 'unknown history control'; end if;
+  if kind<>'pending mapping' then perform pg_temp.retirement_close(u); end if;
+  report:=pg_temp.retirement_report();raise exception using errcode='ZX001';
+ exception when sqlstate 'ZX001' then return report;
+ end;
+end $$;
+select is(pg_temp.retirement_history_control('multiple plans')->>'safeToRetire','true','two ordinary completed plan hops end in proven LS history');
+select is(pg_temp.retirement_history_control('historical seat')->>'safeToRetire','true','old seat references retain their historical canonical/mapping after a plan change');
+select is(pg_temp.retirement_history_control('pending mapping')#>>'{blockers,unknownStates}','0','approved pending transition mapping mismatch is valid unresolved work');
+select is(pg_temp.retirement_history_control('pending mapping')->>'safeToRetire','false','approved pending transition still requires servicing');
+
+-- Mixed valid LS + ordinary Paddle ownership, then selected dependency erasures.
+\ir fixtures/billing_catalogue_fixture.psql
+\ir fixtures/billing_cross_ledger_helpers.psql
+\ir fixtures/paddle_webhook_fixture.psql
+\ir fixtures/paddle_auto_reconciliation_fixture.psql
+\ir fixtures/paddle_lifecycle_fixture.psql
+\ir fixtures/paddle_plan_change_fixture.psql
+select pg_temp.catalogue_publish(pg_temp.catalogue(k,c)) from unnest(array['launch','growth','scale','coach-seat']) k cross join unnest(array['monthly','annual']) c;
+update billing_runtime_policy set paddle_reconciliation_enabled=true;
+select pg_temp.plan_owner() u into temp table paddle_actor;
+select is(pg_temp.retirement_report()->>'safeToRetire','true','valid mixed Paddle ownership and terminal LS history is safe');
+select pg_temp.plan_begin(u) from paddle_actor;
+select pg_temp.lifecycle_dispatch(pg_temp.plan_observation(u,'upgrade')) from paddle_actor;
+select pg_temp.lifecycle_dispatch(pg_temp.plan_observation(u,'paid','transaction.completed')) from paddle_actor;
+select is(pg_temp.retirement_report()->>'safeToRetire','true','valid mixed succession has independent physical v2 provenance');
+select is(pg_temp.retirement_probe('set local session_replication_role=replica;'||mutation),pg_temp.retirement_report(),
+ 'Paddle financial/history erasure is outside LS authority: '||label) from (values
+ ('customer','delete from billing_customers_v2'),
+ ('latest evidence','delete from billing_evidence_v2 where id=(select latest_evidence_id from billing_subscriptions_v2 where shadow_status=''current'')'),
+ ('item','delete from billing_subscription_items_v2'),
+ ('mapping','delete from billing_price_mappings where id=(select mapping_id from billing_subscription_items_v2 limit 1)'),
+ ('payment evidence','delete from billing_evidence_v2 where id=(select evidence_id from billing_payment_applications_v2 limit 1)'),
+ ('catalogue proof','delete from billing_catalogue_evidence_v1'),
+ ('checkout','delete from billing_checkouts_v2'),
+ ('supporting event','delete from billing_webhook_events_v2 where id=(select event_id from billing_paddle_event_observations limit 1)'),
+ ('observation','delete from billing_paddle_event_observations'),
+ ('delivery','delete from billing_paddle_event_deliveries'),
+ ('verified receipt','delete from billing_verified_evidence_v2'),
+ ('proof digest','update billing_evidence_v2 set normalized_sha256=repeat(''e'',64)'),
+ ('future proof','update billing_evidence_v2 set verified_at=clock_timestamp()+interval ''1 day''')
+) cases(label,mutation);
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe('set local session_replication_role=replica;'||mutation)),
+ 'structural attribution remains mandatory: '||label) from (values
+ ('operation witness','delete from billing_operations_v2'),
+ ('source canonical','delete from account_subscriptions where id=(select source_account_subscription_id from billing_operations_v2 limit 1)')
+) cases(label,mutation);
+select is(pg_temp.retirement_probe($m$
+ select pg_temp.retirement_admit('992001','subscription_payment_failed','pending',19);
+$m$)#>>'{blockers,paymentObligations}','1','Paddle ownership never extinguishes independently retained LS debt');
+select is(pg_temp.retirement_report()->>'safeToRetire','true','every corruption probe rolled back and preserved valid mixed history');
+
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe($m$
+ set local session_replication_role=replica;
+ update account_subscription_events set source='corrupt_source',subscription_id=gen_random_uuid() where event_type='subscription.plan_superseded';
+$m$)),'provider-specific semantic event roots survive corrupt source and linkage');
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe($m$
+ update billing_provider_webhook_deliveries set provider_updated_at=clock_timestamp(),normalized_payload=jsonb_set(normalized_payload,'{updated_at}',to_jsonb(clock_timestamp())) where id=(select delivery from retirement_anchor);
+$m$)),'processed lifecycle newer than retained terminal authority remains blocking');
+select ok(pg_temp.retirement_blocked(pg_temp.retirement_probe($m$
+ set local session_replication_role=replica;
+ update account_subscription_events set event_type='subscription.provider_reconciliation_blocked' where source='billing_provider';
+$m$)),'unrecognized account event vocabulary cannot become benign context');
+select is(pg_temp.retirement_probe($m$
+ set local session_replication_role=replica;
+ update billing_operation_events_v2 set event_type='billing.future_unknown_event' where id=(select id from billing_operation_events_v2 limit 1);
+$m$),pg_temp.retirement_report(),'unrelated Paddle operation event vocabulary is outside LS authority');
+select is(pg_temp.retirement_probe($m$
+ set local session_replication_role=replica;
+ update billing_webhook_events_v2 set resource_ref='synthetic/wrong-resource';
+$m$),pg_temp.retirement_report(),'unrelated Paddle resource corruption is outside LS authority');
+select * from finish();
+rollback;

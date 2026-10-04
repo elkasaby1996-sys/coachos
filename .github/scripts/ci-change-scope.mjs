@@ -1,6 +1,37 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import {
+  FUNCTION_CONTRACTS,
+  OUTSIDE_BILLING_DEPLOYMENT,
+  RETIREMENT_MIGRATION,
+  ACTIVATION_MIGRATION,
+} from "../../scripts/billing-deployment-contract.mjs";
+
+export function billingCapability(file) {
+  const endpoint = /^supabase\/functions\/([^/]+)\/index\.ts$/.exec(file)?.[1];
+  if (endpoint)
+    return (
+      FUNCTION_CONTRACTS.find((f) => f.name === endpoint)?.classification ??
+      (OUTSIDE_BILLING_DEPLOYMENT.includes(endpoint)
+        ? "NON_BILLING"
+        : "UNCLASSIFIED")
+    );
+  if (file === `supabase/migrations/${ACTIVATION_MIGRATION}`)
+    return "PADDLE_ACTIVE";
+  if (file === `supabase/migrations/${RETIREMENT_MIGRATION}`)
+    return "LS_DATABASE_RETIREMENT";
+  if (file.startsWith("docs/archive/")) return "HISTORICAL";
+  if (
+    /lemon_squeezy_(?:database_retirement|retired_state_routing)|billing_cross_ledger/.test(
+      file,
+    )
+  )
+    return "SHARED_SAFETY";
+  if (/paddle|billing_payment_method|payment_recovery/.test(file))
+    return "ACTIVE_PADDLE_VERIFICATION";
+  return "UNCLASSIFIED";
+}
 
 const ciFiles = new Set([
   ".github/workflows/ci.yml",
@@ -367,7 +398,56 @@ const paddleInitialPeriodBootstrapAnchorFiles = new Set([
   "docs/paddle-initial-period-bootstrap.md",
 ]);
 
+// PAY-05B changes only protected release orchestration, local rehearsal and docs.
+// Exact complete inventory keeps local quality/DB/smoke checks and excludes
+// configured hosted-account writes. A subset or any runtime/SQL path fails closed.
+export const stagingReleaseToolingFiles = new Set([
+  "scripts/staging-backup-ledger.mjs",
+  "scripts/staging-logical-backup.mjs",
+  "tests/unit/staging-logical-backup.test.ts",
+  ".gitignore",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+  ".github/workflows/supabase-deploy-staging.yml",
+  ".github/workflows/supabase-manual-backup.yml",
+  "config/staging-release-checkpoints.json",
+  "docs/staging-commercial-certification.md",
+  "docs/staging-commercial-deployment-manifest.md",
+  "docs/staging-commercial-rollback.md",
+  "docs/staging-logical-backup.md",
+  "docs/staging-release-phases.md",
+  "package.json",
+  "scripts/staging-commercial-apply.mjs",
+  "scripts/staging-release-artifacts.mjs",
+  "scripts/staging-release-contracts.mjs",
+  "scripts/staging-release-observation.mjs",
+  "scripts/staging-release-recovery-evidence.mjs",
+  "scripts/staging-release-runner.mjs",
+  "scripts/staging-release.mjs",
+  "scripts/supabase-remote-guard.mjs",
+  "scripts/test-staging-release-rehearsal.py",
+  "tests/unit/staging-release.test.ts",
+  "tests/unit/staging-commercial-certification.test.ts",
+  "tests/unit/staging-commercial-preflight.test.ts",
+  "tests/unit/staging-commercial-apply.test.ts",
+]);
+
 export function classifyChanges(files) {
+  if (
+    files.length === stagingReleaseToolingFiles.size &&
+    new Set(files).size === files.length &&
+    files.every((f) => stagingReleaseToolingFiles.has(f))
+  )
+    return { docs_only: false, configured_data_required: false };
+  if (
+    files.some(
+      (f) =>
+        f.startsWith("scripts/staging-release") ||
+        f === "config/staging-release-checkpoints.json" ||
+        f === "tests/unit/staging-release.test.ts",
+    )
+  )
+    return { docs_only: false, configured_data_required: true };
   const paddleInitialPeriodBootstrap =
     files.length === paddleInitialPeriodBootstrapFiles.size &&
     new Set(files).size === files.length &&

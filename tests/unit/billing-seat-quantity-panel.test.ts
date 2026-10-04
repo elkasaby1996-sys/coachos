@@ -37,6 +37,7 @@ const summary: NonNullable<SeatQuantityState["summary"]> = {
   manualReview: false,
 };
 const preview: SeatQuantityPreview = {
+  provider: "paddle",
   ...summary,
   currentProviderQuantity: 2,
   targetProviderQuantity: 3,
@@ -55,6 +56,27 @@ const preview: SeatQuantityPreview = {
 const render = (element: React.ReactElement) =>
   renderToStaticMarkup(React.createElement(MemoryRouter, null, element));
 describe("coach-seat presentation", () => {
+  it.each([undefined, "lemonsqueezy", "unknown"])(
+    "does not render controls for %s",
+    (provider) => {
+      mocks.state = {
+        provider,
+        available: true,
+        summary,
+        operation: null,
+      } as SeatQuantityState;
+      const html = render(
+        React.createElement(SeatQuantityPanel, {
+          owner: true,
+          refresh: vi.fn(),
+        }),
+      );
+      expect(html).not.toContain("Lemon Squeezy");
+      expect(html).not.toContain("Preview seat change");
+      expect(html).not.toContain("Confirm");
+      expect(html).not.toContain("<select");
+    },
+  );
   it("renders annual seat price, approved summary and total", () => {
     const html = render(React.createElement(SeatQuantitySummary, { summary }));
     expect(html).toContain("$120.00 USD / year");
@@ -89,7 +111,12 @@ describe("coach-seat presentation", () => {
     expect(html).toContain("/pt-hub/workspaces");
   });
   it("nonowner has no seat or operation data", () => {
-    mocks.state = { available: true, summary, operation: null };
+    mocks.state = {
+      provider: "paddle",
+      available: true,
+      summary,
+      operation: null,
+    };
     expect(
       render(
         React.createElement(SeatQuantityPanel, {
@@ -107,6 +134,8 @@ describe("coach-seat presentation", () => {
     "manual_review",
   ] as const)("renders %s without new-purchase controls", (status) => {
     mocks.state = {
+      provider: "paddle",
+      canCancel: false,
       available: true,
       summary,
       operation: {
@@ -125,7 +154,7 @@ describe("coach-seat presentation", () => {
     expect(html).toContain("Refresh coach seats");
     expect(html).not.toContain(mocks.state.operation!.id);
     if (status === "scheduled")
-      expect(html).toContain("Cancel scheduled reduction");
+      expect(html).not.toContain("Cancel scheduled reduction");
     if (status === "awaiting_payment")
       expect(html).toContain("Awaiting verified payment");
     if (status === "cancel_pending")
@@ -139,7 +168,7 @@ it("Paddle copy names the provider without claiming settlement", () => {
       preview: { ...preview, provider: "paddle" },
     }),
   );
-  expect(html).toContain("Paddle");
+  expect(html).toContain("your payment provider");
   expect(html).not.toContain("Lemon Squeezy");
   expect(html).toContain("No payment has been collected");
 });

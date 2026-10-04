@@ -275,7 +275,11 @@ describe("signed proration ingress and private diagnostics", () => {
     const rpc = vi
       .fn()
       .mockResolvedValueOnce({ error: null, data: stored })
-      .mockResolvedValueOnce({ error: null, data: { status: "applied" } });
+      .mockResolvedValueOnce({ error: null, data: { status: "applied" } })
+      .mockResolvedValueOnce({
+        error: null,
+        data: { status: "not_applicable" },
+      });
     const log = vi.spyOn(console, "warn").mockImplementation(() => {});
     const response = await createPaddleWebhookIngress(config, { rpc })(
       http(event()),
@@ -284,6 +288,7 @@ describe("signed proration ingress and private diagnostics", () => {
     expect(rpc.mock.calls.map((c) => c[0])).toEqual([
       "ingest_verified_paddle_event_v1",
       "reconcile_paddle_initial_purchase_event_v1",
+      "reconcile_billing_payment_method_preparation_v1",
     ]);
     expect(log).not.toHaveBeenCalled();
   });

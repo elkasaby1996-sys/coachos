@@ -1,13 +1,18 @@
+import {
+  projectPaddlePlanResult,
+  legacyPaddlePlanPreview,
+} from "../../supabase/functions/_shared/paddle-workflow-projection";
 import { observeEvent } from "../../supabase/functions/_shared/paddle-webhook/observation";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { handlePlanChange } from "../../supabase/functions/_shared/billing-plan-change";
 import { planChangePreviewSchema } from "../../src/features/billing/plan-change-contracts";
+import { parsePlanPreview } from "../../src/features/billing/providers/plan-preview";
 import {
   createPaddlePlanTransport,
   handlePaddlePlanAction,
 } from "../../supabase/functions/_shared/paddle-plan-change";
-import type { BillingDependencies } from "../../supabase/functions/_shared/billing-handlers";
+import type { PaddlePlanDependencies } from "../../supabase/functions/_shared/paddle-plan-change";
 
 const ref = (prefix: string, digit = "1") => `${prefix}_${digit.repeat(26)}`;
 const context = {
@@ -400,7 +405,13 @@ describe("server-only Paddle plan transport", () => {
       paddlePlans: provider,
       serviceRpc: vi.fn(async () => ({ dispatch: false })),
       ownerRpc: () => read,
-    } as unknown as BillingDependencies;
+    } as unknown as PaddlePlanDependencies;
+    deps.planAction = async (_provider, owner, token, action, input) =>
+      projectPaddlePlanResult(
+        action,
+        await handlePaddlePlanAction(deps, owner, token, action, input),
+      );
+    deps.legacyPlanPreview = legacyPaddlePlanPreview;
     const input = {
       targetPlanKey: "scale",
       targetCadence: "monthly",
@@ -435,7 +446,13 @@ describe("server-only Paddle plan transport", () => {
     const deps = {
       paddlePlans: () => ({ retrieve, preview, update }),
       serviceRpc,
-    } as unknown as BillingDependencies;
+    } as unknown as PaddlePlanDependencies;
+    deps.planAction = async (_provider, owner, token, action, input) =>
+      projectPaddlePlanResult(
+        action,
+        await handlePaddlePlanAction(deps, owner, token, action, input),
+      );
+    deps.legacyPlanPreview = legacyPaddlePlanPreview;
     const result = await handlePaddlePlanAction(
       deps,
       "owner",
@@ -564,6 +581,36 @@ const legacyPreviewSchema = z
   })
   .strict();
 
+// Established v2 validator from 99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0:
+// the frozen v1 fields plus optional quote and the positive-upgrade quote rule.
+// Do not derive this from the current neutral schema or response translator.
+const existingV2PreviewSchema = legacyPreviewSchema
+  .extend({
+    quote: z
+      .object({
+        action: z.enum(["charge", "credit"]),
+        amountMinor: z.number().int().safe().nonnegative(),
+        currencyCode: z.literal("USD"),
+      })
+      .strict()
+      .optional(),
+  })
+  .superRefine((preview, ctx) => {
+    if (
+      preview.provider === "paddle" &&
+      preview.effectiveTiming === "immediate" &&
+      preview.changeKind.endsWith("upgrade") &&
+      (!preview.quote ||
+        preview.quote.action !== "charge" ||
+        preview.quote.amountMinor === 0)
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["quote"],
+        message: "A positive provider charge quote is required.",
+      });
+  });
+
 function bridgeFixture(value: unknown = data(true), scheduled = false) {
   const base = {
     provider: "paddle",
@@ -595,7 +642,7 @@ function bridgeFixture(value: unknown = data(true), scheduled = false) {
   );
   const update = vi.spyOn(transport, "update");
   const serviceRpc = vi.fn(async (name: string) => {
-    if (name === "paddle_plan_change_route_v1") return true;
+    if (name === "billing_workflow_provider_v1") return "paddle";
     if (name === "paddle_plan_change_context_v1") return context;
     if (name === "preview_paddle_plan_change_v1")
       return {
@@ -606,10 +653,17 @@ function bridgeFixture(value: unknown = data(true), scheduled = false) {
     throw new Error("Unexpected commercial RPC");
   });
   const deps = {
+    providerAvailable: (provider) => provider === "paddle",
     authenticate: async () => ({ id: "owner" }),
     paddlePlans: () => transport,
     serviceRpc,
-  } as unknown as BillingDependencies;
+  } as unknown as PaddlePlanDependencies;
+  deps.planAction = async (_provider, owner, token, action, input) =>
+    projectPaddlePlanResult(
+      action,
+      await handlePaddlePlanAction(deps, owner, token, action, input),
+    );
+  deps.legacyPlanPreview = legacyPaddlePlanPreview;
   const input = {
     targetPlanKey: base.targetPlanKey,
     targetCadence: "monthly",
@@ -640,12 +694,12 @@ function bridgeFixture(value: unknown = data(true), scheduled = false) {
       [true, "PATCH"],
     ]);
     expect(serviceRpc.mock.calls.map(([name]) => name)).toEqual([
-      "paddle_plan_change_route_v1",
+      "billing_workflow_provider_v1",
       "paddle_plan_change_context_v1",
       "preview_paddle_plan_change_v1",
     ]);
   };
-  return { request, base, fetcher, serviceRpc, assertPreviewOnly };
+  return { request, base, fetcher, serviceRpc, assertPreviewOnly, deps };
 }
 describe("preview compatibility bridge HTTP boundary", () => {
   it("serves the frozen old strict frontend without quote or extra fields", async () => {
@@ -664,13 +718,65 @@ describe("preview compatibility bridge HTTP boundary", () => {
     ).toBe(false);
     f.assertPreviewOnly();
   });
-  it("serves an explicit v2 request accepted by the new strict frontend", async () => {
+  it("serves the established strict v2 parser and current neutral client", async () => {
     const f = bridgeFixture();
     const r = await f.request({ previewContractVersion: 2 });
+    const body = await r.json();
     expect(r.status).toBe(200);
-    expect(planChangePreviewSchema.parse(await r.json())).toEqual({
+    expect(existingV2PreviewSchema.parse(body)).toEqual({
       ...f.base,
       quote: { action: "charge", amountMinor: 2700, currencyCode: "USD" },
+    });
+    expect(body).not.toHaveProperty("billingTreatment");
+    expect(parsePlanPreview(body)).toEqual({
+      ...projectPaddlePlanResult("preview", f.base),
+      quote: { action: "charge", amountMinor: 2700, currencyCode: "USD" },
+    });
+    expect(
+      existingV2PreviewSchema.safeParse({
+        ...projectPaddlePlanResult("preview", f.base),
+        quote: { action: "charge", amountMinor: 2700, currencyCode: "USD" },
+      }).success,
+    ).toBe(false);
+    f.assertPreviewOnly();
+  });
+  it("preserves both v1 readers for a scheduled preview", async () => {
+    const f = bridgeFixture({ ...data(true), update_summary: undefined }, true);
+    const r = await f.request();
+    const body = await r.json();
+    expect(r.status).toBe(200);
+    expect(legacyPreviewSchema.parse(body)).toEqual(f.base);
+    expect(parsePlanPreview(body)).toEqual(
+      projectPaddlePlanResult("preview", f.base),
+    );
+    expect(body).not.toHaveProperty("quote");
+    f.assertPreviewOnly();
+  });
+  it("retains the v2 scheduled quote and rejects malformed legacy quotes", async () => {
+    const f = bridgeFixture(data(true), true);
+    const r = await f.request({ previewContractVersion: 2 });
+    const body = await r.json();
+    expect(r.status).toBe(200);
+    expect(existingV2PreviewSchema.parse(body)).toEqual({
+      ...f.base,
+      quote: { action: "charge", amountMinor: 2700, currencyCode: "USD" },
+    });
+    expect(parsePlanPreview(body).billingTreatment).toBe("no_immediate_charge");
+    expect(
+      existingV2PreviewSchema.safeParse({
+        ...body,
+        quote: { ...body.quote, currencyCode: "EUR" },
+      }).success,
+    ).toBe(false);
+    f.assertPreviewOnly();
+  });
+  it("fails closed for v2 when its wire translator is absent", async () => {
+    const f = bridgeFixture();
+    delete f.deps.legacyPlanPreview;
+    const r = await f.request({ previewContractVersion: 2 });
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({
+      code: "BILLING_PLAN_CHANGE_PROVIDER_FAILED",
     });
     f.assertPreviewOnly();
   });
@@ -757,9 +863,7 @@ describe("preview compatibility bridge HTTP boundary", () => {
         const body = await r.json();
         expect(r.status).toBe(200);
         expect(body).not.toHaveProperty("quote");
-        expect(planChangePreviewSchema.parse(body).effectiveAt).toBe(
-          context.periodEnd,
-        );
+        expect(parsePlanPreview(body).effectiveAt).toBe(context.periodEnd);
         f.assertPreviewOnly();
         const malformed = bridgeFixture(
           { ...data(true), update_summary: [] },

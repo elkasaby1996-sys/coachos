@@ -1,5 +1,7 @@
 # BILLING-ADAPTER-03 — provider/database compatibility and historical proof contracts
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 Design only, 2026-09-19; repository baseline `4718508`. **Recommendation: CONDITIONAL GO for an additive schema implementation after the gates below. Not a GO for Paddle integration or release.**
 
 No migration file, application code, provider API integration, database write, deployment, remote inspection or staging/production modification is part of this change. The validation SQL below is a proposed read-only proof plan, not executed results.

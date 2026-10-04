@@ -2,15 +2,15 @@
   "schemaVersion": 1,
   "environment": "staging",
   "providerEnvironment": "test",
-  "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+  "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
   "fullUnitSuiteGreen": false,
   "records": [
     {
       "scenarioId": "CERT-DEPLOY-001",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -18,8 +18,8 @@
       "scenarioId": "CERT-DEPLOY-002",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -27,8 +27,8 @@
       "scenarioId": "CERT-AUTH-001",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -36,8 +36,8 @@
       "scenarioId": "CERT-CATALOGUE-001",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -45,8 +45,8 @@
       "scenarioId": "CERT-CHECKOUT-001",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -54,8 +54,8 @@
       "scenarioId": "CERT-CHECKOUT-002",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -63,8 +63,8 @@
       "scenarioId": "CERT-WEBHOOK-001",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -72,8 +72,8 @@
       "scenarioId": "CERT-WEBHOOK-002",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -81,35 +81,17 @@
       "scenarioId": "CERT-WEBHOOK-003",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
     {
-      "scenarioId": "CERT-PORTAL-001",
+      "scenarioId": "CERT-WEBHOOK-004",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
-      "identifierHashes": [],
-      "assertions": []
-    },
-    {
-      "scenarioId": "CERT-PORTAL-002",
-      "status": "not_run",
-      "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
-      "identifierHashes": [],
-      "assertions": []
-    },
-    {
-      "scenarioId": "CERT-RECOVERY-001",
-      "status": "not_run",
-      "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -117,8 +99,8 @@
       "scenarioId": "CERT-PLAN-001",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -126,8 +108,8 @@
       "scenarioId": "CERT-PLAN-002",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -135,8 +117,17 @@
       "scenarioId": "CERT-PLAN-003",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
+      "identifierHashes": [],
+      "assertions": []
+    },
+    {
+      "scenarioId": "CERT-PLAN-004",
+      "status": "not_run",
+      "scope": "local_fixture",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -144,8 +135,8 @@
       "scenarioId": "CERT-SEAT-001",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -153,8 +144,8 @@
       "scenarioId": "CERT-SEAT-002",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -162,8 +153,35 @@
       "scenarioId": "CERT-SEAT-003",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
+      "identifierHashes": [],
+      "assertions": []
+    },
+    {
+      "scenarioId": "CERT-SEAT-004",
+      "status": "not_run",
+      "scope": "local_fixture",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
+      "identifierHashes": [],
+      "assertions": []
+    },
+    {
+      "scenarioId": "CERT-PAYMENT-001",
+      "status": "not_run",
+      "scope": "local_fixture",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
+      "identifierHashes": [],
+      "assertions": []
+    },
+    {
+      "scenarioId": "CERT-RECOVERY-001",
+      "status": "not_run",
+      "scope": "local_fixture",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -171,8 +189,8 @@
       "scenarioId": "CERT-ACCESS-001",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -180,8 +198,8 @@
       "scenarioId": "CERT-ACCESS-002",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -189,8 +207,17 @@
       "scenarioId": "CERT-ACCESS-003",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
+      "identifierHashes": [],
+      "assertions": []
+    },
+    {
+      "scenarioId": "CERT-TRIAL-001",
+      "status": "not_run",
+      "scope": "local_fixture",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -198,8 +225,26 @@
       "scenarioId": "CERT-SECURITY-001",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
+      "identifierHashes": [],
+      "assertions": []
+    },
+    {
+      "scenarioId": "CERT-SECURITY-002",
+      "status": "not_run",
+      "scope": "local_fixture",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
+      "identifierHashes": [],
+      "assertions": []
+    },
+    {
+      "scenarioId": "CERT-AMBIGUITY-001",
+      "status": "not_run",
+      "scope": "local_fixture",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     },
@@ -207,8 +252,35 @@
       "scenarioId": "CERT-ROLLBACK-001",
       "status": "not_run",
       "scope": "local_fixture",
-      "timestamp": "2026-09-13T00:00:00.000Z",
-      "commitSha": "7692f4fbc8a47a3f5a9e04a5328c3d716511ffc7",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
+      "identifierHashes": [],
+      "assertions": []
+    },
+    {
+      "scenarioId": "CERT-LS-NEGATIVE-001",
+      "status": "not_run",
+      "scope": "local_fixture",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
+      "identifierHashes": [],
+      "assertions": []
+    },
+    {
+      "scenarioId": "CERT-SUBSCRIPTION-001",
+      "status": "not_run",
+      "scope": "local_fixture",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
+      "identifierHashes": [],
+      "assertions": []
+    },
+    {
+      "scenarioId": "CERT-SUBSCRIPTION-002",
+      "status": "not_run",
+      "scope": "local_fixture",
+      "timestamp": "2026-10-03T00:00:00Z",
+      "commitSha": "99c5b0c6a45e3feaa6890c6a05e67a3bf35269b0",
       "identifierHashes": [],
       "assertions": []
     }

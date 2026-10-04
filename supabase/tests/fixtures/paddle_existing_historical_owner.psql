@@ -1,0 +1,14 @@
+-- Synthetic Paddle checkout/reconciliation for an existing terminal-history owner.
+-- Loaded only by local tests, no provider IO and no production grants.
+create function pg_temp.paddle_existing_historical_owner(u uuid) returns text language plpgsql as $$
+declare j jsonb;
+begin
+ update billing_runtime_policy set paddle_sales_enabled=true;
+ j:=begin_paddle_checkout_v1(u,'growth','monthly',0,gen_random_uuid(),true,true,'2026-09-18','2026-09-18');
+ perform mark_paddle_checkout_ready_v1(u,(j->>'attemptReference')::uuid,(j->>'operationReference')::uuid,
+  'synthetic/txn/'||u,'ready','USD',jsonb_build_array(j->'base'));
+ update billing_runtime_policy set paddle_sales_enabled=false;
+ perform pg_temp.auto_ingest(u,'transaction.completed');
+ perform pg_temp.auto_ingest(u,'subscription.created');
+ return pg_temp.auto_dispatch(u,'subscription.created');
+end $$;

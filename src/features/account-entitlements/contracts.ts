@@ -225,15 +225,45 @@ function validateLimits(
 export const effectiveAccountEntitlementsSchema = z
   .object({
     schemaVersion: z.literal(1),
+    billingUnavailable: z.boolean().optional(),
     billingAccount: billingAccountSummarySchema,
     subscription: accountSubscriptionSummarySchema,
-    limits: accountCapacityLimitsSchema,
+    limits: z.union([
+      accountCapacityLimitsSchema,
+      z
+        .object({
+          countedClients: z.literal(0),
+          includedCoachSeats: z.literal(0),
+          maxCoachSeats: z.literal(0),
+          activeWorkspaces: z.literal(0),
+          publishedPackages: z.literal(0),
+        })
+        .strict(),
+    ]),
     targetFeatureKeys: features,
     enabledFeatureKeys: features,
     computedAt: timestamp,
   })
   .strict()
   .superRefine((v, ctx) => {
+    // The server may deny an unproven paid identity without rewriting history.
+    // This flag is deny-only: it cannot grant capacity or feature access.
+    const deniedPaidState =
+      v.billingUnavailable === true &&
+      v.subscription.kind === "paid" &&
+      v.subscription.effectiveStatus === "restricted" &&
+      v.subscription.accessMode === "read_only" &&
+      Object.values(v.limits).every((value) => value === 0) &&
+      v.targetFeatureKeys.length === 0 &&
+      v.enabledFeatureKeys.length === 0;
+    if (
+      (v.billingUnavailable === true && !deniedPaidState) ||
+      (!deniedPaidState && Object.values(v.limits).some((value) => value === 0))
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Invalid unavailable billing state.",
+      });
     validateLimits(
       {
         ...v.subscription,
@@ -273,6 +303,7 @@ export const effectiveAccountEntitlementsSchema = z
         });
     } else if (
       s.effectiveStatus !== s.storedStatus &&
+      !deniedPaidState &&
       !(
         s.kind === "paid" &&
         s.cancelAtPeriodEnd &&

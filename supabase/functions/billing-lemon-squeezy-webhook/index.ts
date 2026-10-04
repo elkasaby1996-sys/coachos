@@ -1,3 +1,4 @@
-import { handleBillingWebhook } from "../_shared/billing-handlers.ts";
-import { billingDependencies } from "../_shared/billing-runtime.ts";
-Deno.serve((request) => handleBillingWebhook(request, billingDependencies()));
+import { handleDisabledLegacyCheckout } from "../_shared/billing-disabled-checkout.ts";
+
+// Retain this deployed name to overwrite the retired webhook implementation.
+Deno.serve(handleDisabledLegacyCheckout);

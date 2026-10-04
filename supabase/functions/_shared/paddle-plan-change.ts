@@ -298,9 +298,12 @@ export function createPaddlePlanTransport(
   };
 }
 export type PaddlePlanTransport = ReturnType<typeof createPaddlePlanTransport>;
+export type PaddlePlanDependencies = BillingDependencies & {
+  paddlePlans: () => PaddlePlanTransport;
+};
 
 export async function handlePaddlePlanAction(
-  deps: BillingDependencies,
+  deps: PaddlePlanDependencies,
   owner: string,
   token: string,
   action: "preview" | "apply" | "cancel" | "refresh",

@@ -1,5 +1,7 @@
 # Local billing verification and optional provider proof
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 Normal tests need neither Lemon Squeezy credentials nor provider network access. Use the existing local Supabase stack:
 
 ```powershell

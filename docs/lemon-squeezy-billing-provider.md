@@ -1,5 +1,7 @@
 # Lemon Squeezy billing foundation
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 PR-PRICE-05 integrates RepSync SaaS subscriptions purchased by PT account owners. It does not collect client-to-coach payments. Provider key: `lemonsqueezy`; environments: `test` and `live`. Nothing in this PR enables a live store or deploys infrastructure.
 
 ## Product and immutable mappings

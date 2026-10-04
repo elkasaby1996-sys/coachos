@@ -1,23 +1,14 @@
 import {
-  checkoutRequestSchema,
-  checkoutResponseSchema,
-  checkoutStateSchema,
-  type CheckoutRequest,
-  paddleCheckoutRequestSchema,
-  paddleCheckoutResponseSchema,
-  type PaddleCheckoutRequest,
+  billingCheckoutRequestSchema,
+  billingCheckoutResponseSchema,
+  type BillingCheckoutRequest,
 } from "./contracts";
 import { safeBillingError, BillingCheckoutError } from "./checkout-errors";
-import {
-  billingBrowserProvider,
-  usesPaddleCheckout,
-} from "./providers/active-provider";
-export async function createBillingCheckout(
-  input: CheckoutRequest | PaddleCheckoutRequest,
-) {
-  const parsed = (
-    usesPaddleCheckout ? paddleCheckoutRequestSchema : checkoutRequestSchema
-  ).safeParse(input);
+import { billingBrowserProvider } from "./providers/active-provider";
+export async function createBillingCheckout(input: BillingCheckoutRequest) {
+  if (!billingBrowserProvider)
+    throw safeBillingError({ code: "BILLING_PROVIDER_NOT_CONFIGURED" });
+  const parsed = billingCheckoutRequestSchema.safeParse(input);
   if (!parsed.success)
     throw safeBillingError({ code: "BILLING_INVALID_INPUT" });
   try {
@@ -35,35 +26,19 @@ export async function createBillingCheckout(
       }
       throw safeBillingError(body);
     }
-    const result = (
-      usesPaddleCheckout ? paddleCheckoutResponseSchema : checkoutResponseSchema
-    ).safeParse(data);
+    const result = billingCheckoutResponseSchema.safeParse(data);
     if (!result.success)
       throw safeBillingError({ code: "BILLING_VARIANT_MAPPING_MISMATCH" });
     return result.data;
   } catch (error) {
     if (
-      usesPaddleCheckout &&
-      (!(error instanceof BillingCheckoutError) ||
-        [
-          "BILLING_RECONCILIATION_FAILED",
-          "BILLING_VARIANT_MAPPING_MISMATCH",
-        ].includes(error.code))
+      !(error instanceof BillingCheckoutError) ||
+      [
+        "BILLING_RECONCILIATION_FAILED",
+        "BILLING_VARIANT_MAPPING_MISMATCH",
+      ].includes(error.code)
     )
       throw safeBillingError({ code: "PADDLE_CHECKOUT_RECOVERY_REQUIRED" });
-    throw safeBillingError(error);
-  }
-}
-export async function fetchBillingCheckoutState(attempt: string | null) {
-  try {
-    const { supabase } = await import("../../lib/supabase");
-    const { data, error } = await supabase.rpc(
-      "get_my_billing_checkout_state",
-      { p_attempt: attempt },
-    );
-    if (error) throw safeBillingError(error);
-    return checkoutStateSchema.parse(data);
-  } catch (error) {
     throw safeBillingError(error);
   }
 }

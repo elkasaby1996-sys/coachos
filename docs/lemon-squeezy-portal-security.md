@@ -1,5 +1,7 @@
 # Customer Portal security
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 Signed portal and payment-method URLs are bearer capabilities. They are retrieved fresh on click and are never stored in database rows, React Query result data, local/session storage, logs, or Sentry. The frontend mutation navigates internally and returns void, with retries disabled and zero cache retention. Request bodies contain purpose only. Successful responses contain purpose and the unchanged portalUrl; failures contain a safe code only. No expiresAt is derived from the provider query. Every response, including failures, has `Cache-Control: no-store, private` and `Pragma: no-cache`.
 
 ## Authorization and URL boundary

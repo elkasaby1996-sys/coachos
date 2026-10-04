@@ -1,7 +1,7 @@
 import { billingOutput } from "./billing-operator-output.mjs";
 // Phase B only. This entry point is never imported or invoked by the planner.
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import {
@@ -18,6 +18,17 @@ import {
   runPreflight,
   preflightFailureLine,
 } from "./staging-commercial-preflight.mjs";
+import { JWT_CONTRACTS } from "./billing-deployment-contract.mjs";
+import {
+  validateDryRun,
+  assertFunctionInventory,
+  assertRetiredDatabaseAuthority,
+  assertOverwriteVersions,
+} from "./billing-retirement-release.mjs";
+import {
+  readDeploymentInventory,
+  compareReviewedInventory,
+} from "./billing-retirement-remote-inventory.mjs";
 export {
   authorizationSchema,
   validateApplyAuthorization,
@@ -135,7 +146,7 @@ export function runRemote(stage, args) {
     throw remoteFailure(stage, cause);
   }
 }
-export async function apply() {
+export async function apply(dependencies = {}) {
   const { manifest, inputs, state, auth } = runPreflight("apply");
   const output = "output/staging-commercial/apply";
   const records = [];
@@ -169,6 +180,16 @@ export async function apply() {
   try {
     mkdirSync(output, { recursive: true });
     persist();
+    progress.remoteStarted = true;
+    progress.remoteStage = "read_only_inventory";
+    persist();
+    const readInventory =
+      dependencies.readDeploymentInventory ?? readDeploymentInventory;
+    const context = { inputs, auth, mode: "apply" };
+    const beforeInventory = await readInventory(context);
+    compareReviewedInventory(beforeInventory, auth);
+    progress.lastCompletedRemoteStage = "read_only_inventory";
+    persist();
     remote("link", ["link", "--project-ref", inputs.project]);
     const before = remote("migration_list_before", [
       "migration",
@@ -184,7 +205,15 @@ export async function apply() {
         auth.approvedRemoteVersions,
       ),
     );
-    remote("db_push_dry_run", ["db", "push", "--linked", "--dry-run"]);
+    const dryRun = remote("db_push_dry_run", [
+      "db",
+      "push",
+      "--linked",
+      "--dry-run",
+    ]);
+    atStage("db_push_dry_run", () =>
+      validateDryRun(dryRun, auth.retirement.expectedPendingMigrations),
+    );
     remote("db_push_apply", ["db", "push", "--linked", "--yes"]);
     for (const name of [
       ...manifest.functions.billing,
@@ -197,6 +226,7 @@ export async function apply() {
           name,
           "--project-ref",
           inputs.project,
+          ...(JWT_CONTRACTS[name] ? [] : ["--no-verify-jwt"]),
         ]);
         deployedFunctions.push(name);
       });
@@ -218,6 +248,30 @@ export async function apply() {
         versions,
       ),
     );
+    progress.remoteStage = "post_deploy_inventory";
+    persist();
+    const afterInventory = await readInventory(context);
+    assertFunctionInventory(afterInventory.inventory.functions, true);
+    assertOverwriteVersions(
+      beforeInventory.inventory.functions,
+      afterInventory.inventory.functions,
+    );
+    validateRemoteHistory(
+      manifest.migrations.approved,
+      afterInventory.inventory.facts.versions,
+      versions,
+    );
+    assertRetiredDatabaseAuthority(
+      afterInventory.inventory.facts.functions,
+      JSON.parse(
+        readFileSync(
+          "supabase/tests/fixtures/lemon_squeezy_retired_functions.json",
+          "utf8",
+        ),
+      ),
+    );
+    progress.lastCompletedRemoteStage = "post_deploy_inventory";
+    persist();
     for (const [scenarioId, code] of [
       ["CERT-DEPLOY-001", "MIGRATION_HISTORY_MATCH"],
       ["CERT-DEPLOY-002", "FUNCTION_DEPLOYED"],
@@ -270,10 +324,7 @@ if (
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   try {
-    await apply();
-    billingOutput.log(
-      "DEPLOYMENT_COMMANDS_COMPLETE_CERTIFICATION_STILL_BLOCKED",
-    );
+    throw new Error("STAGING_USE_PHASED_RELEASE_ENTRYPOINT");
   } catch (error) {
     billingOutput.error(applyFailureLine(error));
     process.exitCode = 1;

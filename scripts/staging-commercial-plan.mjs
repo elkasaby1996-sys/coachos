@@ -16,6 +16,7 @@ import {
 } from "./staging-commercial-contracts.mjs";
 import { validateProviderMappings } from "./staging-commercial-provider.mjs";
 import { validateEvidence } from "./staging-commercial-evidence.mjs";
+import { JWT_CONTRACTS } from "./billing-deployment-contract.mjs";
 
 export const DEFAULT_MANIFEST = "config/staging-commercial-certification.json";
 export function gitState(root, base) {
@@ -59,17 +60,21 @@ export function proposedCommands(manifest) {
     "npm run format",
     "npm run build",
     "npm run test:unit",
+    "Protected npm run staging:retirement:preflight: READ ONLY, compare bound inventory/backup/restore/environment evidence before mutation",
     "npm run supabase:remote -- link --project-ref <STAGING_PROJECT_REF>",
     "npm run supabase:remote -- migration list --linked",
     "ASSERT remote migration versions equal the separately reviewed prefix",
     "npm run supabase:remote -- db push --linked --dry-run",
+    "ASSERT actual dry-run suffix is exactly the reviewed ordered 185/186 suffix, or empty for reviewed redeployment; otherwise STOP",
     "npm run supabase:remote -- db push --linked --yes",
     ...[...manifest.functions.billing, ...manifest.functions.nonbilling].map(
       (name) =>
-        `npm run supabase:remote -- functions deploy ${name} --project-ref <STAGING_PROJECT_REF>`,
+        `npm run supabase:remote -- functions deploy ${name} --project-ref <STAGING_PROJECT_REF>${JWT_CONTRACTS[name] ? "" : " --no-verify-jwt"}`,
     ),
     "npm run supabase:remote -- migration list --linked",
     "ASSERT remote migration versions equal the full approved migration list",
+    "ASSERT fresh post-inventory names/JWT/version advance and zero direct/indirect LS database authority",
+    "INDEPENDENTLY VERIFY deployed artifact identity, all three tombstone responses and zero provider/DB side effects; no certification from CLI success",
     "WRITE allowlisted deployment evidence; commercial scenarios remain not_run",
   ];
 }
@@ -84,7 +89,8 @@ export function authorizationRequest(
     reviewedCommitSha: commit,
     stagingSupabaseProjectRef: "<STAGING_PROJECT_REF>",
     stagingApplicationOrigin: "<STAGING_APPLICATION_ORIGIN>",
-    lemonSqueezyTestStore: "<LEMON_SQUEEZY_TEST_STORE>",
+    activeProvider: "paddle",
+    paddleEnvironment: "sandbox",
     migrationRange: {
       first: manifest.migrations.approved[0].filename,
       last: manifest.migrations.expectedLatestMigration,
@@ -93,7 +99,7 @@ export function authorizationRequest(
     functions: manifest.functions,
     requiredSecretNames: manifest.requiredSecretNames,
     webhookEndpoint:
-      "https://<STAGING_PROJECT_REF>.supabase.co/functions/v1/billing-lemon-squeezy-webhook",
+      "https://<STAGING_PROJECT_REF>.supabase.co/functions/v1/billing-paddle-webhook",
     scenarioIds: manifest.scenarioIds,
     workflow: ".github/workflows/supabase-deploy-staging.yml",
     inputs: {
@@ -108,13 +114,16 @@ export function authorizationRequest(
       "Separate explicit authorization for named staging resources",
       "All full-unit tests green",
       "Reviewed remote migration prefix and private recoverable backup",
-      "Verified staging auth, test Store, provider mappings, function secrets and portal controls",
+      "Fresh read-only remote function/JWT/secret-name/schema/ledger inventory; exact reviewed digest rechecked before mutation",
+      "Fresh environment/commit-bound backup and restore-proof digest; only the reviewed ordered migration 185/186 suffix may be pending",
+      "Verified staging auth, Paddle sandbox catalogue/seat mappings and active secret names; no LS secret requirement",
+      "All three retired LS function names must be overwritten and independently probed before reset/certification",
       "Protected supabase-staging approval and exact current main commit",
     ],
     production:
       "Production remains untouched. No live provider operation is authorized.",
     providerOperations:
-      "No provider operation is automated here. Name and approve Store configuration, webhook registration, mapping activation and test purchases separately before the scenario run.",
+      "No provider operation is automated here. Name and separately approve Paddle sandbox webhook registration, mappings, runtime flags and synthetic transactions before certification. LS is never an active provider.",
   };
 }
 export function makePlan(manifest, input, state, label = "phase-a") {

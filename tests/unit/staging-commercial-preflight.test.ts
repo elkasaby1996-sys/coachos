@@ -21,6 +21,7 @@ import {
 import { apply } from "../../scripts/staging-commercial-apply.mjs";
 import { scanRedaction } from "../../scripts/staging-commercial-evidence.mjs";
 import { sha256 } from "../../scripts/staging-commercial-contracts.mjs";
+import { retirementFixture } from "./helpers/billing-retirement-tooling";
 
 vi.mock("node:child_process", async (original) => ({
   ...(await original<typeof import("node:child_process")>()),
@@ -59,14 +60,21 @@ function authorization() {
     ),
   );
   for (const m of mappings.mappings)
-    for (const k of ["storeRef", "productRef", "variantRef", "priceRef"])
+    for (const k of [
+      "productRef",
+      "priceRef",
+      "seatProductRef",
+      "seatPriceRef",
+    ])
       m[k] = "sha256:" + sha256(m[k]);
   return {
     reviewedCommit: commit,
     manifestSha256: sha256(JSON.stringify(manifest)),
     projectSha256: sha256(project),
     originSha256: sha256(inputs.origin),
-    approvedRemoteVersions: [],
+    approvedRemoteVersions: manifest.migrations.approved
+      .slice(0, 184)
+      .map((m: any) => m.filename.slice(0, 14)),
     backupEvidenceSha256: "b".repeat(64),
     auth: {
       siteUrl: inputs.origin,
@@ -78,9 +86,8 @@ function authorization() {
     remoteSecretNamesPresent: manifest.requiredSecretNames,
     providerEnvironment: "test",
     billingAppOrigin: inputs.origin,
-    portalAllowedHosts: ["test-store.lemonsqueezy.com"],
-    portalControlsReviewed: true,
-    webhookTestStoreReviewed: true,
+    paddleSandboxReviewed: true,
+    retirement: retirementFixture(manifest, commit, project),
     rollbackReviewed: true,
   };
 }
@@ -167,6 +174,11 @@ function fail(code: string, stage?: string) {
 }
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "commercial-preflight-"));
+  mkdirSync(join(root, "supabase/functions"), { recursive: true });
+  writeFileSync(
+    join(root, "supabase/functions/fixture.ts"),
+    "// synthetic fixture artifact\n",
+  );
   vi.spyOn(process, "cwd").mockReturnValue(root);
   vi.stubEnv("GITHUB_ACTIONS", "true");
   vi.stubEnv("GITHUB_REF", "refs/heads/main");
@@ -616,7 +628,7 @@ describe("preflight workflow and module boundaries", () => {
     expect(pre).toContain("runPreflight();");
     expect(() => requireGreenUnits(green())).not.toThrow();
   });
-  it("protects preflight without CLI setup or a remote enable flag and uploads only sanitized evidence", () => {
+  it("protects phased preflight without mutation authority and uploads only sanitized evidence", () => {
     const yaml = createRequire(import.meta.url)("js-yaml").load(
       readFileSync(
         join(repository, ".github/workflows/supabase-deploy-staging.yml"),
@@ -633,22 +645,29 @@ describe("preflight workflow and module boundaries", () => {
     expect(job.if).toBe("github.ref == 'refs/heads/main'");
     expect(job.env.ALLOW_REMOTE_SUPABASE).toBeUndefined();
     const step = job.steps.find(
-      (s: any) => s.run === "npm run staging:commercial:preflight",
+      (s: any) =>
+        s.run === 'node scripts/staging-release.mjs preflight "$RELEASE_PHASE"',
     );
     expect(step.if).toBe("inputs.mode == 'preflight'");
     expect(step.env.ALLOW_REMOTE_SUPABASE).toBeUndefined();
     expect(Object.keys(step.env).sort()).toEqual([
-      "STAGING_COMMERCIAL_AUTHORIZATION",
+      "STAGING_RELEASE_AUTHORIZATION",
+      "STAGING_RELEASE_RECOVERY_BUNDLE",
       "SUPABASE_ACCESS_TOKEN",
       "SUPABASE_DB_PASSWORD",
     ]);
     for (const s of job.steps) {
       if (
-        s.uses?.startsWith("supabase/setup-cli") ||
         s.env?.ALLOW_REMOTE_SUPABASE ||
-        s.run?.includes("staging:commercial:apply")
+        s.run?.includes("staging-release.mjs apply")
       )
         expect(s.if).toBe("inputs.mode == 'apply'");
+      if (s.uses?.startsWith("supabase/setup-cli")) {
+        expect(s.if).toBe(
+          "inputs.mode == 'preflight' || inputs.mode == 'apply'",
+        );
+        expect(s.with.version).toBe("v2.109.1");
+      }
       if (s.if !== "inputs.mode == 'apply'")
         expect(s.run ?? "").not.toMatch(
           /\blink\b|--linked|db push|functions deploy|supabase-remote-guard/,
@@ -656,8 +675,7 @@ describe("preflight workflow and module boundaries", () => {
     }
     const artifact = job.steps.find(
       (s: any) =>
-        s.with?.path ===
-        "output/staging-commercial/preflight/preflight-evidence.json",
+        s.with?.path === "output/staging-release/release-evidence.json",
     );
     expect(artifact.if).toBe(
       "always() && (inputs.mode == 'preflight' || inputs.mode == 'apply')",
@@ -668,9 +686,9 @@ describe("preflight workflow and module boundaries", () => {
       .filter((s: any) => s.uses?.startsWith("actions/upload-artifact"))
       .map((s: any) => s.with.path);
     expect(paths).toEqual([
-      "output/staging-commercial/plan/",
-      "output/staging-commercial/preflight/preflight-evidence.json",
-      "output/staging-commercial/apply/deployment-evidence.json",
+      "output/staging-release/",
+      "output/staging-release/release-evidence.json",
+      "output/staging-release/release-evidence.json",
     ]);
   });
 });

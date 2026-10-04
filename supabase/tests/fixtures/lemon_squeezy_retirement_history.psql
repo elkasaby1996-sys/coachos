@@ -1,0 +1,146 @@
+-- Synthetic v1 baseline adapted from billing_seat_quantity.sql.
+-- Caller owns the transaction; safe only in an isolated local proof database.
+insert into public.billing_provider_variant_mappings(plan_version_id,cadence,environment,provider_store_id,provider_product_id,provider_variant_id,provider_price_id,currency_code,unit_amount_minor,renewal_interval_unit,renewal_interval_quantity,status,verified_at)
+select p.id,c.cadence,'test','96001','96002',(96010+row_number() over(order by p.plan_key,c.cadence))::text,(96110+row_number() over(order by p.plan_key,c.cadence))::text,'USD',case c.cadence when 'annual' then p.annual_price_minor else p.monthly_price_minor end,case c.cadence when 'annual' then 'year' else 'month' end,1,'active',now()
+from public.commercial_plan_versions p cross join (values('monthly'),('annual')) c(cadence) where p.plan_key in ('launch','growth','scale') and p.status='active';
+create function pg_temp.coach(p_plan text,p_cadence text default 'monthly',p_environment text default 'test') returns uuid language plpgsql as $$
+declare u uuid:=gen_random_uuid(); a uuid; s uuid; m public.billing_provider_variant_mappings%rowtype; sid text;
+begin
+  insert into auth.users(id,email) values(u,u::text||'@example.test');
+  insert into public.pt_profiles(user_id,workspace_id,full_name) values(u,null,'Plan test');
+  a:=public.ensure_commercial_billing_account(u,'manual');
+  select v.* into strict m from public.billing_provider_variant_mappings v join public.commercial_plan_versions p on p.id=v.plan_version_id where p.plan_key=p_plan and v.cadence=p_cadence and v.environment=p_environment and v.status='active';
+  insert into public.account_subscriptions(billing_account_id,plan_version_id,subscription_kind,status,source,current_period_started_at,current_period_ends_at) values(a,m.plan_version_id,'paid','active','billing_provider',now()-interval '1 day',now()+interval '30 days') returning id into s;
+  sid:=(96500+(select count(*) from public.billing_provider_subscriptions))::text;
+  insert into public.billing_provider_customers(billing_account_id,provider,environment,provider_store_id,provider_customer_id) values(a,'lemonsqueezy',p_environment,m.provider_store_id,sid);
+  insert into public.billing_provider_subscriptions(billing_account_id,account_subscription_id,variant_mapping_id,provider,environment,provider_store_id,provider_customer_id,provider_subscription_id,provider_order_id,provider_order_item_id,provider_product_id,provider_variant_id,provider_price_id,first_subscription_item_id,quantity,provider_status,provider_cancelled,provider_renews_at,provider_created_at,provider_updated_at,latest_snapshot_sha256,last_reconciled_at,reconciliation_status)
+  values(a,s,m.id,'lemonsqueezy',p_environment,m.provider_store_id,sid,sid,sid,sid,m.provider_product_id,m.provider_variant_id,m.provider_price_id,sid,1,'active',false,now()+interval '30 days',now()-interval '1 day',now()-interval '1 second',repeat('0',64),now(),'processed');
+  return u;
+end $$;
+create function pg_temp.snapshot(p_owner uuid,p_plan text default null,p_cadence text default 'monthly',p_status text default 'active',p_stamp integer default 1) returns jsonb language plpgsql as $$
+declare b public.billing_provider_subscriptions%rowtype; m public.billing_provider_variant_mappings%rowtype;
+begin
+  select v.* into strict b from public.billing_provider_subscriptions v join public.billing_accounts a on a.id=v.billing_account_id where a.owner_user_id=p_owner;
+  if p_plan is null then select * into m from public.billing_provider_variant_mappings where id=b.variant_mapping_id;
+  else select v.* into m from public.billing_provider_variant_mappings v join public.commercial_plan_versions p on p.id=v.plan_version_id where p.plan_key=p_plan and v.cadence=p_cadence; end if;
+  return jsonb_build_object('provider',b.provider,'environment',b.environment,'store_id',b.provider_store_id,'subscription_id',b.provider_subscription_id,'customer_id',b.provider_customer_id,'order_id',b.provider_order_id,'order_item_id',b.provider_order_item_id,'product_id',m.provider_product_id,'variant_id',m.provider_variant_id,'price_id',m.provider_price_id,'first_subscription_item_id',b.first_subscription_item_id,'quantity',1,'status',p_status,'cancelled',p_status='cancelled','renews_at',now()+interval '30 days','ends_at',case when p_status in ('cancelled','expired') then now()+interval '30 days' else null end,'trial_ends_at',null,'created_at',b.provider_created_at,'updated_at',clock_timestamp(),'payment_processor','card');
+end $$;
+create function pg_temp.invoice(p_owner uuid,p_reason text default 'updated',p_status text default 'paid') returns jsonb language sql as $$
+select jsonb_build_object('store_id',s->>'store_id','subscription_id',s->>'subscription_id','customer_id',s->>'customer_id','test_mode',true,'billing_reason',p_reason,'status',p_status,'created_at',clock_timestamp(),'updated_at',clock_timestamp()) from (select pg_temp.snapshot(p_owner) s) t
+$$;
+create function pg_temp.plan(p_owner uuid) returns text language sql as $$ select public.resolve_account_entitlements(id)#>>'{subscription,planKey}' from public.billing_accounts where owner_user_id=p_owner $$;
+create function pg_temp.op(p_owner uuid) returns text language sql as $$ select status from public.billing_plan_change_operations where created_by_user_id=p_owner order by (status not in ('completed','canceled','failed')) desc,provider_requested_at desc,id desc limit 1 $$;
+create temp table actors(name text primary key,id uuid,operation uuid default gen_random_uuid());
+
+-- Six exact graduated contracts, private and transaction-scoped.
+insert into public.billing_quantity_price_contracts(variant_mapping_id,addon_version_id,status,pricing_scheme,base_quantity,normalized_price_contract,price_contract_sha256,verified_at)
+select m.id,a.id,'active','graduated',1,j.contract,encode(extensions.digest(j.contract::text,'sha256'),'hex'),now()
+from public.billing_provider_variant_mappings m cross join public.commercial_addon_versions a cross join lateral (
+select jsonb_build_object('price_id',m.provider_price_id,'variant_id',m.provider_variant_id,'category','subscription','scheme','graduated','usage_aggregation',null,'setup_fee_enabled',false,'setup_fee',null,'package_size',1,'trial_interval_unit',null,'trial_interval_quantity',null,'renewal_interval_unit',m.renewal_interval_unit,'renewal_interval_quantity',1,
+ 'tiers',jsonb_build_array(jsonb_build_object('last_unit',1,'unit_price',m.unit_amount_minor,'fixed_fee',0,'unit_price_decimal',null),jsonb_build_object('last_unit','inf','unit_price',case m.cadence when 'monthly' then a.monthly_unit_amount_minor else a.annual_unit_amount_minor end,'fixed_fee',0,'unit_price_decimal',null))) contract
+) j where a.status='active';
+create function pg_temp.seat_snapshot(u uuid,q integer,stamp integer default 1,plan text default null,cadence text default 'monthly') returns jsonb language sql as $$
+select s||jsonb_build_object('quantity',q,'verified_item',jsonb_build_object('item_id',s->>'first_subscription_item_id','subscription_id',s->>'subscription_id','price_id',s->>'price_id','quantity',q,'is_usage_based',false,'created_at',s->>'created_at','updated_at',s->>'updated_at')) from (select pg_temp.snapshot(u,plan,cadence,'active',stamp) s) x
+$$;
+create function pg_temp.seat_limit(u uuid,growth boolean default false) returns integer language sql as $$ select public.billing_seat_effective_limit(id,growth) from public.billing_accounts where owner_user_id=u $$;
+create function pg_temp.seat_status(u uuid) returns text language sql as $$ select status from public.billing_seat_quantity_operations where created_by_user_id=u order by created_at desc,id desc limit 1 $$;
+create function pg_temp.buy(u uuid,n integer) returns text language plpgsql as $$
+begin
+ perform public.begin_billing_seat_quantity(u,'test',n,gen_random_uuid(),pg_temp.seat_snapshot(u,1));
+ return public.finish_billing_plan_change(u,'test',pg_temp.seat_snapshot(u,1+n),pg_temp.invoice(u));
+end $$;
+-- PAY-03B reusable population. All identities and evidence are synthetic.
+-- PostgreSQL fixtures only; no HTTP/provider calls. Caller owns the transaction.
+create function pg_temp.retirement_close(u uuid, provider_state text default 'expired') returns void language plpgsql as $$
+begin
+ update public.account_subscriptions set status=case when provider_state='cancelled' then 'canceled' else 'expired' end,
+   canceled_at=case when provider_state='cancelled' then now() else null end,
+   expired_at=case when provider_state='expired' then now() else null end,status_changed_at=now(),
+   current_period_started_at=least(current_period_started_at,now()-interval '1 day'),
+   current_period_ends_at=now()-interval '1 second',cancel_at_period_end=false where billing_account_id=(select id from billing_accounts where owner_user_id=u)
+   and status not in ('canceled','expired','superseded');
+ update public.billing_provider_subscriptions set provider_status=provider_state,provider_cancelled=provider_state='cancelled',
+   provider_ends_at=now()-interval '1 second',provider_renews_at=null where billing_account_id=(select id from billing_accounts where owner_user_id=u);
+end $$;
+create function pg_temp.retirement_report() returns jsonb language plpgsql as $$
+declare report jsonb;
+begin
+ execute 'select public.inspect_lemon_squeezy_retirement_disposition_v1($1)'
+   into report using clock_timestamp();
+ return report;
+end
+$$;
+-- Production signed-ingress-shaped invoice admission, followed by real reconciliation.
+-- No signature/provider request is performed: all retained proof is synthetic.
+create function pg_temp.retirement_invoice(u uuid,event text,invoice_id text,invoice_status text,stamp integer default 5)
+returns text language plpgsql as $$
+declare payload jsonb:=pg_temp.invoice(u,'renewal',invoice_status)||jsonb_build_object(
+  'created_at',now()-interval '1 day','updated_at',now()-interval '1 hour'+make_interval(secs=>stamp)); h text; d uuid;
+begin
+ h:=encode(extensions.digest(event||invoice_id||payload::text,'sha256'),'hex');
+ d:=public.record_billing_webhook_delivery('test',event,'subscription-invoices',invoice_id,h,
+   encode(extensions.digest('test'||chr(10)||event||chr(10)||h,'sha256'),'hex'),payload);
+ return public.reconcile_billing_provider_subscription(d,pg_temp.snapshot(u,null,'monthly','expired',stamp)
+   ||jsonb_build_object('ends_at',now()-interval '1 second'));
+end $$;
+create function pg_temp.retirement_live_mappings() returns void language sql as $$
+ insert into public.billing_provider_variant_mappings(plan_version_id,cadence,environment,provider_store_id,provider_product_id,
+   provider_variant_id,provider_price_id,currency_code,unit_amount_minor,renewal_interval_unit,renewal_interval_quantity,status,verified_at)
+ select plan_version_id,cadence,'live','97001','97002',provider_variant_id,provider_price_id,currency_code,unit_amount_minor,
+   renewal_interval_unit,renewal_interval_quantity,'active',now() from public.billing_provider_variant_mappings where environment='test' and status='active'
+$$;
+-- Retained-state drift probes; never invoked by populated upgrade setup.
+create function pg_temp.retirement_orphan(kind text) returns uuid language plpgsql as $$
+declare a uuid; p uuid; x uuid:=gen_random_uuid(); y uuid; other uuid;
+begin
+ select b.billing_account_id,b.variant_mapping_id into a,p from billing_provider_subscriptions b
+   join billing_accounts ba on ba.id=b.billing_account_id join actors u on u.id=ba.owner_user_id where u.name='terminal-checkout';
+ select plan_version_id into p from billing_provider_variant_mappings where id=p;
+ if kind in ('missing','cross','cycle') then y:=gen_random_uuid(); end if;
+ if kind='unproved' then
+  select account_subscription_id into y from billing_provider_subscriptions where billing_account_id=a;
+ end if;
+ if kind='cross' then
+  select billing_account_id into other from billing_provider_subscriptions where billing_account_id<>a limit 1;
+  insert into account_subscriptions(id,billing_account_id,plan_version_id,subscription_kind,status,source,current_period_started_at,current_period_ends_at,expired_at)
+   values(y,other,p,'paid','expired','billing_provider',now()-interval '1 day',now()-interval '1 second',now());
+ end if;
+ insert into account_subscriptions(id,billing_account_id,plan_version_id,subscription_kind,status,source,
+   current_period_started_at,current_period_ends_at,expired_at,canceled_at,superseded_at,superseded_by_subscription_id)
+ values(x,a,p,'paid',case when kind='canceled' then 'canceled' when kind in ('superseded','missing','cross','cycle','unproved') then 'superseded' else 'expired' end,
+  'billing_provider',now()-interval '1 day',case when kind='future' then now()+interval '1 day' else now()-interval '1 second' end,
+  case when kind in ('expired','future') then now() end,case when kind='canceled' then now() end,
+  case when kind in ('superseded','missing','cross','cycle','unproved') then now() end,y);
+ perform billing_guard_claim_canonical(a,x,'lemonsqueezy.v1');
+ if kind='cycle' then
+  insert into account_subscriptions(id,billing_account_id,plan_version_id,subscription_kind,status,source,current_period_started_at,current_period_ends_at,superseded_at,superseded_by_subscription_id)
+   values(y,a,p,'paid','superseded','billing_provider',now()-interval '1 day',now()-interval '1 second',now(),x);
+  perform billing_guard_claim_canonical(a,y,'lemonsqueezy.v1');
+ end if;
+ return x;
+end $$;
+insert into actors(name,id) values('terminal-plan',pg_temp.coach('growth')),('terminal-seat',pg_temp.coach('growth')),
+ ('terminal-cancelled',pg_temp.coach('growth')),('terminal-checkout',pg_temp.coach('growth'));
+select public.begin_billing_plan_change(id,'test','scale','monthly',operation,pg_temp.snapshot(id)) from actors where name='terminal-plan';
+select public.finish_billing_plan_change(id,'test',pg_temp.snapshot(id,'scale'),pg_temp.invoice(id)) from actors where name='terminal-plan';
+select pg_temp.buy(id,1) from actors where name='terminal-seat';
+select pg_temp.retirement_close(id) from actors where name<>'terminal-cancelled';
+select pg_temp.retirement_close(id,'cancelled') from actors where name='terminal-cancelled';
+insert into public.billing_checkout_attempts(billing_account_id,plan_version_id,variant_mapping_id,environment,cadence,operation_id,status,
+ provider_checkout_id,provider_expires_at,expected_expires_at,creation_lease_expires_at,created_by_user_id,created_at,completed_at,completed_provider_subscription_id)
+select b.billing_account_id,m.plan_version_id,m.id,'test','monthly',gen_random_uuid(),'completed','synthetic-retired-checkout',
+ now()-interval '1 hour',now()-interval '1 hour',now()-interval '2 hours',a.id,now()-interval '3 hours',now(),b.provider_subscription_id
+from actors a join billing_provider_subscriptions b on b.billing_account_id=(select id from billing_accounts where owner_user_id=a.id)
+join billing_provider_variant_mappings m on m.id=b.variant_mapping_id where a.name='terminal-checkout';
+-- Admit the lifecycle control through the installed writer. Its fingerprint and
+-- typed provider times are real retained admission facts, not placeholders.
+create temp table retirement_anchor(delivery uuid primary key);
+insert into retirement_anchor
+select public.record_billing_webhook_delivery('test','subscription_expired','subscriptions',b.provider_subscription_id,
+ repeat('a',64),encode(extensions.digest('test'||chr(10)||'subscription_expired'||chr(10)||repeat('a',64),'sha256'),'hex'),
+ jsonb_build_object('store_id',b.provider_store_id,'subscription_id',b.provider_subscription_id,
+   'customer_id',b.provider_customer_id,'test_mode',true,'created_at',b.provider_created_at,'updated_at',b.provider_updated_at,
+   'product_id',b.provider_product_id,'variant_id',b.provider_variant_id))
+from billing_provider_subscriptions b where b.billing_account_id=(select ba.id from billing_accounts ba join actors a on a.id=ba.owner_user_id where a.name='terminal-checkout');
+update billing_provider_webhook_deliveries set processing_status='processed',processed_at=clock_timestamp()
+where id=(select delivery from retirement_anchor);

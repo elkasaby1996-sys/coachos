@@ -1,606 +1,1136 @@
 [
   {
     "id": "CERT-DEPLOY-001",
-    "title": "Migration history",
+    "title": "Reviewed retirement 185 and catalogue activation 186",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Review private backup and authorized remote ledger prefix"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "List migrations",
-      "compare exact prefix",
-      "apply reviewed pending suffix",
-      "list again"
+      "Compare the exact reviewed remote prefix through 184, 185 or 186 and the corresponding pending 185/186 suffix hashes",
+      "Apply only the separately authorized ordered suffix",
+      "Compare the complete 186 ledger, ACL/call graph and retained row hashes"
     ],
-    "expectedLocalOutcome": "Full approved history, no divergent or extra versions",
+    "expectedLocalOutcome": "186/186; zero LS authority; historical row identities unchanged; trusted monthly/annual activation",
     "expectedProviderOutcome": "No provider request",
     "requiredEvidence": [
       "MIGRATION_HISTORY_MATCH",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
-    "cleanup": ["Retain ledger; use compensating forward migration on drift"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "supabase/tests/lemon_squeezy_database_retirement.sql",
+      "tests/unit/billing-retirement-deployment.test.ts",
+      "supabase/tests/paddle_catalogue_initial_activation.sql"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-DEPLOY-002",
-    "title": "Function allowlist",
+    "title": "Complete function and JWT deployment",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Migration verification passed"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Deploy the thirteen named entries",
-      "check JWT configuration",
-      "probe owner and webhook auth boundaries"
+      "Deploy the exact 14 billing and two nonbilling entries",
+      "Overwrite all three LS endpoint names",
+      "Bind deployed function version/artifact identities and verify JWT/auth contracts"
     ],
-    "expectedLocalOutcome": "Only approved functions deployed; owner calls reject anonymous access",
-    "expectedProviderOutcome": "Webhook rejects invalid signature",
+    "expectedLocalOutcome": "Exact approved set; no omitted Paddle webhook; no deletion by omission",
+    "expectedProviderOutcome": "Paddle signature authentication remains unchanged",
     "requiredEvidence": [
       "FUNCTION_DEPLOYED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
-    "cleanup": ["Redeploy previously reviewed function revision when required"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "tests/unit/billing-retirement-deployment.test.ts",
+      "tests/unit/lemon-squeezy-application-retirement.test.ts"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-AUTH-001",
-    "title": "Signup and callback redirect",
+    "title": "Signup and callback authorization",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Auth settings and staging application origin approved"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Validate site URL and exact callback allowlist",
-      "sign up synthetic owner",
-      "follow confirmation",
-      "test malicious redirect"
+      "Verify exact approved origin/callbacks",
+      "Create isolated synthetic owner under separate authorization",
+      "Verify authenticated owner and rejected foreign account"
     ],
-    "expectedLocalOutcome": "Confirmed owner returns to staging; unapproved redirect rejected",
+    "expectedLocalOutcome": "Authentication and authorization fail closed",
     "expectedProviderOutcome": "No provider request",
     "requiredEvidence": [
       "AUTH_REDIRECT_MATCH",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
-    "cleanup": ["Disable synthetic identity after preserving audit references"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "tests/unit/auth-callback-provisioning.test.ts",
+      "tests/unit/supabase-auth-config-contract.test.ts"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-CATALOGUE-001",
-    "title": "Anonymous v2 parity",
+    "title": "Paddle catalogue and public plan parity",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Approved staging anon read and migration history"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Call anonymous v2 RPC",
-      "validate schema",
-      "compare all fields with frozen snapshot"
+      "Compare public catalogue to frozen snapshot",
+      "Verify four products and eight base/seat prices using separately authorized Paddle read-only evidence",
+      "Verify sandbox/live separation and approved tax modes"
     ],
-    "expectedLocalOutcome": "Three plans; two public features; zero public add-ons; exact fourteen-day trial",
-    "expectedProviderOutcome": "No provider request",
+    "expectedLocalOutcome": "All plan/cadence, money, quantity and product/price proofs match",
+    "expectedProviderOutcome": "Only separately authorized Paddle sandbox observations",
     "requiredEvidence": [
       "CATALOGUE_MATCH",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
-    "cleanup": ["Retain only diff paths and assertion outcome"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "tests/unit/paddle-catalogue-verifier.test.ts",
+      "tests/unit/paddle-catalogue-private-binding.test.ts"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-CHECKOUT-001",
-    "title": "Monthly activation",
+    "title": "Paddle monthly checkout",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Six verified test mappings; synthetic unconverted owner; separately approved test purchase"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Select each monthly plan at quantity one",
-      "use hosted test Checkout",
-      "deliver signed creation",
-      "refresh canonical summary"
+      "Use fresh synthetic monthly cohort and legal acknowledgement",
+      "Complete one separately authorized sandbox checkout",
+      "Wait for verified webhook, canonical activation and entitlements"
     ],
-    "expectedLocalOutcome": "One active paid row with correct monthly price and included capacity",
-    "expectedProviderOutcome": "Test monthly subscription active; no provider trial or setup fee",
+    "expectedLocalOutcome": "Exactly one commercial checkout/payment/activation; no browser authority; Launch/Growth/Scale monthly/annual are implemented locally, not remotely certified",
+    "expectedProviderOutcome": "Paddle sandbox monthly subscription only",
     "requiredEvidence": [
       "SUBSCRIPTION_ACTIVE",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
     "cleanup": [
-      "Cancel test subscription through approved operator flow; preserve history"
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
     ],
-    "status": "not_run"
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "tests/unit/paddle-checkout-orchestration.test.ts",
+      "tests/unit/paddle-browser-provider.test.ts",
+      "supabase/tests/paddle_catalogue_initial_activation.sql"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-CHECKOUT-002",
-    "title": "Annual activation",
+    "title": "Paddle annual checkout",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Annual mappings verified; isolated synthetic owner; separately approved test purchase"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Repeat activation for each annual plan",
-      "verify renewal interval and amount"
+      "Use fresh synthetic annual cohort",
+      "Complete one separately authorized sandbox checkout",
+      "Verify annual amounts, period, canonical state and entitlements"
     ],
-    "expectedLocalOutcome": "One active paid row with correct annual price and capacity",
-    "expectedProviderOutcome": "Test annual subscription active with twelve-month cadence",
+    "expectedLocalOutcome": "Annual pricing and activation independently proven; Launch/Growth/Scale monthly/annual are implemented locally, not remotely certified",
+    "expectedProviderOutcome": "Paddle sandbox annual subscription only",
     "requiredEvidence": [
       "SUBSCRIPTION_ACTIVE",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
     "cleanup": [
-      "Cancel test subscription through approved operator flow; preserve history"
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
     ],
-    "status": "not_run"
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "tests/unit/paddle-checkout.test.ts",
+      "tests/unit/paddle-checkout-runtime.test.ts",
+      "supabase/tests/paddle_catalogue_initial_activation.sql"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-WEBHOOK-001",
-    "title": "Signature rejection",
+    "title": "Paddle valid signature",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Deployed test webhook; synthetic malformed signature"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Send invalid and missing signatures with harmless synthetic body",
-      "check no ledger or access change"
+      "Capture private provider-signed raw-body delivery",
+      "Verify timestamp/HMAC acceptance and retained evidence",
+      "Check authoritative reconciliation and redacted logs"
     ],
-    "expectedLocalOutcome": "Request rejected before parsing or mutation",
-    "expectedProviderOutcome": "No provider subscription retrieval",
+    "expectedLocalOutcome": "Accepted valid evidence; no unsigned mutation",
+    "expectedProviderOutcome": "Provider delivery accepted without JWT requirement",
     "requiredEvidence": [
-      "INVALID_SIGNATURE_REJECTED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "VALID_SIGNATURE_ACCEPTED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
-    "cleanup": ["Discard synthetic request bytes; retain safe code"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "HISTORICALLY_CERTIFIED_BEFORE_CURRENT_ARCHITECTURE",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["tests/unit/paddle-webhook-ingress.test.ts"],
+    "historicalEvidence": [
+      "docs/paddle-checkout-certification-fixture.md: prior PADDLE_WEBHOOK_STAGING_INGRESS_CERTIFIED claim; must reverify after retirement"
+    ],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-WEBHOOK-002",
-    "title": "Duplicate replay",
+    "title": "Paddle invalid signature",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Authorized valid test delivery already reconciled"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Replay identical delivery twice",
-      "compare paid row, entitlement and operation counts"
+      "Send bounded missing/tampered/expired signature samples",
+      "Verify HTTP 400 and oversize 413 separately",
+      "Compare DB state before/after and log redaction"
     ],
-    "expectedLocalOutcome": "Idempotent final state with no double grant or extra paid row",
-    "expectedProviderOutcome": "No additional purchase or quantity mutation",
+    "expectedLocalOutcome": "Zero DB ingestion/mutation for invalid signatures",
+    "expectedProviderOutcome": "No provider request",
     "requiredEvidence": [
-      "REPLAY_IDEMPOTENT",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "INVALID_SIGNATURE_REJECTED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
-    "cleanup": ["Retain replay audit history"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["tests/unit/paddle-webhook-ingress.test.ts"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-WEBHOOK-003",
-    "title": "Delayed creation",
+    "title": "Paddle duplicate delivery",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Isolated test subscription; approved delivery-order drill"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Deliver invoice before creation linkage",
-      "then deliver creation and retry deferred event"
+      "Replay identical verified delivery under separate authorization",
+      "Verify idempotent receipt/payment/canonical identities"
     ],
-    "expectedLocalOutcome": "Deferred invoice converges once after creation; no early access grant",
-    "expectedProviderOutcome": "Current subscription state agrees after reconciliation",
+    "expectedLocalOutcome": "One retained logical event and financial effect",
+    "expectedProviderOutcome": "No second provider transaction",
     "requiredEvidence": [
-      "CREATION_RECONCILED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
-    ],
-    "cleanup": ["Drain deferred deliveries without deleting their history"],
-    "status": "not_run"
-  },
-  {
-    "id": "CERT-PORTAL-001",
-    "title": "Portal URL security",
-    "criticality": "critical",
-    "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Exact approved test portal hosts; paid synthetic owner"
-    ],
-    "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
-    ],
-    "steps": [
-      "Retrieve portal URL",
-      "consume privately",
-      "inject expired, wrong-host and duplicate-signature fixtures"
-    ],
-    "expectedLocalOutcome": "Only valid purpose and host accepted; no URL in logs or evidence",
-    "expectedProviderOutcome": "Test portal exposes only reviewed capabilities",
-    "requiredEvidence": [
-      "PORTAL_URL_VALIDATED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
-    ],
-    "cleanup": ["Close sessions; discard signed capabilities"],
-    "status": "not_run"
-  },
-  {
-    "id": "CERT-PORTAL-002",
-    "title": "Cancellation and resume",
-    "criticality": "critical",
-    "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Active test subscription; cancellation and resume enabled"
-    ],
-    "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
-    ],
-    "steps": [
-      "Cancel for period end",
-      "verify ends_at and retained access",
-      "resume before expiry"
-    ],
-    "expectedLocalOutcome": "Future cancellation and resumed state preserve plan and capacity",
-    "expectedProviderOutcome": "Test provider cancellation and resumption match",
-    "requiredEvidence": [
-      "CANCELLATION_RESUMED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
-    ],
-    "cleanup": ["Return synthetic subscription to approved cleanup state"],
-    "status": "not_run"
-  },
-  {
-    "id": "CERT-RECOVERY-001",
-    "title": "Payment failure and recovery",
-    "criticality": "critical",
-    "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Approved test payment-failure method; no live card data"
-    ],
-    "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
-    ],
-    "steps": [
-      "Cause approved test failure",
-      "verify grace and recovery link",
-      "recover payment",
-      "deliver signed recovered event"
-    ],
-    "expectedLocalOutcome": "Recovery restores paid access once; no unrelated capacity expansion",
-    "expectedProviderOutcome": "Test invoice transitions failed to recovered",
-    "requiredEvidence": [
-      "PAYMENT_RECOVERED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "REPLAY_IDEMPOTENT",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
     "cleanup": [
-      "Resolve all pending invoices and cancel test subscription as approved"
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
     ],
-    "status": "not_run"
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["tests/unit/paddle-webhook-ingress.test.ts"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
+  },
+  {
+    "id": "CERT-WEBHOOK-004",
+    "title": "Paddle delayed and out-of-order delivery",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
+    ],
+    "safeInputs": [
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+    ],
+    "steps": [
+      "Delay subscription/settlement events within controlled synthetic cohort",
+      "Deliver reordered verified evidence",
+      "Verify newer authoritative state and ambiguity fences"
+    ],
+    "expectedLocalOutcome": "No stale event grants or overwrites newer state",
+    "expectedProviderOutcome": "No duplicate financial action",
+    "requiredEvidence": [
+      "OUT_OF_ORDER_FENCED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
+    ],
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["tests/unit/paddle-webhook-ingress.test.ts"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-PLAN-001",
-    "title": "Immediate upgrade",
+    "title": "Paddle immediate plan upgrade",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Active test card subscription; target mapping; no pending operation"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Preview and apply upgrade",
-      "observe invoice failure and success fixtures",
-      "reconcile real test success"
+      "Preview owner upgrade and capacity",
+      "Apply one sandbox change",
+      "Verify exact settlement and canonical/entitlement update"
     ],
-    "expectedLocalOutcome": "Target entitlement waits for matching successful payment; ambiguous state blocks retries",
-    "expectedProviderOutcome": "Approved target variant and invoice agree",
+    "expectedLocalOutcome": "Upgrade applies only on valid payment evidence",
+    "expectedProviderOutcome": "Approved Paddle proration/payment behavior",
     "requiredEvidence": [
       "PLAN_UPGRADED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
-    "cleanup": ["Resolve pending operation before subscription cleanup"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["supabase/tests/paddle_plan_changes.sql"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-PLAN-002",
-    "title": "Scheduled downgrade",
+    "title": "Paddle scheduled plan downgrade",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Lower-capacity commitments validated; no pending operation"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Preview and schedule downgrade",
-      "verify effective date, reservations and renewal cadence"
+      "Preview capacity/remediation blockers",
+      "Schedule approved downgrade",
+      "Verify current entitlement retained and target growth fence"
     ],
-    "expectedLocalOutcome": "Existing entitlement retained until effective date; lower admission ceiling enforced",
-    "expectedProviderOutcome": "Future test change matches target and renewal date",
+    "expectedLocalOutcome": "Current access retained until authoritative effective boundary",
+    "expectedProviderOutcome": "Paddle scheduled change matches intent",
     "requiredEvidence": [
       "PLAN_SCHEDULED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
     "cleanup": [
-      "Cancel pending downgrade or complete approved period-end drill"
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
     ],
-    "status": "not_run"
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["supabase/tests/paddle_plan_changes.sql"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-PLAN-003",
-    "title": "Cancel scheduled downgrade",
+    "title": "Cancel scheduled plan change — intentionally unsupported",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Scheduled synthetic downgrade"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
-    "steps": ["Cancel through owner endpoint", "refresh", "replay response"],
-    "expectedLocalOutcome": "Pending change cancelled once; original capacity admission restored",
-    "expectedProviderOutcome": "Provider future change removed",
+    "steps": [
+      "Record the existing HTTP 409 BILLING_PLAN_CHANGE_CANNOT_CANCEL contract; do not attempt a provider mutation"
+    ],
+    "expectedLocalOutcome": "HTTP 409 BILLING_PLAN_CHANGE_CANNOT_CANCEL; no provider mutation; no cancellation control advertised",
+    "expectedProviderOutcome": "No request: this capability is intentionally unsupported",
     "requiredEvidence": [
-      "PLAN_SCHEDULE_CANCELLED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "PLAN_CANCELLATION_UNSUPPORTED",
+      "Local negative-path tests only; not a successful remote capability"
     ],
-    "cleanup": ["Retain cancelled operation history"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": ["INTENTIONALLY_UNSUPPORTED"],
+    "localEvidence": ["tests/unit/paddle-plan-change.test.ts"],
+    "historicalEvidence": [],
+    "requiredForCertification": false
+  },
+  {
+    "id": "CERT-PLAN-004",
+    "title": "Natural Paddle downgrade boundary",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
+    ],
+    "safeInputs": [
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+    ],
+    "steps": [
+      "Wait for a real sandbox effective boundary without editing timestamps",
+      "Retain ordered verified lifecycle evidence",
+      "Verify target canonical and capacity state"
+    ],
+    "expectedLocalOutcome": "Natural boundary applies once, with no manual time/row repair",
+    "expectedProviderOutcome": "Paddle boundary transition observed",
+    "requiredEvidence": [
+      "PLAN_BOUNDARY_APPLIED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
+    ],
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["supabase/tests/paddle_plan_changes.sql"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-SEAT-001",
-    "title": "Seat increase and payment",
+    "title": "Paddle seat increase",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "All six graduated contracts verified; active card subscription"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Increase quantity",
-      "inspect failed then successful invoice fixtures",
-      "reconcile approved test payment"
+      "Preview reserved/current seat capacity",
+      "Apply one increase",
+      "Verify proration settlement before additional-seat grant"
     ],
-    "expectedLocalOutcome": "Approved additional seats change only after matching payment; maximum enforced",
-    "expectedProviderOutcome": "Quantity equals one plus additional seats; incremental price exact",
+    "expectedLocalOutcome": "No unpaid seat grant; capacities and reservations correct",
+    "expectedProviderOutcome": "Paddle additional-seat price/quantity proven",
     "requiredEvidence": [
       "SEAT_PAYMENT_APPLIED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
-    "cleanup": ["Reduce synthetic commitments before cleanup"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["supabase/tests/paddle_seat_quantity.sql"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-SEAT-002",
-    "title": "Seat reduction",
+    "title": "Paddle seat reduction",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Synthetic seats with no blocking commitments"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Preview and schedule reduction",
-      "inspect admission ceiling",
-      "observe authorized effective date"
+      "Schedule reduction with capacity checks",
+      "Verify current seats and pending growth fence"
     ],
-    "expectedLocalOutcome": "Current paid seats persist until effective date; new admissions respect scheduled ceiling",
-    "expectedProviderOutcome": "Scheduled quantity matches approved reduction",
+    "expectedLocalOutcome": "Existing seats remain until effective boundary",
+    "expectedProviderOutcome": "Paddle reduction scheduled",
     "requiredEvidence": [
       "SEAT_REDUCTION_SCHEDULED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
-    "cleanup": ["Cancel or complete reduction before customer cleanup"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["supabase/tests/paddle_seat_quantity.sql"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-SEAT-003",
-    "title": "Cancel reduction",
+    "title": "Cancel scheduled seat change — intentionally unsupported",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Scheduled synthetic seat reduction"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Cancel reduction",
-      "refresh provider state and capacity",
-      "replay cancellation"
+      "Record the existing HTTP 409 BILLING_SEAT_QUANTITY_CANNOT_CANCEL contract; do not attempt a provider mutation"
     ],
-    "expectedLocalOutcome": "Original admission restored without duplicate operation",
-    "expectedProviderOutcome": "Scheduled quantity reduction removed",
+    "expectedLocalOutcome": "HTTP 409 BILLING_SEAT_QUANTITY_CANNOT_CANCEL; no provider mutation; no cancellation control advertised",
+    "expectedProviderOutcome": "No request: this capability is intentionally unsupported",
     "requiredEvidence": [
-      "SEAT_REDUCTION_CANCELLED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "SEAT_CANCELLATION_UNSUPPORTED",
+      "Local negative-path tests only; not a successful remote capability"
     ],
-    "cleanup": ["Preserve cancellation history"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": ["INTENTIONALLY_UNSUPPORTED"],
+    "localEvidence": ["tests/unit/paddle-seat-quantity.test.ts"],
+    "historicalEvidence": [],
+    "requiredForCertification": false
+  },
+  {
+    "id": "CERT-SEAT-004",
+    "title": "Natural Paddle seat reduction boundary",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
+    ],
+    "safeInputs": [
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+    ],
+    "steps": [
+      "Wait for real sandbox boundary",
+      "Retain verified lifecycle evidence",
+      "Verify reduced seats and reservation enforcement"
+    ],
+    "expectedLocalOutcome": "Reduction applies once at authoritative boundary",
+    "expectedProviderOutcome": "Paddle boundary quantity observed",
+    "requiredEvidence": [
+      "SEAT_BOUNDARY_APPLIED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
+    ],
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["supabase/tests/paddle_seat_quantity.sql"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
+  },
+  {
+    "id": "CERT-PAYMENT-001",
+    "title": "PAY-02 Paddle payment-method update",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
+    ],
+    "safeInputs": [
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+    ],
+    "steps": [
+      "Prepare authenticated owner-scoped update",
+      "Open existing Paddle-only SDK capability",
+      "Wait for verified preparation/state confirmation and private-value redaction"
+    ],
+    "expectedLocalOutcome": "No client-granted paid entitlement or foreign-account capability",
+    "expectedProviderOutcome": "Paddle payment-method transaction completes",
+    "requiredEvidence": [
+      "PAYMENT_METHOD_UPDATED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
+    ],
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["supabase/tests/billing_payment_method_state.sql"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
+  },
+  {
+    "id": "CERT-RECOVERY-001",
+    "title": "Paddle past-due/payment recovery",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
+    ],
+    "safeInputs": [
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+    ],
+    "steps": [
+      "Use separately authorized sandbox failure/recovery cohort",
+      "Verify past_due/grace/restricted state and owner-only recovery",
+      "Retain recovered settlement before access restoration"
+    ],
+    "expectedLocalOutcome": "Recovery boundaries and financial authority preserved",
+    "expectedProviderOutcome": "Paddle recovery independently confirmed",
+    "requiredEvidence": [
+      "PAYMENT_RECOVERED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
+    ],
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["supabase/tests/paddle_payment_recovery.sql"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-ACCESS-001",
-    "title": "Active full access",
+    "title": "Active entitlements and limits",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Active synthetic subscription and eligible owner"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Exercise create, update and delivery operations",
-      "verify other account isolation"
+      "Verify active plan features, counted clients, seats and reservations"
     ],
-    "expectedLocalOutcome": "Full authorized access; cross-owner writes denied",
-    "expectedProviderOutcome": "Active test subscription agrees",
+    "expectedLocalOutcome": "Correct full access and limits",
+    "expectedProviderOutcome": "No provider request",
     "requiredEvidence": [
       "ACCESS_FULL",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
-    "cleanup": ["Remove synthetic domain content only under reviewed cleanup"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "tests/unit/commercial-access.test.ts",
+      "supabase/tests/account_capacity_enforcement.sql"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-ACCESS-002",
-    "title": "Grace existing delivery",
+    "title": "Grace/restricted existing-delivery limits",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Approved payment failure and synthetic existing assignments"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
-    "steps": [
-      "Exercise existing delivery updates",
-      "attempt new growth operations"
-    ],
-    "expectedLocalOutcome": "Existing delivery permitted; expansion blocked according to access policy",
-    "expectedProviderOutcome": "Test past-due state reconciles to grace",
+    "steps": ["Verify existing-delivery-only behavior and blocked growth"],
+    "expectedLocalOutcome": "No new capacity under restricted state",
+    "expectedProviderOutcome": "No provider request",
     "requiredEvidence": [
       "ACCESS_EXISTING_DELIVERY",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
     "cleanup": [
-      "Recover or close synthetic obligation; retain payment history"
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
     ],
-    "status": "not_run"
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "tests/unit/commercial-access.test.ts",
+      "tests/unit/commercial-access-components.test.ts"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-ACCESS-003",
-    "title": "Expired recovery access",
+    "title": "Expired/non-paid recovery limits",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Expired synthetic subscription; recovery portal configured"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Try protected writes and recovery action",
-      "preserve historical reads"
+      "Verify expired paid state and explicit unavailable behavior",
+      "Verify trial/free capacity separately"
     ],
-    "expectedLocalOutcome": "Protected writes rejected; recovery remains reachable",
-    "expectedProviderOutcome": "Expired test subscription and recovery state agree",
+    "expectedLocalOutcome": "No LS paid fallback or accidental paid access",
+    "expectedProviderOutcome": "No provider request",
     "requiredEvidence": [
       "ACCESS_RECOVERY_ONLY",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
-    "cleanup": ["Preserve historical content and close identity access"],
-    "status": "not_run"
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "tests/unit/commercial-access.test.ts",
+      "supabase/tests/lemon_squeezy_retired_state_routing.sql"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
+  },
+  {
+    "id": "CERT-TRIAL-001",
+    "title": "Trial to Paddle paid conversion",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
+    ],
+    "safeInputs": [
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+    ],
+    "steps": [
+      "Create fresh eligible trial cohort",
+      "Complete one authorized Paddle purchase",
+      "Verify trial/canonical supersession and retained history"
+    ],
+    "expectedLocalOutcome": "Exactly one paid authority; no trial/history rewrite; Launch/Growth/Scale monthly/annual are implemented locally, not remotely certified",
+    "expectedProviderOutcome": "Paddle paid conversion confirmed",
+    "requiredEvidence": [
+      "TRIAL_CONVERTED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
+    ],
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "supabase/tests/paddle_auto_initial_purchase_reconciliation.sql",
+      "supabase/tests/paddle_catalogue_initial_activation.sql"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-SECURITY-001",
-    "title": "Log redaction",
+    "title": "Private-value redaction",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Private raw observations available to authorized operator only"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Project safe assertions",
-      "scan signed URLs, headers, JWTs, identifiers and nested objects",
-      "review any screenshots privately"
+      "Inspect sanitized browser, handler and operator evidence",
+      "Reject raw credentials, payloads, IDs and capability URLs"
     ],
-    "expectedLocalOutcome": "Only strict sanitized evidence uploaded; scanner rejects contamination",
-    "expectedProviderOutcome": "No provider payload or capability retained in artifacts",
+    "expectedLocalOutcome": "No sensitive values in retained public evidence",
+    "expectedProviderOutcome": "No provider request",
     "requiredEvidence": [
       "REDACTION_PASSED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
     "cleanup": [
-      "Delete transient raw captures; expire approved evidence after seven days"
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
     ],
-    "status": "not_run"
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["tests/unit/billing-output-redaction.test.ts"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
+  },
+  {
+    "id": "CERT-SECURITY-002",
+    "title": "Cross-account authorization",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
+    ],
+    "safeInputs": [
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+    ],
+    "steps": [
+      "Exercise foreign-account intents with synthetic authenticated actors",
+      "Verify owner guard and zero foreign mutation"
+    ],
+    "expectedLocalOutcome": "401/403 or existing fail-closed eligibility contract",
+    "expectedProviderOutcome": "No foreign provider dispatch",
+    "requiredEvidence": [
+      "CROSS_ACCOUNT_DENIED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
+    ],
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "tests/unit/paddle-shared-runtime.test.ts",
+      "supabase/tests/paddle_payment_method_authority.sql"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
+  },
+  {
+    "id": "CERT-AMBIGUITY-001",
+    "title": "Ambiguity, retry and historical ownership protection",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
+    ],
+    "safeInputs": [
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+    ],
+    "steps": [
+      "Exercise timeout/retry fixture under separate authorization",
+      "Verify one dispatch and ambiguous lease fencing",
+      "Verify retained LS ownership conflicts block unsafe Paddle attribution"
+    ],
+    "expectedLocalOutcome": "No duplicate charge, paid grant or origin reassignment",
+    "expectedProviderOutcome": "No retry-induced second provider mutation",
+    "requiredEvidence": [
+      "AMBIGUITY_FENCED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
+    ],
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "supabase/tests/billing_cross_ledger_guards.sql",
+      "tests/unit/paddle-plan-change.test.ts"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
   },
   {
     "id": "CERT-ROLLBACK-001",
-    "title": "Rollback drill",
+    "title": "Retirement-compatible rollback/recovery",
     "criticality": "critical",
     "prerequisites": [
-      "Separate named staging authorization; test provider environment only",
-      "Reviewed prior app/function revision; private backup restore proof; separately authorized drill"
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
     ],
     "safeInputs": [
-      "Synthetic isolated owner alias; no PII in artifacts",
-      "Approved plan keys launch, growth, scale; monthly or annual; provider quantity within plan maximum"
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
     ],
     "steps": [
-      "Exercise approved rollback templates",
-      "check pending retries and compensating migration",
-      "recheck auth, catalogue and existing delivery"
+      "Validate private backup restore in disposable isolated target",
+      "Rehearse reviewed Paddle-compatible forward recovery",
+      "Verify LS ACLs and tombstones cannot be rolled back to active service"
     ],
-    "expectedLocalOutcome": "Known compatible state restored with all commercial audit history preserved",
-    "expectedProviderOutcome": "Test obligations drained or explicitly owned for follow-up",
+    "expectedLocalOutcome": "Historical data recoverable; LS remains retired",
+    "expectedProviderOutcome": "No automatic provider action",
     "requiredEvidence": [
       "ROLLBACK_VERIFIED",
-      "Commit SHA, safe UTC timestamp, workflow run ID, sanitized assertions only"
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
     ],
     "cleanup": [
-      "Complete all ten cleanup templates and retain signed-off safe assertions"
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
     ],
-    "status": "not_run"
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": ["tests/unit/billing-retirement-deployment.test.ts"],
+    "historicalEvidence": [],
+    "requiredForCertification": true
+  },
+  {
+    "id": "CERT-LS-NEGATIVE-001",
+    "title": "LS negative authority and tombstone probes",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
+    ],
+    "safeInputs": [
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+    ],
+    "steps": [
+      "Probe all three tombstones: POST 410, other methods 405, inert OPTIONS and no-store",
+      "Compare provider dispatch and DB evidence for zero side effects",
+      "Probe direct/indirect LS RPC denial and unknown/missing-provider fail-closed behavior"
+    ],
+    "expectedLocalOutcome": "No LS runtime, DB authority, secret requirement, payload logging or history change",
+    "expectedProviderOutcome": "No LS provider request",
+    "requiredEvidence": [
+      "LS_RETIRED_NO_SIDE_EFFECTS",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
+    ],
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "supabase/tests/lemon_squeezy_database_retirement.sql",
+      "tests/unit/lemon-squeezy-application-retirement.test.ts"
+    ],
+    "historicalEvidence": [],
+    "requiredForCertification": true
+  },
+  {
+    "id": "CERT-SUBSCRIPTION-001",
+    "title": "Subscription cancellation support decision",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
+    ],
+    "safeInputs": [
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+    ],
+    "steps": [
+      "Inspect actual runtime capability and endpoint inventory",
+      "Record unsupported application cancellation and obtain product decision",
+      "Do not substitute scheduled plan/seat cancellation or retired portal"
+    ],
+    "expectedLocalOutcome": "UNSUPPORTED / PRODUCT DECISION REQUIRED; no application cancel command",
+    "expectedProviderOutcome": "No cancellation request implemented by RepSync",
+    "requiredEvidence": [
+      "SUBSCRIPTION_CANCELLATION_SUPPORTED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
+    ],
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": ["PRODUCT_DECISION_PENDING"],
+    "localEvidence": ["tests/unit/billing-retirement-deployment.test.ts"],
+    "historicalEvidence": [],
+    "requiredForCertification": false
+  },
+  {
+    "id": "CERT-SUBSCRIPTION-002",
+    "title": "Undo scheduled subscription cancellation / resume — separate product gap",
+    "criticality": "critical",
+    "prerequisites": [
+      "Separate explicit authorization naming environment, commit, resources and allowed actions",
+      "Verified retirement deployment, synthetic staging cohort and reviewed private backup; no production/provider action implied"
+    ],
+    "safeInputs": [
+      "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
+      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+    ],
+    "steps": [
+      "Inspect actual runtime capability and endpoint inventory",
+      "Record unsupported application resume and obtain product decision",
+      "Do not claim status presentation proves a resume capability"
+    ],
+    "expectedLocalOutcome": "UNSUPPORTED / PRODUCT DECISION REQUIRED; no application resume command",
+    "expectedProviderOutcome": "No resume request implemented by RepSync",
+    "requiredEvidence": [
+      "SUBSCRIPTION_RESUME_SUPPORTED",
+      "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
+    ],
+    "cleanup": [
+      "Stop new synthetic actions on ambiguity; preserve financial/history evidence; any cleanup requires separate scoped authorization"
+    ],
+    "status": "not_run",
+    "provider": "paddle",
+    "evidenceClasses": ["PRODUCT_DECISION_PENDING"],
+    "localEvidence": ["tests/unit/billing-retirement-deployment.test.ts"],
+    "historicalEvidence": [],
+    "requiredForCertification": false
   }
 ]

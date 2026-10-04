@@ -4,7 +4,6 @@ import {
   paddleBrowserProvider,
 } from "../../src/features/billing/providers/paddle";
 import { selectBillingBrowserProvider } from "../../src/features/billing/providers/active-provider";
-import { lemonSqueezyBrowserProvider } from "../../src/features/billing/providers/lemon-squeezy";
 import { paddleCheckoutRequestSchema } from "../../src/features/billing/contracts";
 import { legalSiteConfig } from "../../src/lib/legal-site";
 import { redactHostedPaymentUrls } from "../../src/lib/redact-hosted-payment-urls";
@@ -31,15 +30,25 @@ const body = () => ({
 });
 describe("Paddle browser boundary", () => {
   it.each([undefined, "", "unknown", "PADDLE", "lemon_squeezy"])(
-    "preserves LS default for %s",
+    "fails closed for unsupported provider configuration %s",
     (value) => {
-      expect(selectBillingBrowserProvider(value)).toBe(
-        lemonSqueezyBrowserProvider,
-      );
+      expect(selectBillingBrowserProvider(value)).toBeNull();
     },
   );
   it("explicitly selects Paddle", () =>
     expect(selectBillingBrowserProvider("paddle")).toBe(paddleBrowserProvider));
+  it.each([undefined, "unknown", "lemon_squeezy"])(
+    "never invokes a billing function for %s",
+    async (value) => {
+      vi.stubEnv("VITE_BILLING_PROVIDER", value);
+      vi.resetModules();
+      const api = await import("../../src/features/billing/checkout-api");
+      await expect(api.createBillingCheckout(body())).rejects.toMatchObject({
+        code: "BILLING_PROVIDER_NOT_CONFIGURED",
+      });
+      expect(invoke).not.toHaveBeenCalled();
+    },
+  );
   it.each([
     "https://sandbox-pay.paddle.io/checkout/synthetic-launch?transaction_id=synthetic%2Ftransaction",
     "https://sandbox.pay.paddle.io/checkout/synthetic-launch?transaction_id=synthetic%2Ftransaction",

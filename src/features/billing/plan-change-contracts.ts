@@ -1,3 +1,4 @@
+import { billingCapability } from "./provider-capabilities";
 import { z } from "zod";
 export const planKey = z.enum(["launch", "growth", "scale"]);
 export const cadence = z.enum(["monthly", "annual"]);
@@ -11,7 +12,9 @@ export const planChangeInputSchema = z
 export type PlanChangeInput = z.infer<typeof planChangeInputSchema>;
 export const planChangePreviewSchema = z
   .object({
-    provider: z.literal("paddle").optional(),
+    provider: z
+      .string()
+      .refine((provider) => billingCapability(provider, "planChanges")),
     sourcePlanKey: planKey,
     sourceCadence: cadence,
     targetPlanKey: planKey,
@@ -25,7 +28,7 @@ export const planChangePreviewSchema = z
       "combined_downgrade",
     ]),
     effectiveTiming: z.enum(["immediate", "period_end"]),
-    prorationMode: z.enum(["invoice_immediately", "disable_prorations"]),
+    billingTreatment: z.enum(["charge_now", "no_immediate_charge"]),
     currentPriceMinor: z.number().int().positive(),
     targetPriceMinor: z.number().int().positive(),
     currency: z.literal("USD"),
@@ -64,7 +67,7 @@ export const planChangePreviewSchema = z
   .strict()
   .superRefine((preview, ctx) => {
     if (
-      preview.provider === "paddle" &&
+      billingCapability(preview.provider, "planChanges") &&
       preview.effectiveTiming === "immediate" &&
       preview.changeKind.endsWith("upgrade") &&
       (!preview.quote ||
@@ -80,7 +83,11 @@ export const planChangePreviewSchema = z
 export type PlanChangePreview = z.infer<typeof planChangePreviewSchema>;
 export const planChangeStateSchema = z
   .object({
-    provider: z.literal("paddle").optional(),
+    provider: z
+      .string()
+      .refine((provider) => billingCapability(provider, "planChanges"))
+      .nullable()
+      .optional(),
     linked: z.boolean(),
     cadence: cadence.nullable(),
     eligible: z.boolean(),
@@ -108,7 +115,20 @@ export const planChangeStateSchema = z
       .strict()
       .nullable(),
   })
-  .strict();
+  .strict()
+  .superRefine((state, ctx) => {
+    if (
+      !billingCapability(state.provider, "planChanges") &&
+      (state.linked ||
+        state.eligible ||
+        state.cadence !== null ||
+        state.operation !== null)
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Billing provider is unavailable.",
+      });
+  });
 export type PlanChangeState = z.infer<typeof planChangeStateSchema>;
 const messages: Record<string, string> = {
   PAYPAL_UNSUPPORTED:

@@ -1,0 +1,13 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path=public,extensions;
+select no_plan();
+select is(public.classify_billing_plan_change('launch','monthly','growth','monthly')->>'effectiveTiming','immediate','tier upgrade immediate');
+select is(public.classify_billing_plan_change('launch','monthly','launch','annual')->>'changeKind','cadence_upgrade','annual cadence upgrade');
+select is(public.classify_billing_plan_change('launch','monthly','scale','annual')->>'changeKind','combined_upgrade','combined upgrade');
+select is(public.classify_billing_plan_change('scale','monthly','growth','annual')->>'effectiveTiming','period_end','lower rank wins');
+select is(public.classify_billing_plan_change('scale','annual','scale','monthly')->>'changeKind','cadence_downgrade','annual to monthly scheduled');
+select throws_ok($$select public.classify_billing_plan_change('launch','annual','growth','monthly')$$,'P0001','BILLING_PLAN_CHANGE_MIXED_DIRECTION_UNSUPPORTED','mixed direction rejected');
+select throws_ok($$select public.classify_billing_plan_change('launch','monthly','launch','monthly')$$,'P0001','BILLING_PLAN_CHANGE_NOOP','no-op rejected');
+select * from finish();
+rollback;

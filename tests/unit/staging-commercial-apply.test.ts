@@ -24,6 +24,13 @@ import {
   guardedArgs,
   guardedExitCode,
 } from "../../scripts/supabase-remote-guard.mjs";
+import { readDeploymentInventory } from "../../scripts/billing-retirement-remote-inventory.mjs";
+import {
+  FUNCTION_CONTRACTS,
+  JWT_CONTRACTS,
+  RETIREMENT_MIGRATION,
+  ACTIVATION_MIGRATION,
+} from "../../scripts/billing-deployment-contract.mjs";
 
 // Every process and write boundary is mocked, including the default unexpected
 // call. These tests cannot invoke Supabase or the actual protected apply entrypoint.
@@ -37,6 +44,13 @@ vi.mock("../../scripts/staging-commercial-preflight.mjs", async (original) => ({
   ...(await original<any>()),
   runPreflight: vi.fn(),
 }));
+vi.mock(
+  "../../scripts/billing-retirement-remote-inventory.mjs",
+  async (original) => ({
+    ...(await original<any>()),
+    readDeploymentInventory: vi.fn(),
+  }),
+);
 
 const manifest = JSON.parse(
   readFileSync("config/staging-commercial-certification.json", "utf8"),
@@ -78,13 +92,14 @@ const commands = [
     name,
     "--project-ref",
     project,
+    ...(JWT_CONTRACTS[name] ? [] : ["--no-verify-jwt"]),
   ]),
   ["migration", "list", "--linked", "--output-format", "json"],
 ];
 let snapshots: any[], attempted: string[][];
 function configure({
   commandFailure = -1,
-  before = ledger([]),
+  before = ledger(versions.slice(0, 184)),
   after = ledger(versions),
 } = {}) {
   vi.mocked(execFileSync).mockImplementation(
@@ -116,12 +131,15 @@ function configure({
         ? before
         : index === commands.length - 1
           ? after
-          : privateText;
+          : index === 2
+            ? `Would push: ${RETIREMENT_MIGRATION}\n${ACTIVATION_MIGRATION}`
+            : privateText;
     },
   );
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(readDeploymentInventory).mockReset();
   snapshots = [];
   attempted = [];
   vi.mocked(mkdirSync).mockImplementation(() => undefined);
@@ -135,8 +153,47 @@ beforeEach(() => {
     manifest,
     inputs: { project },
     state: { commit },
-    auth: { approvedRemoteVersions: [] },
+    auth: {
+      approvedRemoteVersions: versions.slice(0, 184),
+      retirement: {
+        environment: "staging",
+        inventorySha256: "b".repeat(64),
+        expectedPendingMigrations: [RETIREMENT_MIGRATION, ACTIVATION_MIGRATION],
+      },
+    },
   });
+  const native: string[] = JSON.parse(
+    readFileSync(
+      "supabase/tests/fixtures/lemon_squeezy_retired_functions.json",
+      "utf8",
+    ),
+  );
+  const inventory = (v: string[]) => ({
+    functions: FUNCTION_CONTRACTS.map((f) => ({
+      name: f.name,
+      id: "synthetic",
+      version: v.length === 186 ? 2 : 1,
+      verify_jwt: f.verifyJwt,
+    })),
+    facts: {
+      versions: v,
+      functions: native.map((signature) => ({
+        signature,
+        definition: "select 1;",
+        applicationExecutable: false,
+        publicExecutable: false,
+      })),
+    },
+  });
+  vi.mocked(readDeploymentInventory)
+    .mockResolvedValueOnce({
+      sha256: "b".repeat(64),
+      inventory: inventory(versions.slice(0, 184)),
+    })
+    .mockResolvedValueOnce({
+      sha256: "c".repeat(64),
+      inventory: inventory(versions),
+    });
   configure();
 });
 async function failure() {
@@ -149,7 +206,7 @@ async function failure() {
 }
 
 describe("apply remote-stage evidence", () => {
-  it("advances from the pinned JSON empty ledger to the dry-run command", async () => {
+  it("rejects the pinned JSON empty ledger instead of applying an unreviewed bootstrap suffix", async () => {
     const before = readFileSync(
       "tests/fixtures/staging-commercial/supabase-2.109.1-migration-list-empty.json",
       "utf8",
@@ -157,22 +214,18 @@ describe("apply remote-stage evidence", () => {
     // Stop at a mocked dry-run failure: no actual Supabase process is possible.
     configure({ before, commandFailure: 2 });
     const error = await failure();
-    expect(attempted).toEqual(commands.slice(0, 3));
-    for (const stage of [
-      "link",
-      "migration_list_before",
-      "history_validation_before",
-    ])
+    expect(attempted).toEqual(commands.slice(0, 2));
+    for (const stage of ["link", "migration_list_before"])
       expect(snapshots.some((e) => e.lastCompletedRemoteStage === stage)).toBe(
         true,
       );
     expect(snapshots.at(-1)).toMatchObject({
-      lastCompletedRemoteStage: "history_validation_before",
-      failedRemoteStage: "db_push_dry_run",
-      remoteErrorCode: "DB_PUSH_DRY_RUN_FAILED",
+      lastCompletedRemoteStage: "migration_list_before",
+      failedRemoteStage: "history_validation_before",
+      remoteErrorCode: "REMOTE_HISTORY_VALIDATION_FAILED",
     });
     expect(applyFailureLine(error)).toBe(
-      "STAGING_APPLY_REMOTE_FAILED:db_push_dry_run:DB_PUSH_DRY_RUN_FAILED",
+      "STAGING_APPLY_REMOTE_FAILED:history_validation_before:REMOTE_HISTORY_VALIDATION_FAILED",
     );
     expect(JSON.stringify(snapshots)).not.toContain(
       "Sanitized migration-list display message",
@@ -180,15 +233,15 @@ describe("apply remote-stage evidence", () => {
     expect(JSON.stringify(snapshots)).not.toContain('"migrations"');
   });
   it.each([
-    ["link", null, 0, 1, 0],
+    ["link", "read_only_inventory", 0, 1, 0],
     ["migration_list_before", "link", 1, 2, 0],
     ["history_validation_before", "migration_list_before", -1, 2, 0],
     ["db_push_dry_run", "history_validation_before", 2, 3, 0],
     ["db_push_apply", "db_push_dry_run", 3, 4, 0],
     ["function_deploy", "db_push_apply", 4, 5, 0],
     ["function_deploy", "function_deploy", 7, 8, 3],
-    ["migration_list_after", "function_deploy", 18, 19, 14],
-    ["history_validation_after", "migration_list_after", -1, 19, 14],
+    ["migration_list_after", "function_deploy", 20, 21, 16],
+    ["history_validation_after", "migration_list_after", -1, 21, 16],
   ])(
     "fails closed at %s after %s",
     async (stage, last, commandFailure, callCount, deployedCount) => {
@@ -240,7 +293,7 @@ describe("apply remote-stage evidence", () => {
       );
     },
   );
-  it("completes the exact 18-command sequence with JSON empty/full ledgers and remains uncertified", async () => {
+  it("preserves legacy apply regression evidence while its CLI entrypoint is disabled", async () => {
     await apply();
     expect(runPreflight).toHaveBeenCalledExactlyOnceWith("apply");
     expect(attempted).toEqual(commands);
@@ -284,7 +337,7 @@ describe("apply remote-stage evidence", () => {
     expect(JSON.stringify(snapshots)).not.toContain('"migrations"');
     expect(
       readFileSync("scripts/staging-commercial-apply.mjs", "utf8"),
-    ).toContain("DEPLOYMENT_COMMANDS_COMPLETE_CERTIFICATION_STILL_BLOCKED");
+    ).toContain('throw new Error("STAGING_USE_PHASED_RELEASE_ENTRYPOINT")');
   });
   it.each(["before", "after"])(
     "keeps malformed %s ledger output in history validation",
@@ -297,7 +350,7 @@ describe("apply remote-stage evidence", () => {
       expect(JSON.stringify(snapshots) + applyFailureLine(error)).not.toContain(
         privateText,
       );
-      expect(attempted).toHaveLength(when === "before" ? 2 : 19);
+      expect(attempted).toHaveLength(when === "before" ? 2 : 21);
     },
   );
   it.each([
