@@ -8,6 +8,20 @@ on:
         options: [plan, preflight, apply]
         default: plan
         required: true
+      phase:
+        type: choice
+        options:
+          - BASELINE_180_TO_184
+          - RETIREMENT_ACTIVATION_184_TO_186
+          - RESUME_BASELINE_180_TO_184
+          - RESUME_BASELINE_181_TO_184
+          - RESUME_BASELINE_182_TO_184
+          - RESUME_BASELINE_183_TO_184
+          - RESUME_CUTOVER_184_TO_186
+          - RESUME_ACTIVATION_185_TO_186
+          - RESUME_FINAL_186
+        default: BASELINE_180_TO_184
+        required: true
       confirm_commit_sha:
         type: string
         required: true
@@ -40,6 +54,7 @@ jobs:
       CONFIRM_PROJECT_REF: ${{ inputs.confirm_project_ref }}
       CONFIRM_APP_ORIGIN: ${{ inputs.confirm_app_origin }}
       EVIDENCE_LABEL: ${{ inputs.evidence_label }}
+      RELEASE_PHASE: ${{ inputs.phase }}
       STAGING_SUPABASE_PROJECT_REF: ${{ vars.STAGING_SUPABASE_PROJECT_REF }}
       STAGING_APPLICATION_ORIGIN: ${{ vars.STAGING_APPLICATION_ORIGIN }}
       PRODUCTION_SUPABASE_PROJECT_REF: ${{ vars.PRODUCTION_SUPABASE_PROJECT_REF }}
@@ -64,27 +79,27 @@ jobs:
         run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs
 
       - name: Test harness
-        run: npm run staging:commercial:test
+        run: npm run staging:commercial:test && npm run staging:release:test
 
       - name: Produce local-only sanitized plan
         id: plan
-        run: npm run staging:commercial:plan
+        run: node scripts/staging-release.mjs plan "$RELEASE_PHASE"
 
       - name: Upload sanitized plan
         if: always() && (steps.plan.outcome == 'success' || steps.plan.outcome == 'failure')
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: staging-commercial-plan-${{ github.run_id }}
-          path: output/staging-commercial/plan/
+          path: output/staging-release/
           retention-days: 7
           if-no-files-found: error
 
       - name: Preflight and apply quality prerequisites
         if: inputs.mode == 'preflight' || inputs.mode == 'apply'
-        run: npm run lint && npm run format && npm run build && node scripts/billing-edge-typecheck.mjs
+        run: npm run lint && npm run format && npm run build && node scripts/billing-edge-typecheck.mjs && npm run test:unit
 
-      - name: Setup pinned Supabase CLI for apply only
-        if: inputs.mode == 'apply'
+      - name: Setup pinned Supabase CLI
+        if: inputs.mode == 'preflight' || inputs.mode == 'apply'
         uses: supabase/setup-cli@v1
         with:
           version: v2.109.1
@@ -94,8 +109,9 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-          STAGING_COMMERCIAL_AUTHORIZATION: ${{ secrets.STAGING_COMMERCIAL_AUTHORIZATION }}
-        run: npm run staging:retirement:preflight
+          STAGING_RELEASE_AUTHORIZATION: ${{ secrets.STAGING_RELEASE_AUTHORIZATION }}
+          STAGING_RELEASE_RECOVERY_BUNDLE: ${{ secrets.STAGING_RELEASE_RECOVERY_BUNDLE }}
+        run: node scripts/staging-release.mjs preflight "$RELEASE_PHASE"
 
       - name: Authorized apply with blocking full unit suite
         if: inputs.mode == 'apply'
@@ -104,15 +120,17 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ vars.STAGING_SUPABASE_PROJECT_REF }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-          STAGING_COMMERCIAL_AUTHORIZATION: ${{ secrets.STAGING_COMMERCIAL_AUTHORIZATION }}
-        run: npm run staging:commercial:apply
+          STAGING_RELEASE_AUTHORIZATION: ${{ secrets.STAGING_RELEASE_AUTHORIZATION }}
+          STAGING_RELEASE_RECOVERY_BUNDLE: ${{ secrets.STAGING_RELEASE_RECOVERY_BUNDLE }}
+          STAGING_TOMBSTONE_PROBE_JWT: ${{ secrets.STAGING_TOMBSTONE_PROBE_JWT }}
+        run: node scripts/staging-release.mjs apply "$RELEASE_PHASE"
 
       - name: Upload sanitized preflight evidence
         if: always() && (inputs.mode == 'preflight' || inputs.mode == 'apply')
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: staging-commercial-preflight-${{ github.run_id }}
-          path: output/staging-commercial/preflight/preflight-evidence.json
+          path: output/staging-release/release-evidence.json
           retention-days: 7
           if-no-files-found: error
 
@@ -121,6 +139,6 @@ jobs:
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: staging-commercial-deployment-${{ github.run_id }}
-          path: output/staging-commercial/apply/deployment-evidence.json
+          path: output/staging-release/release-evidence.json
           retention-days: 7
           if-no-files-found: ignore

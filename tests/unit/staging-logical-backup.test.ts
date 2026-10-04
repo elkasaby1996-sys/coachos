@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRequire } from "node:module";
 import {
   existsSync,
@@ -14,7 +14,14 @@ import {
   sha256,
   validateBackupEnvironment,
   writeBackupEvidence,
+  captureBackupLedger,
 } from "../../scripts/staging-logical-backup.mjs";
+import {
+  LEDGER_QUERY,
+  ledgerRowsDigest,
+  validateLedgerArtifact,
+  verifyRestoredLedger,
+} from "../../scripts/staging-backup-ledger.mjs";
 import {
   MANAGED_COMPATIBILITY_EXCLUSIONS,
   filterManagedCopyBlocks,
@@ -51,12 +58,208 @@ const env = {
   GITHUB_RUN_ID: "12345",
 };
 const directories: string[] = [];
+const ledgerRows = JSON.parse(
+  readFileSync("config/staging-commercial-certification.json", "utf8"),
+)
+  .migrations.approved.slice(0, 180)
+  .map((m) => ({
+    version: m.filename.slice(0, 14),
+    name: m.filename.slice(15, -4),
+    statements: ["-- private ledger fixture"],
+  }));
+const protectedEnv = {
+  ...env,
+  GITHUB_ACTIONS: "true",
+  GITHUB_REF: "refs/heads/main",
+  GITHUB_WORKFLOW: "Supabase Staging Logical Backup",
+};
+function ledgerFixture(directory: string) {
+  const stamp = new Date().toISOString();
+  const artifact = {
+    schemaVersion: 1,
+    executionCommit: env.GITHUB_SHA,
+    projectSha256: sha256(staging),
+    startedAt: stamp,
+    completedAt: stamp,
+    rows: ledgerRows,
+  };
+  writeFileSync(
+    join(directory, "migration-ledger.json"),
+    JSON.stringify(artifact),
+  );
+  return artifact;
+}
 afterEach(() => {
   for (const directory of directories.splice(0))
     rmSync(directory, { recursive: true, force: true });
 });
 
 describe("staging backup offline validation", () => {
+  it("captures and compares full ledger rows around dumps with a read-only session", () => {
+    const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
+    directories.push(directory);
+    const execute = vi.fn(() => JSON.stringify(ledgerRows));
+    captureBackupLedger("ledger-before", protectedEnv, directory, execute);
+    captureBackupLedger("ledger-after", protectedEnv, directory, execute);
+    const bytes = readFileSync(join(directory, "migration-ledger.json"));
+    expect(existsSync(join(directory, "migration-ledger-before.json"))).toBe(
+      false,
+    );
+    const result = verifyRestoredLedger(bytes, ledgerRows, {
+      commit: env.GITHUB_SHA,
+      projectSha256: sha256(staging),
+    });
+    expect(result).toEqual({
+      migrationLedgerSha256: sha256(bytes),
+      restoredLedgerRowsSha256: ledgerRowsDigest(ledgerRows),
+      ledgerCount: 180,
+    });
+    expect(execute).toHaveBeenCalledTimes(2);
+    const [command, args, options] = execute.mock.calls[0] as any;
+    expect(command).toBe("psql");
+    expect(args).toContain("-X");
+    expect(args.join(" ")).not.toContain("sensitive-password");
+    expect(options.input).toBe(LEDGER_QUERY);
+    expect(options.env.PGOPTIONS).toContain("default_transaction_read_only=on");
+    expect(options.env).toMatchObject({
+      PGHOST: "aws-0-eu-west-1.pooler.supabase.com",
+      PGPORT: "5432",
+      PGDATABASE: "postgres",
+      PGUSER: `postgres.${staging}`,
+      PGPASSWORD: "sensitive-password",
+      PGSSLMODE: "require",
+      PGCLIENTENCODING: "UTF8",
+    });
+    for (const key of ["PGHOSTADDR", "PGSERVICE", "PGSERVICEFILE"])
+      expect(Object.hasOwn(options.env, key)).toBe(false);
+    expect(options.stdio).toEqual(["pipe", "pipe", "pipe"]);
+  });
+  it("decodes validated credentials only into the private environment and clears routing overrides", () => {
+    const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
+    directories.push(directory);
+    const execute = vi.fn(() => JSON.stringify(ledgerRows));
+    captureBackupLedger(
+      "ledger-before",
+      {
+        ...protectedEnv,
+        STAGING_SUPABASE_DB_URL: `postgres://postgres:encoded%40password@db.${staging}.supabase.co:5432/postgres`,
+        PGHOSTADDR: "192.0.2.1",
+        PGSERVICE: "other-target",
+        PGSERVICEFILE: "other-service",
+      },
+      directory,
+      execute,
+    );
+    const [, args, options] = execute.mock.calls[0] as any;
+    expect(args.join(" ")).not.toContain("password");
+    expect(options.env).toMatchObject({
+      PGHOST: `db.${staging}.supabase.co`,
+      PGUSER: "postgres",
+      PGPASSWORD: "encoded@password",
+      PGDATABASE: "postgres",
+    });
+    for (const key of ["PGHOSTADDR", "PGSERVICE", "PGSERVICEFILE"])
+      expect(Object.hasOwn(options.env, key)).toBe(false);
+  });
+  it("rejects changed historical statements even when both prefix counts agree", () => {
+    const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
+    directories.push(directory);
+    const execute = vi.fn(() => JSON.stringify(ledgerRows));
+    captureBackupLedger("ledger-before", protectedEnv, directory, execute);
+    const changed = structuredClone(ledgerRows);
+    changed[0].statements = ["-- changed"];
+    execute.mockReturnValue(JSON.stringify(changed));
+    expect(() =>
+      captureBackupLedger("ledger-after", protectedEnv, directory, execute),
+    ).toThrow("LEDGER_DRIFT");
+    expect(existsSync(join(directory, "migration-ledger.json"))).toBe(false);
+  });
+  it.each([
+    "missing",
+    "wrong project",
+    "wrong commit",
+    "reordered",
+    "modified statements",
+    "stale",
+  ])("rejects %s recovery ledger", (kind) => {
+    const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
+    directories.push(directory);
+    const artifact = ledgerFixture(directory),
+      binding = { commit: env.GITHUB_SHA, projectSha256: sha256(staging) };
+    if (kind === "missing") artifact.rows = [];
+    if (kind === "wrong project") artifact.projectSha256 = sha256(production);
+    if (kind === "wrong commit") artifact.executionCommit = "b".repeat(40);
+    if (kind === "stale")
+      artifact.startedAt = new Date(
+        Date.now() - 25 * 60 * 60_000,
+      ).toISOString();
+    const restored = structuredClone(ledgerRows);
+    if (kind === "reordered") restored.reverse();
+    if (kind === "modified statements")
+      restored[0].statements = ["-- reconstructed"];
+    expect(() =>
+      verifyRestoredLedger(
+        Buffer.from(JSON.stringify(artifact)),
+        restored,
+        binding,
+      ),
+    ).toThrow();
+  });
+  it("does not launch a ledger query outside the protected backup workflow", () => {
+    const execute = vi.fn();
+    expect(() =>
+      captureBackupLedger("ledger-before", env, "unused", execute),
+    ).toThrow("AUTHORIZATION");
+    expect(execute).not.toHaveBeenCalled();
+  });
+  it("rejects a backup with no ledger artifact before publishing evidence", () => {
+    const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
+    directories.push(directory);
+    expect(() => writeBackupEvidence(env, directory)).toThrow();
+    expect(existsSync(join(directory, "backup-evidence.json"))).toBe(false);
+  });
+  it("ages recovery evidence from the first ledger read, including collection time", () => {
+    const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
+    directories.push(directory);
+    const began = Date.now();
+    vi.useFakeTimers();
+    vi.setSystemTime(began);
+    try {
+      const execute = vi.fn(() => {
+        vi.setSystemTime(Date.now() + 20_000);
+        return JSON.stringify(ledgerRows);
+      });
+      captureBackupLedger("ledger-before", protectedEnv, directory, execute);
+      for (const filename of ["roles.sql", "schema.sql", "data.sql"])
+        writeFileSync(
+          join(directory, filename),
+          filename === "data.sql"
+            ? retainedData
+            : "-- local synthetic fixture\n",
+        );
+      vi.setSystemTime(Date.now() + 10 * 60_000);
+      captureBackupLedger("ledger-after", protectedEnv, directory, execute);
+      const evidence = writeBackupEvidence(env, directory);
+      expect(Date.parse(evidence.createdAt)).toBe(began);
+      expect(Date.now() - Date.parse(evidence.createdAt)).toBe(640_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("ignores JSON key order but preserves complete restored values", () => {
+    const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
+    directories.push(directory);
+    const artifact = ledgerFixture(directory);
+    const reorderedKeys = ledgerRows.map((row) =>
+      Object.fromEntries(Object.entries(row).reverse()),
+    );
+    expect(
+      validateLedgerArtifact(artifact, {
+        commit: env.GITHUB_SHA,
+        projectSha256: sha256(staging),
+      }).rowsSha256,
+    ).toBe(ledgerRowsDigest(reorderedKeys));
+  });
   it("accepts only bound direct or session pooler URLs", () => {
     expect(validateBackupEnvironment(env)).toEqual({
       staging,
@@ -137,6 +340,7 @@ describe("staging backup offline validation", () => {
     const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
     directories.push(directory);
     const summary = join(directory, "summary.txt");
+    ledgerFixture(directory);
     for (const filename of ["roles.sql", "schema.sql", "data.sql"])
       writeFileSync(
         join(directory, filename),
@@ -157,6 +361,10 @@ describe("staging backup offline validation", () => {
       "createdAt",
       "projectRefSha256",
       "files",
+      "migrationLedgerIncluded",
+      "migrationLedgerSha256",
+      "ledgerVersions",
+      "ledgerRowsSha256",
       "portableRestoreData",
       "managedCompatibilityExclusions",
       "authUsersIncluded",
@@ -167,7 +375,7 @@ describe("staging backup offline validation", () => {
       "remoteMutationPerformed",
     ]);
     expect(evidence).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       environment: "staging",
       commitSha: env.GITHUB_SHA,
       githubRunId: env.GITHUB_RUN_ID,
@@ -349,6 +557,7 @@ describe("managed compatibility boundary", () => {
   it("does not generate evidence for an unfiltered managed block", () => {
     const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
     directories.push(directory);
+    ledgerFixture(directory);
     for (const filename of ["roles.sql", "schema.sql", "data.sql"])
       writeFileSync(
         join(directory, filename),
@@ -433,6 +642,12 @@ describe("staging backup workflow contract", () => {
     expect(runs[0]).toBe("node scripts/staging-logical-backup.mjs validate");
     expect(runs[2]).toBe("node scripts/staging-logical-backup.mjs evidence");
     expect(runs[1]).toContain("set +x");
+    expect(runs[1].indexOf("ledger-before")).toBeLessThan(
+      runs[1].indexOf("supabase db dump"),
+    );
+    expect(runs[1].indexOf("ledger-after")).toBeGreaterThan(
+      runs[1].lastIndexOf("supabase db dump"),
+    );
     expect(runs[1]).toContain(
       'exclusions="$(node scripts/staging-logical-backup.mjs exclusions)"',
     );

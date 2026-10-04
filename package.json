@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "staging:release:plan": "node scripts/staging-release.mjs plan",
+    "staging:release:test": "vitest run tests/unit/staging-release.test.ts",
     "dev": "node --input-type=module -e \"import { dirname, join } from 'node:path'; import { pathToFileURL } from 'node:url'; await import(pathToFileURL(join(dirname(process.env.npm_package_json), 'scripts', 'run-vite-dev.mjs')).href)\" --",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
@@ -34,7 +36,7 @@
     "staging:commercial:plan": "node scripts/staging-commercial-plan.mjs",
     "staging:commercial:evidence": "node scripts/staging-commercial-evidence.mjs",
     "staging:commercial:catalogue": "node scripts/staging-commercial-catalogue.mjs",
-    "staging:commercial:apply": "node scripts/staging-commercial-apply.mjs",
+    "staging:commercial:apply": "node scripts/staging-release.mjs apply",
     "staging:commercial:test": "vitest run tests/unit/staging-commercial-certification.test.ts",
     "staging:commercial:preflight": "node scripts/staging-commercial-preflight.mjs",
     "staging:retirement:preflight": "node scripts/staging-retirement-preflight.mjs"

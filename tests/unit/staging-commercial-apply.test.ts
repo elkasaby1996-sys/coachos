@@ -293,7 +293,7 @@ describe("apply remote-stage evidence", () => {
       );
     },
   );
-  it("completes the reviewed 184-to-186 command sequence, inventory and ACL gates and remains uncertified", async () => {
+  it("preserves legacy apply regression evidence while its CLI entrypoint is disabled", async () => {
     await apply();
     expect(runPreflight).toHaveBeenCalledExactlyOnceWith("apply");
     expect(attempted).toEqual(commands);
@@ -337,7 +337,7 @@ describe("apply remote-stage evidence", () => {
     expect(JSON.stringify(snapshots)).not.toContain('"migrations"');
     expect(
       readFileSync("scripts/staging-commercial-apply.mjs", "utf8"),
-    ).toContain("DEPLOYMENT_COMMANDS_COMPLETE_CERTIFICATION_STILL_BLOCKED");
+    ).toContain('throw new Error("STAGING_USE_PHASED_RELEASE_ENTRYPOINT")');
   });
   it.each(["before", "after"])(
     "keeps malformed %s ledger output in history validation",

@@ -19,6 +19,7 @@ supabase/snippets/
 __pycache__/
 /tmp/exercise-catalog/
 /output/staging-commercial/
+/output/staging-release/
 /backup/
 
 # Defense in depth only: the verifier rejects bindings anywhere inside Git.

@@ -1,7 +1,28 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { changedFiles, classifyChanges } from "./ci-change-scope.mjs";
+import {
+  changedFiles,
+  classifyChanges,
+  stagingReleaseToolingFiles,
+} from "./ci-change-scope.mjs";
+
+test("complete PAY-05B tooling release keeps local checks without hosted writes", () => {
+  assert.deepEqual(classifyChanges([...stagingReleaseToolingFiles].reverse()), {
+    docs_only: false,
+    configured_data_required: false,
+  });
+});
+test("PAY-05B subsets, duplicates and mixed runtime/SQL inventories fail closed", () => {
+  const all = [...stagingReleaseToolingFiles];
+  for (const bad of [
+    all.slice(1),
+    [...all, all[0]],
+    [...all, "src/lib/billing.ts"],
+    [...all, "supabase/migrations/99999999999999_new.sql"],
+  ])
+    assert.equal(classifyChanges(bad).configured_data_required, true);
+});
 
 const prorationSettlementFiles = [
   "config/staging-commercial-certification.json",

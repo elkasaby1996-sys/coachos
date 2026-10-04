@@ -324,10 +324,7 @@ if (
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   try {
-    await apply();
-    billingOutput.log(
-      "DEPLOYMENT_COMMANDS_COMPLETE_CERTIFICATION_STILL_BLOCKED",
-    );
+    throw new Error("STAGING_USE_PHASED_RELEASE_ENTRYPOINT");
   } catch (error) {
     billingOutput.error(applyFailureLine(error));
     process.exitCode = 1;

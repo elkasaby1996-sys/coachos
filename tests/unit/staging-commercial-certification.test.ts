@@ -538,11 +538,25 @@ describe("apply safety and workflow contract", () => {
     ).toEqual([versions[0]]);
     expect(() => parseMigrationList("unexpected private output")).toThrow();
   });
-  it.each([1, 2])(
+  it.each([1, 2, 3])(
     "binds a schema-v%s backup digest without relaxing authorization checks",
     (backupVersion) => {
       const directory = mkdtempSync(join(tmpdir(), "cert-backup-"));
       tempDirs.push(directory);
+      const stamp = new Date().toISOString();
+      writeFileSync(
+        join(directory, "migration-ledger.json"),
+        JSON.stringify({
+          schemaVersion: 1,
+          executionCommit: commit,
+          projectSha256: sha256(project),
+          startedAt: stamp,
+          completedAt: stamp,
+          rows: manifest.migrations.approved
+            .slice(0, 180)
+            .map((m) => ({ version: m.filename.slice(0, 14), statements: [] })),
+        }),
+      );
       for (const filename of ["roles.sql", "schema.sql", "data.sql"])
         writeFileSync(
           join(directory, filename),
@@ -565,7 +579,7 @@ describe("apply safety and workflow contract", () => {
       const currentBytes = readFileSync(
         join(directory, "backup-evidence.json"),
       );
-      expect(backup.schemaVersion).toBe(2);
+      expect(backup.schemaVersion).toBe(3);
       expect(
         readFileSync(join(directory, "backup-evidence.sha256"), "utf8"),
       ).toBe(`${sha256(currentBytes)}\n`);
@@ -584,11 +598,24 @@ describe("apply safety and workflow contract", () => {
           "remoteMutationPerformed",
         ].map((key) => [key, backup[key]]),
       );
+      const legacyV2 = {
+        ...backup,
+        schemaVersion: 2,
+        files: backup.files.slice(0, 3),
+      };
+      for (const key of [
+        "migrationLedgerIncluded",
+        "migrationLedgerSha256",
+        "ledgerVersions",
+        "ledgerRowsSha256",
+      ])
+        delete legacyV2[key];
+      legacy.files = backup.files.slice(0, 3);
       const backupBytes =
-        backupVersion === 2
+        backupVersion === 3
           ? currentBytes
           : Buffer.from(
-              `${JSON.stringify({ schemaVersion: 1, ...legacy }, null, 2)}\n`,
+              `${JSON.stringify(backupVersion === 2 ? legacyV2 : { schemaVersion: 1, ...legacy }, null, 2)}\n`,
             );
       const normalized = clone(mappings);
       normalized.mappings.forEach((m: any) => {
@@ -716,12 +743,25 @@ describe("apply safety and workflow contract", () => {
     const dispatch = yaml.on.workflow_dispatch.inputs;
     expect(Object.keys(dispatch)).toEqual([
       "mode",
+      "phase",
       "confirm_commit_sha",
       "confirm_project_ref",
       "confirm_app_origin",
       "evidence_label",
     ]);
     expect(dispatch.mode.default).toBe("plan");
+    expect(dispatch.phase.default).toBe("BASELINE_180_TO_184");
+    expect(dispatch.phase.options).toEqual([
+      "BASELINE_180_TO_184",
+      "RETIREMENT_ACTIVATION_184_TO_186",
+      "RESUME_BASELINE_180_TO_184",
+      "RESUME_BASELINE_181_TO_184",
+      "RESUME_BASELINE_182_TO_184",
+      "RESUME_BASELINE_183_TO_184",
+      "RESUME_CUTOVER_184_TO_186",
+      "RESUME_ACTIVATION_185_TO_186",
+      "RESUME_FINAL_186",
+    ]);
     const job = yaml.jobs.certification,
       steps = job.steps;
     expect(job.environment).toBe("supabase-staging");
@@ -731,26 +771,48 @@ describe("apply safety and workflow contract", () => {
     expect(
       steps.filter((s: any) => s.uses?.startsWith("supabase/setup-cli")),
     ).toHaveLength(1);
-    for (const s of steps.filter(
-      (s: any) =>
-        s.uses?.startsWith("supabase/setup-cli") ||
-        s.run === "npm run staging:commercial:apply",
+    for (const s of steps.filter((s: any) =>
+      s.uses?.startsWith("supabase/setup-cli"),
     ))
-      expect(s.if).toBe("inputs.mode == 'apply'");
+      expect(s.if).toBe("inputs.mode == 'preflight' || inputs.mode == 'apply'");
+    const apply = steps.find(
+      (s: any) =>
+        s.run === 'node scripts/staging-release.mjs apply "$RELEASE_PHASE"',
+    );
+    expect(apply.if).toBe("inputs.mode == 'apply'");
+    expect(apply.env.ALLOW_REMOTE_SUPABASE).toBe(
+      "I_UNDERSTAND_THIS_TOUCHES_REMOTE",
+    );
+    expect(apply.env.STAGING_RELEASE_AUTHORIZATION).toBe(
+      "${{ secrets.STAGING_RELEASE_AUTHORIZATION }}",
+    );
+    expect(apply.env.STAGING_RELEASE_RECOVERY_BUNDLE).toBe(
+      "${{ secrets.STAGING_RELEASE_RECOVERY_BUNDLE }}",
+    );
+    expect(apply.env.STAGING_TOMBSTONE_PROBE_JWT).toBe(
+      "${{ secrets.STAGING_TOMBSTONE_PROBE_JWT }}",
+    );
+    const backupYaml = require("js-yaml").load(
+      readFileSync(".github/workflows/supabase-manual-backup.yml", "utf8"),
+    );
+    expect(backupYaml.concurrency.group).toBe(yaml.concurrency.group);
     for (const s of steps) expect(s["continue-on-error"]).toBeUndefined();
     expect(
       steps
         .filter((s: any) => s.uses?.startsWith("actions/upload-artifact"))
         .map((s: any) => s.with.path),
     ).toEqual([
-      "output/staging-commercial/plan/",
-      "output/staging-commercial/preflight/preflight-evidence.json",
-      "output/staging-commercial/apply/deployment-evidence.json",
+      "output/staging-release/",
+      "output/staging-release/release-evidence.json",
+      "output/staging-release/release-evidence.json",
     ]);
     const source = readFileSync("scripts/staging-commercial-apply.mjs", "utf8");
     expect(source.indexOf('runPreflight("apply")')).toBeLessThan(
       source.indexOf('remote("link"'),
     );
     expect(source).not.toMatch(/readdir|continue-on-error|\|\| true/);
+    expect(source).toContain(
+      'throw new Error("STAGING_USE_PHASED_RELEASE_ENTRYPOINT")',
+    );
   });
 });

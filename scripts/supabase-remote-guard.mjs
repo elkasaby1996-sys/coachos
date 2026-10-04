@@ -21,6 +21,7 @@ export function guardedArgs(args, env, linkedProject) {
     args[0] === "link" ||
     [
       "functions deploy",
+      "functions download",
       "functions delete",
       "secrets set",
       "secrets unset",

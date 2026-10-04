@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
-import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  readFileSync,
+  writeFileSync,
+  unlinkSync,
+} from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -7,9 +13,92 @@ import {
   managedExclusionArgument,
   validatePortableData,
 } from "./staging-logical-backup-data.mjs";
+import {
+  LEDGER_QUERY,
+  ledgerRowsDigest,
+  validateLedgerArtifact,
+} from "./staging-backup-ledger.mjs";
 
 export const sha256 = (bytes) =>
   createHash("sha256").update(bytes).digest("hex");
+
+export function captureBackupLedger(
+  mode,
+  env,
+  directory = "backup",
+  execute = execFileSync,
+) {
+  const { staging } = validateBackupEnvironment(env);
+  if (
+    !["ledger-before", "ledger-after"].includes(mode) ||
+    env.GITHUB_ACTIONS !== "true" ||
+    env.GITHUB_REF !== "refs/heads/main" ||
+    env.GITHUB_WORKFLOW !== "Supabase Staging Logical Backup" ||
+    !/^[a-f0-9]{40}$/.test(env.GITHUB_SHA ?? "")
+  )
+    throw new Error("BACKUP_LEDGER_AUTHORIZATION_REQUIRED");
+  // URL stays out of argv/logs; -X disables user startup SQL, and the session is read-only.
+  // PGDATABASE does not expand connection URIs. Use explicit validated libpq fields.
+  const connection = new URL(env.STAGING_SUPABASE_DB_URL);
+  const childEnv = {
+    ...env,
+    PGHOST: connection.hostname,
+    PGPORT: "5432",
+    PGDATABASE: "postgres",
+    PGUSER: decodeURIComponent(connection.username),
+    PGPASSWORD: decodeURIComponent(connection.password),
+    PGSSLMODE: "require",
+    PGCLIENTENCODING: "UTF8",
+    PGOPTIONS: "-c default_transaction_read_only=on -c statement_timeout=30000",
+    PGCONNECT_TIMEOUT: "15",
+  };
+  // An empty PGSERVICEFILE is still interpreted as a filename by libpq.
+  for (const key of ["PGHOSTADDR", "PGSERVICE", "PGSERVICEFILE"])
+    delete childEnv[key];
+  const startedAt = new Date().toISOString();
+  const rows = JSON.parse(
+    execute("psql", ["-X", "-qAt", "-v", "ON_ERROR_STOP=1"], {
+      input: LEDGER_QUERY,
+      env: childEnv,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 45_000,
+      maxBuffer: 64 * 1024 * 1024,
+    }),
+  );
+  ledgerRowsDigest(rows);
+  const stamp = new Date().toISOString();
+  const beforePath = join(directory, "migration-ledger-before.json");
+  const value = {
+    schemaVersion: 1,
+    executionCommit: env.GITHUB_SHA,
+    projectSha256: sha256(staging),
+    startedAt,
+    completedAt: stamp,
+    rows,
+  };
+  if (mode === "ledger-before") {
+    writeFileSync(beforePath, JSON.stringify(value) + "\n", {
+      flag: "wx",
+      mode: 0o600,
+    });
+    return;
+  }
+  const before = JSON.parse(readFileSync(beforePath, "utf8"));
+  const checked = validateLedgerArtifact(before, {
+    commit: env.GITHUB_SHA,
+    projectSha256: sha256(staging),
+  });
+  if (checked.rowsSha256 !== ledgerRowsDigest(rows))
+    throw new Error("BACKUP_LEDGER_DRIFT");
+  value.startedAt = before.startedAt;
+  writeFileSync(
+    join(directory, "migration-ledger.json"),
+    JSON.stringify(value) + "\n",
+    { flag: "wx", mode: 0o600 },
+  );
+  unlinkSync(beforePath);
+}
 
 // All failures are deliberately static: never expose parser errors or input values.
 export function validateBackupEnvironment(env) {
@@ -73,7 +162,18 @@ export function writeBackupEvidence(env, directory = "backup") {
     throw new Error("Invalid backup run metadata.");
   }
   let portability;
-  const files = ["roles.sql", "schema.sql", "data.sql"].map((filename) => {
+  const ledgerBytes = readFileSync(join(directory, "migration-ledger.json"));
+  const ledgerArtifact = JSON.parse(ledgerBytes);
+  const ledger = validateLedgerArtifact(ledgerArtifact, {
+    commit: env.GITHUB_SHA,
+    projectSha256: sha256(staging),
+  });
+  const files = [
+    "roles.sql",
+    "schema.sql",
+    "data.sql",
+    "migration-ledger.json",
+  ].map((filename) => {
     const bytes = readFileSync(join(directory, filename));
     if (!bytes.length) throw new Error("A required logical dump is empty.");
     if (filename === "data.sql") portability = validatePortableData(bytes);
@@ -84,14 +184,19 @@ export function writeBackupEvidence(env, directory = "backup") {
     files.map((f) => `${f.sha256}  ${f.filename}\n`).join(""),
   );
   const evidence = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     environment: "staging",
     commitSha: env.GITHUB_SHA,
     githubRunId: env.GITHUB_RUN_ID,
     evidenceLabel: label,
-    createdAt: new Date().toISOString(),
+    // Recovery age includes all component collection time, not only publication.
+    createdAt: ledgerArtifact.startedAt,
     projectRefSha256: sha256(staging),
     files,
+    migrationLedgerIncluded: true,
+    migrationLedgerSha256: sha256(ledgerBytes),
+    ledgerVersions: ledger.versions,
+    ledgerRowsSha256: ledger.rowsSha256,
     ...portability,
     storageObjectsIncluded: false,
     remoteMutationPerformed: false,
@@ -127,6 +232,8 @@ if (
 ) {
   try {
     if (process.argv[2] === "validate") validateBackupEnvironment(process.env);
+    else if (["ledger-before", "ledger-after"].includes(process.argv[2]))
+      captureBackupLedger(process.argv[2], process.env);
     else if (process.argv[2] === "evidence") writeBackupEvidence(process.env);
     else if (process.argv[2] === "exclusions")
       console.log(managedExclusionArgument());

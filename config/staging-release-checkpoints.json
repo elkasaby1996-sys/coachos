@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "frozenPayloadCommit": "9a9f79ff2ba7aada9ff2c24f162360d9c03b33a0",
+  "manifestDigest": "da6d0ba982196706dc0ea394abbc2eefce0de94ae765bd2c13fc694aa0093c86",
+  "checkpoints": {
+    "180": {
+      "digest": "77e5baefe54e1c349bc241128aad9c4565037c85467a4444904bd7c4e57cbd5e"
+    },
+    "184": {
+      "digest": "6f1c363a70aa326f2783d61029697674dd8ed01ab977e8eeceeb2e2dc407e3df"
+    },
+    "185": {
+      "digest": "c1b93faeb60f74b935670f53c85160c146417ba64dab7b2cacc421cf6a2d6a93"
+    },
+    "186": {
+      "digest": "1a8aec9148444e422a4abb75da1f398c3e14a6ee529f6084a1676acdea104dd3"
+    },
+    "181": {
+      "digest": "beac81b609c43e476e5cd77c44561d524a59e98b9673a490858f797cfa18cd60"
+    },
+    "182": {
+      "digest": "74094e4c5d533b9aba4d2becdd195356c704fbf79129cd9f6017906750ef61e3"
+    },
+    "183": {
+      "digest": "db3432ba1a3654bde16a0974f20be973cd598804a41d0129fc490740d9307e7c"
+    }
+  }
+}

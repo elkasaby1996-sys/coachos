@@ -11,3 +11,7 @@ Pause new synthetic actions on ambiguity; preserve events/leases/history. Reconc
 See [reset](staging-billing-reset.md), [evidence privacy](staging-commercial-evidence.md), [production](production-billing-retirement.md). Old runbooks are archived engineering evidence, not authorization.
 
 PAY-04 scope: migration 185 is unchanged retirement authority; migration 186 is trusted Launch/Growth/Scale monthly/annual activation and the bounded normalized paid-state seam. Scheduled plan/seat cancellation is intentionally unsupported (HTTP409 CANNOT_CANCEL); subscription cancellation/undo remains a separate product decision. No remote deployment or certification is implied.
+
+# PAY-05B phased recovery
+
+Use [phase recovery and resume](staging-release-phases.md) after any interrupted release. Fresh observation and a new envelope bind the actual 180/181/182/183/184/185/186 state and completed function substages. Never automatically resume, repair migration history or restore LS authority. At 185, prove retirement again before 186; at 186, contain and verify before final artifact redeployment.

@@ -41,10 +41,14 @@ Future apply passes --no-verify-jwt only to the two approved webhooks, validates
 
 ## Drift gates
 
-Require clean exact reviewed main SHA/base ancestry; the current uncommitted candidate is not deployable. Only the independently reviewed184,185 or186 remote prefix is allowed; pending suffix must be the exact ordered remainder of185/186 or empty for reviewed redeployment. Dry-run filenames must match before db push. Never bootstrap older prefixes, repair ledgers or include unreviewed migrations.
+Require clean exact reviewed main execution SHA/base ancestry; an uncommitted tooling candidate is not deployable. Version-2 phase contracts allow exact180 for baseline181–184, then separately authorized184→185→186 with intervening retirement/schema checkpoints. Fixed resume states require fresh observation/recovery authorization. Each bounded artifact and dry-run must match its exact phase sequence. Never repair ledgers, select arbitrary targets or include unreviewed migrations.
 
 Envelope binds manifest, complete non-private function-source artifact digest, project/origin, fresh actual read-only inventory, backup identity/digest/restore proof, disabled checkout/sales/reconciliation and expected pending suffix. Recheck schema/function/ACL/secret-name digests immediately before mutation. No secret values are logged; no LS key is required.
 
 Post-apply186 ledger, native RPC denial, zero definer bypass and complete function metadata are required. CLI completion is not certification or production release. See [staging procedure](staging-commercial-certification.md), [production readiness](production-billing-retirement.md), [evidence](staging-commercial-evidence.md) and [rollback](staging-commercial-rollback.md). Original outdated manifests are archived.
 
 PAY-04 scope: migration 185 is unchanged retirement authority; migration 186 is trusted Launch/Growth/Scale monthly/annual activation and the bounded normalized paid-state seam. Scheduled plan/seat cancellation is intentionally unsupported (HTTP409 CANNOT_CANCEL); subscription cancellation/undo remains a separate product decision. No remote deployment or certification is implied.
+
+# PAY-05B bounded deployment artifacts
+
+The canonical [phase procedure](staging-release-phases.md) preserves this full 186-migration manifest. Disposable artifacts project exact fixed prefixes 184, 185 and 186; every filename/hash is checked before guarded execution. This projection never edits or hides canonical migrations. The final billing payload is frozen at `9a9f79ff2ba7aada9ff2c24f162360d9c03b33a0`; release tooling successors must preserve it.
