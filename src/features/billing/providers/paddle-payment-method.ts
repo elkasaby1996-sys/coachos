@@ -63,12 +63,22 @@ export function createPaddlePaymentMethodBrowser(
     return initialization;
   }
   return {
+    accepts: (value) =>
+      value.provider === "paddle" &&
+      value.environment === "test" &&
+      /^txn_[a-z0-9]{26}$/.test(value.token),
     async ready() {
       await instance();
     },
     async open(value) {
       const parsed = paymentMethodContinuationSchema.safeParse(value);
-      if (!parsed.success) throw new PaymentMethodError("client_launch");
+      if (
+        !parsed.success ||
+        parsed.data.provider !== "paddle" ||
+        parsed.data.environment !== "test" ||
+        !/^txn_[a-z0-9]{26}$/.test(parsed.data.token)
+      )
+        throw new PaymentMethodError("client_launch");
       const sdk = await instance();
       try {
         sdk.Checkout.open({ transactionId: parsed.data.token });

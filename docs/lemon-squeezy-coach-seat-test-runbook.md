@@ -1,5 +1,7 @@
 # Coach-seat test runbook
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 ## Deterministic local checks
 
 Normal tests use injected provider objects and transport; no provider credentials or Lemon Squeezy network request is required. SQL fixtures are transaction-scoped and roll back. Browser fixtures create independent owner/subscription/operation identities per worker and use only local Supabase. The shared deterministic mapping catalogue is immutable.

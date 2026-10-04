@@ -7,7 +7,7 @@ import {
   waitForBootstrapResolved,
 } from "./utils/test-helpers";
 
-for (const outcome of [
+const outcomes = [
   "ready",
   "legacy",
   "unsafe",
@@ -15,8 +15,25 @@ for (const outcome of [
   "pilot_disabled",
   "forbidden",
   "ambiguous",
-] as const) {
-  test(`Paddle checkout ${outcome} uses only the authenticated browser contract`, async ({
+] as const;
+const cases = [
+  ...outcomes.map((outcome) => ({
+    outcome,
+    plan: "growth",
+    cadence: "monthly",
+    name: outcome,
+  })),
+  ...["launch", "growth", "scale"].flatMap((plan) =>
+    ["monthly", "annual"].map((cadence) => ({
+      outcome: "ready" as const,
+      plan,
+      cadence,
+      name: `${plan}-${cadence}`,
+    })),
+  ),
+];
+for (const { outcome, plan, cadence, name } of cases) {
+  test(`Paddle checkout ${name} uses only the authenticated browser contract`, async ({
     page,
     context,
   }, info) => {
@@ -71,6 +88,8 @@ for (const outcome of [
           "planKey",
         ]);
         expect(body.additionalCoachSeats).toBe(0);
+        expect(body.planKey).toBe(plan);
+        expect(body.cadence).toBe(cadence);
         expect(body.legal.termsAccepted).toBe(true);
         expect(body.legal.refundAcknowledged).toBe(true);
         expect(JSON.stringify(body)).not.toMatch(
@@ -112,6 +131,10 @@ for (const outcome of [
     await waitForBootstrapResolved(page);
     await page.goto("/pt-hub/settings/billing");
     await waitForBootstrapResolved(page);
+    await page.getByLabel("Plan", { exact: true }).selectOption(plan);
+    await page
+      .getByLabel("Billing frequency", { exact: true })
+      .selectOption(cadence);
     const start = page.getByRole("button", {
       name: "Start subscription",
       exact: true,

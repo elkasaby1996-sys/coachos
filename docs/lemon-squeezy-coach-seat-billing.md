@@ -1,5 +1,7 @@
 # Additional coach-seat billing
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 PR-PRICE-09 implements additional seats on the existing subscription's first Subscription Item. It does not provision provider products, deploy functions, change a remote Store or enable live billing.
 
 ## Commercial contract

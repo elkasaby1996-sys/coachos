@@ -1,5 +1,7 @@
 # Coach-seat security boundary
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 Only an authenticated billing owner with a canonical PT profile and current paid provider-linked subscription can request a seat change. Commercial/provider states must be healthy and active, reconciliation processed, cancellation absent, payment processor card-backed, and mapping/quantity contract active. Trial, complimentary, custom, absent subscriptions, PayPal, unknown processors and unhealthy subscriptions cannot purchase seats.
 
 The browser supplies only `targetAdditionalSeats` for preview; target plus `operationId` for apply; operation ID for cancel; and an empty object for refresh. Extra keys, fractional/negative/over-maximum targets and malformed IDs are rejected. Account, subscription, Item, Price, mapping, currency, amount, proration flags and effective dates are resolved server-side.

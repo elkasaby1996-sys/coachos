@@ -157,12 +157,14 @@ export function PtHubSettingsBillingTab() {
               entitlementsQuery.data.billingAccount.requestedPaidPlanKey
             }
             subscription={subscription}
+            billingUnavailable={entitlementsQuery.data.billingUnavailable}
             refresh={refreshBilling}
           />
         ) : null}
       </SettingsSectionCard>
 
       {entitlementsQuery.data?.billingAccount.canManageBilling &&
+      !entitlementsQuery.data.billingUnavailable &&
       subscription?.kind === "paid" ? (
         <div id="coach-seats">
           <SettingsSectionCard
@@ -175,6 +177,7 @@ export function PtHubSettingsBillingTab() {
       ) : null}
 
       {entitlementsQuery.data?.billingAccount.canManageBilling &&
+      !entitlementsQuery.data.billingUnavailable &&
       subscription?.kind === "paid" ? (
         <SettingsSectionCard
           title="Plan changes"

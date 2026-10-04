@@ -1,5 +1,7 @@
 # Controlled subscription plan changes
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 PR-PRICE-07 adds owner-controlled card subscription changes. It does not enable live billing. Product/Variant/Price mappings must already be verified; this migration creates none. Existing plan prices and capacities remain unchanged.
 
 ## Classification and prices

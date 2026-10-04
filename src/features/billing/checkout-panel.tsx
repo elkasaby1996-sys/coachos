@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import {
   PUBLIC_PLAN_SNAPSHOT_V1,
@@ -7,7 +6,6 @@ import {
 } from "../commercial-catalogue/public-plan-snapshot";
 import type { PublicPlanKey } from "../commercial-catalogue/contracts";
 import { BillingCheckoutError } from "./checkout-errors";
-import { checkoutReturnState } from "./checkout-return-state";
 import { useBillingCheckout } from "./use-billing-checkout";
 import { billingBrowserProvider } from "./providers/active-provider";
 import { legalSiteConfig } from "../../lib/legal-site";
@@ -16,57 +14,27 @@ export function BillingCheckoutPanel({
   owner,
   requestedPlan,
   subscription,
-  refresh,
+  billingUnavailable = false,
 }: {
   owner: boolean;
   requestedPlan: PublicPlanKey;
   subscription: { kind: string | null; effectiveStatus: string } | undefined;
+  billingUnavailable?: boolean;
   refresh: () => Promise<unknown>;
 }) {
-  const [search, setSearch] = useSearchParams();
-  const attempt = null;
   const [additionalCoachSeats, setAdditionalCoachSeats] = useState(0);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [refundAcknowledged, setRefundAcknowledged] = useState(false);
   const [plan, setPlan] = useState<PublicPlanKey>(requestedPlan);
   const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
-  const [pollUntil, setPollUntil] = useState(() =>
-    attempt ? Date.now() + 30_000 : 0,
-  );
-  const [now, setNow] = useState(Date.now);
   const [redirecting, setRedirecting] = useState(false);
   const lock = useRef(false);
-  const billing = useBillingCheckout(
-    attempt,
-    Boolean(attempt && now < pollUntil),
-    owner,
-  );
-  const returnState = checkoutReturnState(
-    attempt,
-    billing.state.data,
-    subscription,
-  );
+  const billing = useBillingCheckout();
   const paid =
     subscription?.kind === "paid" &&
     ["active", "past_due", "grace", "restricted"].includes(
       subscription.effectiveStatus,
     );
-  useEffect(() => {
-    if (!attempt || returnState !== "finalizing" || now >= pollUntil) return;
-    const timer = window.setTimeout(() => {
-      setNow(Date.now());
-      void refresh();
-    }, 2_000);
-    return () => window.clearTimeout(timer);
-  }, [attempt, returnState, now, pollUntil, refresh]);
-  useEffect(() => {
-    if (returnState !== "confirmed") return;
-    const next = new URLSearchParams(search);
-    next.delete("checkout");
-    next.delete("attempt");
-    setSearch(next, { replace: true });
-    void refresh();
-  }, [returnState, search, setSearch, refresh]);
   const selected = PUBLIC_PLAN_SNAPSHOT_V1.find((p) => p.planKey === plan)!;
   const blocked =
     billing.create.error instanceof BillingCheckoutError &&
@@ -75,6 +43,7 @@ export function BillingCheckoutPanel({
   async function start() {
     if (
       !owner ||
+      billingUnavailable ||
       paid ||
       !billingBrowserProvider ||
       lock.current ||
@@ -107,6 +76,13 @@ export function BillingCheckoutPanel({
         Only the account owner can start a subscription.
       </p>
     );
+  if (billingUnavailable)
+    return (
+      <p role="alert" className="text-sm text-danger">
+        Billing could not be verified. Refresh billing or contact support before
+        starting a subscription.
+      </p>
+    );
   return (
     <div className="space-y-4">
       {paid ? (
@@ -115,34 +91,12 @@ export function BillingCheckoutPanel({
           above.
         </p>
       ) : null}
-      {returnState === "finalizing" ? (
-        <div role="status" className="space-y-2 text-sm">
-          <p>
-            Finalizing your subscription. We are waiting for verified payment
-            confirmation.
-          </p>
-          {now >= pollUntil ? (
-            <p>This is taking longer than expected. Refresh to check again.</p>
-          ) : null}
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setNow(Date.now());
-              setPollUntil(Date.now() + 30_000);
-              void billing.state.refetch();
-              void refresh();
-            }}
-          >
-            Refresh subscription
-          </Button>
-        </div>
-      ) : null}
       {!paid && !billingBrowserProvider ? (
         <p role="alert" className="text-sm text-danger">
           Subscription checkout is currently unavailable.
         </p>
       ) : null}
-      {!paid && billingBrowserProvider && returnState !== "finalizing" ? (
+      {!paid && billingBrowserProvider ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-2 text-sm font-medium">
@@ -268,17 +222,11 @@ export function BillingCheckoutPanel({
           </Button>
         </>
       ) : null}
-      {billing.create.error || billing.state.error ? (
+      {billing.create.error ? (
         <p role="alert" className="text-sm text-danger">
-          {(billing.create.error ?? billing.state.error) instanceof
-          BillingCheckoutError
-            ? (billing.create.error ?? billing.state.error)?.message
+          {billing.create.error instanceof BillingCheckoutError
+            ? billing.create.error.message
             : "Billing is currently unavailable."}
-        </p>
-      ) : null}
-      {returnState === "stopped" ? (
-        <p role="status" className="text-sm">
-          This checkout has ended. You can start a new subscription checkout.
         </p>
       ) : null}
     </div>

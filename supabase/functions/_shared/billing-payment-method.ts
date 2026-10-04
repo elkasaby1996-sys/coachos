@@ -34,8 +34,9 @@ export function paymentMethodRequest(value: unknown): "update_payment_method" {
 function expectation(value: unknown): PaymentMethodUpdateExpectation {
   const ctx = object(value);
   if (
-    ctx.provider !== "paddle" ||
-    ctx.environment !== "test" ||
+    typeof ctx.provider !== "string" ||
+    !/^[a-z][a-z0-9_-]{0,63}$/.test(ctx.provider) ||
+    !["test", "live"].includes(ctx.environment) ||
     !["update_only", "settle_existing_balance"].includes(ctx.mode) ||
     typeof ctx.subscriptionRef !== "string" ||
     typeof ctx.customerRef !== "string" ||
@@ -82,8 +83,8 @@ function expectation(value: unknown): PaymentMethodUpdateExpectation {
   }
   return {
     identity: {
-      provider: "paddle",
-      environment: "test",
+      provider: ctx.provider,
+      environment: ctx.environment,
       subscriptionReference: ctx.subscriptionRef,
       customerReference: ctx.customerRef,
     },
@@ -189,7 +190,7 @@ export async function handlePaymentMethodUpdate(
             p_preparation: preparationId,
             p_token_sha256: claimHash,
             p_transaction_ref: prepared.transactionReference,
-            p_validator_version: "paddle-payment-method-transaction-v1",
+            p_validator_version: transport.validatorVersion,
             p_result_sha256: prepared.normalizedResultSha256,
           },
         ),

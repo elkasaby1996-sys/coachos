@@ -218,6 +218,7 @@ export type PreparedPaymentMethodUpdate = {
   };
 };
 export interface PaymentMethodUpdateCapability {
+  readonly validatorVersion: string;
   validateConfiguration(): void;
   prepare(
     expectation: PaymentMethodUpdateExpectation,

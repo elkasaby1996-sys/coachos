@@ -1,5 +1,7 @@
 # Plan-change test runbook
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 Normal verification uses local Supabase and injected fake provider state. No Lemon Squeezy API credential, external subscription, charge or Store setting is required. Start from merged PR-PRICE-06 and record the full-unit baseline before edits.
 
 1. Run local start, clean database reset, database lint and all pgTAP files. SQL tests roll back synthetic mappings and accounts.

@@ -1,5 +1,7 @@
 # Lemon Squeezy Customer Portal
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 PR-PRICE-06 adds hosted billing management for existing provider-linked paid history. The provider owns billing history, payment methods, billing information, tax ID, cancellation and resumption. RepSync retains canonical entitlements and capacity; portal navigation never changes them.
 
 ## Owner authorization and retrieval

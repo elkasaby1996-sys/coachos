@@ -22,9 +22,18 @@ export const paymentMethodStateSchema = z.discriminatedUnion("available", [
 ]);
 export const paymentMethodContinuationSchema = z.strictObject({
   kind: z.literal("provider_checkout"),
-  provider: z.literal("paddle"),
-  environment: z.literal("test"),
-  token: z.string().regex(/^txn_[a-z0-9]{26}$/),
+  provider: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
+  environment: z.enum(["test", "live"]),
+  token: z
+    .string()
+    .min(1)
+    .max(256)
+    .regex(/^\S+$/)
+    .refine((value) =>
+      [...value].every(
+        (char) => char.charCodeAt(0) > 31 && char.charCodeAt(0) !== 127,
+      ),
+    ),
 });
 export const paymentMethodResponseSchema = z.strictObject({
   intent: z.literal("update_payment_method"),

@@ -294,8 +294,11 @@ export function createPaddleSeatTransport(
   };
 }
 export type PaddleSeatTransport = ReturnType<typeof createPaddleSeatTransport>;
+export type PaddleSeatDependencies = BillingDependencies & {
+  paddleSeats: () => PaddleSeatTransport;
+};
 export async function handlePaddleSeatAction(
-  deps: BillingDependencies,
+  deps: PaddleSeatDependencies,
   owner: string,
   token: string,
   action: SeatAction,

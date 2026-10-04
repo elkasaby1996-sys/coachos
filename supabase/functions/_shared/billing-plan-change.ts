@@ -4,9 +4,7 @@ import {
   object,
   uuidPattern,
 } from "./billing-common.ts";
-import { canonicalSubscriptionIdentity } from "./billing-legacy-records.ts";
 import type { BillingDependencies } from "./billing-handlers.ts";
-import { handlePaddlePlanAction } from "./paddle-plan-change.ts";
 
 export const planChangeCodes = [
   "OWNER_REQUIRED",
@@ -63,18 +61,6 @@ export async function handlePlanChange(
   if (request.method === "OPTIONS") return reply({});
   if (request.method !== "POST")
     return reply({ code: "BILLING_INVALID_INPUT" }, 405);
-  let operation:
-    | {
-        id: string;
-        dispatch: boolean;
-        variant: string;
-        product: string;
-        price: string;
-        timing: "immediate" | "period_end";
-      }
-    | undefined;
-  let ownerId: string | undefined;
-  let dispatched = false;
   try {
     const token = request.headers
       .get("authorization")
@@ -82,11 +68,10 @@ export async function handlePlanChange(
     const owner = token ? await deps.authenticate(token) : null;
     if (!owner || !token)
       throw new BillingError("BILLING_PLAN_CHANGE_OWNER_REQUIRED", 401);
-    ownerId = owner.id;
     let input = object(
       JSON.parse(new TextDecoder().decode(await boundedBody(request, 4096))),
     );
-    let previewContractVersion = 1;
+    let previewContractVersion: 1 | 2 = 1;
     if (
       action === "preview" &&
       Object.hasOwn(input, "previewContractVersion")
@@ -108,147 +93,45 @@ export async function handlePlanChange(
       if (Object.keys(input).length)
         throw new BillingError("BILLING_INVALID_INPUT");
     } else planChangeRequest(input);
-    const paddleRoute = await deps.serviceRpc("paddle_plan_change_route_v1", {
+    const provider = await deps.serviceRpc("billing_workflow_provider_v1", {
       p_owner: owner.id,
     });
-    if (typeof paddleRoute !== "boolean")
+    if (provider !== null && typeof provider !== "string")
       throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
-    if (paddleRoute) {
-      if (!deps.paddlePlans)
-        throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
-      const result = await handlePaddlePlanAction(
-        deps,
-        owner.id,
-        token,
-        action,
-        input,
-      );
-      // Validate the provider preview in both modes before projecting the
-      // temporary legacy shape. Negotiation never changes mutation authority.
-      if (action === "preview" && previewContractVersion === 1) {
-        const legacy = { ...result };
-        delete legacy.quote;
-        return reply(legacy);
-      }
-      return reply(result);
-    }
-    const config = deps.config();
-    if (!config?.commercial?.plans)
+    if (provider === null)
+      throw new BillingError("BILLING_PLAN_CHANGE_NOT_ELIGIBLE", 409);
+    if (!deps.providerAvailable?.(provider))
       throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
-    const { subscriptions, reconciliation: proof, plans } = config.commercial;
-    const ctx = await deps.serviceRpc("billing_plan_change_context", {
-      p_owner: owner.id,
-      p_environment: config.environment,
-    });
-    // The legacy path is for an explicitly stored legacy subscription only.
-    if (
-      ctx?.subscription?.provider !== "lemonsqueezy" ||
-      ctx?.mapping?.provider !== "lemonsqueezy"
-    )
+    if (!deps.providerAvailable?.(provider))
       throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
-    const id = ctx.subscription.provider_subscription_id;
-    const current = await subscriptions.withItem(
-      await subscriptions.retrieve(id),
+    if (!deps.planAction)
+      throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
+    const result = await deps.planAction(
+      provider,
+      owner.id,
+      token,
+      action,
+      input,
     );
-    plans.assertEligible(current);
-    if (action === "cancel")
-      plans.assertCancelable(
-        current,
-        canonicalSubscriptionIdentity(ctx.subscription, config.environment),
-      );
-    const base = { p_owner: owner.id, p_environment: config.environment };
-    if (action === "refresh") {
-      await deps.serviceRpc("finish_billing_plan_change", {
-        ...base,
-        ...proof.snapshotArguments(current),
-      });
-      for (const invoice of await proof.paidAdjustments(id)) {
-        await deps.serviceRpc("finish_billing_plan_change", {
-          ...base,
-          ...proof.snapshotArguments(current),
-          ...proof.invoiceArguments(invoice),
-        });
-      }
-      return reply(
-        await deps.ownerRpc(token)("get_my_billing_plan_change_state", {}),
-      );
+    // Both established wire versions use the adapter's compatibility translation.
+    if (action === "preview" && deps.legacyPlanPreview)
+      return reply(deps.legacyPlanPreview(result, previewContractVersion));
+    if (action === "preview" && previewContractVersion === 1) {
+      const compatible = { ...result };
+      delete compatible.quote;
+      return reply(compatible);
     }
     if (action === "preview")
-      return reply(
-        await deps.serviceRpc("preview_billing_plan_change", {
-          ...base,
-          p_target_plan: input.targetPlanKey,
-          p_target_cadence: input.targetCadence,
-          ...proof.snapshotArguments(current),
-        }),
-      );
-    if (!plans.canChange)
       throw new BillingError("BILLING_PLAN_CHANGE_PROVIDER_FAILED", 503);
-    operation =
-      action === "cancel"
-        ? await deps.serviceRpc("begin_cancel_billing_plan_change", {
-            ...base,
-            p_operation: input.operationId,
-          })
-        : await deps.serviceRpc("begin_billing_plan_change", {
-            ...base,
-            p_target_plan: input.targetPlanKey,
-            p_target_cadence: input.targetCadence,
-            p_operation: input.operationId,
-            ...proof.snapshotArguments(current),
-          });
-    if (operation?.dispatch) {
-      dispatched = true;
-      const target = {
-        subscriptionReference: id,
-        offerReference: operation.variant,
-        productReference: operation.product,
-        priceReference: operation.price,
-        // RepSync owns the approved seat quantity; the provider only verifies it.
-        expectedQuantity:
-          1 + (ctx.subscription.approved_additional_coach_seats ?? 0),
-        timing: operation.timing,
-      };
-      plans.assertResult(await plans.change(target), current, target);
-      // GET confirms state after PATCH, especially source restoration on cancel.
-      const updated = await subscriptions.retrieve(id);
-      plans.assertResult(updated, current, target);
-      const verified = await subscriptions.withItem(updated);
-      const result = await deps.serviceRpc("finish_billing_plan_change", {
-        ...base,
-        ...proof.snapshotArguments(verified),
-      });
-      if (!["processed", "replayed"].includes(result))
-        throw new BillingError(
-          "BILLING_PLAN_CHANGE_PROVIDER_AMBIGUOUS",
-          503,
-          true,
-        );
-    }
-    return reply(
-      await deps.ownerRpc(token)("get_my_billing_plan_change_state", {}),
-    );
+    return reply(result);
   } catch (error) {
     const code =
       error instanceof BillingError &&
       (planChangeCodes.includes(error.code) ||
         error.code === "BILLING_INVALID_INPUT")
         ? error.code
-        : dispatched
-          ? "BILLING_PLAN_CHANGE_PROVIDER_AMBIGUOUS"
-          : "BILLING_PLAN_CHANGE_PROVIDER_FAILED";
-    if (operation?.dispatch && ownerId) {
-      try {
-        await deps.serviceRpc("fail_billing_plan_change", {
-          p_owner: ownerId,
-          p_operation: operation.id,
-          p_ambiguous: code !== "BILLING_PLAN_CHANGE_PROVIDER_FAILED",
-        });
-      } catch {
-        /* Durable provider_pending prevents repeat dispatch. */
-      }
-    }
-    deps.log?.({ code, processingStatus: dispatched ? "pending" : "denied" });
+        : "BILLING_PLAN_CHANGE_PROVIDER_FAILED";
+    deps.log?.({ code, processingStatus: "denied" });
     return reply(
       { code },
       error instanceof BillingError ? error.httpStatus : 503,

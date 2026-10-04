@@ -33,7 +33,13 @@ describe("Paddle preview contract negotiation client", () => {
     invoke.mockResolvedValue({ data: { ...preview, quote }, error: null });
     const body = { ...input, previewContractVersion: 1 };
     await expect(requestPlanChange("preview", body, "paddle")).resolves.toEqual(
-      { ...preview, quote },
+      {
+        ...Object.fromEntries(
+          Object.entries(preview).filter(([key]) => key !== "prorationMode"),
+        ),
+        billingTreatment: "charge_now",
+        quote,
+      },
     );
     expect(invoke).toHaveBeenCalledExactlyOnceWith(
       "billing-preview-plan-change",
@@ -43,19 +49,19 @@ describe("Paddle preview contract negotiation client", () => {
     );
     expect(body.previewContractVersion).toBe(1);
   });
-  it("preserves the non-Paddle preview request and response", async () => {
+  it("rejects missing provider before invoking an endpoint", async () => {
     const { provider: _provider, ...legacy } = preview;
     invoke.mockResolvedValue({ data: legacy, error: null });
-    await expect(requestPlanChange("preview", input)).resolves.toEqual(legacy);
-    expect(invoke).toHaveBeenCalledExactlyOnceWith(
-      "billing-preview-plan-change",
-      { body: input },
-    );
+    await expect(requestPlanChange("preview", input)).rejects.toMatchObject({
+      code: "BILLING_PLAN_CHANGE_NOT_ELIGIBLE",
+    });
+    expect(invoke).not.toHaveBeenCalled();
   });
   it.each(["apply", "cancel", "refresh"] as const)(
     "does not version %s",
     async (action) => {
       const state = {
+        provider: "paddle",
         linked: true,
         cadence: "monthly",
         eligible: true,

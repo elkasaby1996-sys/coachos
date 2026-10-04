@@ -43,9 +43,10 @@ describe("active billing provider registry", () => {
     const reply = handleDisabledLegacyCheckout(
       new Request("https://local.test/checkout", { method: "POST" }),
     );
-    expect(reply.status).toBe(503);
+    expect(reply.status).toBe(410);
     expect(await reply.json()).toEqual({
-      code: "BILLING_PROVIDER_NOT_CONFIGURED",
+      code: "BILLING_PROVIDER_RETIRED",
+      message: "This billing provider has been permanently retired.",
     });
     expect(
       readFileSync(
@@ -57,8 +58,7 @@ describe("active billing provider registry", () => {
 
   it("keeps fundamental core primitives in the neutral module", () => {
     for (const path of [
-      "supabase/functions/_shared/billing-handlers.ts",
-      "supabase/functions/_shared/billing-runtime.ts",
+      "supabase/functions/_shared/billing-runtime-dependencies.ts",
       "supabase/functions/_shared/paddle-checkout-handler.ts",
     ]) {
       const source = readFileSync(path, "utf8");

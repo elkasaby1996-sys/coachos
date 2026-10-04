@@ -7,6 +7,7 @@ import { paddlePaymentMethodBrowser } from "./paddle-payment-method";
 
 export type PaymentMethodCheckoutSignal = "closed" | "completed" | "failed";
 export interface BrowserPaymentMethodUpdateCapability {
+  accepts(continuation: PaymentMethodContinuation): boolean;
   ready(): Promise<void>;
   open(continuation: PaymentMethodContinuation): Promise<void>;
   subscribe(
@@ -35,7 +36,8 @@ export function createPaymentMethodBrowserRegistry(
       const capability = parsed.success
         ? capabilities.get(parsed.data.provider)
         : undefined;
-      if (!capability) throw new PaymentMethodError("client_launch");
+      if (!capability || !parsed.success || !capability.accepts(parsed.data))
+        throw new PaymentMethodError("BILLING_PAYMENT_METHOD_PROVIDER_FAILED");
       return capability;
     },
   };

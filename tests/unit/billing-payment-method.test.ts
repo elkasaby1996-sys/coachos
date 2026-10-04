@@ -49,6 +49,7 @@ function fixture(state: "creating" | "ready" = "creating") {
     release,
   };
   const transport: PaymentMethodUpdateCapability = {
+    validatorVersion: "paddle-payment-method-transaction-v1",
     validateConfiguration: vi.fn(),
     prepare: vi.fn(async () => prepared),
     inspect: vi.fn(async () => prepared),
@@ -83,7 +84,6 @@ function fixture(state: "creating" | "ready" = "creating") {
     serviceRpc,
     paymentMethodTransport,
     log,
-    config: () => null,
     ownerRpc: () => serviceRpc,
   } as unknown as BillingDependencies;
   return {

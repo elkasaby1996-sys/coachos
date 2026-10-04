@@ -5,6 +5,7 @@ No remote URL or application database override is accepted.
 """
 import importlib.util
 import json
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -15,7 +16,8 @@ r = auto.r
 
 
 def main():
-    assert r.COMMAND[3] == "supabase_db_repsync_reconciliation01"
+    expected = "supabase_db_repsync_pay04_v2" if os.environ.get("PAY04_DISPOSABLE_LOCAL") == "1" else "supabase_db_repsync_reconciliation01"
+    assert r.COMMAND[3] == expected, "Only the explicitly selected fixed disposable local project is allowed"
     assert r.sql("select count(*) from auth.users;") == "0", "Reset disposable DB first"
     before = int(r.sql("select deadlocks from pg_stat_database where datname=current_database();"))
     auto.setup()

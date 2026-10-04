@@ -315,6 +315,7 @@ export function createPaddlePaymentMethodTransport(
     };
   }
   return {
+    validatorVersion: "paddle-payment-method-transaction-v1",
     validateConfiguration,
     prepare: async (expected, permit) => {
       validateConfiguration();

@@ -1,3 +1,4 @@
+import { billingCapability } from "./provider-capabilities";
 import { z } from "zod";
 const count = z.number().int().nonnegative();
 const summary = {
@@ -18,7 +19,11 @@ const summary = {
 export const seatQuantityStateSchema = z
   .object({
     available: z.boolean(),
-    provider: z.literal("paddle").optional(),
+    provider: z
+      .string()
+      .refine((provider) => billingCapability(provider, "seatChanges"))
+      .nullable()
+      .optional(),
     canCancel: z.boolean().optional(),
     blockingOperation: z.literal("plan_change").nullable().optional(),
     summary: z
@@ -48,11 +53,26 @@ export const seatQuantityStateSchema = z
       .strict()
       .nullable(),
   })
-  .strict();
+  .strict()
+  .superRefine((state, ctx) => {
+    if (
+      !billingCapability(state.provider, "seatChanges") &&
+      (state.available ||
+        state.summary !== null ||
+        state.operation !== null ||
+        state.canCancel === true)
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Billing provider is unavailable.",
+      });
+  });
 export const seatQuantityPreviewSchema = z
   .object({
     ...summary,
-    provider: z.literal("paddle").optional(),
+    provider: z
+      .string()
+      .refine((provider) => billingCapability(provider, "seatChanges")),
     targetAdditionalSeats: count,
     currentProviderQuantity: count,
     targetProviderQuantity: count,

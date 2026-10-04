@@ -61,7 +61,7 @@ jobs:
         run: npm ci
 
       - name: Validate local contracts
-        run: npm run staging:commercial:validate
+        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs
 
       - name: Test harness
         run: npm run staging:commercial:test
@@ -81,7 +81,7 @@ jobs:
 
       - name: Preflight and apply quality prerequisites
         if: inputs.mode == 'preflight' || inputs.mode == 'apply'
-        run: npm run lint && npm run format && npm run build
+        run: npm run lint && npm run format && npm run build && node scripts/billing-edge-typecheck.mjs
 
       - name: Setup pinned Supabase CLI for apply only
         if: inputs.mode == 'apply'
@@ -95,7 +95,7 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           STAGING_COMMERCIAL_AUTHORIZATION: ${{ secrets.STAGING_COMMERCIAL_AUTHORIZATION }}
-        run: npm run staging:commercial:preflight
+        run: npm run staging:retirement:preflight
 
       - name: Authorized apply with blocking full unit suite
         if: inputs.mode == 'apply'

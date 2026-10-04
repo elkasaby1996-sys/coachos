@@ -38,8 +38,8 @@ create function pg_temp.guard_operation(u uuid,contract text,kind text,op uuid d
 declare a uuid; s uuid; canonical uuid; base uuid; target uuid; seat uuid; result uuid;
 begin
   if contract='ls' then
-    if kind='plan' then return (public.begin_billing_plan_change(u,'test','scale','monthly',op,pg_temp.snapshot(u))->>'id')::uuid;
-    else return (public.begin_billing_seat_quantity(u,'test',1,op,pg_temp.seat_snapshot(u,1))->>'id')::uuid; end if;
+    if kind='plan' then return pg_temp.historical_plan(u,'provider_pending',op);
+    else return pg_temp.historical_seat(u,'provider_pending',op); end if;
   end if;
   select b.billing_account_id,b.account_subscription_id into strict a,canonical from public.billing_provider_subscriptions b join public.billing_accounts x on x.id=b.billing_account_id where x.owner_user_id=u;
   s:=pg_temp.guard_subscription(u);

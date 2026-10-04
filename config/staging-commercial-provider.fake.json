@@ -1,216 +1,158 @@
 {
+  "provider": "paddle",
   "environment": "test",
+  "expectedTaxMode": "location",
   "liveReferences": [],
   "mappings": [
     {
       "environment": "test",
-      "testMode": true,
-      "storeRef": "fake:store:test",
-      "productRef": "fake:product:subscription",
-      "variantRef": "fake:variant:launch:monthly",
+      "productRef": "fake:product:launch",
       "priceRef": "fake:price:launch:monthly",
+      "seatProductRef": "fake:product:coach-seat",
+      "seatPriceRef": "fake:price:coach-seat:monthly",
       "planKey": "launch",
       "planVersion": 1,
       "cadence": "monthly",
       "currency": "USD",
       "amountMinor": 1900,
+      "seatAmountMinor": 1200,
       "interval": "month",
       "intervalCount": 1,
       "trial": null,
-      "setupFeeMinor": 0,
-      "seatCapable": true,
-      "category": "subscription",
-      "scheme": "graduated",
-      "packageSize": 1,
-      "usageAggregation": null,
-      "decimalPrice": null,
-      "tiers": [
-        {
-          "lastUnit": 1,
-          "unitAmountMinor": 1900,
-          "fixedFeeMinor": 0
-        },
-        {
-          "lastUnit": "inf",
-          "unitAmountMinor": 1200,
-          "fixedFeeMinor": 0
-        }
-      ]
+      "hasUnitPriceOverrides": false,
+      "taxCategory": "saas",
+      "taxMode": "location",
+      "baseQuantityMinimum": 1,
+      "baseQuantityMaximum": 1,
+      "seatQuantityMinimum": 1,
+      "seatQuantityMaximum": 5,
+      "productStatus": "active",
+      "priceStatus": "active"
     },
     {
       "environment": "test",
-      "testMode": true,
-      "storeRef": "fake:store:test",
-      "productRef": "fake:product:subscription",
-      "variantRef": "fake:variant:launch:annual",
+      "productRef": "fake:product:launch",
       "priceRef": "fake:price:launch:annual",
+      "seatProductRef": "fake:product:coach-seat",
+      "seatPriceRef": "fake:price:coach-seat:annual",
       "planKey": "launch",
       "planVersion": 1,
       "cadence": "annual",
       "currency": "USD",
       "amountMinor": 19000,
+      "seatAmountMinor": 12000,
       "interval": "year",
       "intervalCount": 1,
       "trial": null,
-      "setupFeeMinor": 0,
-      "seatCapable": true,
-      "category": "subscription",
-      "scheme": "graduated",
-      "packageSize": 1,
-      "usageAggregation": null,
-      "decimalPrice": null,
-      "tiers": [
-        {
-          "lastUnit": 1,
-          "unitAmountMinor": 19000,
-          "fixedFeeMinor": 0
-        },
-        {
-          "lastUnit": "inf",
-          "unitAmountMinor": 12000,
-          "fixedFeeMinor": 0
-        }
-      ]
+      "hasUnitPriceOverrides": false,
+      "taxCategory": "saas",
+      "taxMode": "location",
+      "baseQuantityMinimum": 1,
+      "baseQuantityMaximum": 1,
+      "seatQuantityMinimum": 1,
+      "seatQuantityMaximum": 5,
+      "productStatus": "active",
+      "priceStatus": "active"
     },
     {
       "environment": "test",
-      "testMode": true,
-      "storeRef": "fake:store:test",
-      "productRef": "fake:product:subscription",
-      "variantRef": "fake:variant:growth:monthly",
+      "productRef": "fake:product:growth",
       "priceRef": "fake:price:growth:monthly",
+      "seatProductRef": "fake:product:coach-seat",
+      "seatPriceRef": "fake:price:coach-seat:monthly",
       "planKey": "growth",
       "planVersion": 1,
       "cadence": "monthly",
       "currency": "USD",
       "amountMinor": 5900,
+      "seatAmountMinor": 1200,
       "interval": "month",
       "intervalCount": 1,
       "trial": null,
-      "setupFeeMinor": 0,
-      "seatCapable": true,
-      "category": "subscription",
-      "scheme": "graduated",
-      "packageSize": 1,
-      "usageAggregation": null,
-      "decimalPrice": null,
-      "tiers": [
-        {
-          "lastUnit": 1,
-          "unitAmountMinor": 5900,
-          "fixedFeeMinor": 0
-        },
-        {
-          "lastUnit": "inf",
-          "unitAmountMinor": 1200,
-          "fixedFeeMinor": 0
-        }
-      ]
+      "hasUnitPriceOverrides": false,
+      "taxCategory": "saas",
+      "taxMode": "location",
+      "baseQuantityMinimum": 1,
+      "baseQuantityMaximum": 1,
+      "seatQuantityMinimum": 1,
+      "seatQuantityMaximum": 5,
+      "productStatus": "active",
+      "priceStatus": "active"
     },
     {
       "environment": "test",
-      "testMode": true,
-      "storeRef": "fake:store:test",
-      "productRef": "fake:product:subscription",
-      "variantRef": "fake:variant:growth:annual",
+      "productRef": "fake:product:growth",
       "priceRef": "fake:price:growth:annual",
+      "seatProductRef": "fake:product:coach-seat",
+      "seatPriceRef": "fake:price:coach-seat:annual",
       "planKey": "growth",
       "planVersion": 1,
       "cadence": "annual",
       "currency": "USD",
       "amountMinor": 59000,
+      "seatAmountMinor": 12000,
       "interval": "year",
       "intervalCount": 1,
       "trial": null,
-      "setupFeeMinor": 0,
-      "seatCapable": true,
-      "category": "subscription",
-      "scheme": "graduated",
-      "packageSize": 1,
-      "usageAggregation": null,
-      "decimalPrice": null,
-      "tiers": [
-        {
-          "lastUnit": 1,
-          "unitAmountMinor": 59000,
-          "fixedFeeMinor": 0
-        },
-        {
-          "lastUnit": "inf",
-          "unitAmountMinor": 12000,
-          "fixedFeeMinor": 0
-        }
-      ]
+      "hasUnitPriceOverrides": false,
+      "taxCategory": "saas",
+      "taxMode": "location",
+      "baseQuantityMinimum": 1,
+      "baseQuantityMaximum": 1,
+      "seatQuantityMinimum": 1,
+      "seatQuantityMaximum": 5,
+      "productStatus": "active",
+      "priceStatus": "active"
     },
     {
       "environment": "test",
-      "testMode": true,
-      "storeRef": "fake:store:test",
-      "productRef": "fake:product:subscription",
-      "variantRef": "fake:variant:scale:monthly",
+      "productRef": "fake:product:scale",
       "priceRef": "fake:price:scale:monthly",
+      "seatProductRef": "fake:product:coach-seat",
+      "seatPriceRef": "fake:price:coach-seat:monthly",
       "planKey": "scale",
       "planVersion": 1,
       "cadence": "monthly",
       "currency": "USD",
       "amountMinor": 11900,
+      "seatAmountMinor": 1200,
       "interval": "month",
       "intervalCount": 1,
       "trial": null,
-      "setupFeeMinor": 0,
-      "seatCapable": true,
-      "category": "subscription",
-      "scheme": "graduated",
-      "packageSize": 1,
-      "usageAggregation": null,
-      "decimalPrice": null,
-      "tiers": [
-        {
-          "lastUnit": 1,
-          "unitAmountMinor": 11900,
-          "fixedFeeMinor": 0
-        },
-        {
-          "lastUnit": "inf",
-          "unitAmountMinor": 1200,
-          "fixedFeeMinor": 0
-        }
-      ]
+      "hasUnitPriceOverrides": false,
+      "taxCategory": "saas",
+      "taxMode": "location",
+      "baseQuantityMinimum": 1,
+      "baseQuantityMaximum": 1,
+      "seatQuantityMinimum": 1,
+      "seatQuantityMaximum": 5,
+      "productStatus": "active",
+      "priceStatus": "active"
     },
     {
       "environment": "test",
-      "testMode": true,
-      "storeRef": "fake:store:test",
-      "productRef": "fake:product:subscription",
-      "variantRef": "fake:variant:scale:annual",
+      "productRef": "fake:product:scale",
       "priceRef": "fake:price:scale:annual",
+      "seatProductRef": "fake:product:coach-seat",
+      "seatPriceRef": "fake:price:coach-seat:annual",
       "planKey": "scale",
       "planVersion": 1,
       "cadence": "annual",
       "currency": "USD",
       "amountMinor": 119000,
+      "seatAmountMinor": 12000,
       "interval": "year",
       "intervalCount": 1,
       "trial": null,
-      "setupFeeMinor": 0,
-      "seatCapable": true,
-      "category": "subscription",
-      "scheme": "graduated",
-      "packageSize": 1,
-      "usageAggregation": null,
-      "decimalPrice": null,
-      "tiers": [
-        {
-          "lastUnit": 1,
-          "unitAmountMinor": 119000,
-          "fixedFeeMinor": 0
-        },
-        {
-          "lastUnit": "inf",
-          "unitAmountMinor": 12000,
-          "fixedFeeMinor": 0
-        }
-      ]
+      "hasUnitPriceOverrides": false,
+      "taxCategory": "saas",
+      "taxMode": "location",
+      "baseQuantityMinimum": 1,
+      "baseQuantityMaximum": 1,
+      "seatQuantityMinimum": 1,
+      "seatQuantityMaximum": 5,
+      "productStatus": "active",
+      "priceStatus": "active"
     }
   ]
 }

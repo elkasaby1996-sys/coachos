@@ -14,13 +14,14 @@ vi.mock("../../src/features/billing/use-billing-checkout", () => ({
   }),
 }));
 import { BillingCheckoutPanel } from "../../src/features/billing/checkout-panel";
-function render(owner: boolean, kind = "trial") {
+function render(owner: boolean, kind = "trial", billingUnavailable = false) {
   return renderToStaticMarkup(
     React.createElement(
       MemoryRouter,
       null,
       React.createElement(BillingCheckoutPanel, {
         owner,
+        billingUnavailable,
         requestedPlan: "launch",
         subscription: {
           kind,
@@ -45,6 +46,13 @@ describe("Billing permission and subscription panel", () => {
   it("paid account cannot start a second checkout or change its plan", () => {
     const html = render(true, "paid");
     expect(html).toContain("Paid subscription confirmed");
+    expect(html).not.toContain("<button");
+    expect(html).not.toContain("<select");
+  });
+  it("unavailable paid authority never confirms access or offers another checkout", () => {
+    const html = render(true, "paid", true);
+    expect(html).toContain("Billing could not be verified");
+    expect(html).not.toContain("Paid subscription confirmed");
     expect(html).not.toContain("<button");
     expect(html).not.toContain("<select");
   });

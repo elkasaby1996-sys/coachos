@@ -1,16 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
-  checkoutRequestSchema,
+  paddleCheckoutRequestSchema,
   hostedCheckoutUrlSchema,
 } from "../../src/features/billing/contracts";
-import {
-  checkoutReturnAttempt,
-  checkoutReturnState,
-} from "../../src/features/billing/checkout-return-state";
+import { legalSiteConfig } from "../../src/lib/legal-site";
 import { safeBillingError } from "../../src/features/billing/checkout-errors";
 import { redactHostedPaymentUrls } from "../../src/lib/redact-hosted-payment-urls";
-const id = "a0500000-0000-4000-8000-000000000001";
 describe("billing browser boundaries", () => {
   it("redacts hosted payment capabilities from telemetry", () => {
     const value = {
@@ -38,10 +34,16 @@ describe("billing browser boundaries", () => {
     "discountCode",
   ])("rejects browser %s", (key) => {
     expect(
-      checkoutRequestSchema.safeParse({
+      paddleCheckoutRequestSchema.safeParse({
         planKey: "launch",
         cadence: "monthly",
-        operationId: id,
+        additionalCoachSeats: 0,
+        legal: {
+          termsAccepted: true,
+          refundAcknowledged: true,
+          termsVersion: legalSiteConfig.version,
+          refundVersion: legalSiteConfig.version,
+        },
         [key]: "forged",
       }).success,
     ).toBe(false);
@@ -55,38 +57,20 @@ describe("billing browser boundaries", () => {
   ])("rejects unsafe URL %s", (url) =>
     expect(hostedCheckoutUrlSchema.safeParse(url).success).toBe(false),
   );
-  it("query string alone never establishes payment", () => {
-    const attempt = checkoutReturnAttempt(
-      new URLSearchParams(`checkout=return&attempt=${id}`),
-    );
-    expect(attempt).toBe(id);
-    expect(checkoutReturnState(attempt, undefined, undefined)).toBe(
-      "finalizing",
-    );
+  it("accepts only the approved Paddle checkout intent", () => {
     expect(
-      checkoutReturnState(
-        attempt,
-        {
-          checkoutAttemptId: id,
-          status: "completed",
-          expiresAt: null,
-          errorCode: null,
+      paddleCheckoutRequestSchema.safeParse({
+        planKey: "growth",
+        cadence: "monthly",
+        additionalCoachSeats: 0,
+        legal: {
+          termsAccepted: true,
+          refundAcknowledged: true,
+          termsVersion: legalSiteConfig.version,
+          refundVersion: legalSiteConfig.version,
         },
-        { kind: "trial", effectiveStatus: "trialing" },
-      ),
-    ).toBe("finalizing");
-    expect(
-      checkoutReturnState(
-        attempt,
-        {
-          checkoutAttemptId: id,
-          status: "completed",
-          expiresAt: null,
-          errorCode: null,
-        },
-        { kind: "paid", effectiveStatus: "active" },
-      ),
-    ).toBe("confirmed");
+      }).success,
+    ).toBe(true);
   });
   it("sanitizes unknown codes and provider errors", () =>
     expect(

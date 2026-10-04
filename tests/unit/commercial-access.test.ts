@@ -231,7 +231,7 @@ describe("commercial enforcement inventory", () => {
   });
   it("keeps billing and wearable service scopes tied to authenticated identities", () => {
     const runtime = readFileSync(
-      "supabase/functions/_shared/billing-runtime.ts",
+      "supabase/functions/_shared/billing-runtime-dependencies.ts",
       "utf8",
     );
     expect(runtime).toContain("service.auth.getUser(token)");

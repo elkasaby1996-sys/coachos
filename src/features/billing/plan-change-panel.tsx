@@ -1,3 +1,4 @@
+import { billingCapability } from "./provider-capabilities";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -26,13 +27,15 @@ export function PlanChangePreviewDetails({
 }: {
   preview: PlanChangePreview;
 }) {
+  if (!billingCapability(p.provider, "planChanges"))
+    return <p role="alert">Plan change preview is unavailable.</p>;
   return (
     <div className="space-y-3 text-sm">
       <p>Current: {price(p.currentPriceMinor, p.sourceCadence)}</p>
       <p>Target: {price(p.targetPriceMinor, p.targetCadence)}</p>
-      {p.provider === "paddle" && p.quote ? (
+      {p.quote ? (
         <p>
-          Paddle preview: prorated {p.quote.action} of{" "}
+          Payment preview: prorated {p.quote.action} of{" "}
           {quoteMoney(p.quote.amountMinor, p.quote.currencyCode)}. No payment
           has been collected for this change.
         </p>
@@ -43,17 +46,10 @@ export function PlanChangePreviewDetails({
           : `Scheduled for ${new Date(p.effectiveAt!).toLocaleDateString()}. Your current plan continues until then.`}
       </p>
       <p>
-        {p.provider === "paddle" ? (
-          "Paddle calculates any immediate charge. Your current plan remains active until verified payment or the scheduled effective date."
-        ) : (
-          <>
-            {p.effectiveTiming === "immediate"
-              ? "Lemon Squeezy calculates proration and attempts payment immediately."
-              : "Proration is disabled. Lemon Squeezy charges the target price at renewal."}{" "}
-            Taxes and credits are determined by Lemon Squeezy. These list prices
-            are not an exact charge preview.
-          </>
-        )}
+        Your payment provider calculates any immediate charge. Your current plan
+        remains active until verified payment or the scheduled effective date.
+        Taxes and credits are calculated by your payment provider. These list
+        prices are not an exact charge preview.
       </p>
       {p.dataQualityIssue ? (
         <p role="alert">
@@ -98,7 +94,12 @@ export function PlanChangePanel({
   const [preview, setPreview] = useState<PlanChangePreview>();
   const lock = useRef(false);
   async function act(action: "preview" | "apply" | "cancel" | "refresh") {
-    if (lock.current || !owner) return;
+    if (
+      lock.current ||
+      !owner ||
+      !billingCapability(state.data?.provider, "planChanges")
+    )
+      return;
     lock.current = true;
     setBusy(true);
     setError(undefined);
@@ -146,7 +147,12 @@ export function PlanChangePanel({
         </Button>
       </div>
     );
-  if (!state.data?.linked) return null;
+  if (
+    !state.data ||
+    !billingCapability(state.data.provider, "planChanges") ||
+    !state.data.linked
+  )
+    return null;
   const operation = state.data.operation;
   const pending =
     operation &&
@@ -169,10 +175,8 @@ export function PlanChangePanel({
           {operation.effectiveTiming === "period_end" ? (
             <p>
               Scheduled date:{" "}
-              {new Date(operation.effectiveAt!).toLocaleDateString()}.{" "}
-              {state.data.provider === "paddle"
-                ? "Your current plan and capacity remain unchanged until this date."
-                : "The target plan limits new capacity commitments. Existing delivery remains available."}
+              {new Date(operation.effectiveAt!).toLocaleDateString()}. Your
+              current plan and capacity remain unchanged until this date.
             </p>
           ) : null}
           {[
@@ -186,16 +190,6 @@ export function PlanChangePanel({
               support before requesting another change.
             </p>
           ) : null}
-          {operation.status === "scheduled" &&
-          state.data.provider !== "paddle" ? (
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onClick={() => void act("cancel")}
-            >
-              Cancel scheduled change
-            </Button>
-          ) : null}
         </div>
       ) : null}
       {state.data.eligible && !editing ? (
@@ -204,10 +198,7 @@ export function PlanChangePanel({
           onClick={() => {
             setTarget((t) => ({
               ...t,
-              targetCadence:
-                state.data?.provider === "paddle"
-                  ? (state.data.cadence ?? t.targetCadence)
-                  : t.targetCadence,
+              targetCadence: state.data?.cadence ?? t.targetCadence,
               operationId: crypto.randomUUID(),
             }));
             setEditing(true);
@@ -248,7 +239,7 @@ export function PlanChangePanel({
               <select
                 aria-label="Target billing frequency"
                 className="ui-input block w-full"
-                disabled={busy || state.data.provider === "paddle"}
+                disabled
                 value={target.targetCadence}
                 onChange={(e) => {
                   setTarget((t) => ({

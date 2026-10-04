@@ -5,11 +5,12 @@
     "owner": "input:release_owner",
     "prerequisites": [
       "Record previous compatible reviewed app SHA and hosting rollback procedure",
-      "Separate authorization naming resources"
+      "Separate authorization naming resources",
+      "Retirement-compatible reviewed artifact only: never restore LS runtime, native RPC grants or definer fallbacks"
     ],
     "steps": [
-      "Restore approved prior app build",
-      "verify signup, historical delivery and recovery"
+      "Restore only an approved prior Paddle-only application build compatible with migration 185",
+      "Verify authentication, Paddle continuity and unavailable-provider denial"
     ],
     "verification": [
       "Record safe rollback assertion and commit",
@@ -24,11 +25,12 @@
     "owner": "input:release_owner",
     "prerequisites": [
       "Record previous reviewed function SHA and approved allowlist",
-      "Separate authorization naming resources"
+      "Separate authorization naming resources",
+      "Retirement-compatible reviewed artifact only: never restore LS runtime, native RPC grants or definer fallbacks"
     ],
     "steps": [
-      "Redeploy named functions from previous compatible revision",
-      "verify JWT and signature rejection"
+      "Redeploy only reviewed retirement-compatible Paddle/shared artifacts and all three static LS tombstones",
+      "Verify artifact identities, JWT/signature boundaries, no LS calls and DB authority denial"
     ],
     "verification": [
       "Record safe rollback assertion and commit",
@@ -43,7 +45,8 @@
     "owner": "input:release_owner",
     "prerequisites": [
       "Privately verified recoverable backup and reviewed new migration",
-      "Separate authorization naming resources"
+      "Separate authorization naming resources",
+      "Retirement-compatible reviewed artifact only: never restore LS runtime, native RPC grants or definer fallbacks"
     ],
     "steps": [
       "Author and locally test a compensating forward migration",
@@ -63,7 +66,8 @@
     "owner": "input:release_owner",
     "prerequisites": [
       "Identify mapping using private operator reference and reconcile existing obligations",
-      "Separate authorization naming resources"
+      "Separate authorization naming resources",
+      "Retirement-compatible reviewed artifact only: never restore LS runtime, native RPC grants or definer fallbacks"
     ],
     "steps": [
       "Retire mapping for new sales",
@@ -82,7 +86,8 @@
     "owner": "input:release_owner",
     "prerequisites": [
       "Review retry queues and recovery plan before disabling delivery",
-      "Separate authorization naming resources"
+      "Separate authorization naming resources",
+      "Retirement-compatible reviewed artifact only: never restore LS runtime, native RPC grants or definer fallbacks"
     ],
     "steps": [
       "Disable approved test webhook through separately authorized provider action",
@@ -102,7 +107,8 @@
     "owner": "input:release_owner",
     "prerequisites": [
       "Identify secret names and consumers; approve rotation order",
-      "Separate authorization naming resources"
+      "Separate authorization naming resources",
+      "Retirement-compatible reviewed artifact only: never restore LS runtime, native RPC grants or definer fallbacks"
     ],
     "steps": [
       "Rotate upstream credential privately",
@@ -122,7 +128,8 @@
     "owner": "input:release_owner",
     "prerequisites": [
       "Private inventory of unresolved operations and delivery leases",
-      "Separate authorization naming resources"
+      "Separate authorization naming resources",
+      "Retirement-compatible reviewed artifact only: never restore LS runtime, native RPC grants or definer fallbacks"
     ],
     "steps": [
       "Pause new synthetic actions",
@@ -143,7 +150,8 @@
     "owner": "input:release_owner",
     "prerequisites": [
       "Verify isolated synthetic identity and absence of unresolved obligations",
-      "Separate authorization naming resources"
+      "Separate authorization naming resources",
+      "Retirement-compatible reviewed artifact only: never restore LS runtime, native RPC grants or definer fallbacks"
     ],
     "steps": [
       "Revoke sessions and disable synthetic login",
@@ -162,11 +170,12 @@
     "trigger": "Test scenario completion",
     "owner": "input:release_owner",
     "prerequisites": [
-      "Confirm test Store and all pending subscription or invoice obligations",
-      "Separate authorization naming resources"
+      "Confirm Paddle sandbox binding and classify pending synthetic transaction/subscription work",
+      "Separate authorization naming resources",
+      "Retirement-compatible reviewed artifact only: never restore LS runtime, native RPC grants or definer fallbacks"
     ],
     "steps": [
-      "Cancel approved test subscriptions",
+      "Use a separately authorized Paddle sandbox operator cleanup; application cancellation/resume is not implemented",
       "archive test customer access when supported",
       "preserve commercial and provider history"
     ],
@@ -183,7 +192,8 @@
     "owner": "input:release_owner",
     "prerequisites": [
       "Record private evidence custodian and approved deletion scope",
-      "Separate authorization naming resources"
+      "Separate authorization naming resources",
+      "Retirement-compatible reviewed artifact only: never restore LS runtime, native RPC grants or definer fallbacks"
     ],
     "steps": [
       "Delete transient raw captures immediately",

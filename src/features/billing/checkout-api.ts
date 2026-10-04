@@ -1,15 +1,14 @@
 import {
-  checkoutStateSchema,
-  paddleCheckoutRequestSchema,
-  paddleCheckoutResponseSchema,
-  type PaddleCheckoutRequest,
+  billingCheckoutRequestSchema,
+  billingCheckoutResponseSchema,
+  type BillingCheckoutRequest,
 } from "./contracts";
 import { safeBillingError, BillingCheckoutError } from "./checkout-errors";
 import { billingBrowserProvider } from "./providers/active-provider";
-export async function createBillingCheckout(input: PaddleCheckoutRequest) {
+export async function createBillingCheckout(input: BillingCheckoutRequest) {
   if (!billingBrowserProvider)
     throw safeBillingError({ code: "BILLING_PROVIDER_NOT_CONFIGURED" });
-  const parsed = paddleCheckoutRequestSchema.safeParse(input);
+  const parsed = billingCheckoutRequestSchema.safeParse(input);
   if (!parsed.success)
     throw safeBillingError({ code: "BILLING_INVALID_INPUT" });
   try {
@@ -27,7 +26,7 @@ export async function createBillingCheckout(input: PaddleCheckoutRequest) {
       }
       throw safeBillingError(body);
     }
-    const result = paddleCheckoutResponseSchema.safeParse(data);
+    const result = billingCheckoutResponseSchema.safeParse(data);
     if (!result.success)
       throw safeBillingError({ code: "BILLING_VARIANT_MAPPING_MISMATCH" });
     return result.data;
@@ -40,19 +39,6 @@ export async function createBillingCheckout(input: PaddleCheckoutRequest) {
       ].includes(error.code)
     )
       throw safeBillingError({ code: "PADDLE_CHECKOUT_RECOVERY_REQUIRED" });
-    throw safeBillingError(error);
-  }
-}
-export async function fetchBillingCheckoutState(attempt: string | null) {
-  try {
-    const { supabase } = await import("../../lib/supabase");
-    const { data, error } = await supabase.rpc(
-      "get_my_billing_checkout_state",
-      { p_attempt: attempt },
-    );
-    if (error) throw safeBillingError(error);
-    return checkoutStateSchema.parse(data);
-  } catch (error) {
     throw safeBillingError(error);
   }
 }

@@ -134,6 +134,83 @@ describe("account entitlement payload contracts", () => {
         .accessMode,
     ).toBe("onboarding");
   });
+  it("accepts the current server's explicit false unavailable flag", () => {
+    for (const value of [ownerPayload(), emptyPayload()])
+      expect(
+        effectiveAccountEntitlementsSchema.safeParse({
+          ...value,
+          billingUnavailable: false,
+        }).success,
+      ).toBe(true);
+    const value = ownerPayload();
+    Object.assign(value.subscription, {
+      kind: "paid",
+      storedStatus: "active",
+      effectiveStatus: "active",
+      trialStartedAt: null,
+      trialEndsAt: null,
+      trialRecoveryEndsAt: null,
+    });
+    expect(
+      effectiveAccountEntitlementsSchema.safeParse({
+        ...value,
+        billingUnavailable: false,
+      }).success,
+    ).toBe(true);
+  });
+  it("accepts only the server's deny-only unavailable paid projection", () => {
+    const value = ownerPayload();
+    value.billingUnavailable = true;
+    Object.assign(value.subscription, {
+      kind: "paid",
+      storedStatus: "active",
+      effectiveStatus: "restricted",
+      accessMode: "read_only",
+      accessLabel: "Billing provider unavailable",
+      trialStartedAt: null,
+      trialEndsAt: null,
+      trialRecoveryEndsAt: null,
+    });
+    value.limits = {
+      countedClients: 0,
+      includedCoachSeats: 0,
+      maxCoachSeats: 0,
+      activeWorkspaces: 0,
+      publishedPackages: 0,
+    };
+    value.targetFeatureKeys = [];
+    value.enabledFeatureKeys = [];
+    expect(effectiveAccountEntitlementsSchema.safeParse(value).success).toBe(
+      true,
+    );
+    for (const patch of [
+      { billingUnavailable: false },
+      { billingUnavailable: undefined },
+      { limits: ownerPayload().limits },
+      { limits: { ...value.limits, maxCoachSeats: 1 } },
+      { targetFeatureKeys: ["core.messaging"] },
+      { enabledFeatureKeys: ["core.messaging"] },
+      { subscription: { ...value.subscription, kind: "custom" } },
+      {
+        subscription: {
+          ...value.subscription,
+          effectiveStatus: "active",
+          accessMode: "full",
+        },
+      },
+      { subscription: { ...value.subscription, accessMode: "full" } },
+    ])
+      expect(
+        effectiveAccountEntitlementsSchema.safeParse({ ...value, ...patch })
+          .success,
+      ).toBe(false);
+    expect(
+      effectiveAccountEntitlementsSchema.safeParse({
+        ...ownerPayload(),
+        billingUnavailable: true,
+      }).success,
+    ).toBe(false);
+  });
   it.each([
     "planKey",
     "storedStatus",

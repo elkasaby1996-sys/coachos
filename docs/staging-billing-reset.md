@@ -1,0 +1,17 @@
+# Future synthetic staging billing reset
+
+Documented only; no reset, remote read, backup or deployment was performed. Every remote gate requires separate named staging authorization. Production is never a reset target.
+
+1. Read-only classification: bind exact staging project/origin, ledger, function inventory, all physical LS roots/statuses/environments and mixed Paddle ownership. Identify synthetic cohort privately; any possible real obligation, unexplained owner, active provider resource or contrary185 deployment evidence stops.
+2. Fresh private logical backup: roles/schema/data, migrations, retained billing/account/auth identities and private resource inventory. No credentials/PII/raw payloads in public artifacts. Archive selected sanitized certification evidence separately.
+3. Validate checksums, managed-schema portability, auth/billing completeness and recoverability; rehearse restore into disposable isolated local/authorized staging-clone target. Never infer recovery from dump existence.
+4. Deploy reviewed LS retirement: exact reviewed185/186 ordered suffix, complete Paddle/shared functions and three tombstones; disabled sales/reconciliation/checkout. Separate envelope binds fresh inventory, commit/project/origin, backup and restore proof.
+5. Independently verify source/version identity, tombstone responses and no side effects, native/indirect RPC denial, preserved history and Paddle signature/owner behavior. No cleanup before this gate.
+6. Under a NEW explicit cleanup authorization, prefer quarantine of old synthetic login/cohort and creation of an isolated fresh staging clone/cohort. If full synthetic billing/account reset is required, review an exact target/row manifest, FK/trigger impact, backup/restore binding, lock/concurrency window and dry-run counts. No blind DELETE/TRUNCATE, trigger bypass, real-obligation deletion or accidental production target. Retain useful engineering fixtures and selected evidence outside runtime; inert history may stay where safe.
+7. Verify stale LS callbacks cannot repopulate: all old names are inert, application roles cannot invoke native writers, no legacy retry/servicing job is reachable and no provider callback bypass survives. Compare before/after aggregate identities/counts; unexplained mutation stops.
+8. Create fresh Paddle-only synthetic account cohort with explicit staging binding, no stale operation/checkout keys or borrowed historical origin. Keep old financial/history evidence intact; do not transfer LS ownership to Paddle.
+9. Separately authorize sandbox configuration/flag activation and matrix transactions. Run all required post-retirement Paddle scenarios and retain redacted outcomes. Provider-resource cleanup and LS secret removal are later separate actions.
+
+A clean launch-certification environment is not proof that historical evidence should be destroyed. Archive engineering evidence; quarantine/remove only exactly approved disposable runtime state. Restore/rollback must remain retirement-compatible and cannot reactivate LS.
+
+PAY-04 scope: migration 185 is unchanged retirement authority; migration 186 is trusted Launch/Growth/Scale monthly/annual activation and the bounded normalized paid-state seam. Scheduled plan/seat cancellation is intentionally unsupported (HTTP409 CANNOT_CANCEL); subscription cancellation/undo remains a separate product decision. No remote deployment or certification is implied.

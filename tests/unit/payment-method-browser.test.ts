@@ -124,14 +124,25 @@ describe("strict frontend payment-method boundary", () => {
     { environment: "live" },
     { token: "https://example.test" },
     { token: "" },
+    { token: "opaque\u0000token" },
+    { token: "opaque\u001ftoken" },
+    { token: "opaque\u007ftoken" },
+    { token: "opaque token" },
+    { token: "a".repeat(257) },
     { destination: "https://example.test" },
-  ])("rejects unsupported continuation %j", (delta) =>
-    expect(
-      paymentMethodResponseSchema.safeParse({
-        ...response,
-        continuation: { ...continuation, ...delta },
-      }).success,
-    ).toBe(false),
+  ])(
+    "rejects unsupported continuation at the registered adapter boundary %j",
+    (delta) => {
+      const f = fixture();
+      const registry = createPaymentMethodBrowserRegistry(
+        new Map([["paddle", f.adapter]]),
+      );
+      expect(() =>
+        registry.forContinuation({ ...continuation, ...delta }),
+      ).toThrow();
+      expect(f.initialize).not.toHaveBeenCalled();
+      expect(f.open).not.toHaveBeenCalled();
+    },
   );
   it.each(["-1", "1.2", "01", "0", "9".repeat(17)])(
     "rejects unsafe collection amount %s",

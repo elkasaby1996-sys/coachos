@@ -1,12 +1,15 @@
-/** Historical endpoint remains addressable, but cannot create new sales. */
+/** Static retirement endpoint: no runtime, database, provider or secret dependencies. */
 export function handleDisabledLegacyCheckout(request: Request): Response {
   const options = request.method === "OPTIONS";
   return new Response(
     options
       ? null
-      : JSON.stringify({ code: "BILLING_PROVIDER_NOT_CONFIGURED" }),
+      : JSON.stringify({
+          code: "BILLING_PROVIDER_RETIRED",
+          message: "This billing provider has been permanently retired.",
+        }),
     {
-      status: options ? 200 : 503,
+      status: options ? 200 : request.method === "POST" ? 410 : 405,
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers":

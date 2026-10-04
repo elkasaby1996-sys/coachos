@@ -30,7 +30,6 @@ import {
   scanRedaction,
   redact,
   verdict,
-  ASSERTION_CODES,
 } from "../../scripts/staging-commercial-evidence.mjs";
 import {
   readSnapshot,
@@ -45,6 +44,11 @@ import {
 } from "../../scripts/staging-commercial-apply.mjs";
 import { guardedArgs } from "../../scripts/supabase-remote-guard.mjs";
 import { writeBackupEvidence } from "../../scripts/staging-logical-backup.mjs";
+import {
+  SCENARIO_ASSERTIONS,
+  UNSUPPORTED_SCENARIOS,
+} from "../../scripts/billing-deployment-contract.mjs";
+import { retirementFixture } from "./helpers/billing-retirement-tooling";
 
 const manifest = readJson("config/staging-commercial-certification.json");
 const mappings = readJson("config/staging-commercial-provider.fake.json");
@@ -237,7 +241,7 @@ describe("staging commercial manifest and local planner", () => {
       plan.authorization.commands.filter((s: string) =>
         s.includes("functions deploy"),
       ),
-    ).toHaveLength(15);
+    ).toHaveLength(16);
     expect(network).not.toHaveBeenCalled();
     // No apply module is reachable from the planner import graph.
     expect(
@@ -268,35 +272,38 @@ describe("provider mapping contract", () => {
     "interval",
     "planVersion",
     "environment",
-    "testMode",
     "trial",
-    "setupFeeMinor",
-    "scheme",
-    "packageSize",
-    "usageAggregation",
-    "decimalPrice",
+    "hasUnitPriceOverrides",
+    "taxCategory",
+    "baseQuantityMaximum",
+    "seatQuantityMaximum",
+    "productStatus",
+    "priceStatus",
   ])("rejects wrong %s", (key) => {
     const v = clone(mappings);
     v.mappings[0][key] =
       typeof v.mappings[0][key] === "number" ? 999 : "invalid";
     expect(() => validateProviderMappings(v)).toThrow();
   });
-  it.each([0, 1])("rejects incorrect tier %i amount and boundary", (index) => {
-    const v = clone(mappings);
-    v.mappings[0].tiers[index].unitAmountMinor++;
-    expect(() => validateProviderMappings(v)).toThrow(
-      "PROVIDER_SEAT_TIER_MISMATCH",
-    );
-    const w = clone(mappings);
-    w.mappings[0].tiers.reverse();
-    expect(() => validateProviderMappings(w)).toThrow();
-  });
+  it.each([0, 1])(
+    "rejects incorrect seat price %i amount and quantity",
+    (index) => {
+      const v = clone(mappings);
+      v.mappings[index].seatAmountMinor++;
+      expect(() => validateProviderMappings(v)).toThrow(
+        "PROVIDER_SEAT_TIER_MISMATCH",
+      );
+      const w = clone(mappings);
+      w.mappings[index].seatQuantityMaximum = 99;
+      expect(() => validateProviderMappings(w)).toThrow();
+    },
+  );
   it("rejects duplicate mapping, test/live collision, missing mapping and setup tier fee", () => {
     const v = clone(mappings);
     v.mappings[1] = v.mappings[0];
     expect(() => validateProviderMappings(v)).toThrow();
     const w = clone(mappings);
-    w.liveReferences.push(w.mappings[0].variantRef);
+    w.liveReferences.push(w.mappings[0].priceRef);
     expect(() => validateProviderMappings(w)).toThrow(
       "PROVIDER_TEST_LIVE_COLLISION",
     );
@@ -304,7 +311,7 @@ describe("provider mapping contract", () => {
     x.mappings.pop();
     expect(() => validateProviderMappings(x)).toThrow();
     const y = clone(mappings);
-    y.mappings[0].tiers[1].fixedFeeMinor = 100;
+    y.mappings[0].hasUnitPriceOverrides = true;
     expect(() => validateProviderMappings(y)).toThrow();
   });
 });
@@ -421,17 +428,19 @@ describe("evidence and verdict", () => {
   it("requires full green units and all real staging outcomes for pass", () => {
     const v = clone(evidence);
     v.fullUnitSuiteGreen = true;
-    v.records.forEach((r: any, i: number) => {
-      r.status = "pass";
+    v.records.forEach((r: any) => {
+      r.status = UNSUPPORTED_SCENARIOS.includes(r.scenarioId)
+        ? "not_applicable"
+        : "pass";
       r.scope = "staging_test";
       r.assertions = [
         {
-          code: ASSERTION_CODES[i === 5 ? 4 : i > 5 ? i - 1 : i],
+          code: SCENARIO_ASSERTIONS[r.scenarioId],
           passed: true,
         },
       ];
     });
-    expect(verdict(v)).toBe("pass");
+    expect(verdict(v)).toBe("conditional");
     v.records[0].scope = "local_fixture";
     expect(verdict(v)).toBe("conditional");
     v.records[0].status = "not_applicable";
@@ -445,7 +454,9 @@ describe("evidence and verdict", () => {
     const v = clone(evidence);
     v.fullUnitSuiteGreen = true;
     v.records.forEach((r: any) => {
-      r.status = "pass";
+      r.status = UNSUPPORTED_SCENARIOS.includes(r.scenarioId)
+        ? "not_applicable"
+        : "pass";
       r.scope = "staging_test";
       r.assertions = [{ code: "REDACTION_PASSED", passed: true }];
     });
@@ -459,7 +470,7 @@ describe("evidence and verdict", () => {
     expect(rollbackSchema.safeParse(r.slice(1)).success).toBe(false);
     expect(scenariosSchema.safeParse(s.slice(1)).success).toBe(false);
     expect(s.every((v: any) => v.status === "not_run")).toBe(true);
-    expect(s).toHaveLength(23);
+    expect(s).toHaveLength(31);
     expect(authorizationRequest(manifest, commit).scenarioIds).toEqual(
       SCENARIO_IDS,
     );
@@ -581,7 +592,12 @@ describe("apply safety and workflow contract", () => {
             );
       const normalized = clone(mappings);
       normalized.mappings.forEach((m: any) => {
-        for (const k of ["storeRef", "productRef", "variantRef", "priceRef"])
+        for (const k of [
+          "productRef",
+          "priceRef",
+          "seatProductRef",
+          "seatPriceRef",
+        ])
           m[k] = "sha256:" + sha256(m[k]);
       });
       const a = {
@@ -589,7 +605,9 @@ describe("apply safety and workflow contract", () => {
         manifestSha256: sha256(JSON.stringify(manifest)),
         projectSha256: sha256(project),
         originSha256: sha256(inputs.origin),
-        approvedRemoteVersions: [],
+        approvedRemoteVersions: manifest.migrations.approved
+          .slice(0, 184)
+          .map((m: any) => m.filename.slice(0, 14)),
         backupEvidenceSha256: sha256(backupBytes),
         auth: {
           siteUrl: inputs.origin,
@@ -601,9 +619,8 @@ describe("apply safety and workflow contract", () => {
         remoteSecretNamesPresent: manifest.requiredSecretNames,
         providerEnvironment: "test",
         billingAppOrigin: inputs.origin,
-        portalAllowedHosts: ["test-store.lemonsqueezy.com"],
-        portalControlsReviewed: true,
-        webhookTestStoreReviewed: true,
+        paddleSandboxReviewed: true,
+        retirement: retirementFixture(manifest, commit, project),
         rollbackReviewed: true,
       };
       expect(() =>

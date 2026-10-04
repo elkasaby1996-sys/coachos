@@ -1,6 +1,37 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import {
+  FUNCTION_CONTRACTS,
+  OUTSIDE_BILLING_DEPLOYMENT,
+  RETIREMENT_MIGRATION,
+  ACTIVATION_MIGRATION,
+} from "../../scripts/billing-deployment-contract.mjs";
+
+export function billingCapability(file) {
+  const endpoint = /^supabase\/functions\/([^/]+)\/index\.ts$/.exec(file)?.[1];
+  if (endpoint)
+    return (
+      FUNCTION_CONTRACTS.find((f) => f.name === endpoint)?.classification ??
+      (OUTSIDE_BILLING_DEPLOYMENT.includes(endpoint)
+        ? "NON_BILLING"
+        : "UNCLASSIFIED")
+    );
+  if (file === `supabase/migrations/${ACTIVATION_MIGRATION}`)
+    return "PADDLE_ACTIVE";
+  if (file === `supabase/migrations/${RETIREMENT_MIGRATION}`)
+    return "LS_DATABASE_RETIREMENT";
+  if (file.startsWith("docs/archive/")) return "HISTORICAL";
+  if (
+    /lemon_squeezy_(?:database_retirement|retired_state_routing)|billing_cross_ledger/.test(
+      file,
+    )
+  )
+    return "SHARED_SAFETY";
+  if (/paddle|billing_payment_method|payment_recovery/.test(file))
+    return "ACTIVE_PADDLE_VERIFICATION";
+  return "UNCLASSIFIED";
+}
 
 const ciFiles = new Set([
   ".github/workflows/ci.yml",

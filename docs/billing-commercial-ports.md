@@ -1,5 +1,7 @@
 # BILLING-ADAPTER-02: verified reconciliation and commercial ports
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 Based on merged BILLING-ADAPTER-01 at `f9f427a`. This is local architecture work: no migration, SQL change, provider contact, hosted-environment mutation, deployment, new provider integration, or browser provider switch.
 
 ## Dependency delta

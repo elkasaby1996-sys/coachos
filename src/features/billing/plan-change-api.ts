@@ -1,5 +1,6 @@
+import { billingCapability } from "./provider-capabilities";
+import { parsePlanPreview } from "./providers/plan-preview";
 import {
-  planChangePreviewSchema,
   planChangeStateSchema,
   safePlanChangeError,
 } from "./plan-change-contracts";
@@ -10,6 +11,13 @@ export async function fetchPlanChangeState() {
       "get_my_billing_plan_change_state",
     );
     if (error) throw error;
+    if (!billingCapability(data?.provider, "planChanges"))
+      return planChangeStateSchema.parse({
+        linked: false,
+        cadence: null,
+        eligible: false,
+        operation: null,
+      });
     return planChangeStateSchema.parse(data);
   } catch (error) {
     throw safePlanChangeError(error);
@@ -18,9 +26,11 @@ export async function fetchPlanChangeState() {
 export async function requestPlanChange(
   action: "preview" | "apply" | "cancel" | "refresh",
   body: Record<string, unknown>,
-  provider?: "paddle",
+  provider?: string | null,
 ) {
   try {
+    if (!billingCapability(provider, "planChanges"))
+      throw safePlanChangeError({ code: "BILLING_PLAN_CHANGE_NOT_ELIGIBLE" });
     const { supabase } = await import("../../lib/supabase");
     const endpoint = {
       preview: "billing-preview-plan-change",
@@ -30,7 +40,7 @@ export async function requestPlanChange(
     }[action];
     const { data, error } = await supabase.functions.invoke(endpoint, {
       body:
-        action === "preview" && provider === "paddle"
+        action === "preview" && billingCapability(provider, "planChanges")
           ? { ...body, previewContractVersion: 2 }
           : body,
     });
@@ -44,7 +54,7 @@ export async function requestPlanChange(
       throw safePlanChangeError(safe);
     }
     return action === "preview"
-      ? planChangePreviewSchema.parse(data)
+      ? parsePlanPreview(data)
       : planChangeStateSchema.parse(data);
   } catch (error) {
     throw safePlanChangeError(error);

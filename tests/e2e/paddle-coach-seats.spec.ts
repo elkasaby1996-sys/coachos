@@ -20,9 +20,12 @@ for (const cadence of ["monthly", "annual"] as const) {
     ).toBeVisible();
     await f.previewSeats(1);
     await expect(
-      panel.getByText("Proration, taxes and credits are calculated by Paddle", {
-        exact: false,
-      }),
+      panel.getByText(
+        "Proration, taxes and credits are calculated by your payment provider",
+        {
+          exact: false,
+        },
+      ),
     ).toBeVisible();
     await expect(
       panel.getByText("No payment has been collected", { exact: false }),

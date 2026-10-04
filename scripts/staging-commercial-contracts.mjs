@@ -3,68 +3,18 @@ import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-export const BILLING_FUNCTIONS = [
-  "billing-create-lemon-squeezy-checkout",
-  "billing-create-paddle-checkout",
-  "billing-lemon-squeezy-webhook",
-  "billing-create-customer-portal-link",
-  "billing-update-payment-method",
-  "billing-preview-plan-change",
-  "billing-change-subscription-plan",
-  "billing-cancel-scheduled-plan-change",
-  "billing-refresh-plan-change",
-  "billing-preview-coach-seat-change",
-  "billing-change-coach-seat-quantity",
-  "billing-cancel-scheduled-seat-change",
-  "billing-refresh-coach-seat-change",
-];
-export const NONBILLING_FUNCTIONS = [
-  "open-wearables",
-  "exercise-dataset-search",
-];
-export const SCENARIO_IDS = [
-  "CERT-DEPLOY-001",
-  "CERT-DEPLOY-002",
-  "CERT-AUTH-001",
-  "CERT-CATALOGUE-001",
-  "CERT-CHECKOUT-001",
-  "CERT-CHECKOUT-002",
-  "CERT-WEBHOOK-001",
-  "CERT-WEBHOOK-002",
-  "CERT-WEBHOOK-003",
-  "CERT-PORTAL-001",
-  "CERT-PORTAL-002",
-  "CERT-RECOVERY-001",
-  "CERT-PLAN-001",
-  "CERT-PLAN-002",
-  "CERT-PLAN-003",
-  "CERT-SEAT-001",
-  "CERT-SEAT-002",
-  "CERT-SEAT-003",
-  "CERT-ACCESS-001",
-  "CERT-ACCESS-002",
-  "CERT-ACCESS-003",
-  "CERT-SECURITY-001",
-  "CERT-ROLLBACK-001",
-];
-export const SECRET_NAMES = [
-  "SUPABASE_ACCESS_TOKEN",
-  "SUPABASE_DB_PASSWORD",
-  "SUPABASE_URL",
-  "SUPABASE_ANON_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
-  "LEMONSQUEEZY_API_KEY",
-  "LEMONSQUEEZY_WEBHOOK_SECRET",
-  "BILLING_PROVIDER_ENVIRONMENT",
-  "BILLING_APP_BASE_URL",
-  "BILLING_PORTAL_ALLOWED_HOSTS",
-  "OPEN_WEARABLES_API_URL",
-  "OPEN_WEARABLES_API_KEY",
-  "ALLOWED_WEARABLE_REDIRECT_ORIGINS",
-  "EXERCISE_DATASET_BASE_URL",
-  "EXERCISE_DATASET_API_KEY",
-  "EXERCISE_DATASET_API_KEY_HEADER",
-];
+import {
+  BILLING_FUNCTIONS,
+  NONBILLING_FUNCTIONS,
+  SCENARIO_IDS,
+  SECRET_NAMES,
+  JWT_CONTRACTS,
+  ACTIVATION_MIGRATION,
+  ACTIVATION_SHA,
+  RETIREMENT_SHA,
+  EVIDENCE_CLASSES,
+} from "./billing-deployment-contract.mjs";
+export { BILLING_FUNCTIONS, NONBILLING_FUNCTIONS, SCENARIO_IDS, SECRET_NAMES };
 export const ROLLBACK_IDS = [
   "application",
   "edge-functions",
@@ -102,14 +52,15 @@ export const manifestSchema = z.strictObject({
   schemaVersion: z.literal(1),
   environment: z.literal("staging"),
   providerEnvironment: z.literal("test"),
+  retirementContract: z.literal("prelaunch-ls-authority-retirement-v1"),
   requiredBaseCommit: sha,
   reviewedCommit: z.literal("input:confirm_commit_sha"),
   requiredApplicationOrigin: z.literal("input:STAGING_APPLICATION_ORIGIN"),
   requiredSupabaseProjectRef: z.literal("input:STAGING_SUPABASE_PROJECT_REF"),
   migrations: z.strictObject({
     directory: z.literal("supabase/migrations"),
-    approved: z.array(migrationSchema).min(1),
-    expectedLatestMigration: migrationSchema.shape.filename,
+    approved: z.array(migrationSchema).length(186),
+    expectedLatestMigration: z.literal(ACTIVATION_MIGRATION),
   }),
   functions: z.strictObject({
     billing: exactList(BILLING_FUNCTIONS),
@@ -119,7 +70,7 @@ export const manifestSchema = z.strictObject({
     Object.fromEntries(
       [...BILLING_FUNCTIONS, ...NONBILLING_FUNCTIONS].map((name) => [
         name,
-        z.literal(name !== "billing-lemon-squeezy-webhook"),
+        z.literal(JWT_CONTRACTS[name]),
       ]),
     ),
   ),
@@ -189,6 +140,14 @@ export function validateRepository(root, input) {
     manifest.migrations.approved,
     actual,
     manifest.migrations.expectedLatestMigration,
+  );
+  requireCheck(
+    actual[184].sha256 === RETIREMENT_SHA,
+    "RETIREMENT_MIGRATION_DRIFT",
+  );
+  requireCheck(
+    actual.at(-1).sha256 === ACTIVATION_SHA,
+    "ACTIVATION_MIGRATION_DRIFT",
   );
   for (const name of [
     ...manifest.functions.billing,
@@ -292,6 +251,11 @@ export const scenarioSchema = z.strictObject({
   requiredEvidence: textList,
   cleanup: textList,
   status: z.enum(["not_run", "pass", "fail", "blocked", "not_applicable"]),
+  provider: z.literal("paddle"),
+  evidenceClasses: z.array(z.enum(EVIDENCE_CLASSES)).min(1),
+  localEvidence: textList,
+  historicalEvidence: z.array(z.string().min(1)),
+  requiredForCertification: z.boolean(),
 });
 export const scenariosSchema = z
   .array(scenarioSchema)

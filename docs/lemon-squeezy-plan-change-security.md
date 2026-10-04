@@ -1,5 +1,7 @@
 # Plan-change security and rollback
 
+> HISTORICAL ENGINEERING EVIDENCE — superseded by pre-launch LS retirement. RepSync never launched LS commercially. LS execution and application DB authority are locally retired; any live-LS procedure below is obsolete and must not be executed. Use the [current retirement contract](lemon-squeezy-retirement-disposition.md) and [Paddle-only certification matrix](paddle-only-certification.md). Remote deployment remains unassessed.
+
 The browser supplies only target plan, target cadence and an operation UUID. Cancel accepts only the original operation UUID; refresh accepts an empty object. Extra identifiers, amounts, timing and proration fields are rejected. All four Edge endpoints require JWT verification and authenticate the caller before resolving the canonical owner account. Service RPCs receive only the authenticated identity from that boundary. The owner state RPC derives identity from `auth.uid()` and accepts no account parameter.
 
 RLS is enabled on operations/events and all direct runtime table privileges are revoked, including service role table access. Every new security-definer function uses a fixed search path and explicit grants. Internal classification, capacity and transition helpers are not runtime-executable. No dynamic SQL is used. Backend context and mappings never become browser responses.

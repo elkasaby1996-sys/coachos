@@ -40,6 +40,15 @@ jobs:
       - name: Test CI change classification
         run: node --test .github/scripts/ci-change-scope.test.mjs
 
+      - name: Enforce Paddle-only runtime and retirement deployment contracts
+        run: node scripts/validate-billing-retirement.mjs
+
+      - name: Billing Edge type checks
+        run: node scripts/billing-edge-typecheck.mjs
+
+      - name: Full unit regression gate including LS-negative and Paddle behavior
+        run: npm run test:unit
+
       - name: Classify changed files
         id: scope
         run: node .github/scripts/ci-change-scope.mjs

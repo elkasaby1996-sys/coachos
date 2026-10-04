@@ -42,14 +42,19 @@ export async function paymentMethodFixture(
   launchFailure = false,
 ) {
   const api = new URL(process.env.E2E_SUPABASE_API_URL ?? "");
+  const disposablePort =
+    process.env.PAY04_DISPOSABLE_LOCAL === "1" ? "58431" : "57431";
   if (
+    api.protocol !== "http:" ||
+    api.username ||
+    api.password ||
     ![
-      ["127.0.0.1", "57431"],
-      ["localhost", "57431"],
+      ["127.0.0.1", disposablePort],
+      ["localhost", disposablePort],
     ].some(([host, port]) => api.hostname === host && api.port === port)
   )
     throw new Error(
-      "Payment-method browser fixtures require the disposable reconciliation API.",
+      "Payment-method browser fixtures require the explicitly bound disposable local API.",
     );
   const coach = await seedEntitlementCoach(`payment-method-${scope}`, true);
   const summary: BillingProviderSummary = {

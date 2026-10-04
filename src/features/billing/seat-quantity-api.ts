@@ -1,3 +1,4 @@
+import { billingCapability } from "./provider-capabilities";
 import {
   seatQuantityStateSchema,
   seatQuantityPreviewSchema,
@@ -9,6 +10,13 @@ export async function fetchSeatQuantityState() {
     "get_my_billing_seat_quantity_state",
   );
   if (error) throw safeSeatQuantityError(error);
+  if (!billingCapability(data?.provider, "seatChanges"))
+    return seatQuantityStateSchema.parse({
+      available: false,
+      canCancel: false,
+      summary: null,
+      operation: null,
+    });
   const parsed = seatQuantityStateSchema.safeParse(data);
   if (!parsed.success) throw safeSeatQuantityError(null);
   return parsed.data;
@@ -16,7 +24,10 @@ export async function fetchSeatQuantityState() {
 export async function requestSeatQuantity(
   action: "preview" | "apply" | "cancel" | "refresh",
   body: Record<string, unknown>,
+  provider?: string | null,
 ) {
+  if (!billingCapability(provider, "seatChanges"))
+    throw safeSeatQuantityError({ code: "BILLING_SEAT_QUANTITY_NOT_ELIGIBLE" });
   const { supabase } = await import("../../lib/supabase");
   const endpoint = {
     preview: "billing-preview-coach-seat-change",

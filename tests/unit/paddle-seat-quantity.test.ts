@@ -6,7 +6,7 @@ import {
   type PaddleSeatContext,
 } from "../../supabase/functions/_shared/paddle-seat-quantity";
 import { handleSeatQuantity } from "../../supabase/functions/_shared/billing-seat-quantity";
-import type { BillingDependencies } from "../../supabase/functions/_shared/billing-handlers";
+import type { PaddleSeatDependencies } from "../../supabase/functions/_shared/paddle-seat-quantity";
 import { observeEvent } from "../../supabase/functions/_shared/paddle-webhook/observation";
 const ref = (prefix: string, n = "1") => `${prefix}_${n.repeat(26)}`;
 const operation = "a0700000-0000-4000-8000-000000000001";
@@ -461,6 +461,7 @@ function dependencies() {
     }),
   };
   const deps = {
+    providerAvailable: (provider) => provider === "paddle",
     authenticate: vi.fn(async () => ({ id: operation })),
     paddleSeats: () => transport,
     config: vi.fn(() => {
@@ -468,7 +469,7 @@ function dependencies() {
     }),
     serviceRpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
       calls.push(name);
-      if (name === "paddle_plan_change_route_v1") return true;
+      if (name === "billing_workflow_provider_v1") return "paddle";
       if (name === "begin_paddle_seat_quantity_v1")
         return args.p_snapshot === null
           ? { needsSnapshot: true }
@@ -478,7 +479,9 @@ function dependencies() {
     }),
     ownerRpc: () => vi.fn(async () => state),
     log: vi.fn(),
-  } as unknown as BillingDependencies;
+  } as unknown as PaddleSeatDependencies;
+  deps.seatAction = async (_provider, owner, token, action, input) =>
+    handlePaddleSeatAction(deps, owner, token, action, input);
   return { deps, transport, calls };
 }
 describe("Paddle seat orchestration", () => {
