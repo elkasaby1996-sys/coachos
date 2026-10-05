@@ -12,6 +12,12 @@ import {
 import { validateOrigin } from "./staging-commercial-contracts.mjs";
 import { validateProviderMappings } from "./staging-commercial-provider.mjs";
 import {
+  historyReviewSchema,
+  validateHistoryReview,
+  assertWebhookHistory,
+  evidenceDigest,
+} from "./staging-release-webhook-history.mjs";
+import {
   FUNCTION_CONTRACTS,
   SECRET_NAMES,
   LS_TOMBSTONES,
@@ -158,7 +164,7 @@ const config = z.strictObject({
   providerMappings: z.unknown(),
 });
 const common = {
-  schemaVersion: z.literal(2),
+  schemaVersion: z.literal(3),
   operationId: z.string().uuid(),
   executionCommit: sha,
   frozenPayloadCommit: z.literal(FROZEN_PAYLOAD),
@@ -184,6 +190,10 @@ const common = {
   outsideFunctions: z.array(functionBinding),
   containmentFunctions: z.array(functionBinding),
   inventory: z.strictObject({ digest, observedAt: timestamp }),
+  webhookHistory: z.strictObject({
+    review: historyReviewSchema,
+    dispositionDigest: digest,
+  }),
   backup,
   configuration: config,
   salesEnabled: z.literal(false),
@@ -272,6 +282,7 @@ export function validateAuthorization(
   ensure(parsed.success, "RELEASE_AUTHORIZATION_INVALID");
   const a = parsed.data,
     p = phasePlan(phase, identity);
+  validateHistoryReview(a.webhookHistory.review);
   validateBoundary(context);
   for (const [field, value] of Object.entries({
     executionCommit: context.commit,
@@ -384,7 +395,7 @@ export function assertHistory(before, after) {
   for (const [table, digest] of Object.entries(before))
     ensure(after[table] === digest, "RELEASE_HISTORY_CHANGED");
 }
-export function assertDrain(observation) {
+export function assertDrain(observation, authorization) {
   const categories = observation.facts.work;
   ensure(
     categories &&
@@ -395,6 +406,17 @@ export function assertDrain(observation) {
   ensure(
     Object.values(categories).every((n) => n === 0),
     "RELEASE_IN_FLIGHT_WORK",
+  );
+  assertWebhookHistory(
+    observation.facts.webhookHistory,
+    evidenceDigest(authorization.webhookHistory.review),
+  );
+  ensure(
+    observation.facts.webhookHistory.digest ===
+      authorization.webhookHistory.dispositionDigest &&
+      categories.paddleWebhooks ===
+        observation.facts.webhookHistory.activeBlockingWebhookCount,
+    "RELEASE_WEBHOOK_REVIEW_DRIFT",
   );
 }
 export function assertScheduled(observation, authorization) {

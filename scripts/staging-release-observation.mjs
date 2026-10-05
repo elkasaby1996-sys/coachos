@@ -14,6 +14,17 @@ import {
   CONTAINMENT_SOURCE,
 } from "./staging-release-artifacts.mjs";
 import { LS_TOMBSTONES } from "./billing-deployment-contract.mjs";
+import {
+  webhookHistoryQuery,
+  classifyWebhookHistory,
+  evidenceDigest,
+} from "./staging-release-webhook-history.mjs";
+
+export const EMPTY_WEBHOOK_REVIEW = Object.freeze({
+  schemaVersion: 1,
+  evidenceSha256: evidenceDigest([]),
+  records: [],
+});
 
 export const OBSERVATION_MAX_AGE_MS = 60_000;
 const DRIFT_CATEGORIES = Object.freeze([
@@ -169,7 +180,7 @@ export function historyQuery(tables) {
     ") q"
   );
 }
-export function workQuery(hasPaymentMethod) {
+export function workQuery(hasPaymentMethod, tables) {
   const count = (table, condition) =>
     `(select count(*) from public.${table} where ${condition})`;
   const busy = "status not in ('completed','canceled','failed','scheduled')";
@@ -209,13 +220,15 @@ export function workQuery(hasPaymentMethod) {
     Object.entries(categories)
       .map(([k, v]) => `'${k}',${v}`)
       .join(",") +
-    ") work, (select jsonb_build_object('count',count(*),'invalidBoundaries',count(*) filter (where effective_at is null or not isfinite(effective_at)),'earliest',min(effective_at)) from (select effective_at from public.billing_operations_v2 where status='scheduled' union all select effective_at from public.billing_plan_change_operations where status='scheduled' union all select effective_at from public.billing_seat_quantity_operations where status='scheduled') s) scheduled"
+    ") work, (select jsonb_build_object('count',count(*),'invalidBoundaries',count(*) filter (where effective_at is null or not isfinite(effective_at)),'earliest',min(effective_at)) from (select effective_at from public.billing_operations_v2 where status='scheduled' union all select effective_at from public.billing_plan_change_operations where status='scheduled' union all select effective_at from public.billing_seat_quantity_operations where status='scheduled') s) scheduled" +
+    (tables ? `, (${webhookHistoryQuery(tables)}) webhook_history` : "")
   );
 }
 export function createRemoteAdapter(
   context,
   env = process.env,
   transport = fetch,
+  webhookReview = EMPTY_WEBHOOK_REVIEW,
 ) {
   const wrapper = resolve("scripts/supabase-remote-guard.mjs");
   const boundary = () =>
@@ -292,6 +305,7 @@ export function createRemoteAdapter(
         facts.tables.some(
           (t) => t.name === "billing_payment_method_preparations_v2",
         ),
+        facts.tables.map((t) => t.name),
       ),
     );
     const endRows = await query(INVENTORY_QUERY);
@@ -303,6 +317,31 @@ export function createRemoteAdapter(
       drift(["DATABASE_DRIFT"]);
     facts.history = history[0].history;
     facts.work = work[0].work;
+    ensure(
+      canonical(Object.keys(work[0].webhook_history ?? {}).sort()) ===
+        canonical(facts.tables.map((t) => t.name).sort()),
+      "RELEASE_WEBHOOK_SNAPSHOT_SCOPE",
+    );
+    ensure(
+      Object.values(work[0].webhook_history).every(
+        (rows) =>
+          Array.isArray(rows) &&
+          rows.every((row) =>
+            /^[a-f0-9]{64}$/.test(row.__release_row_sha256 ?? ""),
+          ),
+      ),
+      "RELEASE_WEBHOOK_ROW_DIGEST_MISSING",
+    );
+    facts.webhookHistory = classifyWebhookHistory(
+      work[0].webhook_history,
+      webhookReview,
+    );
+    ensure(
+      facts.webhookHistory.retainedNonterminalWebhookCount ===
+        facts.work.paddleWebhooks,
+      "RELEASE_WEBHOOK_COUNT_DRIFT",
+    );
+    facts.work.paddleWebhooks = facts.webhookHistory.activeBlockingWebhookCount;
     facts.scheduled = work[0].scheduled;
     facts.contractDigest = databaseContract(facts);
     return {
@@ -315,6 +354,7 @@ export function createRemoteAdapter(
           database,
           history: facts.history,
           work: facts.work,
+          webhookHistory: facts.webhookHistory,
           scheduled: facts.scheduled,
         }),
         FUNCTION_INVENTORY_DRIFT: orderedDigest(functions),

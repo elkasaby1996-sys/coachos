@@ -161,7 +161,8 @@ export async function runRelease(
     assertPolicy(fresh);
     assertConfiguration(fresh, auth);
     assertScheduled(fresh, auth);
-    assertDrain(fresh);
+    assertDrain(fresh, auth);
+    report.webhookHistory = fresh.facts.webhookHistory;
     assertApprovedFunctionInventory(fresh);
     if (observation)
       ensure(fresh.digest === observation.digest, "RELEASE_IMMEDIATE_DRIFT");
@@ -347,7 +348,7 @@ export async function runRelease(
     );
     verifyDatabase(observation, plan.start, contracts, native);
     reference = observation;
-    assertDrain(observation);
+    assertDrain(observation, auth);
     if (mode === "preflight")
       return { ...report, status: "preflight_pass", remoteExecuted: false };
     for (const step of plan.steps) {
@@ -364,7 +365,7 @@ export async function runRelease(
         checkpoint("containment_verified");
       } else if (step === "drain") {
         await gate();
-        assertDrain(observation);
+        assertDrain(observation, auth);
         checkpoint("drain_verified");
       } else if (
         step === "retirement_checkpoint" ||

@@ -87,7 +87,12 @@ export async function runCli(argv = process.argv.slice(2), env = process.env) {
   validateRecoveryBundle(recoveryBundle, authorization);
   const report = await runRelease(
     { phase, mode, authorization, context, identity, contracts, root },
-    createRemoteAdapter(context, env),
+    createRemoteAdapter(
+      context,
+      env,
+      fetch,
+      authorization.webhookHistory?.review,
+    ),
     { currentContext: getContext, emit: writeReleaseEvidence },
   );
   writeReleaseEvidence(report);

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { seedEntitlementCoach } from "./utils/account-entitlement-seeds";
 import {
   pgQuery,
@@ -56,8 +56,21 @@ async function snapshot(userId: string) {
   return row;
 }
 
-for (const suffix of ["", "/?anything=preserved"]) {
-  test(`PT without workspace can open Billing without side effects (${suffix || "exact"})`, async ({
+async function waitForPreWorkspaceBilling(page: Page) {
+  await waitForBootstrapResolved(page);
+  // Billing performs its own entitlement read after auth bootstrap. Wait for
+  // its rendered control before asserting the read-only contract.
+  await page
+    .getByRole("button", { name: "Start subscription", exact: true })
+    .waitFor({ state: "visible", timeout: 20_000 });
+}
+
+for (const { suffix, delayedBilling } of [
+  { suffix: "", delayedBilling: false },
+  { suffix: "/?anything=preserved", delayedBilling: false },
+  { suffix: "", delayedBilling: true },
+]) {
+  test(`PT without workspace can open Billing without side effects (${delayedBilling ? "delayed billing read" : suffix || "exact"})`, async ({
     page,
   }, info) => {
     const coach = await seedEntitlementCoach(info.testId);
@@ -76,6 +89,22 @@ for (const suffix of ["", "/?anything=preserved"]) {
       "seat_operations",
     ])
       expect(Number(before[key])).toBe(0);
+    let delayedReads = 0;
+    if (delayedBilling) {
+      await page.route(
+        "**/rest/v1/rpc/get_my_effective_account_entitlements",
+        async (route) => {
+          const response = await route.fetch();
+          // Auth bootstrap readiness does not mean Billing's independent read
+          // has rendered. Hold the real local response beyond the default
+          // five-second assertion budget, including after a reload.
+          await waitForBootstrapResolved(page);
+          await new Promise((resolve) => setTimeout(resolve, 6_000));
+          delayedReads++;
+          await route.fulfill({ response });
+        },
+      );
+    }
     const target = `/pt-hub/settings/billing${suffix}`;
     // Normal login with the existing redirect parameter avoids visiting onboarding.
     await page.goto(`/login?redirect=${encodeURIComponent(target)}`);
@@ -83,7 +112,7 @@ for (const suffix of ["", "/?anything=preserved"]) {
     await page.getByLabel("Password", { exact: true }).fill(coach.password);
     await clickVisibleEnabledSignInButton(page);
     await waitForAuthSessionReady(page);
-    await waitForBootstrapResolved(page);
+    await waitForPreWorkspaceBilling(page);
     await expect(
       page.getByRole("button", { name: "Start subscription", exact: true }),
     ).toBeVisible();
@@ -98,10 +127,11 @@ for (const suffix of ["", "/?anything=preserved"]) {
     if (suffix) expect(new URL(page.url()).search).toBe("?anything=preserved");
     // A reload also exercises the already-authenticated bootstrap path.
     await page.reload();
-    await waitForBootstrapResolved(page);
+    await waitForPreWorkspaceBilling(page);
     await expect(
       page.getByRole("button", { name: "Start subscription", exact: true }),
     ).toBeVisible();
+    if (delayedBilling) expect(delayedReads).toBeGreaterThan(0);
     const afterBilling = await snapshot(coach.userId);
     await info.attach("billing-side-effects", {
       contentType: "application/json",

@@ -43,8 +43,85 @@ import {
   workQuery,
   databaseContract,
   normalizeFunctionInventory,
+  EMPTY_WEBHOOK_REVIEW,
 } from "../../scripts/staging-release-observation.mjs";
 
+import {
+  classifyWebhookHistory,
+  inspectWebhookHistory,
+  evidenceDigest,
+  WEBHOOK_HISTORY_TABLES,
+  webhookHistoryQuery,
+  isEffectiveEntitlementAuthority,
+  isEffectiveCapacityAuthority,
+} from "../../scripts/staging-release-webhook-history.mjs";
+const emptyWebhookTables = () =>
+  Object.fromEntries(WEBHOOK_HISTORY_TABLES.map((t) => [t, []])) as Record<
+    string,
+    any[]
+  >;
+const fixtureAuthorityTables = [
+  "account_feature_entitlement_overrides",
+  "account_capacity_reservations",
+];
+function fixtureAccountAuthority(table: string, account: string) {
+  const common = {
+    id: `authority-${table}-${account}`,
+    billing_account_id: account,
+    source: "local-release-test",
+    created_at: "2026-09-20T10:00:00Z",
+  };
+  return table === "account_feature_entitlement_overrides"
+    ? {
+        ...common,
+        feature_key: "core.client_management",
+        effect: "enable",
+        reason: "Local release regression",
+        approved_by: null,
+        starts_at: common.created_at,
+        expires_at: null,
+        revoked_at: null,
+      }
+    : {
+        ...common,
+        dimension: "counted_clients",
+        quantity: 1,
+        status: "active",
+        idempotency_key: "local-release-test",
+        subject_type: "client",
+        subject_key: "local-release-test-subject",
+        workspace_id: null,
+        created_by_user_id: null,
+        expires_at: "2026-09-20T10:05:00Z",
+        consumed_at: null,
+        released_at: null,
+        expired_at: null,
+        metadata: {},
+        updated_at: common.created_at,
+      };
+}
+function lifecycleAuthority(kind: string, account: string) {
+  const capacity = kind.startsWith("capacity-");
+  const table = fixtureAuthorityTables[capacity ? 1 : 0];
+  const row: any = fixtureAccountAuthority(table, account);
+  row.__release_authority_lifecycle = "blocking";
+  if (kind === "override-future") row.starts_at = "2099-09-20T10:00:00Z";
+  if (kind === "override-expired") {
+    row.expires_at = "2026-09-20T10:00:00.000001Z";
+    row.__release_authority_lifecycle = "expired";
+  }
+  if (kind === "override-revoked") {
+    row.revoked_at = "2026-09-20T10:01:00.000001Z";
+    row.__release_authority_lifecycle = "revoked";
+  }
+  if (["capacity-released", "capacity-expired"].includes(kind)) {
+    row.status = kind.slice(9);
+    row[`${row.status}_at`] = "2026-09-20T10:05:00.000001Z";
+    row.updated_at = row[`${row.status}_at`];
+    row.__release_authority_lifecycle = row.status;
+  }
+  return { table, row };
+}
 const identity = releaseIdentity();
 const NOW = Date.now();
 const iso = (offset = 0) => new Date(NOW + offset).toISOString();
@@ -119,6 +196,10 @@ function simulation(start: number) {
             }
           : {}),
       },
+      webhookHistory: classifyWebhookHistory(
+        emptyWebhookTables(),
+        EMPTY_WEBHOOK_REVIEW,
+      ),
       work: Object.fromEntries(
         [
           "legacyCheckouts",
@@ -232,7 +313,7 @@ function authorization(phase: string, s: ReturnType<typeof simulation>) {
   const p = phasePlan(phase, identity),
     o = s.observation();
   return structuredClone({
-    schemaVersion: 2,
+    schemaVersion: 3,
     phase,
     operationId: "00000000-0000-4000-8000-000000000001",
     executionCommit: context.commit,
@@ -253,6 +334,10 @@ function authorization(phase: string, s: ReturnType<typeof simulation>) {
     outsideFunctions: p.outsideFunctions,
     containmentFunctions: p.containmentFunctions,
     inventory: { digest: o.digest, observedAt: iso() },
+    webhookHistory: {
+      review: EMPTY_WEBHOOK_REVIEW,
+      dispositionDigest: o.facts.webhookHistory.digest,
+    },
     backup: {
       evidenceSha256: hash("backup"),
       createdAt: iso(-60_000),
@@ -472,6 +557,8 @@ describe("strict versioned phase authority", () => {
     ).toBe("BASELINE_180_TO_184");
   });
   const mutations: [string, (a: any) => void][] = [
+    ["old authorization version", (a) => (a.schemaVersion = 2)],
+    ["missing webhook review", (a) => delete a.webhookHistory],
     ["wrong commit", (a) => (a.executionCommit = "a".repeat(40))],
     ["stale authorization", (a) => (a.createdAt = iso(-31 * 60_000))],
     ["expired authority", (a) => (a.expiresAt = iso(-1))],
@@ -1010,10 +1097,19 @@ describe(
           (args[0] === "functions" && ["deploy", "delete"].includes(args[1])),
       );
     function databaseFacts(o: any) {
-      const { history, work, scheduled, contractDigest, ...facts } = o.facts;
+      const {
+        history,
+        work,
+        scheduled,
+        contractDigest,
+        webhookHistory,
+        ...facts
+      } = o.facts;
       return {
         ...facts,
-        tables: Object.keys(history).map((name) => ({
+        tables: [
+          ...new Set([...Object.keys(history), ...WEBHOOK_HISTORY_TABLES]),
+        ].map((name) => ({
           name,
           acl: null,
           rls: true,
@@ -1034,6 +1130,8 @@ describe(
         armAfterCheckpoint?: string;
         armAfterStep?: string;
         armAfterDryRun?: number;
+        webhookTables?: Record<string, any[]>;
+        webhookReview?: any;
       } = {},
     ) {
       const phase = options.phase ?? "BASELINE_180_TO_184";
@@ -1061,6 +1159,9 @@ describe(
           smtp_pass: "synthetic-private-never-export",
         },
         overrideFacts: null as any,
+        webhookTables: structuredClone(
+          options.webhookTables ?? emptyWebhookTables(),
+        ),
       };
       let calls = 0,
         changed = false,
@@ -1094,7 +1195,35 @@ describe(
         else if ([4, 11, 17].includes(read)) response = state.auth;
         else if ([5, 12].includes(read))
           response = [{ history: o.facts.history }];
-        else response = [{ work: o.facts.work, scheduled: o.facts.scheduled }];
+        else
+          response = [
+            {
+              work: {
+                ...o.facts.work,
+                paddleWebhooks:
+                  state.webhookTables.billing_webhook_events_v2.filter(
+                    (e: any) =>
+                      !["processed", "ignored"].includes(e.processing_status),
+                  ).length,
+              },
+              scheduled: o.facts.scheduled,
+              webhook_history: Object.fromEntries(
+                databaseFacts(o).tables.map((t: any) => [
+                  t.name,
+                  (state.webhookTables[t.name] ?? []).map((row) => ({
+                    ...row,
+                    __release_row_sha256: evidenceDigest(
+                      Object.fromEntries(
+                        Object.entries(row).filter(
+                          ([k]) => k !== "__release_row_sha256",
+                        ),
+                      ),
+                    ),
+                  })),
+                ]),
+              ),
+            },
+          ];
         if (options.reorder && round > 1) {
           if ([2, 3, 9, 10, 15, 16].includes(read))
             response = [...response]
@@ -1112,9 +1241,12 @@ describe(
           PRODUCTION_SUPABASE_PROJECT_REF: context.productionProject,
         },
         transport,
+        options.webhookReview ?? EMPTY_WEBHOOK_REVIEW,
       );
       const reviewed = await real.observe();
       const a = authorization(phase, { observation: () => reviewed } as any);
+      a.webhookHistory.review = options.webhookReview ?? EMPTY_WEBHOOK_REVIEW;
+      a.webhookHistory.dispositionDigest = reviewed.facts.webhookHistory.digest;
       a.checkpointContractDigest = hash(canonical(localContracts));
       a.configuration.secretInventorySha256 = reviewed.secretDigest;
       a.configuration.authConfigurationSha256 = reviewed.authDigest;
@@ -1190,6 +1322,313 @@ describe(
       );
       return { s, result, changed, reviewed, transport };
     }
+
+    it("reaches the real adapter/runner mutation boundary with exact historical-safe evidence", async () => {
+      const t = webhookFixture("runner-stable"),
+        review = historyReview(t);
+      const { s, result } = await harness({
+        webhookTables: t,
+        webhookReview: review,
+      });
+      expect(result.status).toBe("complete");
+      expect(mutationCalls(s)).toHaveLength(1);
+      expect(result.webhookHistory.historicalSafeWebhookCount).toBe(1);
+    });
+    it.each(
+      Object.keys(PHASES).flatMap((phase) =>
+        fixtureAuthorityTables.map((table) => [phase, table]),
+      ),
+    )(
+      "blocks freshly reviewed fixture account authority in %s: %s",
+      async (phase, table) => {
+        const t = webhookFixture(
+          "owner-gate",
+          "subscription.created",
+          "fixture",
+        );
+        t[table].push(
+          fixtureAccountAuthority(
+            table,
+            t.billing_checkouts_v2[0].billing_account_id,
+          ),
+        );
+        const { s, result } = await harness({
+          phase,
+          webhookTables: t,
+          webhookReview: historyReview(t, ["closed_fixture"]),
+        });
+        expect(result.status).toBe("blocked");
+        expect(result.recovery.errorCode).toBe("RELEASE_IN_FLIGHT_WORK");
+        expect(mutationCalls(s)).toHaveLength(0);
+      },
+    );
+    it.each(fixtureAuthorityTables)(
+      "blocks fixture account authority added during closing: %s",
+      async (table) => {
+        const t = webhookFixture(
+          "owner-drift",
+          "subscription.created",
+          "fixture",
+        );
+        const { s, result, changed } = await harness({
+          webhookTables: t,
+          webhookReview: historyReview(t, ["closed_fixture"]),
+          tripRead: 12,
+          mutate: (state) =>
+            state.webhookTables[table].push(
+              fixtureAccountAuthority(
+                table,
+                t.billing_checkouts_v2[0].billing_account_id,
+              ),
+            ),
+        });
+        expect(changed).toBe(true);
+        expect(result.recovery.errorCode).toBe("DATABASE_DRIFT");
+        expect(mutationCalls(s)).toHaveLength(0);
+      },
+    );
+    it("allows a closed fixture with only unrelated account authority through the runner", async () => {
+      const t = webhookFixture(
+        "owner-clean",
+        "subscription.created",
+        "fixture",
+      );
+      for (const table of fixtureAuthorityTables)
+        t[table].push(fixtureAccountAuthority(table, "unrelated-account"));
+      const { s, result } = await harness({
+        webhookTables: t,
+        webhookReview: historyReview(t, ["closed_fixture"]),
+      });
+      expect(result.status).toBe("complete");
+      expect(mutationCalls(s)).toHaveLength(1);
+      expect(result.webhookHistory.historicalSafeWebhookCount).toBe(1);
+    });
+    it.each([
+      ["override-active", false],
+      ["override-future", false],
+      ["override-expired", true],
+      ["override-revoked", true],
+      ["capacity-active", false],
+      ["capacity-released", true],
+      ["capacity-expired", true],
+    ])(
+      "uses fresh lifecycle evidence/authorization through the runner: %s",
+      async (kind, safe) => {
+        const t = webhookFixture(
+          "lifecycle-runner",
+          "subscription.created",
+          "fixture",
+        );
+        const { table, row } = lifecycleAuthority(
+          kind as string,
+          t.billing_checkouts_v2[0].billing_account_id,
+        );
+        t[table].push(row);
+        const { s, result } = await harness({
+          webhookTables: t,
+          webhookReview: historyReview(t, ["closed_fixture"]),
+        });
+        expect(result.status).toBe(safe ? "complete" : "blocked");
+        expect(mutationCalls(s)).toHaveLength(safe ? 1 : 0);
+        if (safe)
+          expect(result.webhookHistory.historicalSafeWebhookCount).toBe(1);
+      },
+    );
+    it.each(fixtureAuthorityTables)(
+      "blocks mixed active/ended authority with fresh authorization: %s",
+      async (table) => {
+        const t = webhookFixture(
+          "lifecycle-mixed",
+          "subscription.created",
+          "fixture",
+        );
+        const account = t.billing_checkouts_v2[0].billing_account_id;
+        t[table].push(
+          lifecycleAuthority(
+            table === fixtureAuthorityTables[0]
+              ? "override-revoked"
+              : "capacity-released",
+            account,
+          ).row,
+        );
+        t[table].push({
+          ...fixtureAccountAuthority(table, account),
+          id: "still-active",
+        });
+        const { s, result } = await harness({
+          webhookTables: t,
+          webhookReview: historyReview(t, ["closed_fixture"]),
+        });
+        expect(result.status).toBe("blocked");
+        expect(mutationCalls(s)).toHaveLength(0);
+      },
+    );
+    it.each([
+      "override-expired",
+      "override-revoked",
+      "capacity-released",
+      "capacity-expired",
+    ])(
+      "blocks ended-to-effective lifecycle drift through the runner: %s",
+      async (kind) => {
+        const t = webhookFixture(
+          "lifecycle-drift",
+          "subscription.created",
+          "fixture",
+        );
+        const { table, row } = lifecycleAuthority(
+          kind,
+          t.billing_checkouts_v2[0].billing_account_id,
+        );
+        t[table].push(row);
+        const { s, result, changed } = await harness({
+          webhookTables: t,
+          webhookReview: historyReview(t, ["closed_fixture"]),
+          tripRead: 12,
+          mutate: (state) => {
+            // Real immutable rows cannot reopen; simulate transport/remote drift to
+            // prove that neither an altered row nor altered computed proof is reused.
+            state.webhookTables[table][0] = fixtureAccountAuthority(
+              table,
+              row.billing_account_id,
+            );
+          },
+        });
+        expect(changed).toBe(true);
+        expect(result.recovery.errorCode).toBe("DATABASE_DRIFT");
+        expect(mutationCalls(s)).toHaveLength(0);
+      },
+    );
+    it.each([
+      "missing-proof",
+      "unknown-status",
+      "contradictory-terminal",
+      "missing-null-field",
+    ])(
+      "blocks ambiguous lifecycle through fresh runner authorization: %s",
+      async (kind) => {
+        const t = webhookFixture(
+          "lifecycle-ambiguous",
+          "subscription.created",
+          "fixture",
+        );
+        const { table, row } = lifecycleAuthority(
+          "capacity-expired",
+          t.billing_checkouts_v2[0].billing_account_id,
+        );
+        if (kind === "missing-proof") delete row.__release_authority_lifecycle;
+        if (kind === "unknown-status") row.status = "unknown";
+        if (kind === "contradictory-terminal") row.released_at = row.expired_at;
+        if (kind === "missing-null-field") delete row.consumed_at;
+        t[table].push(row);
+        const { s, result } = await harness({
+          webhookTables: t,
+          webhookReview: historyReview(t, ["closed_fixture"]),
+        });
+        expect(result.status).toBe("blocked");
+        expect(mutationCalls(s)).toHaveLength(0);
+      },
+    );
+    it.each([
+      "row",
+      "payload",
+      "observation",
+      "receipt",
+      "checkout",
+      "payment",
+      "unknown",
+      "removed",
+      "replacement",
+      "entitlement",
+    ])(
+      "blocks %s drift through the actual observation adapter and runner",
+      async (category) => {
+        const t = webhookFixture("runner-drift"),
+          review = historyReview(t);
+        const { s, result, changed } = await harness({
+          webhookTables: t,
+          webhookReview: review,
+          tripRead: 12,
+          mutate: (state) => {
+            const rows = state.webhookTables;
+            if (category === "row")
+              rows.billing_webhook_events_v2[0].attempt_count++;
+            if (category === "payload")
+              rows.billing_paddle_event_deliveries[0].raw_payload_sha256 =
+                hash("changed");
+            if (category === "observation")
+              rows.billing_paddle_event_observations[0].observation.customerRef =
+                "changed";
+            if (category === "receipt")
+              rows.billing_verified_evidence_v2[0].payment_authority = true;
+            if (category === "checkout")
+              rows.billing_checkouts_v2.push({
+                provider_transaction_ref:
+                  rows.billing_webhook_events_v2[0].resource_ref,
+                status: "ambiguous",
+                provider: "paddle",
+                environment: "test",
+                billing_account_id: "owner",
+              });
+            if (category === "payment")
+              rows.billing_payment_applications_v2.push({
+                provider_transaction_ref:
+                  rows.billing_webhook_events_v2[0].resource_ref,
+                provider: "paddle",
+                environment: "test",
+              });
+            if (category === "unknown")
+              rows.billing_webhook_events_v2.push({
+                ...rows.billing_webhook_events_v2[0],
+                id: "unknown",
+                processing_status: "manual_review",
+              });
+            if (category === "removed") rows.billing_webhook_events_v2 = [];
+            if (category === "replacement")
+              rows.billing_webhook_events_v2[0].id = "replacement";
+            if (category === "entitlement")
+              rows.account_subscriptions.push({ id: "new-canonical-effect" });
+          },
+        });
+        expect(changed).toBe(true);
+        expect(result.status).toBe("blocked");
+        expect(result.recovery.errorCode).toBe("DATABASE_DRIFT");
+        expect(mutationCalls(s)).toHaveLength(0);
+      },
+    );
+    it.each(Object.keys(PHASES))(
+      "protects webhook evidence in every phase %s",
+      async (phase) => {
+        const t = webhookFixture("all-phases"),
+          review = historyReview(t);
+        const { s, result } = await harness({
+          phase,
+          webhookTables: t,
+          webhookReview: review,
+          tripRound: 2,
+          tripRead: 12,
+          mutate: (state) =>
+            state.webhookTables.billing_webhook_events_v2[0].attempt_count++,
+        });
+        expect(result.recovery.errorCode).toBe("DATABASE_DRIFT");
+        expect(mutationCalls(s)).toHaveLength(0);
+      },
+    );
+    it("new unknown retained evidence blocks a stable initial observation before any mutation", async () => {
+      const t = webhookFixture("unreviewed");
+      const { s, result } = await harness({ webhookTables: t });
+      expect(result.status).toBe("blocked");
+      expect(result.recovery.errorCode).toBe("RELEASE_IN_FLIGHT_WORK");
+      expect(mutationCalls(s)).toHaveLength(0);
+    });
+    it("blocks a substituted authorization disposition digest before mutation", async () => {
+      const s = simulation(180),
+        a = authorization("BASELINE_180_TO_184", s);
+      a.webhookHistory.dispositionDigest = hash("substituted-report");
+      const result = await run("BASELINE_180_TO_184", s, a);
+      expect(result.recovery.errorCode).toBe("RELEASE_WEBHOOK_REVIEW_DRIFT");
+      expect(mutationCalls(s)).toHaveLength(0);
+    });
     const changes: [string, string, (state: any) => void][] = [
       [
         "function added",
@@ -1443,7 +1882,11 @@ describe("remote adapter boundaries with synthetic transport only", () => {
       versions: [],
       policy: { sales: false, reconciliation: false },
       functions: [],
-      tables: [{ name: "example", acl: null, rls: true }],
+      tables: ["example", ...WEBHOOK_HISTORY_TABLES].map((name) => ({
+        name,
+        acl: null,
+        rls: true,
+      })),
       schema: {},
     };
     let calls = 0;
@@ -1475,7 +1918,8 @@ describe("remote adapter boundaries with synthetic transport only", () => {
                 ? [{ history: { example: "unchanged" } }]
                 : [
                     {
-                      work: {},
+                      work: { paddleWebhooks: 0 },
+                      webhook_history: { ...emptyWebhookTables(), example: [] },
                       scheduled: {
                         count: 0,
                         earliest: null,
@@ -1663,5 +2107,1021 @@ describe("remote adapter boundaries with synthetic transport only", () => {
     expect(() =>
       historyQuery(["billing_accounts;delete from auth.users"]),
     ).toThrow();
+  });
+});
+
+// Fictional retained rows only: no staging/provider identifiers or secret values.
+function webhookFixture(
+  alias: string,
+  kind = "transaction.completed",
+  shape = "archive",
+) {
+  const t = emptyWebhookTables(),
+    eventId = `event-${alias}`;
+  const raw = hash(`serialized-payload-${alias}`),
+    observationSha = hash(`pg-observation-${alias}`);
+  const transaction = `transaction-${alias}`,
+    subscription = `subscription-${alias}`,
+    customer = `customer-${alias}`;
+  const event = {
+    id: eventId,
+    provider: "paddle",
+    environment: "test",
+    provider_event_ref: `ref-${alias}`,
+    provider_event_name: kind,
+    resource_type: kind.startsWith("transaction")
+      ? "transaction"
+      : "subscription",
+    resource_ref: kind.startsWith("transaction") ? transaction : subscription,
+    subscription_ref: subscription,
+    customer_ref: customer,
+    processing_status: "deferred",
+    first_payload_sha256: raw,
+    occurred_at: "2026-09-20T10:00:00Z",
+    attempt_count: 0,
+  };
+  t.billing_webhook_events_v2.push(event);
+  const observation = {
+    event_id: eventId,
+    checkout_id: shape === "archive" ? null : `checkout-${alias}`,
+    disposition: "pending",
+    observation_sha256: observationSha,
+    __release_content_sha256: observationSha,
+    observation: {
+      provider: "paddle",
+      environment: "test",
+      eventRef: event.provider_event_ref,
+      eventType: kind,
+      kind,
+      subscriptionRef: subscription,
+      customerRef: customer,
+      ...(kind === "transaction.completed"
+        ? { transactionRef: transaction }
+        : {
+            transactionCorrelationRef: shape === "archive" ? null : transaction,
+          }),
+      items: [{ priceRef: "same-fixture-price" }],
+    },
+  };
+  t.billing_paddle_event_observations.push(observation);
+  const verifiedSha = hash(`pg-proof-${alias}`);
+  t.billing_paddle_event_deliveries.push({
+    event_id: eventId,
+    notification_ref: `notification-${alias}`,
+    raw_payload_sha256: raw,
+    verified_evidence_id: `verified-${alias}`,
+  });
+  t.billing_verified_evidence_v2.push({
+    id: `verified-${alias}`,
+    provider: "paddle",
+    environment: "test",
+    provider_event_ref: event.provider_event_ref,
+    provider_notification_ref: `notification-${alias}`,
+    proof_kind: "event",
+    source_kind: "webhook",
+    raw_payload_sha256: raw,
+    normalized_sha256: verifiedSha,
+    __release_content_sha256: verifiedSha,
+    payment_authority: false,
+    subscription_id: null,
+    billing_account_id: null,
+    commercial_effect_key: null,
+    proof: {
+      identity: { subscriptionRef: subscription, customerRef: customer },
+      eventEvidence: {
+        eventRef: event.provider_event_ref,
+        eventName: kind,
+        resourceType: event.resource_type,
+        resourceRef: event.resource_ref,
+      },
+    },
+  });
+  if (shape !== "archive") {
+    const account = `account-${alias}`,
+      sid = `shadow-${alias}`;
+    t.billing_customers_v2.push({
+      id: `customer-row-${alias}`,
+      billing_account_id: account,
+      provider: "paddle",
+      environment: "test",
+      provider_customer_ref: customer,
+    });
+    t.billing_subscriptions_v2.push({
+      id: sid,
+      customer_id: `customer-row-${alias}`,
+      billing_account_id: account,
+      provider: "paddle",
+      environment: "test",
+      provider_subscription_ref: subscription,
+      account_subscription_id:
+        shape === "applied" ? `canonical-${alias}` : null,
+      approved_additional_coach_seats: 0,
+      reconciliation_status: shape === "applied" ? "processed" : "pending",
+    });
+    t.billing_checkouts_v2.push({
+      id: `checkout-${alias}`,
+      provider: "paddle",
+      environment: "test",
+      billing_account_id: account,
+      provider_transaction_ref: transaction,
+      status: shape === "applied" ? "completed" : "expired",
+      completed_subscription_id: shape === "applied" ? sid : null,
+      completed_at: shape === "applied" ? "2026-09-20T10:00:01Z" : null,
+    });
+    if (shape === "fixture")
+      t.billing_paddle_checkout_certification_fixtures.push({
+        run_id: `run-${alias}`,
+        checkout_id: `checkout-${alias}`,
+        closed_at: "2026-09-20T11:00:00Z",
+      });
+    if (shape === "applied") {
+      const peerKind =
+        kind === "transaction.completed"
+          ? "subscription.created"
+          : "transaction.completed";
+      const peer = {
+        ...event,
+        id: `peer-${alias}`,
+        provider_event_ref: `peer-ref-${alias}`,
+        provider_event_name: peerKind,
+        resource_type:
+          peerKind === "transaction.completed" ? "transaction" : "subscription",
+        resource_ref:
+          peerKind === "transaction.completed" ? transaction : subscription,
+        first_payload_sha256: hash(`peer-payload-${alias}`),
+        processing_status: "processed",
+      };
+      t.billing_webhook_events_v2.push(peer);
+      const peerObservation = structuredClone(observation);
+      peerObservation.event_id = peer.id;
+      peerObservation.observation.eventRef = peer.provider_event_ref;
+      peerObservation.observation.kind = peerKind;
+      peerObservation.observation.eventType = peerKind;
+      delete peerObservation.observation.transactionRef;
+      delete peerObservation.observation.transactionCorrelationRef;
+      peerObservation.observation[
+        peerKind === "transaction.completed"
+          ? "transactionRef"
+          : "transactionCorrelationRef"
+      ] = transaction;
+      peerObservation.observation_sha256 = hash(`peer-observation-${alias}`);
+      peerObservation.__release_content_sha256 =
+        peerObservation.observation_sha256;
+      t.billing_paddle_event_observations.push(peerObservation);
+      const peerReceipt = structuredClone(t.billing_verified_evidence_v2[0]);
+      peerReceipt.id = `peer-receipt-${alias}`;
+      peerReceipt.provider_event_ref = peer.provider_event_ref;
+      peerReceipt.provider_notification_ref = `peer-notification-${alias}`;
+      peerReceipt.raw_payload_sha256 = peer.first_payload_sha256;
+      peerReceipt.normalized_sha256 = hash(`peer-proof-${alias}`);
+      peerReceipt.__release_content_sha256 = peerReceipt.normalized_sha256;
+      peerReceipt.proof.eventEvidence = {
+        eventRef: peer.provider_event_ref,
+        eventName: peerKind,
+        resourceRef: peer.resource_ref,
+        resourceType: peer.resource_type,
+      };
+      t.billing_verified_evidence_v2.push(peerReceipt);
+      t.billing_paddle_event_deliveries.push({
+        event_id: peer.id,
+        notification_ref: peerReceipt.provider_notification_ref,
+        raw_payload_sha256: peer.first_payload_sha256,
+        verified_evidence_id: peerReceipt.id,
+      });
+      t.billing_payment_applications_v2.push({
+        id: `payment-${alias}`,
+        provider: "paddle",
+        environment: "test",
+        provider_transaction_ref: transaction,
+        billing_account_id: account,
+        subscription_id: sid,
+        checkout_id: `checkout-${alias}`,
+        evidence_id: `application-evidence-${alias}`,
+        application_kind: "initial_purchase",
+        operation_id: null,
+        applied_at: "2026-09-20T10:00:01Z",
+      });
+      t.billing_evidence_v2.push({
+        id: `application-evidence-${alias}`,
+        provider_transaction_ref: transaction,
+        subscription_id: sid,
+        provider: "paddle",
+        environment: "test",
+        proof_kind: "transaction",
+        proof_schema: "paddle-initial-purchase-v1",
+        normalized_sha256: hash(`application-proof-${alias}`),
+        __release_content_sha256: hash(`application-proof-${alias}`),
+        proof: {
+          identity: { transactionRef: transaction },
+          observation: {
+            checkoutId: `checkout-${alias}`,
+            subscriptionId: sid,
+            billingAccountId: account,
+            transactionEventId:
+              kind === "transaction.completed" ? eventId : peer.id,
+            subscriptionEventId:
+              kind === "transaction.completed" ? peer.id : eventId,
+            transactionVerifiedEvidenceId:
+              kind === "transaction.completed"
+                ? `verified-${alias}`
+                : peerReceipt.id,
+            subscriptionVerifiedEvidenceId:
+              kind === "transaction.completed"
+                ? peerReceipt.id
+                : `verified-${alias}`,
+            transactionObservationSha256:
+              kind === "transaction.completed"
+                ? observationSha
+                : peerObservation.observation_sha256,
+            subscriptionObservationSha256:
+              kind === "transaction.completed"
+                ? peerObservation.observation_sha256
+                : observationSha,
+          },
+        },
+      });
+      t.account_subscriptions.push({
+        id: `canonical-${alias}`,
+        billing_account_id: account,
+        status: "active",
+        subscription_kind: "paid",
+        source: "billing_provider",
+      });
+      t.billing_canonical_origins.push({
+        account_subscription_id: `canonical-${alias}`,
+        billing_account_id: account,
+        storage_contract: "billing.v2",
+      });
+    }
+  }
+  for (const rows of Object.values(t))
+    for (const row of rows) row.__release_row_sha256 = evidenceDigest(row);
+  return t;
+}
+function historyReview(tables: Record<string, any[]>, kinds: string[] = []) {
+  for (const rows of Object.values(tables))
+    for (const row of rows)
+      row.__release_row_sha256 = evidenceDigest(
+        Object.fromEntries(
+          Object.entries(row).filter(([k]) => k !== "__release_row_sha256"),
+        ),
+      );
+  return {
+    schemaVersion: 1,
+    evidenceSha256: hash("independently-reviewed-private-evidence"),
+    records: inspectWebhookHistory(tables).map((i: any, index: number) => {
+      const kind = kinds[index] ?? "archived_synthetic";
+      return {
+        eventSha256: i.eventSha256,
+        inputsSha256: i.inputsSha256,
+        classification:
+          kind === "applied_purchase"
+            ? "HISTORICAL_COMPLETED_OR_SUPERSEDED"
+            : "SYNTHETIC_TEST_HISTORY",
+        provenance:
+          kind === "archived_synthetic"
+            ? {
+                kind,
+                sourceArtifactSha256: hash("archived-harness-source"),
+                reconstructionArtifactSha256: hash(
+                  "exact-reconstruction-output",
+                ),
+                reconstructedPayloadSha256: i.payloadSha256,
+              }
+            : { kind },
+      };
+    }),
+  };
+}
+function expectBlockedHistory(t: Record<string, any[]>, review: any) {
+  const report = classifyWebhookHistory(t, review);
+  expect(
+    report.activeBlockingWebhookCount + report.missingReviewedCount,
+  ).toBeGreaterThan(0);
+  return report;
+}
+describe("evidence-bound historical webhook drain", () => {
+  it.each([
+    "override-expired",
+    "override-revoked",
+    "capacity-released",
+    "capacity-expired",
+  ])(
+    "retains conclusively ended account history without live authority: %s",
+    (kind) => {
+      const t = webhookFixture("ended-safe", "subscription.created", "fixture");
+      const { table, row } = lifecycleAuthority(
+        kind,
+        t.billing_checkouts_v2[0].billing_account_id,
+      );
+      t[table].push(row);
+      const review = historyReview(t, ["closed_fixture"]),
+        before = evidenceDigest(t);
+      expect(classifyWebhookHistory(t, review).historicalSafeWebhookCount).toBe(
+        1,
+      );
+      expect(evidenceDigest(t)).toBe(before);
+      row.reason = "changed-retained-history";
+      expectBlockedHistory(t, review);
+    },
+  );
+  it.each([
+    ["override", "expires_at", null],
+    ["override", "expires_at", "2026-09-20T09:59:59.999999Z"],
+    ["override", "expires_at", "2026-02-30T10:00:00Z"],
+    ["override", "starts_at", null],
+    ["override", "revoked_at", undefined],
+    ["override", "effect", "superseded"],
+    ["override", "expires_at", "infinity"],
+    ["override", "expires_at", "-infinity"],
+    ["capacity", "status", "superseded"],
+    ["capacity", "quantity", 0],
+    ["capacity", "expires_at", null],
+    ["capacity", "expired_at", "2026-09-20T10:04:59.999999Z"],
+    ["capacity", "expired_at", "2026-09-20T10:05:00.000002Z"],
+    ["capacity", "released_at", "2026-09-20T10:05:00Z"],
+    ["capacity", "expired_at", "infinity"],
+    ["capacity", "expired_at", "2026-09-20T10:05:00.0000001Z"],
+  ])(
+    "fails closed on ambiguous account lifecycle: %s/%s/%s",
+    (type, key, value) => {
+      const { row } = lifecycleAuthority(
+        type === "override" ? "override-expired" : "capacity-expired",
+        "account",
+      );
+      if (value === undefined) delete row[key as string];
+      else row[key as string] = value;
+      expect(
+        type === "override"
+          ? isEffectiveEntitlementAuthority(row)
+          : isEffectiveCapacityAuthority(row),
+      ).toBe(true);
+    },
+  );
+  it("preserves microsecond ordering across equivalent timezones", () => {
+    const { row } = lifecycleAuthority("override-expired", "account");
+    row.starts_at = "2026-09-20T13:00:00.000000+03:00";
+    row.expires_at = "2026-09-20T10:00:00.000001Z";
+    expect(isEffectiveEntitlementAuthority(row)).toBe(false);
+    row.starts_at = "2026-09-20T13:00:00.000001+03:00";
+    expect(isEffectiveEntitlementAuthority(row)).toBe(true);
+  });
+  it.each(fixtureAuthorityTables)(
+    "requires the database lifecycle proof instead of status alone: %s",
+    (table) => {
+      const { row } = lifecycleAuthority(
+        table === fixtureAuthorityTables[0]
+          ? "override-revoked"
+          : "capacity-released",
+        "account",
+      );
+      delete row.__release_authority_lifecycle;
+      expect(
+        table === fixtureAuthorityTables[0]
+          ? isEffectiveEntitlementAuthority(row)
+          : isEffectiveCapacityAuthority(row),
+      ).toBe(true);
+    },
+  );
+  it("captures full-precision effective state in the same database snapshot", () => {
+    const sql = webhookHistoryQuery(WEBHOOK_HISTORY_TABLES);
+    expect(sql).toContain("__release_authority_lifecycle");
+    expect(sql).toContain("t.expires_at<=transaction_timestamp()");
+    expect(sql).toContain("t.expired_at>=t.expires_at");
+    expect(sql).not.toMatch(/date_trunc|::date|delete|update |insert /i);
+  });
+  it.each([
+    ["W01", "transaction.completed"],
+    ["W02", "subscription.created"],
+    ["W03", "subscription.updated"],
+    ["W18", "subscription.updated"],
+  ])("accepts exact archived provenance for %s", (alias, kind) => {
+    const t = webhookFixture(alias, kind),
+      review = historyReview(t);
+    const original = structuredClone(t);
+    const report = classifyWebhookHistory(t, review);
+    expect(report.activeBlockingWebhookCount).toBe(0);
+    expect(report.historicalSafeWebhookCount).toBe(1);
+    expect(report.records[0].reason).toBe("ARCHIVED_EXACT_RECONSTRUCTION");
+    expect(t).toEqual(original);
+    expect(JSON.stringify(report)).not.toContain(`event-${alias}`);
+  });
+  it.each(["W01", "W02", "W03", "W18"])(
+    "blocks payload or evidence tampering for %s",
+    (alias) => {
+      for (const mutate of [
+        (t: any) =>
+          (t.billing_webhook_events_v2[0].first_payload_sha256 =
+            hash("changed")),
+        (t: any) =>
+          (t.billing_paddle_event_deliveries[0].raw_payload_sha256 =
+            hash("changed")),
+        (t: any) =>
+          (t.billing_paddle_event_observations[0].observation_sha256 =
+            hash("changed")),
+        (t: any) =>
+          (t.billing_verified_evidence_v2[0].normalized_sha256 =
+            hash("changed")),
+      ]) {
+        const t = webhookFixture(alias),
+          a = historyReview(t);
+        mutate(t);
+        expectBlockedHistory(t, a);
+        expectBlockedHistory(t, historyReview(t));
+      }
+    },
+  );
+  it.each([
+    "checkout",
+    "payment",
+    "owner",
+    "canonical",
+    "successor",
+    "entitlement",
+    "capacity",
+    "unknownTable",
+  ])(
+    "blocks newly discovered %s authority, including with a refreshed review",
+    (category) => {
+      const t = webhookFixture(category),
+        a = historyReview(t),
+        event = t.billing_webhook_events_v2[0];
+      if (category === "checkout")
+        t.billing_checkouts_v2.push({
+          id: "new",
+          provider: "paddle",
+          environment: "test",
+          provider_transaction_ref: event.resource_ref,
+          billing_account_id: "owner",
+          status: "ambiguous",
+        });
+      else if (category === "payment")
+        t.billing_payment_applications_v2.push({
+          provider_transaction_ref: event.resource_ref,
+          provider: "paddle",
+          environment: "test",
+        });
+      else if (category === "owner")
+        t.billing_customers_v2.push({
+          id: "new",
+          provider: "paddle",
+          environment: "test",
+          provider_customer_ref: event.customer_ref,
+          billing_account_id: "owner",
+        });
+      else
+        t[`authority_${category}`] = [
+          { reference: event.subscription_ref, unresolved: true },
+        ];
+      expectBlockedHistory(t, a);
+      expectBlockedHistory(t, historyReview(t));
+    },
+  );
+  it.each(["W02", "W18"])(
+    "blocks changed customer/subscription identity for %s",
+    (alias) => {
+      for (const key of ["customerRef", "subscriptionRef"]) {
+        const t = webhookFixture(alias),
+          a = historyReview(t);
+        t.billing_paddle_event_observations[0].observation[key] =
+          "changed-identity";
+        expectBlockedHistory(t, a);
+        expectBlockedHistory(t, historyReview(t));
+      }
+    },
+  );
+  it("accepts the W01/W02/W03 shared synthetic lineage without granting its resource authority", () => {
+    const t = emptyWebhookTables();
+    for (const [alias, kind] of [
+      ["W01", "transaction.completed"],
+      ["W02", "subscription.created"],
+      ["W03", "subscription.updated"],
+    ]) {
+      const f = webhookFixture(alias, kind);
+      f.billing_webhook_events_v2[0].subscription_ref = "shared-S2";
+      if (kind !== "transaction.completed")
+        f.billing_webhook_events_v2[0].resource_ref = "shared-S2";
+      f.billing_verified_evidence_v2[0].proof.eventEvidence.resourceRef =
+        f.billing_webhook_events_v2[0].resource_ref;
+      f.billing_webhook_events_v2[0].customer_ref = "shared-C2";
+      f.billing_paddle_event_observations[0].observation.subscriptionRef =
+        "shared-S2";
+      f.billing_paddle_event_observations[0].observation.customerRef =
+        "shared-C2";
+      f.billing_verified_evidence_v2[0].proof.identity = {
+        subscriptionRef: "shared-S2",
+        customerRef: "shared-C2",
+      };
+      for (const key of Object.keys(t)) t[key].push(...f[key]);
+    }
+    const a = historyReview(t);
+    expect(classifyWebhookHistory(t, a).historicalSafeWebhookCount).toBe(3);
+    t.billing_subscriptions_v2.push({
+      id: "successor",
+      provider: "paddle",
+      environment: "test",
+      provider_subscription_ref: "shared-S2",
+      billing_account_id: "unexpected-owner",
+      account_subscription_id: "canonical",
+      approved_additional_coach_seats: 1,
+    });
+    expect(classifyWebhookHistory(t, a).activeBlockingWebhookCount).toBe(3);
+  });
+  it.each([
+    "timing",
+    "fixturePrice",
+    "testEnvironment",
+    "syntheticName",
+    "manualReview",
+    "deferred",
+    "unknownPrice",
+    "old",
+  ])("does not infer W18 safety from %s", (hint) => {
+    const t = webhookFixture("W18");
+    if (hint === "manualReview")
+      t.billing_webhook_events_v2[0].processing_status = "manual_review";
+    if (hint === "old")
+      t.billing_webhook_events_v2[0].occurred_at = "2000-01-01T00:00:00Z";
+    if (hint === "timing" || hint === "fixturePrice")
+      t.billing_paddle_checkout_certification_fixtures.push({
+        checkout_id: "unrelated",
+        closed_at: "2026-09-20T10:00:00Z",
+        priceRef: "same-fixture-price",
+      });
+    expectBlockedHistory(t, EMPTY_WEBHOOK_REVIEW);
+  });
+  it.each([
+    "missingDelivery",
+    "missingObservation",
+    "missingDigest",
+    "wrongProof",
+    "conflictingReceipt",
+    "duplicateReceipt",
+    "wrongEnvironment",
+    "unsupportedEvent",
+    "unknownProvenance",
+  ])("blocks incomplete or unsupported %s", (category) => {
+    const t = webhookFixture(category),
+      a: any = historyReview(t);
+    if (category === "missingDelivery") t.billing_paddle_event_deliveries = [];
+    if (category === "missingObservation")
+      t.billing_paddle_event_observations = [];
+    if (category === "missingDigest")
+      delete t.billing_paddle_event_deliveries[0].raw_payload_sha256;
+    if (category === "wrongProof")
+      t.billing_verified_evidence_v2[0].proof_kind = "transaction";
+    if (category === "conflictingReceipt")
+      t.billing_verified_evidence_v2[0].proof.identity.customerRef =
+        "contradiction";
+    if (category === "duplicateReceipt")
+      t.billing_verified_evidence_v2.push({
+        ...t.billing_verified_evidence_v2[0],
+        id: "another",
+      });
+    if (category === "wrongEnvironment")
+      t.billing_webhook_events_v2[0].environment = "live";
+    if (category === "unsupportedEvent")
+      t.billing_webhook_events_v2[0].provider_event_name = "unknown.event";
+    if (category === "unknownProvenance") {
+      a.records[0].provenance = { kind: "label_only" };
+      expect(() => classifyWebhookHistory(t, a)).toThrow("REVIEW_INVALID");
+      return;
+    }
+    expectBlockedHistory(t, a);
+  });
+  it.each(["closed", "expired", "supersededShadow"])(
+    "accepts reviewed closed fixture history %s",
+    (shape) => {
+      const t = webhookFixture(shape, "subscription.updated", "fixture");
+      if (shape === "supersededShadow")
+        t.billing_subscriptions_v2[0].shadow_status = "superseded";
+      const r = classifyWebhookHistory(t, historyReview(t, ["closed_fixture"]));
+      expect(r.historicalSafeWebhookCount).toBe(1);
+      expect(r.records[0].reason).toBe("CLOSED_FIXTURE");
+    },
+  );
+  it.each([
+    "openFixture",
+    "canonicalEffect",
+    "seatAuthority",
+    "payment",
+    "activeOperation",
+    "ambiguousCheckout",
+    "unrecognizedEffect",
+  ])("blocks unsafe closed-fixture pattern %s", (category) => {
+    const t = webhookFixture(category, "subscription.created", "fixture"),
+      a = historyReview(t, ["closed_fixture"]);
+    if (category === "openFixture")
+      t.billing_paddle_checkout_certification_fixtures[0].closed_at = null;
+    if (category === "canonicalEffect")
+      t.billing_subscriptions_v2[0].account_subscription_id = "canonical";
+    if (category === "seatAuthority")
+      t.billing_subscriptions_v2[0].approved_additional_coach_seats = 1;
+    if (category === "payment")
+      t.billing_payment_applications_v2.push({
+        checkout_id: t.billing_checkouts_v2[0].id,
+      });
+    if (category === "activeOperation")
+      t.billing_operations_v2.push({
+        billing_account_id: `account-${category}`,
+        status: "provider_pending",
+      });
+    if (category === "ambiguousCheckout")
+      t.billing_checkouts_v2[0].status = "ambiguous";
+    if (category === "unrecognizedEffect") {
+      const reservation = fixtureAccountAuthority(
+        "account_capacity_reservations",
+        `account-${category}`,
+      );
+      t.account_capacity_reservations.push(reservation);
+      t.account_capacity_events = [
+        {
+          billing_account_id: reservation.billing_account_id,
+          reservation_id: reservation.id,
+        },
+      ];
+    }
+    expectBlockedHistory(t, a);
+    expectBlockedHistory(t, historyReview(t, ["closed_fixture"]));
+  });
+  it.each(fixtureAuthorityTables)(
+    "blocks account-scoped closed-fixture effects with a refreshed review: %s",
+    (table) => {
+      const t = webhookFixture(
+        "owner-effect",
+        "subscription.updated",
+        "fixture",
+      );
+      const previous = historyReview(t, ["closed_fixture"]);
+      t[table].push(
+        fixtureAccountAuthority(
+          table,
+          t.billing_checkouts_v2[0].billing_account_id,
+        ),
+      );
+      expectBlockedHistory(t, previous);
+      const review = historyReview(t, ["closed_fixture"]);
+      const report = expectBlockedHistory(t, review);
+      expect(report.records[0].reason).toBe("AUTHORITY_OR_PROVENANCE_UNPROVEN");
+      // review construction refreshes row hash metadata; classification changes no rows.
+      const reviewed = evidenceDigest(t);
+      classifyWebhookHistory(t, review);
+      expect(evidenceDigest(t)).toBe(reviewed);
+    },
+  );
+  it.each(fixtureAuthorityTables)(
+    "requires the account-authority snapshot table: %s",
+    (table) => {
+      const t = webhookFixture(
+        "missing-authority-table",
+        "subscription.created",
+        "fixture",
+      );
+      const review = historyReview(t, ["closed_fixture"]);
+      delete t[table];
+      expect(() => classifyWebhookHistory(t, review)).toThrow(
+        "RELEASE_WEBHOOK_SNAPSHOT_INVALID",
+      );
+      expect(() => webhookHistoryQuery(Object.keys(t))).toThrow(
+        "RELEASE_WEBHOOK_TABLE_MISSING",
+      );
+    },
+  );
+  it.each(fixtureAuthorityTables)(
+    "checks account authority through a peer fixture checkout: %s",
+    (table) => {
+      const t = webhookFixture("peer-owner", "subscription.updated", "fixture");
+      const observation = t.billing_paddle_event_observations[0];
+      t.billing_paddle_event_observations.push({
+        ...structuredClone(observation),
+        event_id: "peer-fixture-event",
+      });
+      observation.checkout_id = null;
+      observation.observation.transactionCorrelationRef = null;
+      t.billing_customers_v2 = [];
+      t.billing_subscriptions_v2 = [];
+      expect(
+        classifyWebhookHistory(t, historyReview(t, ["closed_fixture"]))
+          .historicalSafeWebhookCount,
+      ).toBe(1);
+      t[table].push(
+        fixtureAccountAuthority(
+          table,
+          t.billing_checkouts_v2[0].billing_account_id,
+        ),
+      );
+      expectBlockedHistory(t, historyReview(t, ["closed_fixture"]));
+    },
+  );
+  it.each([null, undefined, "conflicting-account"])(
+    "blocks incomplete or conflicting fixture account identity: %s",
+    (account) => {
+      const t = webhookFixture(
+        "owner-conflict",
+        "subscription.created",
+        "fixture",
+      );
+      if (account === undefined)
+        delete t.billing_checkouts_v2[0].billing_account_id;
+      else t.billing_checkouts_v2[0].billing_account_id = account;
+      expectBlockedHistory(t, historyReview(t, ["closed_fixture"]));
+    },
+  );
+  it.each(fixtureAuthorityTables)(
+    "does not infer closed-fixture authority clearance from terminal metadata: %s",
+    (table) => {
+      const t = webhookFixture(
+        "ended-owner-effect",
+        "subscription.created",
+        "fixture",
+      );
+      const row = fixtureAccountAuthority(
+        table,
+        t.billing_checkouts_v2[0].billing_account_id,
+      );
+      if (table === "account_capacity_reservations")
+        Object.assign(row, {
+          status: "released",
+          released_at: "2026-09-20T10:04:00Z",
+        });
+      else Object.assign(row, { revoked_at: "2026-09-20T10:04:00Z" });
+      t[table].push(row);
+      expectBlockedHistory(t, historyReview(t, ["closed_fixture"]));
+    },
+  );
+  it.each(fixtureAuthorityTables)(
+    "preserves applied-purchase history with account effects: %s",
+    (table) => {
+      const t = webhookFixture(
+        "applied-owner-effect",
+        "subscription.created",
+        "applied",
+      );
+      t[table].push(
+        fixtureAccountAuthority(
+          table,
+          t.billing_checkouts_v2[0].billing_account_id,
+        ),
+      );
+      expect(
+        classifyWebhookHistory(t, historyReview(t, ["applied_purchase"]))
+          .historicalSafeWebhookCount,
+      ).toBe(1);
+    },
+  );
+  it.each(["active", "expired", "superseded"])(
+    "accepts unique applied purchase with %s canonical history",
+    (status) => {
+      const t = webhookFixture(status, "subscription.created", "applied");
+      t.account_subscriptions[0].status = status;
+      if (status === "superseded") {
+        t.account_subscriptions[0].superseded_at = "2026-09-21T00:00:00Z";
+        t.account_subscriptions[0].superseded_by_subscription_id = "successor";
+        t.account_subscriptions.push({
+          ...t.account_subscriptions[0],
+          id: "successor",
+          status: "active",
+          superseded_at: null,
+          superseded_by_subscription_id: null,
+        });
+        t.billing_canonical_origins.push({
+          ...t.billing_canonical_origins[0],
+          account_subscription_id: "successor",
+        });
+      }
+      expect(
+        classifyWebhookHistory(t, historyReview(t, ["applied_purchase"]))
+          .historicalSafeWebhookCount,
+      ).toBe(1);
+    },
+  );
+  it.each([
+    "missingPayment",
+    "duplicatePayment",
+    "incompleteCheckout",
+    "wrongSubscription",
+    "missingCanonical",
+    "missingOrigin",
+    "missingApplicationEvidence",
+    "wrongAccount",
+    "busyOperation",
+    "missingSourceEvent",
+    "missingSourceObservation",
+    "missingSourceReceipt",
+    "missingSourceDelivery",
+    "wrongSourceDigest",
+    "contradictorySourceIdentity",
+    "contradictorySourceReceipt",
+    "orphanedSupersession",
+    "cyclicSupersession",
+    "foreignSupersession",
+  ])("blocks incomplete applied history %s", (category) => {
+    const t = webhookFixture(category, "subscription.created", "applied"),
+      a = historyReview(t, ["applied_purchase"]);
+    if (category === "missingPayment") t.billing_payment_applications_v2 = [];
+    if (category === "duplicatePayment")
+      t.billing_payment_applications_v2.push({
+        ...t.billing_payment_applications_v2[0],
+        id: "duplicate",
+      });
+    if (category === "incompleteCheckout")
+      t.billing_checkouts_v2[0].status = "ambiguous";
+    if (category === "wrongSubscription")
+      t.billing_payment_applications_v2[0].subscription_id = "wrong";
+    if (category === "missingCanonical") t.account_subscriptions = [];
+    if (category === "missingOrigin") t.billing_canonical_origins = [];
+    if (category === "missingApplicationEvidence") t.billing_evidence_v2 = [];
+    if (category === "wrongAccount")
+      t.billing_payment_applications_v2[0].billing_account_id = "wrong";
+    if (category === "busyOperation")
+      t.billing_operations_v2.push({
+        billing_account_id: `account-${category}`,
+        status: "awaiting_payment",
+      });
+    if (category === "missingSourceEvent") t.billing_webhook_events_v2.pop();
+    if (category === "missingSourceObservation")
+      t.billing_paddle_event_observations.pop();
+    if (category === "missingSourceReceipt")
+      t.billing_verified_evidence_v2.pop();
+    if (category === "missingSourceDelivery")
+      t.billing_paddle_event_deliveries.pop();
+    if (category === "wrongSourceDigest")
+      t.billing_paddle_event_observations[1].__release_content_sha256 =
+        hash("incorrect");
+    if (category === "contradictorySourceIdentity")
+      t.billing_paddle_event_observations[1].observation.customerRef =
+        "foreign";
+    if (category === "contradictorySourceReceipt")
+      t.billing_verified_evidence_v2[1].payment_authority = true;
+    if (category.endsWith("Supersession")) {
+      t.account_subscriptions[0].status = "superseded";
+      t.account_subscriptions[0].superseded_at = "2026-09-21T00:00:00Z";
+      t.account_subscriptions[0].superseded_by_subscription_id =
+        category === "cyclicSupersession"
+          ? t.account_subscriptions[0].id
+          : "successor";
+      if (category === "foreignSupersession") {
+        t.account_subscriptions.push({
+          ...t.account_subscriptions[0],
+          id: "successor",
+          status: "active",
+          billing_account_id: "foreign",
+        });
+      }
+    }
+    expectBlockedHistory(t, a);
+    expectBlockedHistory(t, historyReview(t, ["applied_purchase"]));
+  });
+  it("accepts the complete 18 synthetic plus 6 completed/superseded model without altering rows", () => {
+    const t = emptyWebhookTables(),
+      provenance = new Map<string, string>();
+    for (let index = 0; index < 21; index++) {
+      const shape = index < 4 ? "archive" : index < 18 ? "fixture" : "applied";
+      const f = webhookFixture(
+        `historical-${index}`,
+        "subscription.created",
+        shape,
+      );
+      if (shape === "applied")
+        f.billing_webhook_events_v2[1].processing_status = "deferred";
+      for (const key of Object.keys(t)) t[key].push(...f[key]);
+      for (const event of f.billing_webhook_events_v2)
+        provenance.set(
+          evidenceDigest({
+            id: event.id,
+            provider: "paddle",
+            environment: "test",
+          }),
+          shape === "archive"
+            ? "archived_synthetic"
+            : shape === "fixture"
+              ? "closed_fixture"
+              : "applied_purchase",
+        );
+    }
+    const review = historyReview(
+      t,
+      inspectWebhookHistory(t).map((i: any) => provenance.get(i.eventSha256)!),
+    );
+    const original = evidenceDigest(t),
+      report = classifyWebhookHistory(t, review);
+    expect(report.activeBlockingWebhookCount).toBe(0);
+    expect(report.historicalSafeWebhookCount).toBe(24);
+    expect(t.billing_payment_applications_v2).toHaveLength(3);
+    expect(
+      report.records.filter(
+        (r: any) => r.classification === "SYNTHETIC_TEST_HISTORY",
+      ),
+    ).toHaveLength(18);
+    expect(
+      report.records.filter(
+        (r: any) => r.classification === "HISTORICAL_COMPLETED_OR_SUPERSEDED",
+      ),
+    ).toHaveLength(6);
+    expect(evidenceDigest(t)).toBe(original);
+    t.billing_operations_v2.push({
+      id: "retained-schedule",
+      billing_account_id: "account-historical-20",
+      status: "scheduled",
+      effective_at: "2026-10-23T10:01:34.296820Z",
+    });
+    const next = historyReview(
+      t,
+      review.records.map((r: any) => r.provenance.kind),
+    );
+    expect(classifyWebhookHistory(t, next).historicalSafeWebhookCount).toBe(24);
+  });
+  it.each([
+    "addition",
+    "removal",
+    "statusChange",
+    "authority",
+    "sameCountReplacement",
+  ])("binds exact retained inputs against %s", (category) => {
+    const t = webhookFixture("binding"),
+      a = historyReview(t);
+    if (category === "addition")
+      t.billing_webhook_events_v2.push({
+        ...t.billing_webhook_events_v2[0],
+        id: "new",
+        processing_status: "manual_review",
+      });
+    if (category === "removal") t.billing_webhook_events_v2 = [];
+    if (category === "statusChange")
+      t.billing_webhook_events_v2[0].processing_status = "manual_review";
+    if (category === "authority")
+      t.account_subscriptions.push({ id: "new-authority" });
+    if (category === "sameCountReplacement")
+      t.billing_webhook_events_v2[0].id = "replacement";
+    expectBlockedHistory(t, a);
+  });
+  it("normalizes unordered rows/object keys, preserves digest arrays and keeps missing distinct from null", () => {
+    const t = webhookFixture("order"),
+      review = historyReview(t);
+    const reordered = Object.fromEntries(
+      Object.entries(t)
+        .reverse()
+        .map(([k, rows]) => [
+          k,
+          rows
+            .map((r) => Object.fromEntries(Object.entries(r).reverse()))
+            .reverse(),
+        ]),
+    );
+    expect(classifyWebhookHistory(reordered, review)).toEqual(
+      classifyWebhookHistory(t, review),
+    );
+    expect(evidenceDigest({ a: null })).not.toBe(evidenceDigest({}));
+    expect(() => evidenceDigest({ a: undefined })).toThrow("EVIDENCE_INVALID");
+    expect(evidenceDigest([1, 2])).not.toBe(evidenceDigest([2, 1]));
+  });
+  it("requires the exact reconstruction for every repeated delivery", () => {
+    const t = webhookFixture("W01-repeated"),
+      delivery = structuredClone(t.billing_paddle_event_deliveries[0]),
+      receipt = structuredClone(t.billing_verified_evidence_v2[0]);
+    receipt.id = "second-receipt";
+    receipt.provider_notification_ref = "second-notification";
+    receipt.raw_payload_sha256 = hash("second-serialized-payload");
+    delivery.notification_ref = receipt.provider_notification_ref;
+    delivery.verified_evidence_id = receipt.id;
+    delivery.raw_payload_sha256 = receipt.raw_payload_sha256;
+    t.billing_verified_evidence_v2.push(receipt);
+    t.billing_paddle_event_deliveries.push(delivery);
+    const review = historyReview(t);
+    expect(classifyWebhookHistory(t, review).historicalSafeWebhookCount).toBe(
+      1,
+    );
+    expect(
+      review.records[0].provenance.reconstructedPayloadSha256,
+    ).toHaveLength(2);
+    review.records[0].provenance.reconstructedPayloadSha256.pop();
+    expectBlockedHistory(t, review);
+  });
+  it("binds PostgreSQL row bytes even when decoded JSON values are identical", () => {
+    const t = webhookFixture("numeric-precision"),
+      review = historyReview(t);
+    const decoded = structuredClone(t.billing_webhook_events_v2[0]);
+    t.billing_webhook_events_v2[0].__release_row_sha256 = hash(
+      "different-pg-numeric-bytes",
+    );
+    const withoutMarker = (r: any) =>
+      Object.fromEntries(
+        Object.entries(r).filter(([key]) => key !== "__release_row_sha256"),
+      );
+    expect(withoutMarker(t.billing_webhook_events_v2[0])).toEqual(
+      withoutMarker(decoded),
+    );
+    expectBlockedHistory(t, review);
+  });
+  it("constructs only SELECTs and rejects incomplete or injected table scope", () => {
+    const sql = webhookHistoryQuery(WEBHOOK_HISTORY_TABLES);
+    expect(sql.startsWith("select ")).toBe(true);
+    expect(sql).not.toMatch(/\b(update|delete|insert|truncate|alter|drop)\b/i);
+    expect(() => webhookHistoryQuery(["billing;delete"])).toThrow(
+      "TABLE_INVALID",
+    );
+    expect(() => webhookHistoryQuery(["billing_accounts"])).toThrow(
+      "TABLE_MISSING",
+    );
   });
 });
