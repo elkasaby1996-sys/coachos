@@ -268,6 +268,11 @@ test("nonowner canonical permission hides initiation", async ({
       }),
   );
   await page.reload();
+  // Reload starts auth/bootstrap and the independent Billing query again.
+  // Wait for its rejected result before asserting that initiation is hidden.
+  await page
+    .getByText("Subscription details unavailable", { exact: true })
+    .waitFor({ state: "visible", timeout: 20_000 });
   await expect(
     page.getByText("Subscription details unavailable", {
       exact: true,
