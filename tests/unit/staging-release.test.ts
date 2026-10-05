@@ -44,6 +44,7 @@ import {
   databaseContract,
   normalizeFunctionInventory,
   EMPTY_WEBHOOK_REVIEW,
+  OBSERVATION_MAX_AGE_MS,
 } from "../../scripts/staging-release-observation.mjs";
 
 import {
@@ -1152,7 +1153,10 @@ describe(
         functions: s.observation().functions,
         secrets: SECRET_NAMES.map((name) => ({
           name,
-          digest: hash("synthetic-" + name),
+          value: hash("synthetic-" + name),
+          ...(name === SECRET_NAMES.at(-1)
+            ? {}
+            : { updated_at: "2026-10-05T10:00:00.123456Z" }),
         })),
         auth: {
           ...s.observation().authConfig,
@@ -1690,7 +1694,7 @@ describe(
       [
         "secret digest changed",
         "CONFIGURATION_DRIFT",
-        (s) => (s.secrets[0].digest = hash("synthetic-rotation")),
+        (s) => (s.secrets[0].value = hash("synthetic-rotation")),
       ],
       [
         "site origin changed",
@@ -1718,7 +1722,7 @@ describe(
         "MULTIPLE_SURFACE_DRIFT",
         (s) => {
           s.functions[0].version++;
-          s.secrets[0].digest = hash("new");
+          s.secrets[0].value = hash("new");
           s.auth.site_url = "https://changed.example.org";
         },
       ],
@@ -1751,6 +1755,37 @@ describe(
           mutate: mutate as any,
         });
         expect(result.recovery.errorCode).toBe(category);
+        expect(mutationCalls(s)).toHaveLength(0);
+      },
+    );
+    const secretChanges: [string, (state: any) => void][] = [
+      ["changed digest", (s) => (s.secrets[0].value = hash("rotation"))],
+      [
+        "added secret",
+        (s) => s.secrets.push({ name: "ADDED", value: hash("added") }),
+      ],
+      ["removed secret", (s) => s.secrets.pop()],
+      ["renamed secret", (s) => (s.secrets[0].name = "RENAMED")],
+      [
+        "timestamp only",
+        (s) => (s.secrets[0].updated_at = "2026-10-05T10:00:00.123457Z"),
+      ],
+      ["timestamp disappears", (s) => delete s.secrets[0].updated_at],
+      [
+        "timestamp appears",
+        (s) => (s.secrets.at(-1).updated_at = "2026-10-05T10:00:01Z"),
+      ],
+    ];
+    it.each(
+      secretChanges.flatMap(([name, mutate]) =>
+        [10, 16].map((tripRead) => [name, tripRead, mutate] as const),
+      ),
+    )(
+      "secrets compatibility blocks %s at read %s with zero mutation",
+      async (_name, tripRead, mutate) => {
+        const { s, result, changed } = await harness({ tripRead, mutate });
+        expect(changed).toBe(true);
+        expect(result.recovery.errorCode).toBe("CONFIGURATION_DRIFT");
         expect(mutationCalls(s)).toHaveLength(0);
       },
     );
@@ -1877,7 +1912,12 @@ describe(
 );
 
 describe("remote adapter boundaries with synthetic transport only", () => {
-  function syntheticInventoryTransport(delay: number, drift = false) {
+  function syntheticInventoryTransport(
+    delay: number,
+    drift = false,
+    secrets: unknown = [],
+    beforeRead?: (read: number) => void,
+  ) {
     const facts = {
       versions: [],
       policy: { sales: false, reconciliation: false },
@@ -1892,8 +1932,9 @@ describe("remote adapter boundaries with synthetic transport only", () => {
     let calls = 0;
     return vi.fn(async () => {
       calls++;
-      vi.setSystemTime(Date.now() + delay);
+      if (delay) vi.setSystemTime(Date.now() + delay);
       const read = ((calls - 1) % 17) + 1;
+      beforeRead?.(read);
       const position = read > 14 ? read - 13 : ((read - 1) % 7) + 1;
       const data =
         position === 1 || position === 7
@@ -1905,31 +1946,221 @@ describe("remote adapter boundaries with synthetic transport only", () => {
                 },
               },
             ]
-          : position === 2 || position === 3
+          : position === 2
             ? []
-            : position === 4
-              ? {
-                  site_url: context.origin,
-                  uri_allow_list: context.origin + "/auth/callback",
-                  disable_signup: false,
-                  mailer_autoconfirm: false,
-                }
-              : position === 5
-                ? [{ history: { example: "unchanged" } }]
-                : [
-                    {
-                      work: { paddleWebhooks: 0 },
-                      webhook_history: { ...emptyWebhookTables(), example: [] },
-                      scheduled: {
-                        count: 0,
-                        earliest: null,
-                        invalidBoundaries: 0,
+            : position === 3
+              ? secrets
+              : position === 4
+                ? {
+                    site_url: context.origin,
+                    uri_allow_list: context.origin + "/auth/callback",
+                    disable_signup: false,
+                    mailer_autoconfirm: false,
+                  }
+                : position === 5
+                  ? [{ history: { example: "unchanged" } }]
+                  : [
+                      {
+                        work: { paddleWebhooks: 0 },
+                        webhook_history: {
+                          ...emptyWebhookTables(),
+                          example: [],
+                        },
+                        scheduled: {
+                          count: 0,
+                          earliest: null,
+                          invalidBoundaries: 0,
+                        },
                       },
-                    },
-                  ];
+                    ];
       return new Response(JSON.stringify(data));
     });
   }
+  async function observeSecrets(
+    secrets: unknown,
+    beforeRead?: (read: number) => void,
+  ) {
+    const base = syntheticInventoryTransport(0, false, secrets, beforeRead);
+    const transport = vi.fn(async (url: string, options: RequestInit) => {
+      if (url.endsWith("/secrets")) {
+        // Interpretation of `value` is bound to this hosted GET endpoint.
+        expect(url).toBe(
+          `https://api.supabase.com/v1/projects/${context.project}/secrets`,
+        );
+        expect(options.method).toBe("GET");
+      }
+      return base();
+    });
+    return createRemoteAdapter(
+      context,
+      {
+        STAGING_SUPABASE_PROJECT_REF: context.project,
+        PRODUCTION_SUPABASE_PROJECT_REF: context.productionProject,
+      },
+      transport,
+    ).observe();
+  }
+  describe("secrets compatibility hosted GET normalization", () => {
+    const component = "ab".repeat(32);
+    const timestamp = "2026-10-05T10:00:00.123456Z";
+    const valid = () => ({
+      name: "SYNTHETIC_SECRET",
+      value: component,
+      updated_at: timestamp,
+    });
+    it("accepts the real shape while emitting only names and aggregate identity", async () => {
+      const observation = await observeSecrets([valid()]);
+      expect(observation.secretNames).toEqual(["SYNTHETIC_SECRET"]);
+      expect(observation.secretDigest).toMatch(/^[a-f0-9]{64}$/);
+      expect(JSON.stringify(observation)).not.toContain(component);
+      expect(JSON.stringify(observation)).not.toContain(timestamp);
+      expect(observation).not.toHaveProperty("secrets");
+      expect(observation).not.toHaveProperty("value");
+    });
+    it("accepts multiple records and omission with deterministic ordering", async () => {
+      const records = [valid(), { name: "ANOTHER", value: hash("another") }];
+      const opening = await observeSecrets(records);
+      const reordered = await observeSecrets([...records].reverse());
+      expect(opening.secretNames).toEqual(["ANOTHER", "SYNTHETIC_SECRET"]);
+      expect(reordered.secretDigest).toBe(opening.secretDigest);
+      const withinCycle = await observeSecrets(records, (read) => {
+        if (read === 10 || read === 16) records.reverse();
+      });
+      expect(withinCycle.secretDigest).toBe(opening.secretDigest);
+      expect(withinCycle.stability.stable).toBe(true);
+    });
+    it("preserves six-digit fractional precision in aggregate identity", async () => {
+      const first = await observeSecrets([valid()]);
+      const second = await observeSecrets([
+        { ...valid(), updated_at: "2026-10-05T10:00:00.123457Z" },
+      ]);
+      expect(first.secretDigest).not.toBe(second.secretDigest);
+    });
+    it.each([
+      "2024-02-29T23:59:59.123456+03:00",
+      "2026-10-05T10:00:00-05:30",
+      "2026-10-05T10:00:00Z",
+    ])("accepts supported finite timestamp %s", async (updated_at) => {
+      await expect(
+        observeSecrets([{ ...valid(), updated_at }]),
+      ).resolves.toHaveProperty("secretDigest");
+    });
+    const invalid: [string, unknown][] = [
+      ["legacy digest", [{ name: "SECRET", digest: component }]],
+      ["mixed digest/value", [{ ...valid(), digest: component }]],
+      ["unexpected key", [{ ...valid(), extra: true }]],
+      ["null record", [null]],
+      ["array record", [[]]],
+      ["string record", ["secret"]],
+      ["missing name", [{ value: component }]],
+      ["nonstring name", [{ ...valid(), name: 1 }]],
+      ["empty name", [{ ...valid(), name: "" }]],
+      ["padded name", [{ ...valid(), name: " SECRET " }]],
+      ["control name", [{ ...valid(), name: "SECRET\u0000NAME" }]],
+      ["C1 control name", [{ ...valid(), name: "SECRET\u0085NAME" }]],
+      ["duplicate names", [valid(), valid()]],
+      ["missing value", [{ name: "SECRET" }]],
+      ["nonstring value", [{ ...valid(), value: 1 }]],
+      ["short digest", [{ ...valid(), value: "ab" }]],
+      ["uppercase digest", [{ ...valid(), value: component.toUpperCase() }]],
+      ["nonhex digest", [{ ...valid(), value: "g".repeat(64) }]],
+      ["padded digest", [{ ...valid(), value: " " + component }]],
+      ["newline-padded digest", [{ ...valid(), value: component + "\n" }]],
+      ["null timestamp", [{ ...valid(), updated_at: null }]],
+      ["nonstring timestamp", [{ ...valid(), updated_at: 123 }]],
+      ["invalid timestamp", [{ ...valid(), updated_at: "invalid" }]],
+      [
+        "newline-padded timestamp",
+        [{ ...valid(), updated_at: timestamp + "\n" }],
+      ],
+      ["timezone absent", [{ ...valid(), updated_at: "2026-10-05T10:00:00" }]],
+      [
+        "invalid calendar day",
+        [{ ...valid(), updated_at: "2026-02-29T10:00:00Z" }],
+      ],
+      ["invalid hour", [{ ...valid(), updated_at: "2026-10-05T24:00:00Z" }]],
+      [
+        "invalid timezone",
+        [{ ...valid(), updated_at: "2026-10-05T10:00:00+24:00" }],
+      ],
+      ["unsupported date only", [{ ...valid(), updated_at: "2026-10-05" }]],
+      ["CLI envelope", { secrets: [valid()] }],
+      ["null response", null],
+    ];
+    it.each(invalid)("rejects %s fail closed", async (_name, records) => {
+      await expect(observeSecrets(records)).rejects.toThrow(
+        /^RELEASE_SECRET_INVENTORY_INVALID$/,
+      );
+    });
+    it("does not disclose a fictional plaintext canary in errors or observation", async () => {
+      const canary = "fictional-plaintext-private-canary";
+      const result = await observeSecrets([
+        { ...valid(), value: canary },
+      ]).catch((error: Error) => error);
+      expect(result).toBeInstanceOf(Error);
+      expect((result as Error).message).toBe(
+        "RELEASE_SECRET_INVENTORY_INVALID",
+      );
+      expect(String(result)).not.toContain(canary);
+      expect((result as Error).stack).not.toContain(canary);
+      expect(JSON.stringify(result)).not.toContain(canary);
+      const safe = await observeSecrets([valid()]);
+      expect(JSON.stringify(safe)).not.toContain(canary);
+    });
+    it("binds digest, timestamp value and presence without emitting components", async () => {
+      const inventories = [
+        [valid()],
+        [{ ...valid(), value: hash("new-component") }],
+        [{ name: valid().name, value: component }],
+        [{ ...valid(), updated_at: "2026-10-05T10:00:01.123456Z" }],
+      ];
+      const observations = await Promise.all(
+        inventories.map((records) => observeSecrets(records)),
+      );
+      expect(new Set(observations.map((o) => o.secretDigest)).size).toBe(4);
+      for (const o of observations) {
+        expect(JSON.stringify(o)).not.toContain(component);
+        expect(JSON.stringify(o)).not.toContain(hash("new-component"));
+      }
+    });
+    it.each([10, 16])(
+      "blocks timestamp appearance at read %s",
+      async (tripRead) => {
+        const records: { name: string; value: string; updated_at?: string }[] =
+          [{ name: "SECRET", value: component }];
+        await expect(
+          observeSecrets(records, (read) => {
+            if (read === tripRead) records[0].updated_at = timestamp;
+          }),
+        ).rejects.toThrow("CONFIGURATION_DRIFT");
+      },
+    );
+    it.each([60_000, 60_001])(
+      "retains the opening timestamp and 60-second boundary at %s ms",
+      async (elapsed) => {
+        expect(OBSERVATION_MAX_AGE_MS).toBe(60_000);
+        vi.useFakeTimers();
+        vi.setSystemTime(NOW);
+        try {
+          const pending = observeSecrets([valid()], (read) => {
+            if (read === 17) vi.setSystemTime(NOW + elapsed);
+          });
+          if (elapsed > OBSERVATION_MAX_AGE_MS)
+            await expect(pending).rejects.toThrow("RELEASE_OBSERVATION_STALE");
+          else {
+            const observation = await pending;
+            expect(Date.parse(observation.observedAt)).toBe(NOW);
+            expect(
+              Date.parse(observation.stability.completedAt) -
+                Date.parse(observation.observedAt),
+            ).toBe(elapsed);
+          }
+        } finally {
+          vi.useRealTimers();
+        }
+      },
+    );
+  });
   it.each([0, 2000, 20000])(
     "measures the oldest read with %s ms per request",
     async (delay) => {
