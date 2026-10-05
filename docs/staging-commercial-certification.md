@@ -6,7 +6,7 @@ This is a future separately authorized procedure, not an execution record. RepSy
 
 Run node scripts/validate-billing-retirement.mjs, staging:commercial:validate, full units, CI classification, billing Edge checks, TypeScript/build, lint, formatting and diff check. Local fixtures/SQL/units are not real provider certification. Supabase CI retains the full local DB suite, including LS-negative ACL/definer, history, trial/free and cross-ledger tests.
 
-The phase planner emits a local sanitized plan. The protected workflow uses `scripts/staging-release.mjs preflight` with version-2 phase authorization and recovery documents; preflight observes only staging and performs no mutation. Older standalone commercial/retirement validators remain local regression tools and cannot authorize the phased release.
+The phase planner emits a local sanitized plan. The protected workflow uses `scripts/staging-release.mjs preflight` with version-3 phase authorization and the existing recovery documents; preflight observes only staging and performs no mutation. The new authorization binds exact retained webhook dispositions as described in [the PAY-05H evidence contract](staging-release-phases.md#pay-05h-retained-webhook-dispositions). Historical-safe evidence changes only the live drain interpretation, never retained statuses or certification outcomes. Older standalone commercial/retirement validators remain local regression tools and cannot authorize the phased release.
 
 ## Before mutation
 
@@ -34,4 +34,4 @@ PAY-04 scope: migration 185 is unchanged retirement authority; migration 186 is 
 
 # PAY-05B release entrypoint
 
-The current staging release procedure is [the fixed phase model](staging-release-phases.md). Use version-2 phase authorization and recovery bundles through the protected main workflow. Baseline 180–184 deploys no functions; containment precedes 185; retirement verification precedes 186; final artifact identity verification follows schema 186. The former unbounded staging apply CLI is disabled. Successful release does not certify any commercial scenario.
+The current staging release procedure is [the fixed phase model](staging-release-phases.md). Use version-3 phase authorization and the existing recovery bundles through the protected main workflow. Baseline 180–184 deploys no functions; containment precedes 185; retirement verification precedes 186; final artifact identity verification follows schema 186. The former unbounded staging apply CLI is disabled. Successful release does not certify any commercial scenario.
