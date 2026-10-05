@@ -66,19 +66,91 @@ export function normalizeFunctionInventory(values) {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
-function normalizeSecrets(values) {
-  ensure(
-    Array.isArray(values) &&
-      new Set(values.map((s) => s.name)).size === values.length &&
-      values.every(
-        (s) => typeof s.name === "string" && typeof s.digest === "string",
-      ),
-    "RELEASE_SECRET_INVENTORY_INVALID",
+function validSecretTimestamp(value) {
+  if (typeof value !== "string") return false;
+  // Supported RFC3339 representation: calendar date, seconds, optional fractional
+  // seconds and an explicit timezone. Validate without round-tripping precision.
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/.exec(
+      value,
+    );
+  if (!match || match[0] !== value) return false;
+  const [, y, m, d, h, min, sec, zone] = match;
+  const year = Number(y),
+    month = Number(m),
+    day = Number(d);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return (
+    year > 0 &&
+    month >= 1 &&
+    month <= 12 &&
+    day >= 1 &&
+    day <= days[month - 1] &&
+    Number(h) <= 23 &&
+    Number(min) <= 59 &&
+    Number(sec) <= 59 &&
+    (zone === "Z" ||
+      (Number(zone.slice(1, 3)) <= 23 && Number(zone.slice(4)) <= 59)) &&
+    Number.isFinite(Date.parse(value))
   );
-  // Never copy value-bearing fields from this API into observations/evidence.
-  return values
-    .map(({ name, digest }) => ({ name, digest }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+}
+function normalizeSecrets(values) {
+  const code = "RELEASE_SECRET_INVENTORY_INVALID";
+  ensure(Array.isArray(values), code);
+  const names = new Set();
+  // PRIVATE contract of GET https://api.supabase.com/v1/projects/{project}/secrets:
+  // this hosted endpoint's `value` is SHA256 digest metadata, not plaintext.
+  // Never apply this interpretation to CLI envelopes or unrelated secret APIs.
+  const records = values
+    .map((record) => {
+      ensure(
+        record !== null &&
+          typeof record === "object" &&
+          Object.getPrototypeOf(record) === Object.prototype,
+        code,
+      );
+      ensure(
+        Reflect.ownKeys(record).every((key) =>
+          ["name", "value", "updated_at"].includes(key),
+        ) &&
+          Object.hasOwn(record, "name") &&
+          Object.hasOwn(record, "value"),
+        code,
+      );
+      const { name, value } = record;
+      ensure(
+        typeof name === "string" &&
+          name.length > 0 &&
+          name.trim() === name &&
+          Array.from(name).every((character) => {
+            const codePoint = character.codePointAt(0);
+            return codePoint > 31 && (codePoint < 127 || codePoint > 159);
+          }) &&
+          !names.has(name),
+        code,
+      );
+      ensure(
+        typeof value === "string" &&
+          value.length === 64 &&
+          /^[a-f0-9]{64}$/.test(value),
+        code,
+      );
+      const present = Object.hasOwn(record, "updated_at");
+      ensure(!present || validSecretTimestamp(record.updated_at), code);
+      names.add(name);
+      return {
+        name,
+        digest: value,
+        updatedAt: present ? record.updated_at : null,
+      };
+    })
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  // Component digests/timestamps live only through aggregate identity creation.
+  return {
+    names: records.map((record) => record.name),
+    digest: orderedDigest(records),
+  };
 }
 function normalizeAuth(value) {
   ensure(
@@ -297,7 +369,9 @@ export function createRemoteAdapter(
     const facts = rows[0].facts;
     const database = normalizedDatabase(facts);
     const functions = normalizeFunctionInventory(await request("functions"));
-    const secrets = normalizeSecrets(await request("secrets"));
+    const secrets = normalizeSecrets(
+      await request("secrets", { method: "GET" }),
+    );
     const auth = normalizeAuth(await request("config/auth"));
     const history = await query(historyQuery(facts.tables.map((t) => t.name)));
     const work = await query(
@@ -347,7 +421,6 @@ export function createRemoteAdapter(
     return {
       facts,
       functions,
-      secrets,
       auth,
       surfaceDigests: {
         DATABASE_DRIFT: orderedDigest({
@@ -358,7 +431,7 @@ export function createRemoteAdapter(
           scheduled: facts.scheduled,
         }),
         FUNCTION_INVENTORY_DRIFT: orderedDigest(functions),
-        CONFIGURATION_DRIFT: orderedDigest(secrets),
+        CONFIGURATION_DRIFT: secrets.digest,
         AUTH_CONFIGURATION_DRIFT: auth.digest,
       },
     };
@@ -383,7 +456,7 @@ export function createRemoteAdapter(
       const [functionResponse, secretResponse, authResponse] =
         await Promise.all([
           request("functions"),
-          request("secrets"),
+          request("secrets", { method: "GET" }),
           request("config/auth"),
         ]);
       fresh();
@@ -393,7 +466,7 @@ export function createRemoteAdapter(
       const confirmedDigests = {
         ...closing.surfaceDigests,
         FUNCTION_INVENTORY_DRIFT: orderedDigest(confirmedFunctions),
-        CONFIGURATION_DRIFT: orderedDigest(confirmedSecrets),
+        CONFIGURATION_DRIFT: confirmedSecrets.digest,
         AUTH_CONFIGURATION_DRIFT: confirmedAuth.digest,
       };
       const categories = DRIFT_CATEGORIES.filter(
@@ -405,7 +478,7 @@ export function createRemoteAdapter(
       const observation = {
         observedAt: new Date(startedAt).toISOString(),
         functions: confirmedFunctions,
-        secretNames: confirmedSecrets.map((s) => s.name),
+        secretNames: confirmedSecrets.names,
         secretDigest: confirmedDigests.CONFIGURATION_DRIFT,
         authDigest: confirmedAuth.digest,
         authConfig: confirmedAuth.fields,
