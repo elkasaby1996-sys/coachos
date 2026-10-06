@@ -10,6 +10,7 @@ import {
   assertRetiredDatabaseAuthority,
 } from "./billing-retirement-release.mjs";
 import { validateOrigin } from "./staging-commercial-contracts.mjs";
+import { assertReplacementTarget } from "./staging-replacement-target.mjs";
 import { validateProviderMappings } from "./staging-commercial-provider.mjs";
 import {
   historyReviewSchema,
@@ -250,6 +251,7 @@ export function phasePlan(phase, identity) {
   };
 }
 export function validateBoundary(context) {
+  assertReplacementTarget(context.project, context.origin);
   ensure(
     /^[a-z]{20}$/.test(context.project ?? "") &&
       context.project === context.expectedProject &&

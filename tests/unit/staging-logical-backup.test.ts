@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import {
   existsSync,
   mkdtempSync,
+  mkdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -312,6 +313,33 @@ describe("staging backup offline validation", () => {
     ).toThrow("boundary validation failed");
   });
   it("never prints secret values on CLI success or failure", () => {
+    // Exercise the real success path with a source-reviewed synthetic target in
+    // an isolated checkout. The repository's unset registry must stay disarmed.
+    const directory = mkdtempSync(join(tmpdir(), "staging-backup-policy-"));
+    directories.push(directory);
+    mkdirSync(join(directory, "scripts"));
+    mkdirSync(join(directory, "config"));
+    for (const name of [
+      "staging-logical-backup.mjs",
+      "staging-logical-backup-data.mjs",
+      "staging-backup-ledger.mjs",
+      "staging-replacement-target.mjs",
+    ])
+      writeFileSync(
+        join(directory, "scripts", name),
+        readFileSync(join("scripts", name)),
+      );
+    const policy = JSON.parse(
+      readFileSync("config/staging-replacement-target.json", "utf8"),
+    );
+    policy.replacement = {
+      project: staging,
+      origin: "https://staging.example.com",
+    };
+    writeFileSync(
+      join(directory, "config/staging-replacement-target.json"),
+      JSON.stringify(policy),
+    );
     for (const url of [
       env.STAGING_SUPABASE_DB_URL,
       `invalid-${env.STAGING_SUPABASE_DB_URL}`,
@@ -320,6 +348,7 @@ describe("staging backup offline validation", () => {
         process.execPath,
         ["scripts/staging-logical-backup.mjs", "validate"],
         {
+          cwd: directory,
           env: { ...process.env, ...env, STAGING_SUPABASE_DB_URL: url },
           encoding: "utf8",
         },

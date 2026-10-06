@@ -1,5 +1,11 @@
 # Retirement-compatible rollback and recovery
 
+A failed [empty replacement bootstrap](staging-fresh-bootstrap.md) has no automatic
+resume or rollback. Preserve the observed partial ledger, obtain fresh observation
+and a new reviewed recovery plan; never repair the ledger or restore old staging
+history into the replacement as a shortcut. Bootstrap success at 180 requires the
+ordinary new backup/restore and v3 authorization before baseline.
+
 Rollback/recovery requires separate named authorization; none is performed here. The ten guarded templates in config/staging-commercial-rollback.json preserve history/evidence.
 
 Never restore active LS code, native application grants, LS definer fallback, live LS webhook/portal or forensic classifier. A previous compatible SHA must itself be Paddle-only and compatible with the applied185/186 contracts. Keep all three remote tombstones overwritten.
