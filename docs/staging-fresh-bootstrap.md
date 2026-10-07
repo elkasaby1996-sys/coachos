@@ -4,22 +4,37 @@ This is a source-reviewed exit from irrecoverable historical evidence. It create
 no exemption, waiver, historical rewrite, classifier exception or release authority.
 The prior staging project remains preserved. This tooling does not create a project.
 
-## Fixed scope and current disarmed state
+## Fixed scope and reviewed replacement registry
 
-The reviewed source is `d08a4ecd153da3425f8b09a3a315360a5ee23b06`, tree
+The historical reviewed architecture source is `d08a4ecd153da3425f8b09a3a315360a5ee23b06`, tree
 `005a7c096d7476c980dcbde4a0b6d703757c6643`. Its 740 protected files, all 186
-migrations and final Edge/application source remain the billing payload.
+migrations and final Edge/application source remain the billing payload. These
+registry pins bind the historical source/tree and its ancestry; bootstrap
+authorization separately binds the actual execution commit. Registry activation
+does not advance the historical pins.
 
-`config/staging-replacement-target.json` deliberately has `replacement: null`
-and `archivedOrigins: null`, with `productionOrigin: null`. The actual archived application origin is not yet
-available from a reviewed source. Configuring a replacement without reviewing
-that deny list remains blocked; do not guess the old origin.
+`config/staging-replacement-target.json` records the reviewed identities:
+
+| Environment         | Supabase project       | Application origin                                |
+| ------------------- | ---------------------- | ------------------------------------------------- |
+| Archived staging    | `dgogugyuyfourdttvwuy` | `https://repsync-staging.netlify.app`             |
+| Production          | `btrfmxjpjzbyowtvncnc` | `https://repsync-production.netlify.app`          |
+| Replacement staging | `exmrksgdikfprtfeltzu` | `https://repsync-staging-replacement.netlify.app` |
+
+Old staging remains preserved. The replacement Supabase project exists but has
+not been bootstrapped. Its independently reported creation observations were
+`ACTIVE_HEALTHY`, zero migrations and zero public tables; these lightweight
+observations are **not** the formal bootstrap empty-project inventory. The
+replacement Netlify site `33273e34-ad81-4ed8-ad35-7211674aed92` exists but has not
+been deployed. No GitHub, Netlify or Paddle secrets have been migrated, and no
+remote bootstrap authorization exists. These infrastructure facts were supplied
+for this source review and were not remotely rechecked by registry activation.
+
 The old staging and production refs are unconditional deny targets in bootstrap,
 the v3 release boundary and staging logical backup. There is no environment
 variable override. All three protected CLI entry points refuse an unset registry.
-A later separately reviewed source change must name the exact
-replacement project and HTTPS application origin. Once configured, the registry
-also restricts release/backup to that project. Existing GitHub variables do not
+The configured registry restricts bootstrap/release/backup to the exact
+replacement project and HTTPS application origin. Existing GitHub variables do not
 override it. An archived origin cannot be reused with another project ref. Backup
 validation requires the workflow origin and checks the exact configured pair; a
 missing origin produces the same static, secret-safe boundary failure. Backup also

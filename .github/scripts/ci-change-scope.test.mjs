@@ -7,6 +7,59 @@ import {
   stagingReleaseToolingFiles,
 } from "./ci-change-scope.mjs";
 
+const replacementRegistryFiles = [
+  "config/staging-replacement-target.json",
+  "docs/staging-fresh-bootstrap.md",
+  "tests/unit/staging-replacement-target.test.ts",
+  "tests/unit/staging-bootstrap.test.ts",
+  "tests/unit/staging-logical-backup.test.ts",
+  "tests/unit/staging-release.test.ts",
+  "tests/unit/staging-commercial-certification.test.ts",
+  ".github/scripts/ci-change-scope.mjs",
+  ".github/scripts/ci-change-scope.test.mjs",
+];
+
+test("exact replacement registry activation retains local smoke without hosted writes", () => {
+  for (const files of [
+    replacementRegistryFiles,
+    [...replacementRegistryFiles].reverse(),
+  ])
+    assert.deepEqual(classifyChanges(files), {
+      docs_only: false,
+      configured_data_required: false,
+    });
+});
+
+for (const file of replacementRegistryFiles) {
+  test(`replacement registry omission, duplicate and alias fail closed: ${file}`, () => {
+    for (const files of [
+      replacementRegistryFiles.filter((path) => path !== file),
+      [...replacementRegistryFiles, file],
+      replacementRegistryFiles.map((path) =>
+        path === file ? `${path}.bak` : path,
+      ),
+    ])
+      assert.equal(classifyChanges(files).configured_data_required, true);
+  });
+}
+
+for (const file of [
+  "src/lib/billing.ts",
+  "supabase/functions/billing-paddle-webhook/index.ts",
+  "supabase/migrations/99999999999999_new.sql",
+  ".github/workflows/ci.yml",
+  "config/staging-commercial-certification.json",
+  "docs/unreviewed.md",
+]) {
+  test(`replacement registry mixed with ${file} requires configured data`, () => {
+    assert.equal(
+      classifyChanges([...replacementRegistryFiles, file])
+        .configured_data_required,
+      true,
+    );
+  });
+}
+
 test("complete PAY-05B tooling release keeps local checks without hosted writes", () => {
   assert.deepEqual(classifyChanges([...stagingReleaseToolingFiles].reverse()), {
     docs_only: false,

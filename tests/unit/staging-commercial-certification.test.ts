@@ -55,16 +55,16 @@ const mappings = readJson("config/staging-commercial-provider.fake.json");
 const evidence = readJson("config/staging-commercial-evidence.template.json");
 const clone = <T>(v: T): T => structuredClone(v);
 const commit = "a".repeat(40),
-  project = "s".repeat(20),
-  production = "p".repeat(20);
+  project = "exmrksgdikfprtfeltzu",
+  production = "btrfmxjpjzbyowtvncnc";
 const inputs = {
   commit,
   project,
   expectedProject: project,
   productionProject: production,
-  origin: "https://staging.example.com",
-  expectedOrigin: "https://staging.example.com",
-  productionOrigin: "https://app.example.com",
+  origin: "https://repsync-staging-replacement.netlify.app",
+  expectedOrigin: "https://repsync-staging-replacement.netlify.app",
+  productionOrigin: "https://repsync-production.netlify.app",
 };
 const state = {
   commit,
@@ -143,8 +143,8 @@ describe("staging commercial manifest and local planner", () => {
     ],
     [
       {
-        origin: "https://app.example.com",
-        expectedOrigin: "https://app.example.com",
+        origin: inputs.productionOrigin,
+        expectedOrigin: inputs.productionOrigin,
       },
       {},
       "PRODUCTION_ORIGIN_BLOCKED",

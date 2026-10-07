@@ -433,6 +433,25 @@ export const stagingReleaseToolingFiles = new Set([
 ]);
 
 export function classifyChanges(files) {
+  // This exact source-only registry activation grants no hosted authority.
+  // Keep quality, local smoke and Supabase CI; require all checks for any drift.
+  const replacementRegistryFiles = new Set([
+    "config/staging-replacement-target.json",
+    "docs/staging-fresh-bootstrap.md",
+    "tests/unit/staging-replacement-target.test.ts",
+    "tests/unit/staging-bootstrap.test.ts",
+    "tests/unit/staging-logical-backup.test.ts",
+    "tests/unit/staging-release.test.ts",
+    "tests/unit/staging-commercial-certification.test.ts",
+    ".github/scripts/ci-change-scope.mjs",
+    ".github/scripts/ci-change-scope.test.mjs",
+  ]);
+  if (
+    files.length === replacementRegistryFiles.size &&
+    new Set(files).size === files.length &&
+    files.every((file) => replacementRegistryFiles.has(file))
+  )
+    return { docs_only: false, configured_data_required: false };
   if (
     files.length === stagingReleaseToolingFiles.size &&
     new Set(files).size === files.length &&

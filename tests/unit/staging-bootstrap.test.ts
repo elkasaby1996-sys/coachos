@@ -71,20 +71,16 @@ const contracts = JSON.parse(
 const clock = Date.parse("2026-10-06T10:00:00Z");
 const context = {
   commit: "c".repeat(40),
-  project: "a".repeat(20),
-  origin: "https://replacement-staging.example.com",
-  expectedProject: "a".repeat(20),
-  expectedOrigin: "https://replacement-staging.example.com",
+  project: "exmrksgdikfprtfeltzu",
+  origin: "https://repsync-staging-replacement.netlify.app",
+  expectedProject: "exmrksgdikfprtfeltzu",
+  expectedOrigin: "https://repsync-staging-replacement.netlify.app",
   productionProject: "btrfmxjpjzbyowtvncnc",
-  productionOrigin: "https://production.example.com",
+  productionOrigin: "https://repsync-production.netlify.app",
   clean: true,
 };
-const policy = {
-  ...replacementPolicy(),
-  productionOrigin: context.productionOrigin,
-  archivedOrigins: ["https://archived-staging.example.com"],
-  replacement: { project: context.project, origin: context.origin },
-};
+// All observer transports and mutation commands below remain synthetic.
+const policy = replacementPolicy();
 const emptyFacts = () => ({
   databaseProof: bootstrapDatabaseProfiles().checkpoints[0],
   ledgerPresent: false,
@@ -383,12 +379,12 @@ describe("fixed bootstrap artifacts and replacement boundary", () => {
       ).toThrow();
     },
   );
-  it("is disarmed until replacement registry is reviewed", () => {
+  it("requires a configured registry and rejects another project", () => {
     expect(() =>
       assertReplacementTarget(
         context.project,
         context.origin,
-        replacementPolicy(),
+        { ...policy, replacement: null },
         true,
       ),
     ).toThrow("REPLACEMENT_NOT_CONFIGURED");
@@ -708,12 +704,12 @@ describe("handoff and whole-phase feasibility", () => {
         JSON.stringify(replacementPolicy()),
       );
       const env = {
-        STAGING_SUPABASE_PROJECT_REF: "a".repeat(20),
+        STAGING_SUPABASE_PROJECT_REF: context.project,
         STAGING_APPLICATION_ORIGIN: context.origin,
         PRODUCTION_APPLICATION_ORIGIN: context.productionOrigin,
-        PRODUCTION_SUPABASE_PROJECT_REF: "b".repeat(20),
-        CONFIRM_PROJECT_REF: "a".repeat(20),
-        STAGING_SUPABASE_DB_URL: `postgres://postgres:synthetic@db.${"a".repeat(20)}.supabase.co:5432/postgres`,
+        PRODUCTION_SUPABASE_PROJECT_REF: context.productionProject,
+        CONFIRM_PROJECT_REF: context.project,
+        STAGING_SUPABASE_DB_URL: `postgres://postgres:synthetic@db.${context.project}.supabase.co:5432/postgres`,
         EVIDENCE_LABEL: "local-only",
       };
       const code =
@@ -725,8 +721,19 @@ describe("handoff and whole-phase feasibility", () => {
           { cwd: directory, encoding: "utf8" },
         ).trim(),
       ).toBe("PASS");
-      // The protected CLI is stricter than the pure boundary validator: an
-      // unset source registry must block even an otherwise valid environment.
+      // A configured source registry also works in the dependency-free CLI.
+      expect(
+        execFileSync(
+          process.execPath,
+          ["scripts/staging-logical-backup.mjs", "validate"],
+          { cwd: directory, env: { ...process.env, ...env }, stdio: "pipe" },
+        ).toString(),
+      ).toBe("");
+      // An unset registry must still block an otherwise valid environment.
+      writeFileSync(
+        join(directory, "config/staging-replacement-target.json"),
+        JSON.stringify({ ...policy, replacement: null }),
+      );
       expect(() =>
         execFileSync(
           process.execPath,

@@ -47,13 +47,13 @@ const retainedData =
 const rawData =
   retainedData + expectedExclusions.map((r) => copy(r, "managed\n")).join("");
 
-const staging = "s".repeat(20),
-  production = "p".repeat(20);
+const staging = "exmrksgdikfprtfeltzu",
+  production = "btrfmxjpjzbyowtvncnc";
 const env = {
   STAGING_SUPABASE_PROJECT_REF: staging,
-  STAGING_APPLICATION_ORIGIN: "https://replacement-staging.example.com",
+  STAGING_APPLICATION_ORIGIN: "https://repsync-staging-replacement.netlify.app",
   PRODUCTION_SUPABASE_PROJECT_REF: production,
-  PRODUCTION_APPLICATION_ORIGIN: "https://production.example.com",
+  PRODUCTION_APPLICATION_ORIGIN: "https://repsync-production.netlify.app",
   CONFIRM_PROJECT_REF: staging,
   STAGING_SUPABASE_DB_URL: `postgresql://postgres.${staging}:sensitive-password@aws-0-eu-west-1.pooler.supabase.com:5432/postgres`,
   EVIDENCE_LABEL: "pre-commercial-apply",
@@ -315,8 +315,7 @@ describe("staging backup offline validation", () => {
     ).toThrow("boundary validation failed");
   });
   it("never prints secret values on CLI success or failure", () => {
-    // Exercise the real success path with a source-reviewed synthetic target in
-    // an isolated checkout. The repository's unset registry must stay disarmed.
+    // Exercise real CLI validation in an isolated checkout with synthetic secrets.
     const directory = mkdtempSync(join(tmpdir(), "staging-backup-policy-"));
     directories.push(directory);
     mkdirSync(join(directory, "scripts"));
