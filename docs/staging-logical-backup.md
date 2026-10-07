@@ -1,5 +1,11 @@
 # Staging logical backup
 
+Fresh replacement projects use [the fixed empty bootstrap](staging-fresh-bootstrap.md)
+before the first 180 backup. The archived staging and production projects are deny
+targets. Bootstrap does not substitute for the fresh 180 backup and actual restore
+proof, nor for the later fresh 184 recovery bundle. Replacement identity must be
+reviewed in the source registry and match the workflow configuration.
+
 PR-OPS-STAGING-01 binds the existing manual backup workflow to the protected `supabase-staging` GitHub environment. It creates database logical dumps and sanitized evidence for review before PR-PRICE-11 Phase B migration apply. Creating an artifact does not prove restore success or authorize apply. Restore remains a separately reviewed operation.
 
 ## Configure after merge

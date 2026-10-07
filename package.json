@@ -6,6 +6,9 @@
   "scripts": {
     "staging:release:plan": "node scripts/staging-release.mjs plan",
     "staging:release:test": "vitest run tests/unit/staging-release.test.ts",
+    "staging:bootstrap:plan": "node scripts/staging-bootstrap.mjs plan",
+    "staging:bootstrap:test": "vitest run tests/unit/staging-bootstrap.test.ts",
+    "staging:bootstrap:rehearsal": "python scripts/test-staging-bootstrap-rehearsal.py",
     "dev": "node --input-type=module -e \"import { dirname, join } from 'node:path'; import { pathToFileURL } from 'node:url'; await import(pathToFileURL(join(dirname(process.env.npm_package_json), 'scripts', 'run-vite-dev.mjs')).href)\" --",
     "build": "tsc -b && vite build",
     "preview": "vite preview",

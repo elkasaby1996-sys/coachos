@@ -1,3 +1,8 @@
+import {
+  timingFixture,
+  timingTestReviewPolicy,
+  signTimingFixture,
+} from "../helpers/staging-timing-fixture";
 import { describe, it, expect, vi } from "vitest";
 import {
   readFileSync,
@@ -411,9 +416,30 @@ const run = (
   deps = {},
 ) =>
   runRelease(
-    { phase, mode: "apply", authorization: a, context, identity, contracts },
+    {
+      phase,
+      mode: "apply",
+      authorization: a,
+      context,
+      identity,
+      contracts,
+      timingAdmission: timingFixture(
+        phase,
+        a,
+        identity,
+        context,
+        contracts,
+        NOW,
+      ),
+      workflowStartedAt: iso(),
+    },
     s.adapter,
-    { now: () => NOW, currentIdentity: () => identity, ...deps },
+    {
+      timingReviewPolicy: timingTestReviewPolicy,
+      now: () => NOW,
+      currentIdentity: () => identity,
+      ...deps,
+    },
   );
 
 describe("fixed bounded migration artifacts", { timeout: 20000 }, () => {
@@ -1294,9 +1320,19 @@ describe(
           context,
           identity,
           contracts: localContracts,
+          timingAdmission: timingFixture(
+            phase,
+            a,
+            identity,
+            context,
+            localContracts,
+            Date.now(),
+          ),
+          workflowStartedAt: new Date(Date.now()).toISOString(),
         },
         adapter,
         {
+          timingReviewPolicy: timingTestReviewPolicy,
           now: Date.now,
           currentIdentity: () => {
             // The gate validates authority twice after dry-run; the third check
@@ -2226,9 +2262,22 @@ describe("remote adapter boundaries with synthetic transport only", () => {
           context,
           identity,
           contracts,
+          timingAdmission: timingFixture(
+            "BASELINE_180_TO_184",
+            a,
+            identity,
+            context,
+            contracts,
+            NOW,
+          ),
+          workflowStartedAt: iso(),
         },
         { ...real, command: s.adapter.command },
-        { now: Date.now, currentIdentity: () => identity },
+        {
+          timingReviewPolicy: timingTestReviewPolicy,
+          now: Date.now,
+          currentIdentity: () => identity,
+        },
       );
       expect(r.recovery.errorCode).toBe("RELEASE_OBSERVATION_STALE");
       expect(s.adapter.command).not.toHaveBeenCalled();
@@ -3356,3 +3405,99 @@ describe("evidence-bound historical webhook drain", () => {
     );
   });
 });
+
+describe("enforced supplemental timing admission", () => {
+  it.each(["missing", "binding", "slow", "expired", "workflow"])(
+    "rejects %s before inventory or mutation",
+    async (kind) => {
+      const phase = "RETIREMENT_ACTIVATION_184_TO_186",
+        s = simulation(184),
+        a = authorization(phase, s);
+      let timing: any = timingFixture(
+        phase,
+        a,
+        identity,
+        context,
+        contracts,
+        NOW,
+      );
+      if (kind === "missing") timing = undefined;
+      if (kind === "binding") timing.bindingDigest = "f".repeat(64);
+      if (kind === "slow")
+        for (const sample of timing.samples.release)
+          sample.receipt.startedAt = new Date(
+            Date.parse(sample.receipt.completedAt) - 45_000,
+          ).toISOString();
+      if (kind === "expired") timing.expiresAt = iso(-1);
+      if (timing) {
+        for (const sample of timing.samples.release)
+          sample.receiptSha256 = evidenceDigest(sample.receipt);
+        signTimingFixture(timing);
+      }
+      const result = await runRelease(
+        {
+          phase,
+          mode: "apply",
+          authorization: a,
+          context,
+          identity,
+          contracts,
+          timingAdmission: timing,
+          workflowStartedAt: kind === "workflow" ? undefined : iso(),
+        },
+        s.adapter,
+        {
+          timingReviewPolicy: timingTestReviewPolicy,
+          now: () => NOW,
+          currentIdentity: () => identity,
+        },
+      );
+      expect(result.status).toBe("blocked");
+      expect(s.adapter.observe).not.toHaveBeenCalled();
+      expect(s.adapter.command).not.toHaveBeenCalled();
+    },
+  );
+});
+
+it.each(["inventory", "configuration", "workflow", "backup-age"])(
+  "blocks insufficient remaining %s budget before reads",
+  async (deadline) => {
+    const phase = "RETIREMENT_ACTIVATION_184_TO_186",
+      s = simulation(184),
+      a = authorization(phase, s);
+    if (deadline === "backup-age")
+      a.backup.createdAt = iso(-24 * 60 * 60_000 + 60_000);
+    if (deadline === "inventory") a.inventory.observedAt = iso(-14.9 * 60_000);
+    if (deadline === "configuration")
+      a.configuration.observedAt = iso(-14.9 * 60_000);
+    const result = await runRelease(
+      {
+        phase,
+        mode: "apply",
+        authorization: a,
+        context,
+        identity,
+        contracts,
+        timingAdmission: timingFixture(
+          phase,
+          a,
+          identity,
+          context,
+          contracts,
+          NOW,
+        ),
+        workflowStartedAt: deadline === "workflow" ? iso(-44 * 60_000) : iso(),
+      },
+      s.adapter,
+      {
+        timingReviewPolicy: timingTestReviewPolicy,
+        now: () => NOW,
+        currentIdentity: () => identity,
+      },
+    );
+    expect(result.status).toBe("blocked");
+    expect(result.recovery.errorCode).toBe("TIMING_ADMISSION_BLOCKED");
+    expect(s.adapter.observe).not.toHaveBeenCalled();
+    expect(s.commands).toHaveLength(0);
+  },
+);

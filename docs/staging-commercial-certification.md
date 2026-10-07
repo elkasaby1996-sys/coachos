@@ -1,5 +1,12 @@
 # Paddle-only staging retirement and certification
 
+For a newly created, isolated replacement project, first follow
+[Fresh staging bootstrap](staging-fresh-bootstrap.md). The fixed `EMPTY_TO_180`
+operation is separate from these v3 phases. It changes no historical-drain rule,
+freshness budget or certification requirement. The two nonbilling artifacts and
+full configuration handoff, plus whole-phase timing evidence, must be prepared
+before the corresponding v3 release authorization.
+
 This is a future separately authorized procedure, not an execution record. RepSync is pre-launch; LS was synthetic development/staging Test Mode work. Paddle is the sole future commercial provider. Remote deployed state remains unassessed.
 
 ## Local-only gates

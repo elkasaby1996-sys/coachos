@@ -14,6 +14,7 @@ import {
   CONTAINMENT_SOURCE,
 } from "./staging-release-artifacts.mjs";
 import { LS_TOMBSTONES } from "./billing-deployment-contract.mjs";
+import { assertReplacementTarget } from "./staging-replacement-target.mjs";
 import {
   webhookHistoryQuery,
   classifyWebhookHistory,
@@ -95,7 +96,7 @@ function validSecretTimestamp(value) {
     Number.isFinite(Date.parse(value))
   );
 }
-function normalizeSecrets(values) {
+export function normalizeSecrets(values) {
   const code = "RELEASE_SECRET_INVENTORY_INVALID";
   ensure(Array.isArray(values), code);
   const names = new Set();
@@ -152,7 +153,7 @@ function normalizeSecrets(values) {
     digest: orderedDigest(records),
   };
 }
-function normalizeAuth(value) {
+export function normalizeAuth(value) {
   ensure(
     value &&
       !Array.isArray(value) &&
@@ -303,13 +304,16 @@ export function createRemoteAdapter(
   webhookReview = EMPTY_WEBHOOK_REVIEW,
 ) {
   const wrapper = resolve("scripts/supabase-remote-guard.mjs");
-  const boundary = () =>
+  const boundary = () => {
+    assertReplacementTarget(context.project, context.origin);
     ensure(
       context.project === env.STAGING_SUPABASE_PROJECT_REF &&
         context.project !== env.PRODUCTION_SUPABASE_PROJECT_REF,
       "RELEASE_PROJECT_BOUNDARY",
     );
+  };
   const request = async (suffix, options = {}) => {
+    boundary();
     ensure(
       context.project === env.STAGING_SUPABASE_PROJECT_REF &&
         context.project !== env.PRODUCTION_SUPABASE_PROJECT_REF,
@@ -486,6 +490,11 @@ export function createRemoteAdapter(
         stability: {
           stable: true,
           categories: [],
+          proof: {
+            opening: opening.surfaceDigests,
+            closing: closing.surfaceDigests,
+            confirmation: confirmedDigests,
+          },
           startedAt: new Date(startedAt).toISOString(),
           completedAt: new Date(Date.now()).toISOString(),
         },

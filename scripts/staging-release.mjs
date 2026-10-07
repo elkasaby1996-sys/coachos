@@ -15,6 +15,10 @@ import { confirmationInputs, gitState } from "./staging-commercial-plan.mjs";
 import { validateConfirmations } from "./staging-commercial-contracts.mjs";
 import { hash } from "./billing-retirement-release.mjs";
 import { validateRecoveryBundle } from "./staging-release-recovery-evidence.mjs";
+import {
+  assertReplacementTarget,
+  replacementPolicy,
+} from "./staging-replacement-target.mjs";
 
 export async function runCli(argv = process.argv.slice(2), env = process.env) {
   ensure(argv.length <= 2, "RELEASE_ARGUMENTS_INVALID");
@@ -58,6 +62,12 @@ export async function runCli(argv = process.argv.slice(2), env = process.env) {
     const inputs = confirmationInputs(env),
       state = gitState(root, identity.manifest.requiredBaseCommit);
     validateConfirmations(inputs, state);
+    assertReplacementTarget(
+      inputs.project,
+      inputs.origin,
+      replacementPolicy(),
+      true,
+    );
     ensure(env.GITHUB_SHA === state.commit, "RELEASE_SOURCE_INVALID");
     return { ...inputs, clean: state.clean };
   };
@@ -72,9 +82,10 @@ export async function runCli(argv = process.argv.slice(2), env = process.env) {
         env.SUPABASE_PROJECT_REF === context.project,
       "RELEASE_MUTATION_AUTHORITY_REQUIRED",
     );
-  let authorization;
+  let authorization, timingAdmission;
   try {
     authorization = JSON.parse(env.STAGING_RELEASE_AUTHORIZATION);
+    timingAdmission = JSON.parse(env.STAGING_TIMING_ADMISSION);
   } catch {
     throw new Error("RELEASE_AUTHORIZATION_INVALID");
   }
@@ -86,7 +97,17 @@ export async function runCli(argv = process.argv.slice(2), env = process.env) {
   }
   validateRecoveryBundle(recoveryBundle, authorization);
   const report = await runRelease(
-    { phase, mode, authorization, context, identity, contracts, root },
+    {
+      phase,
+      mode,
+      authorization,
+      context,
+      identity,
+      contracts,
+      root,
+      timingAdmission,
+      workflowStartedAt: env.STAGING_WORKFLOW_STARTED_AT,
+    },
     createRemoteAdapter(
       context,
       env,

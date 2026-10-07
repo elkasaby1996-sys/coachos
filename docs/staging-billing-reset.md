@@ -1,5 +1,11 @@
 # Future synthetic staging billing reset
 
+For the reviewed fresh-project exit, follow [Fresh staging bootstrap](staging-fresh-bootstrap.md).
+It preserves the old project and imports no historical billing/Auth state. The
+old staging project is now a release/backup deny target; the source-reviewed
+replacement registry remains unset. This earlier in-place reset proposal is not
+authorization and must not be used to bypass historical-drain rules.
+
 Documented only; no reset, remote read, backup or deployment was performed. Every remote gate requires separate named staging authorization. Production is never a reset target.
 
 1. Read-only classification: bind exact staging project/origin, ledger, function inventory, all physical LS roots/statuses/environments and mixed Paddle ownership. Identify synthetic cohort privately; any possible real obligation, unexplained owner, active provider resource or contrary185 deployment evidence stops.

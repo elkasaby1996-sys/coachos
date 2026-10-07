@@ -9,6 +9,10 @@ import { execFileSync } from "node:child_process";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  assertReplacementTarget,
+  replacementPolicy,
+} from "./staging-replacement-target.mjs";
+import {
   filterManagedCopyBlocks,
   managedExclusionArgument,
   validatePortableData,
@@ -108,6 +112,35 @@ export function validateBackupEnvironment(env) {
   const fail = () => {
     throw new Error("Staging backup boundary validation failed.");
   };
+  try {
+    const origin = new URL(env.STAGING_APPLICATION_ORIGIN);
+    const productionOrigin = new URL(env.PRODUCTION_APPLICATION_ORIGIN);
+    if (
+      origin.protocol !== "https:" ||
+      origin.origin !== env.STAGING_APPLICATION_ORIGIN ||
+      origin.username ||
+      origin.password ||
+      origin.port ||
+      productionOrigin.protocol !== "https:" ||
+      productionOrigin.origin !== env.PRODUCTION_APPLICATION_ORIGIN ||
+      productionOrigin.username ||
+      productionOrigin.password ||
+      productionOrigin.port ||
+      origin.origin === productionOrigin.origin
+    )
+      fail();
+    const policy = assertReplacementTarget(
+      staging,
+      env.STAGING_APPLICATION_ORIGIN,
+    );
+    if (
+      policy.productionOrigin !== null &&
+      policy.productionOrigin !== productionOrigin.origin
+    )
+      fail();
+  } catch {
+    fail();
+  }
   if (
     !/^[a-z]{20}$/.test(staging ?? "") ||
     !/^[a-z]{20}$/.test(production ?? "") ||
@@ -231,6 +264,17 @@ if (
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
   try {
+    if (
+      ["validate", "ledger-before", "ledger-after", "evidence"].includes(
+        process.argv[2],
+      )
+    )
+      assertReplacementTarget(
+        process.env.STAGING_SUPABASE_PROJECT_REF,
+        process.env.STAGING_APPLICATION_ORIGIN,
+        replacementPolicy(),
+        true,
+      );
     if (process.argv[2] === "validate") validateBackupEnvironment(process.env);
     else if (["ledger-before", "ledger-after"].includes(process.argv[2]))
       captureBackupLedger(process.argv[2], process.env);

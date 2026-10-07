@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "qualification": "Local cold-install profiles only; unfamiliar hosted platforms require separate source review.",
+  "checkpoints": {
+    "0": {
+      "catalogDigest": "fcbc8085895b6a2e4d13e81260cc0223618ee635c4753434262d359afd19701b",
+      "platformDigest": "64cec6df623bd655fcafe4379bacd230985f5c3c4b5a75a692b6f1983f04d48b"
+    },
+    "180": {
+      "catalogDigest": "d2329e6b9c6aa972742b356159f192cb7122c2509cc2655e00d1416baf16adc8",
+      "platformDigest": "298bc54dce8ec2e6c4dd65a28349220209e8f59e8f7176ac3ac5c7fd14a48eca",
+      "seedDigest": "aeea42fec4893479ff06b5d44bc73a95bac145452099dbd6cd1d3eaf123ae401"
+    }
+  }
+}
