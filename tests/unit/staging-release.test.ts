@@ -135,12 +135,12 @@ const root = process.cwd();
 const context = {
   commit: "9a9f79ff2ba7aada9ff2c24f162360d9c03b33a0",
   clean: true,
-  project: "s".repeat(20),
-  expectedProject: "s".repeat(20),
-  productionProject: "p".repeat(20),
-  origin: "https://staging.repsync.example.org",
-  expectedOrigin: "https://staging.repsync.example.org",
-  productionOrigin: "https://repsync.example.org",
+  project: "exmrksgdikfprtfeltzu",
+  expectedProject: "exmrksgdikfprtfeltzu",
+  productionProject: "btrfmxjpjzbyowtvncnc",
+  origin: "https://repsync-staging-replacement.netlify.app",
+  expectedOrigin: "https://repsync-staging-replacement.netlify.app",
+  productionOrigin: "https://repsync-production.netlify.app",
 };
 const contracts = {
   checkpoints: Object.fromEntries(
@@ -659,7 +659,7 @@ describe("strict versioned phase authority", () => {
         hash(canonical(contracts)),
         NOW,
       ),
-    ).toThrow("PROJECT");
+    ).toThrow("REPLACEMENT_TARGET_DENIED");
   });
   it("requires protected wrapper authority for downloads", () =>
     expect(() =>
@@ -2336,8 +2336,10 @@ describe("remote adapter boundaries with synthetic transport only", () => {
       },
       transport,
     );
-    await expect(a.observe()).rejects.toThrow("PROJECT_BOUNDARY");
-    await expect(a.probe(LS_TOMBSTONES[0])).rejects.toThrow("PROJECT_BOUNDARY");
+    await expect(a.observe()).rejects.toThrow("REPLACEMENT_TARGET_DENIED");
+    await expect(a.probe(LS_TOMBSTONES[0])).rejects.toThrow(
+      "REPLACEMENT_TARGET_DENIED",
+    );
     expect(transport).not.toHaveBeenCalled();
   });
   it.each([401, 200, 503])(
