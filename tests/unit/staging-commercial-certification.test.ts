@@ -567,7 +567,9 @@ describe("apply safety and workflow contract", () => {
       const backup = writeBackupEvidence(
         {
           STAGING_SUPABASE_PROJECT_REF: project,
+          STAGING_APPLICATION_ORIGIN: inputs.origin,
           PRODUCTION_SUPABASE_PROJECT_REF: production,
+          PRODUCTION_APPLICATION_ORIGIN: inputs.productionOrigin,
           CONFIRM_PROJECT_REF: project,
           STAGING_SUPABASE_DB_URL: `postgresql://postgres:synthetic-fixture@db.${project}.supabase.co/postgres`,
           EVIDENCE_LABEL: "compatibility-fixture",

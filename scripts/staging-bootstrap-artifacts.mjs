@@ -6,6 +6,10 @@ import {
   writeFileSync,
   rmSync,
   lstatSync,
+  openSync,
+  fstatSync,
+  closeSync,
+  constants,
 } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -19,6 +23,31 @@ import { evidenceDigest } from "./staging-release-webhook-history.mjs";
 
 export const BOOTSTRAP_PHASE = "EMPTY_TO_180";
 export const BOOTSTRAP_TARGET = 180;
+function readBootstrapFile(root, path) {
+  verifyPathBoundary(root, path);
+  const fd = openSync(
+    path,
+    constants.O_RDONLY |
+      (constants.O_NOFOLLOW ?? 0) |
+      (constants.O_NONBLOCK ?? 0),
+  );
+  try {
+    verifyPathBoundary(root, path);
+    const opened = fstatSync(fd, { bigint: true });
+    const current = lstatSync(path, { bigint: true });
+    ensure(
+      opened.isFile() &&
+        current.isFile() &&
+        opened.dev === current.dev &&
+        opened.ino === current.ino,
+      "BOOTSTRAP_ARTIFACT_INVALID",
+    );
+    // Check and consume the same opened file, even if its name is replaced.
+    return readFileSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
 export function bootstrapArtifact(identity, phase = BOOTSTRAP_PHASE) {
   ensure(phase === BOOTSTRAP_PHASE, "BOOTSTRAP_PHASE_INVALID");
   const migrations = identity.manifest.migrations.approved.slice(
@@ -54,21 +83,24 @@ export function verifyBootstrapDirectory(directory, artifact) {
     .sort()
     .map((filename) => {
       const path = join(base, filename);
-      verifyPathBoundary(directory, path);
-      ensure(lstatSync(path).isFile(), "BOOTSTRAP_ARTIFACT_INVALID");
       return {
         filename,
-        sha256: hash(readFileSync(path, "utf8").replace(/\r\n/g, "\n")),
+        sha256: hash(
+          readBootstrapFile(directory, path)
+            .toString("utf8")
+            .replace(/\r\n/g, "\n"),
+        ),
       };
     });
   const config = join(directory, "supabase/config.toml");
-  verifyPathBoundary(directory, config);
   const value = {
     phase: BOOTSTRAP_PHASE,
     target: 180,
     migrations,
     configurationSha256: hash(
-      readFileSync(config, "utf8").replace(/\r\n/g, "\n"),
+      readBootstrapFile(directory, config)
+        .toString("utf8")
+        .replace(/\r\n/g, "\n"),
     ),
   };
   ensure(
@@ -98,10 +130,9 @@ export function disposableBootstrap(root, identity) {
       "supabase/config.toml",
       ...artifact.migrations.map((m) => `supabase/migrations/${m.filename}`),
     ]) {
-      verifyPathBoundary(root, join(root, relative));
       writeFileSync(
         join(directory, relative),
-        readFileSync(join(root, relative)),
+        readBootstrapFile(root, join(root, relative)),
       );
     }
     verifyBootstrapDirectory(directory, artifact);

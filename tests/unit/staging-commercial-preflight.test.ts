@@ -653,6 +653,7 @@ describe("preflight workflow and module boundaries", () => {
     expect(Object.keys(step.env).sort()).toEqual([
       "STAGING_RELEASE_AUTHORIZATION",
       "STAGING_RELEASE_RECOVERY_BUNDLE",
+      "STAGING_TIMING_ADMISSION",
       "SUPABASE_ACCESS_TOKEN",
       "SUPABASE_DB_PASSWORD",
     ]);
