@@ -17,14 +17,26 @@ function validatePolicy(value) {
       "reviewedSource",
       "reviewedTree",
       "archivedProjects",
+      "archivedOrigins",
       "productionProject",
+      "productionOrigin",
       "replacement",
     ]) ||
-    value.schemaVersion !== 1 ||
+    value.schemaVersion !== 3 ||
     value.reviewedSource !== "d08a4ecd153da3425f8b09a3a315360a5ee23b06" ||
     value.reviewedTree !== "005a7c096d7476c980dcbde4a0b6d703757c6643" ||
     JSON.stringify(value.archivedProjects) !== '["dgogugyuyfourdttvwuy"]' ||
     value.productionProject !== "btrfmxjpjzbyowtvncnc" ||
+    !(
+      value.productionOrigin === null || canonicalOrigin(value.productionOrigin)
+    ) ||
+    !(
+      value.archivedOrigins === null ||
+      (Array.isArray(value.archivedOrigins) &&
+        value.archivedOrigins.length > 0 &&
+        new Set(value.archivedOrigins).size === value.archivedOrigins.length &&
+        value.archivedOrigins.every(canonicalOrigin))
+    ) ||
     !(
       value.replacement === null ||
       (keys(value.replacement, ["project", "origin"]) &&
@@ -57,6 +69,21 @@ function validatePolicy(value) {
   }
   return value;
 }
+function canonicalOrigin(value) {
+  try {
+    const url = new URL(value);
+    return (
+      typeof value === "string" &&
+      url.protocol === "https:" &&
+      url.origin === value &&
+      !url.username &&
+      !url.password &&
+      !url.port
+    );
+  } catch {
+    return false;
+  }
+}
 export function replacementPolicy() {
   return validatePolicy(
     JSON.parse(
@@ -77,17 +104,24 @@ export function assertReplacementTarget(
   if (
     !project(target) ||
     p.archivedProjects.includes(target) ||
-    target === p.productionProject
+    target === p.productionProject ||
+    (origin !== undefined && origin === p.productionOrigin) ||
+    (origin !== undefined && p.archivedOrigins?.includes(origin))
   )
     throw new Error("REPLACEMENT_TARGET_DENIED");
   if (requireConfigured && !p.replacement)
     throw new Error("REPLACEMENT_NOT_CONFIGURED");
   if (p.replacement) {
+    if (!p.archivedOrigins) throw new Error("ARCHIVED_ORIGINS_REVIEW_REQUIRED");
+    if (!p.productionOrigin)
+      throw new Error("PRODUCTION_ORIGIN_REVIEW_REQUIRED");
     if (
       p.archivedProjects.includes(p.replacement.project) ||
       p.replacement.project === p.productionProject ||
       target !== p.replacement.project ||
-      (origin !== undefined && origin !== p.replacement.origin)
+      p.archivedOrigins.includes(p.replacement.origin) ||
+      p.replacement.origin === p.productionOrigin ||
+      origin !== p.replacement.origin
     )
       throw new Error("REPLACEMENT_TARGET_MISMATCH");
   }

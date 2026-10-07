@@ -82,9 +82,10 @@ export async function runCli(argv = process.argv.slice(2), env = process.env) {
         env.SUPABASE_PROJECT_REF === context.project,
       "RELEASE_MUTATION_AUTHORITY_REQUIRED",
     );
-  let authorization;
+  let authorization, timingAdmission;
   try {
     authorization = JSON.parse(env.STAGING_RELEASE_AUTHORIZATION);
+    timingAdmission = JSON.parse(env.STAGING_TIMING_ADMISSION);
   } catch {
     throw new Error("RELEASE_AUTHORIZATION_INVALID");
   }
@@ -96,7 +97,17 @@ export async function runCli(argv = process.argv.slice(2), env = process.env) {
   }
   validateRecoveryBundle(recoveryBundle, authorization);
   const report = await runRelease(
-    { phase, mode, authorization, context, identity, contracts, root },
+    {
+      phase,
+      mode,
+      authorization,
+      context,
+      identity,
+      contracts,
+      root,
+      timingAdmission,
+      workflowStartedAt: env.STAGING_WORKFLOW_STARTED_AT,
+    },
     createRemoteAdapter(
       context,
       env,

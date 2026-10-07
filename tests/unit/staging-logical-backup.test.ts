@@ -51,7 +51,9 @@ const staging = "s".repeat(20),
   production = "p".repeat(20);
 const env = {
   STAGING_SUPABASE_PROJECT_REF: staging,
+  STAGING_APPLICATION_ORIGIN: "https://replacement-staging.example.com",
   PRODUCTION_SUPABASE_PROJECT_REF: production,
+  PRODUCTION_APPLICATION_ORIGIN: "https://production.example.com",
   CONFIRM_PROJECT_REF: staging,
   STAGING_SUPABASE_DB_URL: `postgresql://postgres.${staging}:sensitive-password@aws-0-eu-west-1.pooler.supabase.com:5432/postgres`,
   EVIDENCE_LABEL: "pre-commercial-apply",
@@ -332,9 +334,11 @@ describe("staging backup offline validation", () => {
     const policy = JSON.parse(
       readFileSync("config/staging-replacement-target.json", "utf8"),
     );
+    policy.productionOrigin = env.PRODUCTION_APPLICATION_ORIGIN;
+    policy.archivedOrigins = ["https://archived-staging.example.com"];
     policy.replacement = {
       project: staging,
-      origin: "https://staging.example.com",
+      origin: env.STAGING_APPLICATION_ORIGIN,
     };
     writeFileSync(
       join(directory, "config/staging-replacement-target.json"),
@@ -365,6 +369,66 @@ describe("staging backup offline validation", () => {
         expect(output).not.toContain(secret);
     }
   });
+  it.each(["equal-env", "equal-source", "missing", "mismatch"])(
+    "rejects production origin collision with a configured target: %s",
+    (kind) => {
+      const directory = mkdtempSync(join(tmpdir(), "staging-backup-policy-"));
+      directories.push(directory);
+      mkdirSync(join(directory, "scripts"));
+      mkdirSync(join(directory, "config"));
+      for (const name of [
+        "staging-logical-backup.mjs",
+        "staging-logical-backup-data.mjs",
+        "staging-backup-ledger.mjs",
+        "staging-replacement-target.mjs",
+      ])
+        writeFileSync(
+          join(directory, "scripts", name),
+          readFileSync(join("scripts", name)),
+        );
+      const policy = JSON.parse(
+        readFileSync("config/staging-replacement-target.json", "utf8"),
+      );
+      policy.productionOrigin =
+        kind === "equal-source"
+          ? env.STAGING_APPLICATION_ORIGIN
+          : env.PRODUCTION_APPLICATION_ORIGIN;
+      policy.archivedOrigins = ["https://archived-staging.example.com"];
+      policy.replacement = {
+        project: staging,
+        origin: env.STAGING_APPLICATION_ORIGIN,
+      };
+      writeFileSync(
+        join(directory, "config/staging-replacement-target.json"),
+        JSON.stringify(policy),
+      );
+      const productionOrigin =
+        kind === "equal-env"
+          ? env.STAGING_APPLICATION_ORIGIN
+          : kind === "missing"
+            ? ""
+            : kind === "mismatch"
+              ? "https://other-production.example.com"
+              : env.PRODUCTION_APPLICATION_ORIGIN;
+      const result = spawnSync(
+        process.execPath,
+        ["scripts/staging-logical-backup.mjs", "validate"],
+        {
+          cwd: directory,
+          env: {
+            ...process.env,
+            ...env,
+            PRODUCTION_APPLICATION_ORIGIN: productionOrigin,
+          },
+          encoding: "utf8",
+        },
+      );
+      expect(result.status).toBe(1);
+      expect(result.stdout + result.stderr).not.toContain(
+        env.STAGING_APPLICATION_ORIGIN,
+      );
+    },
+  );
   it("hashes exact file and JSON bytes and emits only safe metadata", () => {
     const directory = mkdtempSync(join(tmpdir(), "staging-backup-"));
     directories.push(directory);
@@ -659,6 +723,8 @@ describe("staging backup workflow contract", () => {
     expect(job.permissions).toBeUndefined();
     expect(job.env).toMatchObject({
       STAGING_SUPABASE_DB_URL: "${{ secrets.STAGING_SUPABASE_DB_URL }}",
+      PRODUCTION_APPLICATION_ORIGIN:
+        "${{ vars.PRODUCTION_APPLICATION_ORIGIN }}",
       STAGING_SUPABASE_PROJECT_REF: "${{ vars.STAGING_SUPABASE_PROJECT_REF }}",
       PRODUCTION_SUPABASE_PROJECT_REF:
         "${{ vars.PRODUCTION_SUPABASE_PROJECT_REF }}",
@@ -703,4 +769,14 @@ describe("staging backup workflow contract", () => {
     });
     expect(artifact.if).toBeUndefined();
   });
+});
+
+it.each([
+  undefined,
+  "https://replacement-staging.example.com/path",
+  "http://replacement-staging.example.com",
+])("requires a canonical backup origin %s", (origin) => {
+  expect(() =>
+    validateBackupEnvironment({ ...env, STAGING_APPLICATION_ORIGIN: origin }),
+  ).toThrow("Staging backup boundary validation failed.");
 });

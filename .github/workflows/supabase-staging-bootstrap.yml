@@ -41,6 +41,9 @@ jobs:
       PRODUCTION_SUPABASE_PROJECT_REF: ${{ vars.PRODUCTION_SUPABASE_PROJECT_REF }}
       PRODUCTION_APPLICATION_ORIGIN: ${{ vars.PRODUCTION_APPLICATION_ORIGIN }}
     steps:
+      - name: Start bounded admission clock before setup
+        shell: bash
+        run: echo "STAGING_WORKFLOW_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
@@ -61,6 +64,7 @@ jobs:
       - name: Separately authorized empty-project operation
         if: inputs.mode != 'plan'
         env:
+          STAGING_TIMING_ADMISSION: ${{ secrets.STAGING_TIMING_ADMISSION }}
           STAGING_BOOTSTRAP_AUTHORIZATION: ${{ secrets.STAGING_BOOTSTRAP_AUTHORIZATION }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}

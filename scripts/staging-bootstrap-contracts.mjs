@@ -4,6 +4,10 @@ import { hash } from "./billing-retirement-release.mjs";
 import { evidenceDigest } from "./staging-release-webhook-history.mjs";
 import { assertReplacementTarget } from "./staging-replacement-target.mjs";
 import {
+  assertDatabaseProof,
+  bootstrapDatabaseProfiles,
+} from "./staging-bootstrap-database.mjs";
+import {
   bootstrapArtifact,
   BOOTSTRAP_PHASE,
 } from "./staging-bootstrap-artifacts.mjs";
@@ -50,6 +54,7 @@ export function bootstrapBinding(identity, context, policy, contracts) {
     manifest: identity.manifest,
     artifact: bootstrapArtifact(identity),
     checkpoints: contracts,
+    bootstrapDatabaseProfiles: bootstrapDatabaseProfiles(),
     finalFunctions: identity.functions,
     containment: identity.containment,
     startVersions: [],
@@ -111,6 +116,7 @@ export function verifyBootstrapCheckpoint(observation, identity, contracts) {
   verifyDatabase(observation, 180, contracts, []);
   ensure(observation.functions.length === 0, "BOOTSTRAP_FUNCTIONS_NOT_EMPTY");
   const f = observation.facts;
+  assertDatabaseProof(f.databaseProof, 180);
   ensure(
     f.work &&
       Object.keys(f.work).length >= 8 &&

@@ -1,3 +1,4 @@
+import { createTimingAdmission } from "./staging-timing-admission.mjs";
 import { ensure, releaseIdentity } from "./staging-release-artifacts.mjs";
 import { evidenceDigest } from "./staging-release-webhook-history.mjs";
 import { validateDryRun } from "./billing-retirement-release.mjs";
@@ -23,6 +24,8 @@ export async function runBootstrap(
     context,
     contracts,
     authorization,
+    timingAdmission,
+    workflowStartedAt,
     root = process.cwd(),
   },
   adapter,
@@ -52,7 +55,8 @@ export async function runBootstrap(
     stage = "authorization",
     inventoryStarted = false,
     observation,
-    directory;
+    directory,
+    timing;
   const authorize = () => {
     ensure(
       evidenceDigest(currentIdentity()) === evidenceDigest(identity),
@@ -62,7 +66,7 @@ export async function runBootstrap(
       evidenceDigest(currentContext()) === evidenceDigest(context),
       "BOOTSTRAP_CONTEXT_DRIFT",
     );
-    return validateBootstrapAuthorization(
+    const a = validateBootstrapAuthorization(
       authorization,
       identity,
       currentContext(),
@@ -70,6 +74,20 @@ export async function runBootstrap(
       contracts,
       now(),
     );
+    timing ??= createTimingAdmission(
+      {
+        phase,
+        authorization,
+        identity,
+        context,
+        contracts,
+        admission: timingAdmission,
+        workflowStartedAt,
+      },
+      { now, policy, reviewPolicy: dependencies.timingReviewPolicy },
+    );
+    timing.check();
+    return a;
   };
   const gate = async () => {
     authorize();
@@ -78,6 +96,7 @@ export async function runBootstrap(
     authorize();
     assertObservationFresh(fresh, now());
     assertEmptySnapshot(fresh);
+    timing.observation(fresh, "empty");
     ensure(
       fresh.digest === authorization.inventoryDigest &&
         (!observation || fresh.digest === observation.digest),
@@ -119,22 +138,33 @@ export async function runBootstrap(
     assertObservationFresh(observation, now());
     stage = "bootstrap";
     attempted = true;
+    const mutationStarted = now();
     adapter.command(["db", "push", "--linked", "--yes"], directory.directory);
+    timing.operation("mutation", mutationStarted);
     stage = "checkpoint_180";
+    authorize();
     const after = await adapter.observeRelease();
+    authorize();
     assertObservationFresh(after, now());
+    timing.observation(after);
     ensure(
       after.secretDigest === observation.secretDigest &&
         after.authDigest === observation.authDigest,
       "BOOTSTRAP_CONFIGURATION_DRIFT",
     );
     const checkpoint = verifyBootstrapCheckpoint(after, identity, contracts);
+    // Post-push success must still have the same reviewed source, context,
+    // registry, artifact and live authority. Check freshness LAST.
+    verifyBootstrapDirectory(directory.directory, artifact);
+    authorize();
+    assertObservationFresh(after, now());
     return {
       phase,
       status: "complete",
       remoteExecuted: true,
       executionCommit: context.commit,
       artifactDigest: artifact.digest,
+      timingAdmissionDigest: evidenceDigest(timingAdmission),
       checkpoint,
       commercialCertification: "not_run",
     };
@@ -159,6 +189,7 @@ export async function runBootstrap(
       recovery: "STOP_FRESH_REVIEW_REQUIRED",
       automaticResume: false,
       newAuthorizationRequired: true,
+      timingAdmissionDigest: evidenceDigest(timingAdmission ?? null),
     };
   } finally {
     directory?.cleanup();

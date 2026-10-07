@@ -490,6 +490,11 @@ export function createRemoteAdapter(
         stability: {
           stable: true,
           categories: [],
+          proof: {
+            opening: opening.surfaceDigests,
+            closing: closing.surfaceDigests,
+            confirmation: confirmedDigests,
+          },
           startedAt: new Date(startedAt).toISOString(),
           completedAt: new Date(Date.now()).toISOString(),
         },

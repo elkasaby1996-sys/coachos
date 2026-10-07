@@ -1,3 +1,12 @@
+import {
+  timingFixture,
+  timingTestReviewPolicy,
+  signTimingFixture,
+} from "../helpers/staging-timing-fixture";
+import {
+  bootstrapDatabaseProfiles,
+  BOOTSTRAP_CATALOG_QUERY,
+} from "../../scripts/staging-bootstrap-database.mjs";
 import { beforeAll, afterAll, describe, it, expect } from "vitest";
 import {
   readFileSync,
@@ -34,6 +43,10 @@ import {
   assertEmptySnapshot,
 } from "../../scripts/staging-bootstrap-observation.mjs";
 import { runBootstrap } from "../../scripts/staging-bootstrap-runner.mjs";
+import {
+  timingReceipt,
+  validateTimingReceipt,
+} from "../../scripts/staging-timing-evidence.mjs";
 import { evidenceDigest } from "../../scripts/staging-release-webhook-history.mjs";
 import {
   initialHandoff,
@@ -68,9 +81,12 @@ const context = {
 };
 const policy = {
   ...replacementPolicy(),
+  productionOrigin: context.productionOrigin,
+  archivedOrigins: ["https://archived-staging.example.com"],
   replacement: { project: context.project, origin: context.origin },
 };
 const emptyFacts = () => ({
+  databaseProof: bootstrapDatabaseProfiles().checkpoints[0],
   ledgerPresent: false,
   versions: [],
   applicationRelations: 0,
@@ -126,7 +142,16 @@ function transportHarness(
       result =
         query === EMPTY_DATABASE_QUERY
           ? [{ facts: structuredClone(state.facts) }]
-          : [{ versions: state.facts.versions }];
+          : query === BOOTSTRAP_CATALOG_QUERY
+            ? [
+                {
+                  proof: {
+                    ...state.facts.databaseProof,
+                    platformComplete: true,
+                  },
+                },
+              ]
+            : [{ versions: state.facts.versions }];
     } else if (url.endsWith("/" + context.project)) {
       pass++;
       if (pass >= 2) change?.(state, pass);
@@ -193,6 +218,7 @@ async function setup(
       versions: identity.manifest.migrations.approved
         .slice(0, 180)
         .map((m: any) => m.filename.slice(0, 14)),
+      databaseProof: bootstrapDatabaseProfiles().checkpoints[180],
       contractDigest: contracts.checkpoints[180].digest,
       policy: { sales: false, reconciliation: false },
       work: Object.fromEntries(
@@ -235,6 +261,7 @@ async function setup(
   };
   const deps: any = {
     now: h.now,
+    timingReviewPolicy: timingTestReviewPolicy,
     policy: () => policy,
     currentIdentity: () => identity,
     currentContext: () => context,
@@ -247,6 +274,16 @@ async function setup(
     context,
     contracts,
     authorization: auth,
+    timingAdmission: timingFixture(
+      "EMPTY_TO_180",
+      auth,
+      identity,
+      context,
+      contracts,
+      clock,
+      policy,
+    ),
+    workflowStartedAt: stamp(),
   };
   return {
     h,
@@ -375,6 +412,18 @@ describe("fixed bootstrap artifacts and replacement boundary", () => {
 });
 
 describe("actual empty observation adapter through mutation runner", () => {
+  it("exports complete receipt evidence from the actual observer", async () => {
+    const h = transportHarness(undefined, () => 10);
+    const observation = await h.observer.observe();
+    const receipt = timingReceipt("empty", observation, identity, context);
+    expect(receipt.completeObservationSha256).toBe(evidenceDigest(observation));
+    expect(receipt.proof.opening).toEqual(receipt.proof.closing);
+    expect(receipt.proof.closing).toEqual(receipt.proof.confirmation);
+    expect(Object.keys(receipt.proof.confirmation)).toHaveLength(5);
+    expect(validateTimingReceipt(receipt, "empty", identity, context)).toEqual(
+      receipt,
+    );
+  });
   const changes: [string, (s: any) => void][] = [
     [
       "function added",
@@ -660,6 +709,8 @@ describe("handoff and whole-phase feasibility", () => {
       );
       const env = {
         STAGING_SUPABASE_PROJECT_REF: "a".repeat(20),
+        STAGING_APPLICATION_ORIGIN: context.origin,
+        PRODUCTION_APPLICATION_ORIGIN: context.productionOrigin,
         PRODUCTION_SUPABASE_PROJECT_REF: "b".repeat(20),
         CONFIRM_PROJECT_REF: "a".repeat(20),
         STAGING_SUPABASE_DB_URL: `postgres://postgres:synthetic@db.${"a".repeat(20)}.supabase.co:5432/postgres`,
@@ -778,4 +829,190 @@ describe("handoff and whole-phase feasibility", () => {
       verifyBootstrapCheckpoint(t.after, identity, contracts),
     ).toThrow("BOOTSTRAP_HISTORY_NOT_EMPTY");
   });
+});
+
+describe("PAY-05AD-R2 completion and positive database admission", () => {
+  it.each(["catalogDigest", "platformDigest"])(
+    "rejects changed empty %s before commands",
+    async (key) => {
+      const t = await setup();
+      t.h.state.facts.databaseProof = {
+        ...t.h.state.facts.databaseProof,
+        [key]: "f".repeat(64),
+      };
+      expect((await t.run()).errorCode).toBe(
+        "BOOTSTRAP_DATABASE_PROFILE_MISMATCH",
+      );
+      expect(t.commands).toHaveLength(0);
+    },
+  );
+  it.each(["catalogDigest", "platformDigest", "seedDigest"])(
+    "blocks changed checkpoint %s after push",
+    async (key) => {
+      const t = await setup();
+      t.after.facts.databaseProof = {
+        ...t.after.facts.databaseProof,
+        [key]: "f".repeat(64),
+      };
+      t.adapter.ledgerCount = async () => 180;
+      const result = await t.run();
+      expect(result.status).toBe("blocked");
+      expect(result.errorCode).toBe("BOOTSTRAP_DATABASE_PROFILE_MISMATCH");
+      expect(result.ledgerCount).toBe(180);
+      expect(result.automaticResume).toBe(false);
+    },
+  );
+  it.each([
+    "identity",
+    "context",
+    "policy",
+    "expiry",
+    "freshness",
+    "finalExpiry",
+  ])("rechecks %s after push", async (kind) => {
+    const t = await setup();
+    let afterPush = false,
+      closingIdentityReads = 0;
+    t.deps.currentIdentity = () => {
+      if (afterPush && ++closingIdentityReads === 2 && kind === "finalExpiry")
+        t.h.setNow(clock + 31 * 60_000);
+      if (afterPush && kind === "freshness") t.h.setNow(clock + 60_001);
+      return afterPush && kind === "identity"
+        ? { ...identity, containment: [] }
+        : identity;
+    };
+    t.deps.currentContext = () =>
+      afterPush && kind === "context" ? { ...context, clean: false } : context;
+    t.deps.policy = () =>
+      afterPush && kind === "policy"
+        ? { ...policy, archivedOrigins: [context.origin] }
+        : policy;
+    t.adapter.observeRelease = async () => {
+      afterPush = true;
+      if (kind === "expiry") t.h.setNow(clock + 31 * 60_000);
+      return t.after;
+    };
+    t.adapter.ledgerCount = async () => 180;
+    const result = await t.run();
+    expect(result.status).toBe("blocked");
+    expect(result.ledgerCount).toBe(180);
+    expect(t.mutations).toHaveLength(1);
+  });
+  it("requires archived origin review and rejects reuse with a different project", () => {
+    expect(() =>
+      assertReplacementTarget(
+        context.project,
+        context.origin,
+        { ...policy, archivedOrigins: null },
+        true,
+      ),
+    ).toThrow("ARCHIVED_ORIGINS_REVIEW_REQUIRED");
+    expect(() =>
+      assertReplacementTarget(
+        context.project,
+        context.origin,
+        { ...policy, archivedOrigins: [context.origin] },
+        true,
+      ),
+    ).toThrow("REPLACEMENT_TARGET_DENIED");
+    expect(() =>
+      assertReplacementTarget(context.project, undefined, policy, true),
+    ).toThrow("REPLACEMENT_TARGET_MISMATCH");
+  });
+  it.each(["missing", "binding", "sample", "duplicate", "workflow", "slow"])(
+    "rejects %s timing admission before reads",
+    async (kind) => {
+      const t = await setup(),
+        a = t.input.timingAdmission;
+      if (kind === "missing") t.input.timingAdmission = undefined;
+      if (kind === "binding") a.bindingDigest = "f".repeat(64);
+      if (kind === "sample") a.samples.empty = [];
+      if (kind === "duplicate") a.samples.empty[1] = a.samples.empty[0];
+      if (kind === "workflow") t.input.workflowStartedAt = undefined;
+      if (kind === "slow")
+        for (const sample of [...a.samples.empty, ...a.samples.release])
+          sample.receipt.startedAt = stamp(
+            Date.parse(sample.receipt.completedAt) - 49_000,
+          );
+      for (const sample of [...a.samples.empty, ...a.samples.release])
+        sample.receiptSha256 = evidenceDigest(sample.receipt);
+      signTimingFixture(a);
+      const result = await t.run();
+      expect(result.status).toBe("blocked");
+      expect(t.h.requests).toHaveLength(0);
+      expect(t.commands).toHaveLength(0);
+    },
+  );
+  it("blocks a late mutation return with actual ledger evidence", async () => {
+    const t = await setup(),
+      command = t.adapter.command;
+    t.adapter.command = (args: any, dir: any) => {
+      const result = command(args, dir);
+      if (args.includes("--yes")) t.h.setNow(clock + 1001);
+      return result;
+    };
+    t.adapter.ledgerCount = async () => 180;
+    const result = await t.run();
+    expect(result.errorCode).toBe("TIMING_OPERATION_OVERRUN");
+    expect(result.ledgerCount).toBe(180);
+    expect(result.status).toBe("blocked");
+  });
+});
+
+it("rechecks the bounded artifact after the checkpoint read", async () => {
+  const t = await setup(),
+    path = join(
+      bundle.directory,
+      "supabase/migrations",
+      bundle.artifact.migrations[0].filename,
+    ),
+    original = readFileSync(path);
+  t.adapter.observeRelease = async () => {
+    writeFileSync(path, "changed after push");
+    return t.after;
+  };
+  t.adapter.ledgerCount = async () => 180;
+  try {
+    const result = await t.run();
+    expect(result.status).toBe("blocked");
+    expect(result.ledgerCount).toBe(180);
+    expect(t.mutations).toHaveLength(1);
+  } finally {
+    writeFileSync(path, original);
+  }
+});
+
+it("rejects incomplete platform row extraction before any command", async () => {
+  const t = await setup();
+  // Use the real proof parser through a deliberately incomplete SQL response.
+  const { databaseProof } =
+    await import("../../scripts/staging-bootstrap-database.mjs");
+  expect(() =>
+    databaseProof({
+      ...t.h.state.facts.databaseProof,
+      platformComplete: false,
+    }),
+  ).toThrow("BOOTSTRAP_PLATFORM_PROOF_INCOMPLETE");
+  expect(t.commands).toHaveLength(0);
+});
+
+it("reserves the full terminal observation budget before empty bootstrap", async () => {
+  const t = await setup();
+  t.input.timingAdmission.expiresAt = stamp(clock + 60_000);
+  signTimingFixture(t.input.timingAdmission);
+  const result = await t.run();
+  expect(result.errorCode).toBe("TIMING_ADMISSION_BLOCKED");
+  expect(t.h.requests).toHaveLength(0);
+  expect(t.commands).toHaveLength(0);
+});
+
+it("retains the inclusive 60-second terminal observation boundary", async () => {
+  const t = await setup();
+  t.adapter.observeRelease = async () => {
+    t.h.setNow(clock + 60_000);
+    t.after.stability.completedAt = stamp(clock + 60_000);
+    return t.after;
+  };
+  expect((await t.run()).status).toBe("complete");
+  expect(t.mutations).toHaveLength(1);
 });

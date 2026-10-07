@@ -113,7 +113,31 @@ export function validateBackupEnvironment(env) {
     throw new Error("Staging backup boundary validation failed.");
   };
   try {
-    assertReplacementTarget(staging, env.STAGING_APPLICATION_ORIGIN);
+    const origin = new URL(env.STAGING_APPLICATION_ORIGIN);
+    const productionOrigin = new URL(env.PRODUCTION_APPLICATION_ORIGIN);
+    if (
+      origin.protocol !== "https:" ||
+      origin.origin !== env.STAGING_APPLICATION_ORIGIN ||
+      origin.username ||
+      origin.password ||
+      origin.port ||
+      productionOrigin.protocol !== "https:" ||
+      productionOrigin.origin !== env.PRODUCTION_APPLICATION_ORIGIN ||
+      productionOrigin.username ||
+      productionOrigin.password ||
+      productionOrigin.port ||
+      origin.origin === productionOrigin.origin
+    )
+      fail();
+    const policy = assertReplacementTarget(
+      staging,
+      env.STAGING_APPLICATION_ORIGIN,
+    );
+    if (
+      policy.productionOrigin !== null &&
+      policy.productionOrigin !== productionOrigin.origin
+    )
+      fail();
   } catch {
     fail();
   }

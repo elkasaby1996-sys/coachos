@@ -1,3 +1,5 @@
+import { evidenceDigest } from "./staging-release-webhook-history.mjs";
+import { createTimingAdmission } from "./staging-timing-admission.mjs";
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -85,6 +87,8 @@ export async function runRelease(
     phase,
     mode,
     authorization,
+    timingAdmission,
+    workflowStartedAt,
     context,
     identity,
     contracts,
@@ -122,7 +126,8 @@ export async function runRelease(
     dependencies.currentIdentity ?? (() => releaseIdentity(root));
   const emit = dependencies.emit ?? (() => {});
   let inventoryStarted = false;
-  let auth,
+  let timing,
+    auth,
     observation,
     reference,
     stage = "authorization",
@@ -132,6 +137,7 @@ export async function runRelease(
     status: "running",
     phase,
     authorizationDigest: hash(canonical(authorization)),
+    timingAdmissionDigest: evidenceDigest(timingAdmission ?? null),
     executionCommit: context.commit,
     observedAt: new Date(now()).toISOString(),
     ledgerCount: null,
@@ -149,13 +155,37 @@ export async function runRelease(
       hash(canonical(contracts)),
       now(),
     );
+    timing ??= createTimingAdmission(
+      {
+        phase,
+        authorization,
+        identity,
+        context,
+        contracts,
+        admission: timingAdmission,
+        workflowStartedAt,
+      },
+      {
+        now,
+        policy: dependencies.policy,
+        reviewPolicy: dependencies.timingReviewPolicy,
+      },
+    );
+    timing.check();
+  }
+  async function observe(alreadyAuthorized = false) {
+    if (!alreadyAuthorized) authorize();
+    const value = await adapter.observe();
+    authorize();
+    assertObservationFresh(value, now());
+    timing.observation(value);
+    return value;
   }
   async function gate(expected = count) {
     authorize();
     inventoryStarted = true;
-    const fresh = await adapter.observe();
-    // Network inventory must not outlive authority or recovery-evidence expiry.
-    authorize();
+    const fresh = await observe(true);
+    // The observer wrapper rechecks authority after collection.
     assertObservationFresh(fresh, now());
     exactLedger(fresh, identity.manifest, expected);
     assertPolicy(fresh);
@@ -230,8 +260,10 @@ export async function runRelease(
       );
       readyForMutation();
       report.remoteExecuted = true;
+      const mutationStarted = now();
       adapter.command(["db", "push", "--linked", "--yes"], artifact.directory);
-      const after = await adapter.observe();
+      timing.operation("mutation", mutationStarted);
+      const after = await observe();
       exactLedger(after, identity.manifest, artifact.artifact.target);
       assertTransition(observation, after);
       assertConfiguration(after, auth);
@@ -279,6 +311,7 @@ export async function runRelease(
         verifyDeploymentConfiguration(artifact.directory, configurationDigest);
         readyForMutation();
         report.remoteExecuted = true;
+        const mutationStarted = now();
         adapter.command(
           [
             "functions",
@@ -290,7 +323,8 @@ export async function runRelease(
           ],
           artifact.directory,
         );
-        const deployed = await adapter.observe();
+        timing.operation("mutation", mutationStarted);
+        const deployed = await observe();
         exactLedger(deployed, identity.manifest, count);
         assertTransition(observation, deployed, name);
         const generation = deployed.functions.find((f) => f.name === name);
@@ -299,9 +333,12 @@ export async function runRelease(
           generation?.verify_jwt === expected.verifyJwt,
           "RELEASE_JWT_DRIFT",
         );
+        authorize();
+        const downloadStarted = now();
         const proof = await adapter.verifyArtifact(name, expected, modeName);
+        timing.operation("download", downloadStarted);
         ensure(proof === expected.digest, "RELEASE_FUNCTION_IDENTITY_DRIFT");
-        const after = await adapter.observe();
+        const after = await observe();
         ensure(
           after.digest === deployed.digest,
           "RELEASE_DEPLOYED_GENERATION_DRIFT",
@@ -313,8 +350,13 @@ export async function runRelease(
             expected.verifyJwt,
           "RELEASE_JWT_DRIFT",
         );
-        if (LS_TOMBSTONES.includes(name)) await adapter.probe(name);
-        const postProbe = await adapter.observe();
+        if (LS_TOMBSTONES.includes(name)) {
+          authorize();
+          const probeStarted = now();
+          await adapter.probe(name);
+          timing.operation("probe", probeStarted);
+        }
+        const postProbe = await observe();
         ensure(postProbe.digest === after.digest, "RELEASE_PROBE_SIDE_EFFECT");
         observation = postProbe;
         observation.artifacts = { ...(report.artifacts ?? {}), [name]: proof };
@@ -389,11 +431,12 @@ export async function runRelease(
           observation.functions.some((r) => r.name === f.name),
         )) {
           await gate();
-          ensure(
-            (await adapter.verifyArtifact(f.name, f, "final")) === f.digest,
-            "RELEASE_FUNCTION_IDENTITY_DRIFT",
-          );
-          const after = await adapter.observe();
+          authorize();
+          const downloadStarted = now();
+          const proof = await adapter.verifyArtifact(f.name, f, "final");
+          timing.operation("download", downloadStarted);
+          ensure(proof === f.digest, "RELEASE_FUNCTION_IDENTITY_DRIFT");
+          const after = await observe();
           ensure(
             after.digest === observation.digest,
             "RELEASE_IMMEDIATE_DRIFT",
@@ -410,6 +453,8 @@ export async function runRelease(
       report.completedSteps.push(step);
       emit(report);
     }
+    authorize();
+    assertObservationFresh(observation, now());
     report.status = "complete";
     report.observedAt = new Date(now()).toISOString();
     emit(report);

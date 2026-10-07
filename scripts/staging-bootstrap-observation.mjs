@@ -4,6 +4,11 @@
 import { ensure } from "./staging-release-artifacts.mjs";
 import { evidenceDigest } from "./staging-release-webhook-history.mjs";
 import {
+  observeDatabaseProof,
+  assertDatabaseProof,
+  bootstrapDatabaseProfiles,
+} from "./staging-bootstrap-database.mjs";
+import {
   assertReplacementTarget,
   replacementPolicy,
 } from "./staging-replacement-target.mjs";
@@ -32,6 +37,7 @@ export const EMPTY_LEDGER_QUERY =
   "select coalesce(jsonb_agg(version order by version),'[]'::jsonb) versions from supabase_migrations.schema_migrations;";
 
 export function assertEmptySnapshot(snapshot) {
+  assertDatabaseProof(snapshot.facts?.databaseProof, 0);
   const f = snapshot.facts;
   ensure(
     f &&
@@ -63,6 +69,7 @@ export function createBootstrapObserver(
 ) {
   const now = options.now ?? Date.now;
   const policy = options.policy ?? replacementPolicy;
+  const profiles = bootstrapDatabaseProfiles;
   const request = async (suffix, query) => {
     assertReplacementTarget(context.project, context.origin, policy(), true);
     ensure(
@@ -104,7 +111,12 @@ export function createBootstrapObserver(
       ledger?.length === 1 && Array.isArray(ledger[0].versions),
       "BOOTSTRAP_LEDGER_INVALID",
     );
-    return { ...facts, versions: ledger[0].versions };
+    const proof = await observeDatabaseProof(
+      (sql) => request("database/query/read-only", sql),
+      0,
+    );
+    assertDatabaseProof(proof, 0, profiles());
+    return { ...facts, versions: ledger[0].versions, databaseProof: proof };
   };
   const metadata = async () => {
     const project = await request("");
@@ -137,6 +149,11 @@ export function createBootstrapObserver(
     return value;
   };
   return {
+    databaseProof: (count) =>
+      observeDatabaseProof(
+        (sql) => request("database/query/read-only", sql),
+        count,
+      ),
     async observe() {
       const startedAt = new Date(now()).toISOString();
       const fresh = () =>
@@ -183,6 +200,21 @@ export function createBootstrapObserver(
         stability: {
           stable: true,
           categories: [],
+          proof: Object.fromEntries(
+            [
+              ["opening", opening],
+              ["closing", closing],
+              ["confirmation", final],
+            ].map(([name, snapshot]) => [
+              name,
+              Object.fromEntries(
+                Object.entries(surfaces).map(([key, get]) => [
+                  key,
+                  get(snapshot),
+                ]),
+              ),
+            ]),
+          ),
           startedAt,
           completedAt: new Date(now()).toISOString(),
         },
