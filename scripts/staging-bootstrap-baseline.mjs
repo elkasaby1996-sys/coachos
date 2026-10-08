@@ -267,7 +267,6 @@ export function readBaselineEvidence(project) {
       ),
     );
     verifyPathBoundary(root, path);
-    const before = lstatSync(path, { bigint: true });
     descriptor = openSync(
       path,
       constants.O_RDONLY |
@@ -277,17 +276,15 @@ export function readBaselineEvidence(project) {
     const opened = fstatSync(descriptor, { bigint: true }),
       after = lstatSync(path, { bigint: true });
     ensure(
-      before.isFile() &&
-        opened.isFile() &&
+      opened.isFile() &&
         after.isFile() &&
         opened.size <= 32n * 1024n * 1024n &&
-        before.dev === opened.dev &&
-        before.ino === opened.ino &&
         after.dev === opened.dev &&
         after.ino === opened.ino,
       "BOOTSTRAP_BASELINE_FILE_INVALID",
     );
     verifyPathBoundary(root, path);
+    // Validate and consume the same opened file, never a pre-open path snapshot.
     return JSON.parse(readFileSync(descriptor, "utf8"));
   } catch {
     throw new Error("BOOTSTRAP_BASELINE_NOT_REGISTERED");
