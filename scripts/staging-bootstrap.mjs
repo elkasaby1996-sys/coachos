@@ -11,11 +11,13 @@ import {
 import { gitState, confirmationInputs } from "./staging-commercial-plan.mjs";
 import { validateConfirmations } from "./staging-commercial-contracts.mjs";
 import { createRemoteAdapter } from "./staging-release-observation.mjs";
-import { createBootstrapObserver } from "./staging-bootstrap-observation.mjs";
+import {
+  createBootstrapObserver,
+  observeBootstrapRelease,
+} from "./staging-bootstrap-observation.mjs";
 import { runBootstrap } from "./staging-bootstrap-runner.mjs";
 import { BOOTSTRAP_PHASE } from "./staging-bootstrap-artifacts.mjs";
-import { assertObservationFresh } from "./staging-release-observation.mjs";
-import { evidenceDigest } from "./staging-release-webhook-history.mjs";
+import { readBaselineEvidence } from "./staging-bootstrap-baseline.mjs";
 
 export async function runBootstrapCli(
   argv = process.argv.slice(2),
@@ -73,7 +75,11 @@ export async function runBootstrapCli(
       replacementPolicy(),
       true,
     );
-    return { ...inputs, clean: state.clean };
+    return {
+      ...inputs,
+      tree: git(["rev-parse", "HEAD^{tree}"]),
+      clean: state.clean,
+    };
   };
   const context = getContext();
   ensure(
@@ -93,29 +99,15 @@ export async function runBootstrapCli(
   } catch {
     throw new Error("BOOTSTRAP_AUTHORIZATION_INVALID");
   }
-  const empty = createBootstrapObserver(context, env),
+  const baseline = readBaselineEvidence(context.project);
+  const empty = createBootstrapObserver(context, env, fetch, {
+      identity,
+      baseline,
+    }),
     release = createRemoteAdapter(context, env);
   const adapter = {
     observeEmpty: empty.observe,
-    async observeRelease() {
-      const startedAt = new Date().toISOString();
-      const opening = await empty.databaseProof(180);
-      const value = await release.observe();
-      const closing = await empty.databaseProof(180);
-      ensure(
-        evidenceDigest(opening) === evidenceDigest(closing),
-        "DATABASE_DRIFT",
-      );
-      value.facts.databaseProof = closing;
-      value.observedAt = startedAt;
-      value.stability = {
-        ...value.stability,
-        startedAt,
-        completedAt: new Date().toISOString(),
-      };
-      assertObservationFresh(value);
-      return value;
-    },
+    observeRelease: () => observeBootstrapRelease(empty, release, baseline),
     ledgerCount: empty.ledgerCount,
     command(args, directory) {
       // No functions, arbitrary targets, repair commands or caller-supplied args.
@@ -147,6 +139,7 @@ export async function runBootstrapCli(
       context,
       contracts,
       authorization,
+      baseline,
       timingAdmission,
       workflowStartedAt: env.STAGING_WORKFLOW_STARTED_AT,
       root,

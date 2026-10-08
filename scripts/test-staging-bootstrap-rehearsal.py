@@ -25,7 +25,7 @@ def node(code, value=None):
     return json.loads(result.stdout)
 
 
-def main():
+def rehearsal(run):
     assert WORK.resolve().parent == Path(tempfile.gettempdir()).resolve()
     config = (WORK / "supabase/config.toml").read_text()
     assert "project_id = 'repsync_reconciliation01'" in config and "enabled = false" in config
@@ -43,10 +43,8 @@ def main():
     identity = node('import {releaseIdentity} from "./scripts/staging-release-artifacts.mjs"; console.log(JSON.stringify(releaseIdentity()));')
     inventory = node('import {INVENTORY_QUERY} from "./scripts/billing-retirement-remote-inventory.mjs"; console.log(JSON.stringify(INVENTORY_QUERY));')
     checkpoints = json.loads((ROOT / "config/staging-release-checkpoints.json").read_text())
-    assert sys.argv[1:] in ([], ["--record-local-profiles"])
-    record = sys.argv[1:] == ["--record-local-profiles"]
-    profile_path = ROOT / "config/staging-bootstrap-database.json"
-    profiles = json.loads(profile_path.read_text())
+    assert sys.argv[1:] == [], "Recording/enrollment modes are not supported"
+    baseline = None
     catalog_sql = node('import {BOOTSTRAP_CATALOG_QUERY} from "./scripts/staging-bootstrap-database.mjs";console.log(JSON.stringify(BOOTSTRAP_CATALOG_QUERY));')
     seeds_sql = node('import {BOOTSTRAP_SEEDS_QUERY} from "./scripts/staging-bootstrap-database.mjs";console.log(JSON.stringify(BOOTSTRAP_SEEDS_QUERY));')
 
@@ -59,18 +57,26 @@ def main():
             db.COMMAND[6] = prior
 
     def proof(count):
+        nonlocal baseline
         value = json.loads(db.sql(catalog_sql))
-        assert value.pop("platformComplete") is True, "Platform row proof incomplete"
+        assert value["platformComplete"] is True, "Platform row proof incomplete"
+        seeds = None
         if count == 180:
-            value["seedDigest"] = db.sql(seeds_sql)
-        if record:
-            prefix = catalog_sql.split("select jsonb_build_object('catalogDigest'")[0]
-            (WORK / f"bootstrap-catalog-{count}.json").write_text(db.sql(prefix + "select jsonb_agg(jsonb_build_array(kind,name,definition) order by kind,name,definition::text) from objects;"))
-            (WORK / f"bootstrap-platform-{count}.json").write_text(db.sql(prefix + "select jsonb_agg(to_jsonb(p) order by name) from platform p;"))
-            profiles["checkpoints"][str(count)] = value
-            profile_path.write_text(json.dumps(profiles, indent=2) + "\n")
-        node('import {assertDatabaseProof} from "./scripts/staging-bootstrap-database.mjs";let s="";for await(const c of process.stdin)s+=c;const v=JSON.parse(s);assertDatabaseProof(v.proof,v.count);console.log("true");', {"proof":value,"count":count})
+            seeds = json.loads(db.sql(seeds_sql))["seedDigest"]
+        value = node('import {databaseProof} from "./scripts/staging-bootstrap-database.mjs";let s="";for await(const c of process.stdin)s+=c;const v=JSON.parse(s);console.log(JSON.stringify(databaseProof(v.catalog,v.seeds??undefined)));', {"catalog":value,"seeds":seeds})
+        if count == 0:
+            # Local test baseline only, no hosted identity or approval is created.
+            baseline = {"databaseProof": value}
+        node('import {assertDatabaseProof} from "./scripts/staging-bootstrap-database.mjs";let s="";for await(const c of process.stdin)s+=c;const v=JSON.parse(s);assertDatabaseProof(v.proof,v.count,v.baseline);console.log("true");', {"proof":value,"count":count,"baseline":baseline})
         return value
+
+    def rejects(statement, count=0):
+        raw = probe_sql("begin;" + statement + catalog_sql + (seeds_sql if count == 180 else "") + "rollback;").splitlines()
+        value = {"catalog":json.loads(raw[0]),"count":count,"baseline":baseline}
+        if count == 180:
+            value["seeds"] = json.loads(raw[1])["seedDigest"]
+        rejected = node('import {databaseProof,assertDatabaseProof} from "./scripts/staging-bootstrap-database.mjs";let s="";for await(const c of process.stdin)s+=c;const p=JSON.parse(s);try{assertDatabaseProof(databaseProof(p.catalog,p.seeds),p.count,p.baseline);console.log("false");}catch(e){if(!/^BOOTSTRAP_/.test(e.message))throw e;console.log("true");}',value)
+        assert rejected is True, "Customer/provider overlay was admitted"
 
     directories = []
     timings = {}
@@ -118,8 +124,90 @@ def main():
         facts = json.loads(db.sql(empty_sql))
         ledger_sql = node('import {EMPTY_LEDGER_QUERY} from "./scripts/staging-bootstrap-observation.mjs";console.log(JSON.stringify(EMPTY_LEDGER_QUERY));')
         facts["databaseProof"] = proof(0)
-        facts["versions"] = json.loads(db.sql(ledger_sql)) if facts["ledgerPresent"] else []
-        node('import {assertEmptySnapshot} from "./scripts/staging-bootstrap-observation.mjs";let s="";for await(const c of process.stdin)s+=c;assertEmptySnapshot({facts:JSON.parse(s),functions:[]});console.log("true");', facts)
+        facts["versions"] = json.loads(db.sql(ledger_sql))["versions"] if facts["ledgerPresent"] else []
+        assert facts["versions"] == [] and all(facts[k] == 0 for k in ("applicationRelations","applicationFunctions","authUsers","storageObjects","storageBuckets"))
+        # Outer SQL is parsed BEFORE context materialization. No helper/operator
+        # may resolve through the caller's customer-controlled search path.
+        shadow = """create schema pay05_shadow;
+create function pay05_shadow.set_config(text,text,boolean) returns text language plpgsql as $$begin raise exception 'SHADOW_CALLED';end$$;
+create function pay05_shadow.query_to_xml(text,boolean,boolean,text) returns xml language plpgsql as $$begin raise exception 'SHADOW_CALLED';end$$;
+create function pay05_shadow.xpath(text,xml) returns xml[] language plpgsql as $$begin raise exception 'SHADOW_CALLED';end$$;
+create function pay05_shadow.current_setting(text) returns text language plpgsql as $$begin raise exception 'SHADOW_CALLED';end$$;
+create function pay05_shadow.concat(jsonb,jsonb) returns jsonb language plpgsql as $$begin raise exception 'SHADOW_CALLED';end$$;
+create operator pay05_shadow.|| (leftarg=jsonb,rightarg=jsonb,procedure=pay05_shadow.concat);
+create function pay05_shadow.equal(text,text) returns boolean language plpgsql as $$begin raise exception 'SHADOW_CALLED';end$$;
+create operator pay05_shadow.= (leftarg=text,rightarg=text,procedure=pay05_shadow.equal);
+set local search_path=pay05_shadow,pg_catalog;
+set local TimeZone='Europe/Paris';set local DateStyle='SQL, DMY';
+set local IntervalStyle='sql_standard';set local extra_float_digits=0;
+set local bytea_output='escape';set local standard_conforming_strings=off;
+"""
+        rejects(shadow)
+        print("PASS canonical single-request context: customer shadow helpers/operators never invoked; noncanonical caller settings replaced",flush=True)
+        owner_probe = probe_sql("begin;create unique index pay05_customer_unique on storage.objects(id,bucket_id);select (i.relowner=t.relowner) and x.indisunique from pg_class i join pg_index x on x.indexrelid=i.oid join pg_class t on t.oid=x.indrelid where i.relname='pay05_customer_unique';rollback;")
+        assert owner_probe == "t", "Unique-index owner inheritance not exercised"
+        overlays = (
+            "create unique index pay05_customer_unique on storage.objects(id,bucket_id);",
+            "create function auth.pay05_customer_trigger() returns trigger language plpgsql as 'begin return NEW;end';create trigger pay05_customer_trigger after insert on auth.users for each row execute function auth.pay05_customer_trigger();",
+            "create policy pay05_customer_policy on storage.objects for select using(true);",
+            "create policy pay05_customer_policy on realtime.messages for select using(true);",
+            "create function auth.pay05_customer_function() returns integer language sql as 'select 1';",
+            "create type realtime.pay05_customer_type as enum ('customer');",
+            "create function auth.pay05_extension_camouflage() returns integer language sql as 'select 1';alter extension pgcrypto add function auth.pay05_extension_camouflage();",
+            "create cast (text as uuid) with inout as implicit;",
+            "create view auth.pay05_cross_boundary as select id from storage.objects;",
+            "create publication pay05_customer_publication;",
+            "alter table storage.objects replica identity full;",
+            "alter table storage.objects disable row level security;",
+            "grant select on storage.objects to public;",
+        )
+        for statement in overlays:
+            rejects(statement)
+        print("PASS local complete baseline validator: 13 customer overlays rejected; Storage UNIQUE index inherited table owner",flush=True)
+        # Equality to a candidate baseline must not bless customer privileges.
+        # Rollback probes run only as the disposable container's provider admin.
+        for statement in (
+            "grant update on storage.objects to anon with grant option;",
+            "grant select on auth.users to anon;",
+            "grant select(email) on auth.users to anon;",
+            "grant create on schema storage to anon;",
+            "alter default privileges for role postgres in schema auth grant select on tables to anon;",
+            "alter table storage.objects owner to authenticated;",
+            "alter table storage.objects disable row level security;",
+            "alter table storage.objects force row level security;",
+            "create role pay05_inherited;grant select on auth.users to pay05_inherited;grant pay05_inherited to anon;",
+            "alter role anon bypassrls;",
+            "grant select on storage.objects to public;",
+            "grant usage on type auth.aal_level to anon with grant option;",
+        ):
+            altered = json.loads(probe_sql("begin;" + statement + catalog_sql + "rollback;"))
+            code = node('import {databaseProof,assertDatabaseProof} from "./scripts/staging-bootstrap-database.mjs";let s="";for await(const c of process.stdin)s+=c;const p=databaseProof(JSON.parse(s));try{assertDatabaseProof(p,0,{databaseProof:p});console.log("ADMITTED");}catch(e){console.log(JSON.stringify(e.message));}',altered)
+            assert code == "BOOTSTRAP_CUSTOMER_SECURITY_MISMATCH", "Matching unsafe baseline bypassed independent privilege policy"
+        print("PASS 12 matching-baseline ACL/column/default/inheritance/owner/RLS probes rejected independently of B",flush=True)
+        for statement in (
+            "grant set on parameter session_replication_role to anon;",
+            "grant set on parameter session_replication_role to authenticated with grant option;",
+            "grant alter system on parameter session_replication_role to public;",
+            "grant alter system on parameter session_replication_role to service_role with grant option;",
+        ):
+            altered = json.loads(probe_sql("begin;" + statement + catalog_sql + "rollback;"))
+            code = node('import {databaseProof,assertDatabaseProof} from "./scripts/staging-bootstrap-database.mjs";let s="";for await(const c of process.stdin)s+=c;const p=databaseProof(JSON.parse(s));try{assertDatabaseProof(p,0,{databaseProof:p});console.log("ADMITTED");}catch(e){console.log(JSON.stringify(e.message));}',altered)
+            assert code == "BOOTSTRAP_CUSTOMER_PARAMETER_ACL_MISMATCH", "Matching baseline admitted customer parameter authority"
+        print("PASS four matching-baseline parameter privilege probes rejected independently of B",flush=True)
+        for statement, kind in (
+            ("alter role authenticated in database postgres set search_path=public,auth;", "role_setting"),
+            ("alter role authenticated set work_mem='8MB';", "role_setting"),
+            ("alter database postgres set work_mem='8MB';", "role_setting"),
+            ("alter role authenticated in database template1 set work_mem='8MB';", "role_setting"),
+            ("grant set on parameter session_replication_role to authenticated;", "parameter_acl"),
+            ("grant set on parameter session_replication_role to authenticated with grant option;", "parameter_acl"),
+        ):
+            altered = json.loads(probe_sql("begin;" + statement + catalog_sql + "rollback;"))
+            assert altered["sqlCatalogDigest"] != facts["databaseProof"]["sqlCatalogDigest"]
+            assert [r for r in altered["catalog"] if r[0] == kind] != [r for r in facts["databaseProof"]["catalog"] if r[0] == kind]
+            rejects(statement)
+        assert json.loads(db.sql(catalog_sql))["sqlCatalogDigest"] == facts["databaseProof"]["sqlCatalogDigest"], "Rollback probe left catalog drift"
+        print("PASS six persistent role/database/parameter privilege probes detected; rollback verified",flush=True)
         for statement in (
             "create table extensions.imported_history(id int); insert into extensions.imported_history values(1);",
             "create table auth.imported_history(id int); insert into auth.imported_history values(1);",
@@ -131,19 +219,19 @@ def main():
             "alter table auth.identities disable trigger all;",
         ):
             altered = json.loads(probe_sql("begin;" + statement + catalog_sql + "rollback;"))
-            assert altered["catalogDigest"] != facts["databaseProof"]["catalogDigest"], "Hidden object/type was admitted"
+            assert altered["sqlCatalogDigest"] != facts["databaseProof"]["sqlCatalogDigest"], "Hidden object/type was admitted"
         altered = json.loads(probe_sql("begin;insert into auth.schema_migrations(version) values('pay05-local-probe');" + catalog_sql + "rollback;"))
-        assert altered["catalogDigest"] == facts["databaseProof"]["catalogDigest"]
-        assert altered["platformDigest"] != facts["databaseProof"]["platformDigest"], "Unexpected platform rows were admitted"
+        assert altered["sqlCatalogDigest"] == facts["databaseProof"]["sqlCatalogDigest"]
+        assert altered["sqlPlatformDigest"] != facts["databaseProof"]["sqlPlatformDigest"], "Unexpected platform rows were admitted"
         altered = json.loads(probe_sql("begin;update _realtime.tenants set id=gen_random_uuid(),updated_at=updated_at+interval '1 second';update _realtime.extensions set id=gen_random_uuid(),updated_at=updated_at+interval '1 second';" + catalog_sql + "rollback;"))
-        assert altered["platformDigest"] == facts["databaseProof"]["platformDigest"], "Generated managed startup fields were not normalized"
+        assert altered["sqlPlatformDigest"] == facts["databaseProof"]["sqlPlatformDigest"], "Generated managed startup fields were not normalized"
         for statement in (
             "update _realtime.tenants set max_concurrent_users=max_concurrent_users+1;",
             "set local session_replication_role=replica;update _realtime.extensions set tenant_external_id='unrelated-local';set local session_replication_role=origin;",
         ):
             altered = json.loads(probe_sql("begin;" + statement + catalog_sql + "rollback;"))
-            assert altered["catalogDigest"] == facts["databaseProof"]["catalogDigest"]
-            assert altered["platformDigest"] != facts["databaseProof"]["platformDigest"], "Managed state/relationship change was admitted"
+            assert altered["sqlCatalogDigest"] == facts["databaseProof"]["sqlCatalogDigest"]
+            assert altered["sqlPlatformDigest"] != facts["databaseProof"]["sqlPlatformDigest"], "Managed state/relationship change was admitted"
         print("PASS local rollback probes: hidden extension/auth data and standalone enum rejected", flush=True)
         print("PASS cold local database: no application objects, users, storage or migration rows", flush=True)
         before = None
@@ -162,8 +250,14 @@ def main():
             if stage == "bootstrap":
                 current["facts"]["databaseProof"] = proof(180)
                 altered = json.loads(probe_sql("begin;update supabase_migrations.schema_migrations set name='unexpected-name' where version=(select min(version) from supabase_migrations.schema_migrations);" + catalog_sql + "rollback;"))
-                assert altered["platformDigest"] != current["facts"]["databaseProof"]["platformDigest"], "Changed ledger metadata was admitted"
-                node('import {verifyBootstrapCheckpoint} from "./scripts/staging-bootstrap-contracts.mjs";let s="";for await(const c of process.stdin)s+=c;const p=JSON.parse(s);console.log(JSON.stringify(verifyBootstrapCheckpoint(p.o,p.i,p.c)));', {"o": current, "i": identity, "c": checkpoints})
+                assert altered["sqlPlatformDigest"] != current["facts"]["databaseProof"]["sqlPlatformDigest"], "Changed ledger metadata was admitted"
+                node('import {verifyBootstrapCheckpoint} from "./scripts/staging-bootstrap-contracts.mjs";let s="";for await(const c of process.stdin)s+=c;const p=JSON.parse(s);console.log(JSON.stringify(verifyBootstrapCheckpoint(p.o,p.i,p.c,p.b)));', {"o": current, "i": identity, "c": checkpoints,"b":baseline})
+                for statement in overlays:
+                    rejects(statement,180)
+                rejects("update storage.buckets set public=true where id='medical_documents';",180)
+                rejects("drop policy \"" + node('import {bootstrapDatabaseProfiles} from "./scripts/staging-bootstrap-database.mjs";const p=bootstrapDatabaseProfiles().delta180.storagePolicies[0];console.log(JSON.stringify(p[1].slice("storage.objects.".length)));') + "\" on storage.objects;",180)
+                rejects("alter publication supabase_realtime drop table public.clients;",180)
+                print("PASS exact B + delta180 validator: all 13 overlays, bucket configuration, missing policy and publication member rejected",flush=True)
                 seed_changes = (
                     "update public.commercial_features set display_name='Changed seed' where feature_key=(select min(feature_key) from public.commercial_features);",
                     "update public.billing_runtime_policy set entitlement_environment='live' where id=1;",
@@ -177,9 +271,9 @@ def main():
                 )
                 for statement in seed_changes:
                     altered = probe_sql("begin;set local session_replication_role=replica;" + statement + "set local session_replication_role=origin;" + seeds_sql + "rollback;")
-                    assert altered != current["facts"]["databaseProof"]["seedDigest"], "Noncanonical seed was admitted"
+                    assert json.loads(altered)["seedDigest"] != current["facts"]["databaseProof"]["seedDigest"], "Noncanonical seed was admitted"
                 altered = json.loads(probe_sql("begin;alter type public.onboarding_source add value 'unexpected';" + catalog_sql + "rollback;"))
-                assert altered["catalogDigest"] != current["facts"]["databaseProof"]["catalogDigest"], "Changed enum labels were admitted"
+                assert altered["sqlCatalogDigest"] != current["facts"]["databaseProof"]["sqlCatalogDigest"], "Changed enum labels were admitted"
                 print("PASS local rollback probes: all six reference tables, effective date and enum labels rejected", flush=True)
                 before = current["facts"]["history"]
             else:
@@ -189,7 +283,7 @@ def main():
             if end >= 185:
                 node('import {assertRetiredDatabaseAuthority} from "./scripts/billing-retirement-release.mjs";import {readFileSync} from "node:fs";let s="";for await(const c of process.stdin)s+=c;assertRetiredDatabaseAuthority(JSON.parse(s),JSON.parse(readFileSync("supabase/tests/fixtures/lemon_squeezy_retired_functions.json")));console.log("true");', current["facts"]["functions"])
             print("PASS cold fixed " + str(start) + " -> " + str(end) + ": exact ledger/schema/ACL, empty drain and flags disabled", flush=True)
-        print(json.dumps({"localOnly": True, "providerCalls": 0, "localApplySeconds": timings, "remoteTiming": "NOT_ASSESSED"}), flush=True)
+        print(json.dumps({"run":run,"localOnly": True, "providerCalls": 0, "localApplySeconds": timings, "remoteTiming": "NOT_ASSESSED"}), flush=True)
     finally:
         for directory in directories:
             assert directory.resolve().parent == Path(tempfile.gettempdir()).resolve()
@@ -200,4 +294,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    for run in (1,2):
+        rehearsal(run)

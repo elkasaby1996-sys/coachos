@@ -15,6 +15,7 @@ const now = Date.parse("2026-10-07T10:00:00Z");
 const stamp = (offset = 0) => new Date(now + offset).toISOString();
 function fixture(phase = "RETIREMENT_ACTIVATION_184_TO_186") {
   const authorization = {
+    baselineEvidenceSha256: "e".repeat(64),
     expiresAt: stamp(30 * 60_000),
     inventoryObservedAt: stamp(),
     inventory: { observedAt: stamp() },
@@ -83,6 +84,19 @@ function fixture(phase = "RETIREMENT_ACTIVATION_184_TO_186") {
 }
 
 describe("independently reviewed timing admission", () => {
+  it("cannot reuse receipts for another approved baseline after rebinding admission", () => {
+    const f = fixture("EMPTY_TO_180");
+    f.input.authorization.baselineEvidenceSha256 = "f".repeat(64);
+    f.rebind();
+    expect(f.run).toThrow("TIMING_RECEIPT_BINDING");
+  });
+  it("cannot repair a missing full security-policy receipt binding by signing admission", () => {
+    const f = fixture();
+    delete (f.input.admission.samples.release[0].receipt.binding as any)
+      .securityPolicyDigest;
+    f.resign();
+    expect(f.run).toThrow("TIMING_ADMISSION_REQUIRED");
+  });
   it.each(["EMPTY_TO_180", "RETIREMENT_ACTIVATION_184_TO_186"])(
     "accepts a signed, complete local test control for %s",
     (phase) => {

@@ -60,28 +60,52 @@ temporary directory. Migrations 181–186 cannot enter this artifact.
    isolated replacement project and configure it. Preserve old staging; copy no Auth
    users, accounts, subscriptions, checkouts, events, reservations, fixtures or
    provider identities. Review the exact target registry change and execution commit.
-3. **Empty-project inventory:** a separately authorized read-only operator uses
+3. **Virgin-baseline evidence and independent approval:** a separately authorized
+   infrastructure/evidence process must capture a complete project-specific virgin
+   baseline before customer preparation. The local-only
+   `scripts/staging-bootstrap-baseline.mjs` validates a candidate; it does not
+   collect hosted evidence, register a project, sign, or confer authority.
+   `validateBaselineCandidate()` returns `operational: false`. Independent review
+   must authenticate the complete evidence under the domain
+   `repsync-staging-virgin-baseline/v1`, using the existing source-reviewed Ed25519
+   registry. A target's own digest is never review authority. The registry remains
+   `reviewKeys: []`; the existing replacement has no baseline record and remains
+   **NOT REGISTERED / NOT AUTHORIZED** for this contract. PAY-05AM observations are
+   historical evidence, not fresh operational inventory.
+   **Empty-project inventory:** after independent baseline approval, a separately
+   authorized read-only operator uses
    `createBootstrapObserver` against that exact project. Its output binds the fresh
    inventory used by the independently reviewed bootstrap envelope. No ordinary
    release observer is used before schema 180: it assumes billing tables exist.
 4. **PREFLIGHT:** the new protected manual `Supabase Staging Empty Bootstrap`
    workflow accepts only main and checks the dispatched SHA, clean checkout,
    pinned-source ancestry, exact confirmations and source-reviewed target registry.
-   It validates a strict schema-version-1 bootstrap envelope in
+   It validates a strict schema-version-2 bootstrap envelope in
    `STAGING_BOOTSTRAP_AUTHORIZATION`. This envelope cannot be reused as v3 baseline
    or cutover authorization. It binds the actual commit, target/origin and deny
-   targets, whole policy, full manifest, bounded artifact, protected payload,
+   targets, whole policy, execution tree, full manifest, bounded artifact, protected payload,
    final/containment source, checkpoint contracts and inventory. Its lifetime is
    at most 30 minutes; reviewed inventory must remain within 15 minutes. No backup
    is substituted: this operation requires positive empty-project proof and no
-   imported history. The envelope also binds the positive database profiles.
+   imported history. `baselineEvidenceSha256` binds the entire independently signed
+   baseline file at the fixed source-reviewed location
+   already ignored private location
+   `output/staging-release/bootstrap-baselines/<exact-project-ref>.json`. The
+   evidence stays outside the execution Git tree to avoid a self-referential
+   source/tree pin. Descriptor-bound reads reject links/type/identity changes.
+   No file for the
+   existing replacement is added by this implementation. Version 1 is rejected.
    Every writer/ingress exclusion is an explicit operator
    attestation lasting beyond the envelope. Exclusions must actually be established.
+   In addition, both the baseline evidence and authorization require an explicit
+   `noManagedSchemaCustomizationSinceProjectCreation: true` attestation covering
+   unauthorized DDL/DML, extensions, imports/restores, manual SQL and automated setup
+   from project creation through capture. Tooling never supplies it for an operator.
 5. **APPLY, separately authorized later:** exact empty observation, bounded link
    and dry-run listing precisely 1–180, complete fresh empty observation, exact
    artifact/source/authority validation, then one bounded push. No function is
    deployed. Opening time governs the unchanged 60-second budget across both
-   snapshots and final metadata confirmation. Local validation time is included.
+   snapshots and a complete final confirmation with new database reads. Local validation time is included.
 6. **CHECKPOINT 180:** require exact ledger, reviewed SQL/ACL/RLS contract, policy
    flags false, no functions, no work/scheduled operations, empty classifier result,
    and empty Auth/public history. The six migration reference tables must match
@@ -109,13 +133,30 @@ The bootstrap, backup and release workflows share `supabase-staging-commercial`
 with cancellation disabled. This excludes those workflows only; it does not lock
 manual SQL/CLI/dashboard operators, application traffic, schedulers or providers.
 
-## Positive empty and seed profiles
+## Virgin managed-state baseline and exact canonical delta
 
-`config/staging-bootstrap-database.json` contains locally measured cold profiles
-for 0 and 180. These are source-bound definitions/platform-state/seed digests,
-not a claim of hosted equivalence. Unknown hosted platform or extension versions
-fail closed until separately reviewed. Runtime code never learns or enrolls an
-unfamiliar profile from the candidate target.
+`config/staging-bootstrap-database.json` version 2 contains the complete canonical
+record delta for migrations 1–180, independently reproduced in two disposable cold
+installs using cached CLI 2.109.1 and the unchanged frozen migration bytes. It
+contains no admitted hosted digest and no source-fixed provider baseline. Its
+large record inventory is intentional: equality preserves definitions and duplicate
+identities, rather than admitting a table wholesale or relying on object counts.
+Checkpoint 0 equals independently approved baseline B plus separate hard gates.
+Checkpoint 180 equals B plus the exact canonical delta. Neither equality proves
+historical creator identity; ownership, schema, names and extension membership are
+never creator evidence.
+
+A version-1 baseline evidence document binds exact project/organization/origin,
+source SHA/tree and protected identity, full policy/query/observer identities,
+project creation provenance, operator identity/attestation and timestamps, complete
+opening/closing/final evidence, catalog and managed-row proofs, and independently
+signed approval of both evidence and creation history. Known customer customization
+before capture disqualifies virgin status. Creation absence is an attested and
+independently reviewed premise; catalogs cannot prove it retrospectively.
+Capture retains the 60-second limit. Baseline freshness is at most 15 minutes and
+its authority expires within 30 minutes of capture; bootstrap authorization may
+not outlive it. Another project, organization, source/tree, policy, query, observer,
+or expiry requires new evidence and review. There is no auto-refresh or enrollment.
 
 The fixed read-only query inventories application and platform namespaces,
 including extension-owned relations/routines, columns, constraints, indexes,
@@ -128,20 +169,64 @@ including casts between built-in types. Platform
 rows retain exact counts and values, with a narrow normalization for generated
 Realtime tenant/extension UUIDs and startup timestamps in those two tables, the
 two Realtime migration ledgers, Storage migrations/buckets and function migrations.
-Generated internal foreign-key trigger names use the referenced constraint/table
-and trigger event as identity; definitions and enabled state remain bound. Natural
+Index uniqueness/validity/readiness/liveness, partition relationships, replica
+identity, type contracts, constraint validity and deferrability are retained.
+All dependency classes are observed. Generated internal foreign-key trigger names
+use the canonical constraint/relation/event identity; function, enabled state,
+deferrability and multiplicity remain bound. Generated TOAST dependency names bind
+their actual owning relation instead of allocation OIDs, while preserving every
+dependency edge. Sequence bounds are exact decimal strings to avoid JavaScript
+rounding of 64-bit values. Natural
 tenant links, version/name/hash fields, configuration and opaque credentials remain
 bound; all other platform row fields are retained. Missing row extraction blocks.
-Schema names
-alone confer no admission. Opening and closing proofs must match; checkpoint 180
-proof reads surround the full release observation and share its original
-60-second clock. No raw row data or object definitions leave this proof query.
+The fixed single-request SQL wrapper materializes `set_config` with
+outer helpers, types and operators explicitly bound to `pg_catalog`, before the
+caller search path can resolve any customer shadow helper. Fixed SQL uses a checked
+dollar-quoted literal, independent of caller string-escape settings. It sets
+`search_path = pg_catalog, pg_temp`, UTC, ISO/YMD dates, PostgreSQL interval style,
+`extra_float_digits = 3` and hexadecimal bytea. The dynamic parser is dependent on
+those setter results. Effective context is returned and verified in that same
+request; no prior HTTP session is reused. Extraction counts, table coverage and
+unfiltered SELECT/RLS access must be complete. Missing or permission-filtered
+results block. No caller SQL or broad definition normalization is supported.
 
-An explicit local `--record-local-profiles` rehearsal can prepare candidate source
-profiles for review, restricted to the same fixed disposable container. Ordinary
-rehearsals compare against the reviewed file. Changes must be reviewed with the
-canonical ledger/SQL contract and two cold runs, never accepted from a hosted
-target merely because the target reports its own digest.
+Empty PostgreSQL backend scratch namespaces (`pg_temp_N`/`pg_toast_temp_N`) remain
+outside the original managed-schema observation scope; their allocation numbers
+are connection identities, not managed-platform objects. A separate mandatory
+temporary-object count rejects any remaining relation, routine or type in these
+namespaces at either checkpoint, including namespace/name camouflage. All other
+custom `pg_` namespaces are observed normally. Role security/configuration and
+membership grant/inherit/set options are also pinned; password values are not
+extracted from the public role catalog.
+
+Independent checkpoint-0 gates require no public application state or canonical
+migrations; only exact CLI ledger structure may exist empty. Every Auth customer
+table/history, Storage resource/upload table, Realtime message/subscription,
+queue/schedule, Vault table and otherwise unclassified non-diagnostic managed
+table must be empty. Managed migration/startup diagnostic rows are still pinned
+to B. Customer policies, publication membership, foreign wrappers/servers/tables,
+user mappings and subscriptions block. Auth hooks, OAuth/SSO/third-party Auth
+configuration must be completely extracted and unconfigured; incomplete metadata,
+unapproved integrations or nonempty Edge inventory block independently of B.
+
+Delta 180 contains the exact five buckets (`baseline_photos`, `checkin-photos`,
+`medical_documents`, `pt_profile_media`, `workspace_branding`), 20 final
+`storage.objects` policies, nine exact `supabase_realtime` members and 84 RI
+triggers from 42 canonical Auth foreign keys. Full records/fields and multiplicity
+are compared, including bucket contents/configuration and full ledger metadata;
+these counts alone confer no admission. The unchanged v3 schema/ACL/RLS validator,
+six-table seed relationship digest, empty history/work, disabled flags and zero
+functions are also mandatory. A legitimate Storage policy change cannot exempt a
+new inherited-owner UNIQUE index or custom trigger on that table.
+
+Opening/closing/final inventories contain genuine new database reads. Terminal
+checkpoint 180 performs new opening/closing/confirmation proofs around the full
+unchanged v3 observation, with complete metadata reads; the final proof is never
+copied from closing. These proofs enter the receipt and retain the original
+60-second clock. Provider migration or partition rotation after baseline blocks;
+there is no automatic acceptance, repair or resume. Full catalog evidence stays
+in private evidence artifacts; operational summaries disclose safe statuses only.
+Recording/enrollment modes are rejected by the rehearsal.
 
 ## Initial function/configuration handoff
 
@@ -195,7 +280,8 @@ there is no product command that creates it and no synthetic operational default
 It supplements the unchanged v3 schema and cannot extend any original deadline.
 
 Its `bindingDigest` is `evidenceDigest(timingBinding(...))`: exact phase, complete
-authorization, identity, context, checkpoint contracts, registry, database profiles,
+authorization, identity, context, checkpoint contracts, registry, full database
+security-policy digest, review registry and complete observation source identities,
 conservative workload, 60-second observation limit and 25% margin. The workload
 retains all 129 cutover observations and budgets all possible outside artifacts.
 The document carries `createdAt`, `expiresAt` (maximum 15 minutes),
@@ -208,7 +294,10 @@ opening/closing/confirmation surface digest sets. Each receipt independently bin
 the observation kind, execution commit, whole identity, exact project/origin hashes
 and observer source digest. Non-overlapping intervals, sample IDs and complete
 observation hashes must be distinct. Rebinding the admission does not rebind old
-receipts. Bootstrap requires the `empty` group, including the added database proof reads;
+receipts. Receipts are version 2 and additionally bind the full database security-policy
+digest and exact baseline evidence digest. Samples for another baseline cannot be
+reused by signing/rebinding an admission.
+Bootstrap requires the `empty` group, including the added database proof reads;
 release requires `release`. The post-bootstrap 180 observation cannot be measured
 on that same empty project beforehand. Bootstrap therefore reserves the full
 60-second terminal-observation limit plus the whole-phase margin, instead of
@@ -274,6 +363,36 @@ separately authorized baseline. Do not delete/recreate a project as automatic re
 
 ## Offline verification
 
+The independent customer-security contract in `staging-bootstrap-database.json`
+also applies when a validly signed candidate exactly matches its baseline.
+It fixes customer-facing ACL tuples (object/column identity, grantor, grantee,
+privilege and grant option), managed relation owners/RLS, schema ownership and
+the authority of `anon`, `authenticated` and `service_role`. PostgreSQL expands
+NULL ACL defaults with `acldefault` and `aclexplode`; inherited or SET-accessible
+role membership cannot hide a grant. Public application objects and public
+default ACLs use the exact canonical migration contract; the CLI ledger retains
+its separate exact namespace contract. Provider-only grants remain pinned by B.
+
+This is an explicit customer-security policy derived from the supported local
+platform, not proof of hosted provenance. The source tuples need independent
+review; no target observation can enroll or change them. A hosted mismatch stops
+for source review. Default PUBLIC type USAGE without grant option is the one
+explicit type-privilege rule. Partition names stay in the complete catalog proof;
+their independent policy permits no customer grants or ownership and requires
+the parent's owner and false RLS flags. Neither rule exempts their definitions,
+ACLs, multiplicity or dependencies from the exact approved B plus delta.
+
+The complete proof now includes all `pg_db_role_setting` and `pg_parameter_acl`
+records, including settings for other databases and all-role/all-database scopes.
+Names replace unstable OIDs; JSON null scope markers cannot collide with names.
+Parameter privileges retain grantor, grantee, privilege and grant option.
+Customer/PUBLIC parameter grants are independently forbidden by the explicit
+empty parameter-privilege policy, including SET and ALTER SYSTEM grants in a
+matching approved baseline. Only provider-only grants remain baseline-pinned.
+Mandatory access/coverage counts distinguish a genuinely empty catalog from
+omitted extraction. Changed observer/query/policy identities invalidate previous
+baseline approvals and timing receipts; the 60-second budget is unchanged.
+
 `npm run staging:bootstrap:test` uses real observer/runner code with synthetic
 read-only transports and intercepted mutation commands. Drift cases require zero
 mutation calls; a stable control must reach exactly one bounded push.
@@ -282,9 +401,14 @@ mutation calls; a stable control must reach exactly one bounded push.
 to an already cached 2.109.1 executable and the fixed disposable
 `repsync_reconciliation01` container/workdir. It strips remote credentials, disables
 telemetry/keyring use, accepts no remote URL or arbitrary container, and invokes
-only `--local` commands. It resets only that disposable database, cold-installs
-1–180, then checks 184/185/186, empty history/drain, flags, ACL/RLS and LS retirement.
+only `--local` commands. It performs two independent cold resets/installations
+through 180 and the existing 184/185/186 checks, empty history/drain, flags, ACL/RLS
+and LS retirement. Its ephemeral local database baseline is test evidence, not
+hosted registration or approval. It cannot update source contracts.
 Rollback probes cover hidden platform data/types and altered canonical seed values
-and relationships; none of these fixtures persist after the transaction.
+and relationships, and the inherited-owner Storage UNIQUE index, managed
+triggers/policies/types/functions, extension camouflage, casts, cross-boundary
+dependencies, grants, RLS, bucket configuration and publication members. Each is
+rejected by the actual complete baseline/delta validator; rollback fixtures do not persist.
 It never downloads a CLI or container image, and leaves failed local state observed
 without repair. Generated artifact copies are removed; the canonical source is untouched.

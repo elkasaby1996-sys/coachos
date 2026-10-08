@@ -3,9 +3,11 @@ import { ensure, canonical } from "./staging-release-artifacts.mjs";
 import { hash } from "./billing-retirement-release.mjs";
 import { evidenceDigest } from "./staging-release-webhook-history.mjs";
 import { assertReplacementTarget } from "./staging-replacement-target.mjs";
+import { validateVirginBaseline } from "./staging-bootstrap-baseline.mjs";
+import { timingReviewPolicy } from "./staging-timing-evidence.mjs";
 import {
   assertDatabaseProof,
-  bootstrapDatabaseProfiles,
+  bootstrapDatabasePolicyDigest,
 } from "./staging-bootstrap-database.mjs";
 import {
   bootstrapArtifact,
@@ -20,12 +22,13 @@ import {
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 export const bootstrapAuthorizationSchema = z.strictObject({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   phase: z.literal(BOOTSTRAP_PHASE),
   executionCommit: z.string().regex(/^[a-f0-9]{40}$/),
   bindingDigest: digest,
   inventoryDigest: digest,
   inventoryObservedAt: z.string().datetime(),
+  baselineEvidenceSha256: digest,
   createdAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
   operational: z.strictObject({
@@ -35,16 +38,25 @@ export const bootstrapAuthorizationSchema = z.strictObject({
     providerIngressExcluded: z.literal(true),
     manualWritersExcluded: z.literal(true),
     backgroundWritersExcluded: z.literal(true),
+    noManagedSchemaCustomizationSinceProjectCreation: z.literal(true),
     quietWindowEndsAt: z.string().datetime(),
   }),
 });
 
 // The digest binds the COMPLETE ordered migration records, config, immutable
 // functions, checkpoint and reviewed deny/allow registry, not just a count.
-export function bootstrapBinding(identity, context, policy, contracts) {
+export function bootstrapBinding(
+  identity,
+  context,
+  policy,
+  contracts,
+  baseline,
+) {
   return {
     phase: BOOTSTRAP_PHASE,
     executionCommit: context.commit,
+    executionTree: context.tree,
+    baselineEvidenceSha256: evidenceDigest(baseline),
     projectSha256: hash(context.project),
     originSha256: hash(context.origin),
     productionProjectSha256: hash(context.productionProject),
@@ -54,7 +66,7 @@ export function bootstrapBinding(identity, context, policy, contracts) {
     manifest: identity.manifest,
     artifact: bootstrapArtifact(identity),
     checkpoints: contracts,
-    bootstrapDatabaseProfiles: bootstrapDatabaseProfiles(),
+    bootstrapDatabasePolicyDigest: bootstrapDatabasePolicyDigest(),
     finalFunctions: identity.functions,
     containment: identity.containment,
     startVersions: [],
@@ -73,10 +85,20 @@ export function validateBootstrapAuthorization(
   policy,
   contracts,
   now = Date.now(),
+  baseline,
+  reviewPolicy = timingReviewPolicy(),
 ) {
   const result = bootstrapAuthorizationSchema.safeParse(raw);
   ensure(result.success, "BOOTSTRAP_AUTHORIZATION_INVALID");
   const a = result.data;
+  const b = validateVirginBaseline(
+    baseline,
+    identity,
+    context,
+    policy,
+    now,
+    reviewPolicy,
+  );
   validateBoundary(context);
   assertReplacementTarget(context.project, context.origin, policy, true);
   ensure(
@@ -86,7 +108,10 @@ export function validateBootstrapAuthorization(
   ensure(
     a.executionCommit === context.commit &&
       a.bindingDigest ===
-        evidenceDigest(bootstrapBinding(identity, context, policy, contracts)),
+        evidenceDigest(
+          bootstrapBinding(identity, context, policy, contracts, b),
+        ) &&
+      a.baselineEvidenceSha256 === evidenceDigest(b),
     "BOOTSTRAP_AUTHORIZATION_BINDING",
   );
   const created = Date.parse(a.createdAt),
@@ -103,6 +128,11 @@ export function validateBootstrapAuthorization(
     "BOOTSTRAP_AUTHORIZATION_STALE",
   );
   ensure(
+    observed >= Date.parse(b.capture.completedAt) &&
+      expiry <= Date.parse(b.capture.expiresAt),
+    "BOOTSTRAP_BASELINE_AUTHORIZATION_WINDOW",
+  );
+  ensure(
     contracts.frozenPayloadCommit === identity.payload.frozenCommit &&
       contracts.manifestDigest === hash(canonical(identity.manifest)),
     "BOOTSTRAP_CHECKPOINT_BINDING",
@@ -110,13 +140,18 @@ export function validateBootstrapAuthorization(
   return a;
 }
 
-export function verifyBootstrapCheckpoint(observation, identity, contracts) {
+export function verifyBootstrapCheckpoint(
+  observation,
+  identity,
+  contracts,
+  baseline,
+) {
   exactLedger(observation, identity.manifest, 180);
   assertPolicy(observation);
   verifyDatabase(observation, 180, contracts, []);
   ensure(observation.functions.length === 0, "BOOTSTRAP_FUNCTIONS_NOT_EMPTY");
   const f = observation.facts;
-  assertDatabaseProof(f.databaseProof, 180);
+  assertDatabaseProof(f.databaseProof, 180, baseline);
   ensure(
     f.work &&
       Object.keys(f.work).length >= 8 &&

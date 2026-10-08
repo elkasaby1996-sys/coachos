@@ -4,7 +4,6 @@ import { ensure } from "./staging-release-artifacts.mjs";
 import { evidenceDigest } from "./staging-release-webhook-history.mjs";
 import { phaseWorkload } from "./staging-bootstrap-handoff.mjs";
 import { replacementPolicy } from "./staging-replacement-target.mjs";
-import { bootstrapDatabaseProfiles } from "./staging-bootstrap-database.mjs";
 import { LS_TOMBSTONES } from "./billing-deployment-contract.mjs";
 import {
   timingReceiptSchema,
@@ -12,6 +11,7 @@ import {
   validateTimingReceipt,
   assertTimingReview,
   timingReviewPolicy,
+  timingSampleBinding,
 } from "./staging-timing-evidence.mjs";
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const sample = z.strictObject({
@@ -65,6 +65,11 @@ export function timingBinding(
   contracts,
   policy = replacementPolicy(),
 ) {
+  const observer = timingSampleBinding(
+    phase === "EMPTY_TO_180" ? "empty" : "release",
+    identity,
+    context,
+  );
   return {
     schemaVersion: 1,
     phase,
@@ -73,7 +78,11 @@ export function timingBinding(
     context,
     contracts,
     policy,
-    databaseProfiles: bootstrapDatabaseProfiles(),
+    // The observer has just read the complete policy. Bind that SAME source
+    // snapshot rather than performing a redundant second read in this binding.
+    databasePolicyDigest: observer.securityPolicyDigest,
+    reviewPolicy: timingReviewPolicy(),
+    observer,
     workload: timingWorkload(phase, identity),
     observationLimitMs: 60_000,
     margin: 1.25,
@@ -125,7 +134,13 @@ export function createTimingAdmission(
       (x, y) =>
         Date.parse(x.receipt.startedAt) - Date.parse(y.receipt.startedAt),
     )) {
-      const s = validateTimingReceipt(entry.receipt, kind, identity, context);
+      const s = validateTimingReceipt(
+        entry.receipt,
+        kind,
+        identity,
+        context,
+        phase === "EMPTY_TO_180" ? authorization.baselineEvidenceSha256 : null,
+      );
       ensure(
         entry.receiptSha256 === evidenceDigest(s),
         "TIMING_RECEIPT_DIGEST",

@@ -24,6 +24,7 @@ export async function runBootstrap(
     context,
     contracts,
     authorization,
+    baseline,
     timingAdmission,
     workflowStartedAt,
     root = process.cwd(),
@@ -73,6 +74,10 @@ export async function runBootstrap(
       policy(),
       contracts,
       now(),
+      baseline,
+      (
+        dependencies.baselineReviewPolicy ?? dependencies.timingReviewPolicy
+      )?.(),
     );
     timing ??= createTimingAdmission(
       {
@@ -95,7 +100,7 @@ export async function runBootstrap(
     const fresh = await adapter.observeEmpty();
     authorize();
     assertObservationFresh(fresh, now());
-    assertEmptySnapshot(fresh);
+    assertEmptySnapshot(fresh, baseline);
     timing.observation(fresh, "empty");
     ensure(
       fresh.digest === authorization.inventoryDigest &&
@@ -152,7 +157,12 @@ export async function runBootstrap(
         after.authDigest === observation.authDigest,
       "BOOTSTRAP_CONFIGURATION_DRIFT",
     );
-    const checkpoint = verifyBootstrapCheckpoint(after, identity, contracts);
+    const checkpoint = verifyBootstrapCheckpoint(
+      after,
+      identity,
+      contracts,
+      baseline,
+    );
     // Post-push success must still have the same reviewed source, context,
     // registry, artifact and live authority. Check freshness LAST.
     verifyBootstrapDirectory(directory.directory, artifact);
