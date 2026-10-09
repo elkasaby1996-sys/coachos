@@ -67,7 +67,7 @@ temporary directory. Migrations 181–186 cannot enter this artifact.
    collect hosted evidence, register a project, sign, or confer authority.
    `validateBaselineCandidate()` returns `operational: false`. Independent review
    must authenticate the complete evidence under the domain
-   `repsync-staging-virgin-baseline/v1`, using the existing source-reviewed Ed25519
+   `repsync-staging-virgin-baseline/v2`, using the existing source-reviewed Ed25519
    registry. A target's own digest is never review authority. The registry remains
    `reviewKeys: []`; the existing replacement has no baseline record and remains
    **NOT REGISTERED / NOT AUTHORIZED** for this contract. PAY-05AM observations are
@@ -146,7 +146,7 @@ Checkpoint 180 equals B plus the exact canonical delta. Neither equality proves
 historical creator identity; ownership, schema, names and extension membership are
 never creator evidence.
 
-A version-1 baseline evidence document binds exact project/organization/origin,
+A version-2 baseline evidence document binds exact project/organization/origin,
 source SHA/tree and protected identity, full policy/query/observer identities,
 project creation provenance, operator identity/attestation and timestamps, complete
 opening/closing/final evidence, catalog and managed-row proofs, and independently
@@ -157,6 +157,65 @@ Capture retains the 60-second limit. Baseline freshness is at most 15 minutes an
 its authority expires within 30 minutes of capture; bootstrap authorization may
 not outlive it. Another project, organization, source/tree, policy, query, observer,
 or expiry requires new evidence and review. There is no auto-refresh or enrollment.
+
+### Versioned creation-history evidence
+
+Baseline schema 2 signs the entire document under
+`repsync-staging-virgin-baseline/v2`. Schema 1 documents and signatures over the
+old v1 domain reject; there is no automatic conversion. `creation.history` has
+its own schema version 1 and an explicit mode:
+
+- `creation_time_exclusion` retains an explicit `writersExcludedSinceCreation: true`.
+- `retrospective_non_modification` does not assert historical writer exclusion.
+  It requires `noUnreviewedCustomerModification: true`,
+  `customerModificationHistoryKnown: true`, authenticated-operator evidence hashes,
+  identified historical actors with explicit write-capability values, available
+  access evidence hashes, nonempty descriptions of coverage limitations, and an
+  explicit list of known configuration changes. Every listed change includes its
+  real timestamp, authorization evidence hashes and change evidence hashes.
+
+Both modes retain exact target/project/organization/origin and creation provenance
+binding, operator identity and genuine attestation time, explicit
+`noManagedSchemaCustomizationSinceProjectCreation: true`, `noRestoreOrImport: true`
+and no known customer customization. Nothing defaults an attestation to true.
+Known configuration changes are disclosures for independent review, not exceptions
+to managed-schema or customer-security checks. All relevant configuration changes
+must be disclosed, including authorized origin preparation; managed DDL/DML,
+imports/restores or forbidden permissions cannot be relabeled configuration.
+
+The signed `historyReview` must match the evidence mode and identify an independent
+reviewer distinct from the operator. The reviewer explicitly attests that operator
+identity was authenticated and evidence bindings verified. Retrospective approval
+also requires acknowledgment of historical write capability, review of access
+limitations and configuration changes, and acceptance of the exact source-defined
+residual-risk statement. The reviewer must inspect the referenced private records,
+authenticate the operator through independently controlled identity evidence and
+assess their relation to the exact project; supplied hashes and boolean claims are
+not authentication by themselves. Source-enrolled independent key custody remains
+the trust root. Comparing reviewer/operator strings cannot establish human
+independence; that must be established before public-key enrollment and signing.
+
+A retained but unused administrative credential does not alone disqualify virgin
+status. Current snapshots cannot prove pre-capture history or detect a historical
+change subsequently restored. Approval explicitly trusts authenticated operators
+and independent reviewers for this residual uncertainty. Unknown modification
+history, unsupported attestations, known managed customization, import/restore,
+incomplete identity/provenance evidence or unacceptable access gaps disqualify the
+candidate. If history cannot responsibly be established or risk accepted, a
+separately authorized fresh project with creation-time exclusions may be the safer
+disposition; no recreation is automatic or authorized by this contract.
+
+Historical acceptance never replaces current exclusion. Both modes require a
+separate `creation.captureExclusion`: clients, provider ingress, manual writers and
+background writers explicitly excluded, established no later than capture start,
+with a quiet window extending beyond baseline authority expiry. Bootstrap schema-2
+authorization still independently requires every live exclusion beyond its own
+expiry. Baseline candidate validation grants no authority and cannot supply signed
+`historyReview`. Bootstrap authorization and timing receipts retain their versions:
+they already bind the complete baseline digest and current observer source, so a
+different history contract or approval invalidates their old bindings. Operational
+`reviewKeys` remains empty. This change collects no hosted evidence, enrolls no
+baseline and introduces no signer or private-evidence delivery mechanism.
 
 The fixed read-only query inventories application and platform namespaces,
 including extension-owned relations/routines, columns, constraints, indexes,

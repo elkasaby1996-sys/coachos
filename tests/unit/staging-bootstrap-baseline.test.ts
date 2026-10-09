@@ -5,6 +5,7 @@ import {
   checkpointDatabaseFixture,
   signBaselineFixture,
   signTimingFixture,
+  retrospectiveBaselineFixture,
   timingTestReviewPolicy,
 } from "../helpers/staging-timing-fixture";
 import {
@@ -291,6 +292,7 @@ describe("independent target-specific virgin baseline", () => {
     const {
       completeEvidenceReviewed: _e,
       creationHistoryReviewed: _h,
+      historyReview: _hr,
       reviewEvidenceSha256: _d,
       review: _r,
       ...candidate
@@ -400,7 +402,9 @@ describe("independent target-specific virgin baseline", () => {
   it("retains the exact 60-second capture limit", () => {
     const f = fixture();
     f.baseline.capture.startedAt = stamp(-60_001);
+    f.baseline.capture.expiresAt = stamp(20 * 60_000);
     f.baseline.creation.createdAt = stamp(-61_000);
+    f.baseline.creation.captureExclusion.establishedAt = stamp(-60_001);
     for (const s of Object.values(f.baseline.capture).filter(
       (v: any) => v?.project,
     ) as any[]) {
@@ -408,8 +412,208 @@ describe("independent target-specific virgin baseline", () => {
       s.projectDigest = evidenceDigest(s.project);
     }
     signBaselineFixture(f.baseline);
-    expect(f.run).toThrow();
+    expect(f.run).toThrow("RELEASE_OBSERVATION_STALE");
   });
+});
+describe("PAY-05AW versioned retrospective history", () => {
+  function retrospective() {
+    const f = fixture();
+    retrospectiveBaselineFixture(f.baseline);
+    return f;
+  }
+  it("accepts unused historical write capability only after signed independent review", () => {
+    const f = retrospective();
+    expect(f.run().creation.history.mode).toBe(
+      "retrospective_non_modification",
+    );
+    expect(
+      f.baseline.creation.history.historicalAccess.actors[0].writeCapable,
+    ).toBe(true);
+    expect(() =>
+      validateVirginBaseline(f.baseline, identity, context, policy, clock),
+    ).toThrow("BOOTSTRAP_BASELINE_REVIEW_REQUIRED");
+    const {
+      completeEvidenceReviewed: _e,
+      creationHistoryReviewed: _h,
+      historyReview: _hr,
+      review: _r,
+      reviewEvidenceSha256: _d,
+      ...candidate
+    } = f.baseline;
+    expect(
+      validateBaselineCandidate(candidate, identity, context, policy, clock)
+        .operational,
+    ).toBe(false);
+  });
+  it("retains explicit creation-time exclusion under the new domain", () => {
+    expect(fixture().run().creation.history.writersExcludedSinceCreation).toBe(
+      true,
+    );
+  });
+  it("rejects a valid trusted-key signature over the old v1 domain", () => {
+    const f = retrospective();
+    expect(f.run().target.project).toBe(context.project);
+    signBaselineFixture(f.baseline, "repsync-staging-virgin-baseline/v1");
+    expect(f.run).toThrow("BOOTSTRAP_BASELINE_REVIEW_REQUIRED");
+  });
+  it("binds disclosed, authorized configuration records without permitting managed customization", () => {
+    const f = retrospective();
+    f.baseline.creation.history.knownConfigurationChanges = [
+      {
+        description: "Synthetic reviewed Auth application origin setting",
+        occurredAt: stamp(),
+        authorizationEvidenceSha256: ["d".repeat(64)],
+        evidenceSha256: ["e".repeat(64)],
+      },
+    ];
+    signBaselineFixture(f.baseline);
+    expect(f.run().creation.history.knownConfigurationChanges).toHaveLength(1);
+    f.baseline.creation.history.knownConfigurationChanges[0].description +=
+      " unreviewed edit";
+    expect(f.run).toThrow("BOOTSTRAP_BASELINE_REVIEW_REQUIRED");
+    signBaselineFixture(f.baseline);
+    f.baseline.creation.history.knownConfigurationChanges[0].occurredAt =
+      stamp(1);
+    signBaselineFixture(f.baseline);
+    expect(f.run).toThrow("BOOTSTRAP_BASELINE_CONFIGURATION_HISTORY_INVALID");
+  });
+  it.each([
+    "missing no modification",
+    "false no modification",
+    "unknown modifications",
+    "known customization",
+    "import restore",
+    "missing identity evidence",
+    "malformed identity evidence",
+    "missing creation evidence",
+    "missing access limitations",
+    "missing actor disclosure",
+    "missing risk acceptance",
+    "false risk acceptance",
+    "missing capability acknowledgment",
+    "unauthenticated operator",
+    "unverified evidence",
+    "not independent",
+    "missing configuration review",
+  ])(
+    "rejects %s at the history schema with otherwise valid signed evidence",
+    (kind) => {
+      const f = retrospective();
+      expect(f.run().target.project).toBe(context.project);
+      const h = f.baseline.creation.history,
+        r = f.baseline.historyReview;
+      if (kind === "missing no modification")
+        delete h.noUnreviewedCustomerModification;
+      if (kind === "false no modification")
+        h.noUnreviewedCustomerModification = false;
+      if (kind === "unknown modifications")
+        h.customerModificationHistoryKnown = false;
+      if (kind === "known customization")
+        f.baseline.creation.knownCustomerCustomizations = [
+          "customer Storage index",
+        ];
+      if (kind === "import restore")
+        f.baseline.creation.noRestoreOrImport = false;
+      if (kind === "missing identity evidence")
+        h.operatorAuthenticationEvidenceSha256 = [];
+      if (kind === "malformed identity evidence")
+        h.operatorAuthenticationEvidenceSha256 = ["not-a-digest"];
+      if (kind === "missing creation evidence")
+        f.baseline.creation.provenanceEvidenceSha256 = [];
+      if (kind === "missing access limitations")
+        h.historicalAccess.limitations = [];
+      if (kind === "missing actor disclosure") h.historicalAccess.actors = [];
+      if (kind === "missing risk acceptance") delete r.residualRiskAccepted;
+      if (kind === "false risk acceptance") r.residualRiskAccepted = false;
+      if (kind === "missing capability acknowledgment")
+        delete r.historicalWriteCapabilityAcknowledged;
+      if (kind === "unauthenticated operator")
+        r.operatorIdentityAuthenticated = false;
+      if (kind === "unverified evidence") r.evidenceBindingsVerified = false;
+      if (kind === "not independent") r.independentOfOperator = false;
+      if (kind === "missing configuration review")
+        delete r.configurationChangesReviewed;
+      signBaselineFixture(f.baseline);
+      expect(f.run).toThrow("BOOTSTRAP_BASELINE_INVALID");
+    },
+  );
+  it.each([
+    "same operator",
+    "wrong review mode",
+    "unsigned",
+    "tampered actor",
+    "copied project",
+    "copied organization",
+    "old version",
+    "old semantics",
+  ])("rejects %s for the intended reason", (kind) => {
+    const f = retrospective();
+    expect(f.run().target.project).toBe(context.project);
+    let expected = "BOOTSTRAP_BASELINE_REVIEW_REQUIRED";
+    if (kind === "same operator") {
+      f.baseline.historyReview.reviewerIdentity =
+        f.baseline.creation.operatorIdentity;
+      signBaselineFixture(f.baseline);
+      expected = "BOOTSTRAP_BASELINE_HISTORY_REVIEW_INVALID";
+    }
+    if (kind === "wrong review mode") {
+      f.baseline.historyReview = fixture().baseline.historyReview;
+      signBaselineFixture(f.baseline);
+      expected = "BOOTSTRAP_BASELINE_HISTORY_REVIEW_INVALID";
+    }
+    if (kind === "unsigned")
+      f.baseline.review.signature = "A".repeat(86) + "==";
+    if (kind === "tampered actor")
+      f.baseline.creation.history.historicalAccess.actors[0].identity =
+        "undisclosed-actor";
+    if (kind === "copied project") {
+      f.baseline.target.project = "z".repeat(20);
+      signBaselineFixture(f.baseline);
+      expected = "BOOTSTRAP_BASELINE_BINDING";
+    }
+    if (kind === "copied organization") {
+      f.baseline.target.organization = "copied-org";
+      signBaselineFixture(f.baseline);
+      expected = "BOOTSTRAP_BASELINE_PROJECT_BINDING";
+    }
+    if (kind === "old version") {
+      f.baseline.schemaVersion = 1;
+      signBaselineFixture(f.baseline);
+      expected = "BOOTSTRAP_BASELINE_INVALID";
+    }
+    if (kind === "old semantics") {
+      f.baseline.creation.writersExcludedSinceCreation = true;
+      signBaselineFixture(f.baseline);
+      expected = "BOOTSTRAP_BASELINE_INVALID";
+    }
+    expect(f.run).toThrow(expected);
+  });
+  it.each([
+    "clientsExcluded",
+    "providerIngressExcluded",
+    "manualWritersExcluded",
+    "backgroundWritersExcluded",
+  ])("requires current %s despite accepted history", (field) => {
+    const f = retrospective();
+    expect(f.run().target.project).toBe(context.project);
+    f.baseline.creation.captureExclusion[field] = false;
+    signBaselineFixture(f.baseline);
+    expect(f.run).toThrow("BOOTSTRAP_BASELINE_INVALID");
+  });
+  it.each(["late exclusion", "early window end"])(
+    "rejects %s independently of historical capability",
+    (kind) => {
+      const f = retrospective();
+      expect(f.run().target.project).toBe(context.project);
+      if (kind === "late exclusion")
+        f.baseline.creation.captureExclusion.establishedAt = stamp(1);
+      else
+        f.baseline.creation.captureExclusion.quietWindowEndsAt =
+          f.baseline.capture.expiresAt;
+      signBaselineFixture(f.baseline);
+      expect(f.run).toThrow("BOOTSTRAP_BASELINE_CAPTURE_EXCLUSION_INVALID");
+    },
+  );
 });
 describe("genuine terminal database confirmation", () => {
   async function terminal(

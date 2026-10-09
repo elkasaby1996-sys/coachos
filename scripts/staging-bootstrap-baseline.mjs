@@ -34,10 +34,71 @@ import {
 const digest = z.string().regex(/^[a-f0-9]{64}$/),
   sha = z.string().regex(/^[a-f0-9]{40}$/),
   timestamp = z.string().datetime();
-export const BASELINE_REVIEW_DOMAIN = "repsync-staging-virgin-baseline/v1";
+export const BASELINE_REVIEW_DOMAIN = "repsync-staging-virgin-baseline/v2";
+export const RETROSPECTIVE_RESIDUAL_RISK =
+  "Historical write capability may have existed. Current observations cannot prove pre-capture non-modification or exclude undisclosed changes later restored. Independent approval relies on authenticated operator attestations and reviewed evidence and limitations.";
+const evidence = z.array(digest).min(1);
+const history = z.discriminatedUnion("mode", [
+  z.strictObject({
+    schemaVersion: z.literal(1),
+    mode: z.literal("creation_time_exclusion"),
+    operatorAuthenticationEvidenceSha256: evidence,
+    writersExcludedSinceCreation: z.literal(true),
+  }),
+  z.strictObject({
+    schemaVersion: z.literal(1),
+    mode: z.literal("retrospective_non_modification"),
+    operatorAuthenticationEvidenceSha256: evidence,
+    noUnreviewedCustomerModification: z.literal(true),
+    customerModificationHistoryKnown: z.literal(true),
+    historicalAccess: z.strictObject({
+      writeCapabilityMayHaveExisted: z.literal(true),
+      actors: z
+        .array(
+          z.strictObject({
+            identity: z.string().trim().min(1),
+            writeCapable: z.boolean(),
+            evidenceSha256: z.array(digest),
+          }),
+        )
+        .min(1),
+      evidenceSha256: z.array(digest),
+      limitations: z.array(z.string().trim().min(1)).min(1),
+    }),
+    knownConfigurationChanges: z.array(
+      z.strictObject({
+        description: z.string().trim().min(1),
+        occurredAt: timestamp,
+        authorizationEvidenceSha256: evidence,
+        evidenceSha256: evidence,
+      }),
+    ),
+  }),
+]);
+const independentReview = {
+  reviewerIdentity: z.string().trim().min(1),
+  independentOfOperator: z.literal(true),
+  operatorIdentityAuthenticated: z.literal(true),
+  evidenceBindingsVerified: z.literal(true),
+};
+const historyReview = z.discriminatedUnion("mode", [
+  z.strictObject({
+    mode: z.literal("creation_time_exclusion"),
+    ...independentReview,
+  }),
+  z.strictObject({
+    mode: z.literal("retrospective_non_modification"),
+    ...independentReview,
+    historicalWriteCapabilityAcknowledged: z.literal(true),
+    accessLimitationsReviewed: z.literal(true),
+    configurationChangesReviewed: z.literal(true),
+    residualRiskAccepted: z.literal(true),
+    residualRiskStatement: z.literal(RETROSPECTIVE_RESIDUAL_RISK),
+  }),
+]);
 const observation = z.record(z.string(), z.unknown());
 export const baselineSchema = z.strictObject({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   classification: z.literal("AMBIGUOUS_MANAGED_BASELINE_PINNED"),
   target: z.strictObject({
     project: z.string().regex(/^[a-z]{20}$/),
@@ -56,12 +117,20 @@ export const baselineSchema = z.strictObject({
     createdAt: timestamp,
     provenance: z.literal("authorized_infrastructure_creation"),
     provenanceEvidenceSha256: z.array(digest).min(1),
-    operatorIdentity: z.string().min(1),
+    operatorIdentity: z.string().trim().min(1),
     attestedAt: timestamp,
     noManagedSchemaCustomizationSinceProjectCreation: z.literal(true),
     knownCustomerCustomizations: z.array(z.string()).length(0),
-    writersExcludedSinceCreation: z.literal(true),
     noRestoreOrImport: z.literal(true),
+    history,
+    captureExclusion: z.strictObject({
+      clientsExcluded: z.literal(true),
+      providerIngressExcluded: z.literal(true),
+      manualWritersExcluded: z.literal(true),
+      backgroundWritersExcluded: z.literal(true),
+      establishedAt: timestamp,
+      quietWindowEndsAt: timestamp,
+    }),
   }),
   databaseProof: observation,
   capture: z.strictObject({
@@ -74,6 +143,7 @@ export const baselineSchema = z.strictObject({
   }),
   completeEvidenceReviewed: z.literal(true),
   creationHistoryReviewed: z.literal(true),
+  historyReview,
   reviewEvidenceSha256: digest,
   review: timingReviewSchema,
 });
@@ -176,12 +246,18 @@ export function validateVirginBaseline(
     reviewPolicy,
     "BOOTSTRAP_BASELINE_REVIEW_REQUIRED",
   );
+  ensure(
+    b.historyReview.mode === b.creation.history.mode &&
+      b.historyReview.reviewerIdentity !== b.creation.operatorIdentity,
+    "BOOTSTRAP_BASELINE_HISTORY_REVIEW_INVALID",
+  );
   assertCandidate(b, identity, context, policy, now);
   return b;
 }
 const candidateSchema = baselineSchema.omit({
   completeEvidenceReviewed: true,
   creationHistoryReviewed: true,
+  historyReview: true,
   reviewEvidenceSha256: true,
   review: true,
 });
@@ -214,6 +290,23 @@ function assertCandidate(b, identity, context, policy, now) {
     end = Date.parse(b.capture.completedAt),
     expiry = Date.parse(b.capture.expiresAt),
     created = Date.parse(b.creation.createdAt);
+  const exclusion = b.creation.captureExclusion;
+  ensure(
+    Date.parse(exclusion.establishedAt) >= created &&
+      Date.parse(exclusion.establishedAt) <= start &&
+      Date.parse(exclusion.quietWindowEndsAt) > expiry,
+    "BOOTSTRAP_BASELINE_CAPTURE_EXCLUSION_INVALID",
+  );
+  if (b.creation.history.mode === "retrospective_non_modification") {
+    ensure(
+      b.creation.history.knownConfigurationChanges.every(
+        (change) =>
+          Date.parse(change.occurredAt) >= created &&
+          Date.parse(change.occurredAt) <= end,
+      ),
+      "BOOTSTRAP_BASELINE_CONFIGURATION_HISTORY_INVALID",
+    );
+  }
   ensure(
     created <= start &&
       start <= end &&
