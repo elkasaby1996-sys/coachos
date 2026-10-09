@@ -18,6 +18,11 @@ import {
   assertReplacementTarget,
 } from "./staging-replacement-target.mjs";
 import { assertObservationFresh } from "./staging-release-observation.mjs";
+import {
+  FOUNDER_MODE,
+  founderPolicy,
+  beginFounderOperation,
+} from "./staging-founder-governance.mjs";
 
 function assertExecutionSource(root, identity, context) {
   const git = (...args) =>
@@ -32,7 +37,16 @@ function assertExecutionSource(root, identity, context) {
 }
 
 export async function captureBaselineCandidate(
-  { identity, context, env, operator, expiresAt, root = process.cwd() },
+  {
+    identity,
+    context,
+    env,
+    operator,
+    expiresAt,
+    actionEnvelope,
+    workflow,
+    root = process.cwd(),
+  },
   dependencies = {},
 ) {
   const now = dependencies.now ?? Date.now;
@@ -55,6 +69,32 @@ export async function captureBaselineCandidate(
   )
     return { status: "EVIDENCE_INCOMPLETE", operational: false };
   const c = creation.data;
+  const governancePolicy = (dependencies.founderPolicy ?? founderPolicy)();
+  let founderOperation;
+  if (context.governanceMode === FOUNDER_MODE) {
+    founderOperation = beginFounderOperation(
+      actionEnvelope,
+      {
+        phase: "CAPTURE_BASELINE",
+        mode: "preflight",
+        identity,
+        context,
+        contracts: {},
+        authorization: { operator, expiresAt },
+        workflow,
+      },
+      {
+        now,
+        policy: dependencies.founderPolicy,
+        verifyWorkflowApproval: dependencies.verifyWorkflowApproval,
+        claimAction: dependencies.claimAction,
+      },
+    );
+    ensure(
+      actionEnvelope.governance.operatorIdentity === c.operatorIdentity,
+      "BOOTSTRAP_CAPTURE_FOUNDER_BINDING",
+    );
+  } else ensure(!actionEnvelope, "FOUNDER_MODE_REQUIRED");
   const expiry = Date.parse(expiresAt);
   ensure(
     Number.isFinite(expiry) &&
@@ -75,6 +115,7 @@ export async function captureBaselineCandidate(
   );
   const assertSource = dependencies.assertSource ?? assertExecutionSource;
   const fresh = () => {
+    founderOperation?.check();
     ensure(now() < expiry, "BOOTSTRAP_BASELINE_STALE");
     assertObservationFresh(
       {
@@ -89,7 +130,12 @@ export async function captureBaselineCandidate(
     );
   };
   assertSource(root, identity, context);
-  const source = baselineSourceBinding(identity, context, policy);
+  const source = baselineSourceBinding(
+    identity,
+    context,
+    policy,
+    governancePolicy,
+  );
   fresh();
   let proof;
   const reader = createBootstrapCaptureReader(
@@ -122,13 +168,20 @@ export async function captureBaselineCandidate(
     assertSource(root, identity, context);
     ensure(
       evidenceDigest(source) ===
-        evidenceDigest(baselineSourceBinding(identity, context, policy)),
+        evidenceDigest(
+          baselineSourceBinding(
+            identity,
+            context,
+            policy,
+            (dependencies.founderPolicy ?? founderPolicy)(),
+          ),
+        ),
       "BOOTSTRAP_CAPTURE_SOURCE_DRIFT",
     );
     fresh();
   }
   const candidate = {
-    schemaVersion: 2,
+    schemaVersion: context.governanceMode === FOUNDER_MODE ? 3 : 2,
     classification: "AMBIGUOUS_MANAGED_BASELINE_PINNED",
     target: {
       project: context.project,
@@ -145,13 +198,27 @@ export async function captureBaselineCandidate(
       ...observations,
     },
   };
-  validateBaselineCandidate(candidate, identity, context, policy, now());
+  validateBaselineCandidate(
+    candidate,
+    identity,
+    context,
+    policy,
+    now(),
+    governancePolicy,
+  );
   // Include local validation in the same clock, then bind the final completion.
   fresh();
   assertSource(root, identity, context);
   ensure(
     evidenceDigest(source) ===
-      evidenceDigest(baselineSourceBinding(identity, context, policy)),
+      evidenceDigest(
+        baselineSourceBinding(
+          identity,
+          context,
+          policy,
+          (dependencies.founderPolicy ?? founderPolicy)(),
+        ),
+      ),
     "BOOTSTRAP_CAPTURE_SOURCE_DRIFT",
   );
   fresh();
@@ -162,6 +229,7 @@ export async function captureBaselineCandidate(
     context,
     policy,
     now(),
+    governancePolicy,
   );
   fresh();
   return {

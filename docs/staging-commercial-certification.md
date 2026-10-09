@@ -1,5 +1,11 @@
 # Paddle-only staging retirement and certification
 
+The staging workflow now selects [founder-owned synthetic staging governance](staging-founder-governance.md).
+It requires truthful non-independent acceptance, separately scoped signatures and
+per-operation approval. Operational use remains blocked by disarmed policy and
+missing trusted hosted integrations. All technical and Paddle certification gates
+below remain required; local governance tests certify no remote scenario.
+
 For a newly created, isolated replacement project, first follow
 [Fresh staging bootstrap](staging-fresh-bootstrap.md). The fixed `EMPTY_TO_180`
 operation is separate from these v3 phases. It changes no historical-drain rule,

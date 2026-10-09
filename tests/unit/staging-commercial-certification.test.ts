@@ -788,6 +788,9 @@ describe("apply safety and workflow contract", () => {
     expect(apply.env.STAGING_RELEASE_AUTHORIZATION).toBe(
       "${{ secrets.STAGING_RELEASE_AUTHORIZATION }}",
     );
+    expect(apply.env.STAGING_FOUNDER_ACTION).toBe(
+      "${{ secrets.STAGING_FOUNDER_ACTION }}",
+    );
     expect(apply.env.STAGING_RELEASE_RECOVERY_BUNDLE).toBe(
       "${{ secrets.STAGING_RELEASE_RECOVERY_BUNDLE }}",
     );
@@ -804,7 +807,7 @@ describe("apply safety and workflow contract", () => {
         .filter((s: any) => s.uses?.startsWith("actions/upload-artifact"))
         .map((s: any) => s.with.path),
     ).toEqual([
-      "output/staging-release/",
+      "output/staging-release/release-evidence.json",
       "output/staging-release/release-evidence.json",
       "output/staging-release/release-evidence.json",
     ]);

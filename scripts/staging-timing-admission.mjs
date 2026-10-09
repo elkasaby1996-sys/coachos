@@ -7,12 +7,19 @@ import { replacementPolicy } from "./staging-replacement-target.mjs";
 import { LS_TOMBSTONES } from "./billing-deployment-contract.mjs";
 import {
   timingReceiptSchema,
+  founderTimingReceiptSchema,
   timingReviewSchema,
   validateTimingReceipt,
   assertTimingReview,
   timingReviewPolicy,
   timingSampleBinding,
 } from "./staging-timing-evidence.mjs";
+import {
+  FOUNDER_MODE,
+  founderPolicy,
+  founderGovernanceSchema,
+  assertFounderReview,
+} from "./staging-founder-governance.mjs";
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const sample = z.strictObject({
   receipt: timingReceiptSchema,
@@ -35,6 +42,16 @@ export const timingAdmissionSchema = z.strictObject({
     downloadMs: z.number().int().min(1000),
     probeMs: z.number().int().min(1000),
     localValidationMs: z.number().int().min(1000),
+  }),
+});
+const founderSample = sample.extend({ receipt: founderTimingReceiptSchema });
+export const founderTimingAdmissionSchema = timingAdmissionSchema.extend({
+  schemaVersion: z.literal(3),
+  governance: founderGovernanceSchema,
+  actionEnvelopeDigest: digest,
+  samples: z.strictObject({
+    empty: z.array(founderSample).max(100),
+    release: z.array(founderSample).max(100),
   }),
 });
 export function timingWorkload(phase, identity) {
@@ -64,11 +81,15 @@ export function timingBinding(
   context,
   contracts,
   policy = replacementPolicy(),
+  actionEnvelope = null,
+  governancePolicy = founderPolicy(),
 ) {
   const observer = timingSampleBinding(
     phase === "EMPTY_TO_180" ? "empty" : "release",
     identity,
     context,
+    null,
+    governancePolicy,
   );
   return {
     schemaVersion: 1,
@@ -78,6 +99,12 @@ export function timingBinding(
     context,
     contracts,
     policy,
+    ...(context.governanceMode === FOUNDER_MODE
+      ? {
+          governancePolicyDigest: evidenceDigest(governancePolicy),
+          actionEnvelopeDigest: evidenceDigest(actionEnvelope),
+        }
+      : {}),
     // The observer has just read the complete policy. Bind that SAME source
     // snapshot rather than performing a redundant second read in this binding.
     databasePolicyDigest: observer.securityPolicyDigest,
@@ -98,10 +125,15 @@ export function createTimingAdmission(
     contracts,
     admission,
     workflowStartedAt,
+    actionEnvelope,
+    baseline,
   },
   options = {},
 ) {
-  const parsed = timingAdmissionSchema.safeParse(admission);
+  const founder = context.governanceMode === FOUNDER_MODE;
+  const parsed = (
+    founder ? founderTimingAdmissionSchema : timingAdmissionSchema
+  ).safeParse(admission);
   ensure(parsed.success, "TIMING_ADMISSION_REQUIRED");
   const a = parsed.data,
     workload = timingWorkload(phase, identity);
@@ -118,7 +150,29 @@ export function createTimingAdmission(
     "TIMING_WORKFLOW_CLOCK_REQUIRED",
   );
   const required = phase === "EMPTY_TO_180" ? ["empty"] : ["release"];
-  assertTimingReview(a, (options.reviewPolicy ?? timingReviewPolicy)());
+  const review = () => {
+    if (founder) {
+      assertFounderReview(
+        a,
+        "timing",
+        phase,
+        context,
+        (options.founderPolicy ?? founderPolicy)(),
+        now(),
+      );
+      ensure(
+        actionEnvelope &&
+          a.actionEnvelopeDigest === evidenceDigest(actionEnvelope) &&
+          Date.parse(a.governance.expiresAt) === Date.parse(a.expiresAt) &&
+          Date.parse(a.governance.createdAt) === Date.parse(a.createdAt) &&
+          Date.parse(a.expiresAt) <=
+            Date.parse(actionEnvelope.governance.expiresAt),
+        "TIMING_FOUNDER_ACTION_BINDING",
+      );
+    } else
+      assertTimingReview(a, (options.reviewPolicy ?? timingReviewPolicy)());
+  };
+  review();
   const receipts = new Set(),
     ids = new Set(),
     observations = new Set();
@@ -140,6 +194,7 @@ export function createTimingAdmission(
         identity,
         context,
         phase === "EMPTY_TO_180" ? authorization.baselineEvidenceSha256 : null,
+        (options.founderPolicy ?? founderPolicy)(),
       );
       ensure(
         entry.receiptSha256 === evidenceDigest(s),
@@ -183,6 +238,21 @@ export function createTimingAdmission(
         : authorization.operational.retryWindowEndsAt,
     ),
   ];
+  if (phase === "EMPTY_TO_180" && baseline) {
+    ensure(
+      evidenceDigest(baseline) === authorization.baselineEvidenceSha256,
+      "TIMING_BASELINE_BINDING",
+    );
+    deadlines.push(
+      Date.parse(baseline.capture.startedAt) + 15 * 60_000,
+      Date.parse(baseline.capture.expiresAt),
+      ...(founder ? [Date.parse(baseline.governance.expiresAt)] : []),
+    );
+  }
+  if (founder) {
+    ensure(phase !== "EMPTY_TO_180" || baseline, "TIMING_BASELINE_REQUIRED");
+    deadlines.push(Date.parse(actionEnvelope.governance.expiresAt));
+  }
   if (phase !== "EMPTY_TO_180")
     deadlines.push(
       Date.parse(authorization.configuration.observedAt) + 15 * 60_000,
@@ -190,7 +260,7 @@ export function createTimingAdmission(
       Date.parse(authorization.backup.createdAt) + 24 * 60 * 60_000,
     );
   function check() {
-    assertTimingReview(a, (options.reviewPolicy ?? timingReviewPolicy)());
+    review();
     ensure(
       a.bindingDigest ===
         evidenceDigest(
@@ -201,6 +271,8 @@ export function createTimingAdmission(
             context,
             contracts,
             policy(),
+            actionEnvelope,
+            (options.founderPolicy ?? founderPolicy)(),
           ),
         ),
       "TIMING_ADMISSION_BINDING",

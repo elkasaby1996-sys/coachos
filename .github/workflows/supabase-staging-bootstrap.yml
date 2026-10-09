@@ -32,6 +32,7 @@ jobs:
     timeout-minutes: 45
     environment: supabase-staging
     env:
+      STAGING_GOVERNANCE_MODE: founder_owned_synthetic_staging_v1
       CONFIRM_COMMIT_SHA: ${{ inputs.confirm_commit_sha }}
       CONFIRM_PROJECT_REF: ${{ inputs.confirm_project_ref }}
       CONFIRM_APP_ORIGIN: ${{ inputs.confirm_app_origin }}
@@ -53,7 +54,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Local contracts and tests before remote capabilities
-        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs && npm run staging:bootstrap:test && npm run staging:release:test
+        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs && npm run test:unit
       - name: Local plan
         run: node scripts/staging-bootstrap.mjs plan
       - name: Pinned CLI
@@ -64,6 +65,7 @@ jobs:
       - name: Separately authorized empty-project operation
         if: inputs.mode != 'plan'
         env:
+          STAGING_FOUNDER_ACTION: ${{ secrets.STAGING_FOUNDER_ACTION }}
           STAGING_TIMING_ADMISSION: ${{ secrets.STAGING_TIMING_ADMISSION }}
           STAGING_BOOTSTRAP_AUTHORIZATION: ${{ secrets.STAGING_BOOTSTRAP_AUTHORIZATION }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

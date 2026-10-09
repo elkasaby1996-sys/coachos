@@ -642,6 +642,9 @@ describe("preflight workflow and module boundaries", () => {
     ]);
     const job = yaml.jobs.certification;
     expect(job.environment).toBe("supabase-staging");
+    expect(job.env.STAGING_GOVERNANCE_MODE).toBe(
+      "founder_owned_synthetic_staging_v1",
+    );
     expect(job.if).toBe("github.ref == 'refs/heads/main'");
     expect(job.env.ALLOW_REMOTE_SUPABASE).toBeUndefined();
     const step = job.steps.find(
@@ -651,6 +654,7 @@ describe("preflight workflow and module boundaries", () => {
     expect(step.if).toBe("inputs.mode == 'preflight'");
     expect(step.env.ALLOW_REMOTE_SUPABASE).toBeUndefined();
     expect(Object.keys(step.env).sort()).toEqual([
+      "STAGING_FOUNDER_ACTION",
       "STAGING_RELEASE_AUTHORIZATION",
       "STAGING_RELEASE_RECOVERY_BUNDLE",
       "STAGING_TIMING_ADMISSION",
@@ -676,7 +680,9 @@ describe("preflight workflow and module boundaries", () => {
     }
     const artifact = job.steps.find(
       (s: any) =>
-        s.with?.path === "output/staging-release/release-evidence.json",
+        s.with?.path === "output/staging-release/release-evidence.json" &&
+        s.if ===
+          "always() && (inputs.mode == 'preflight' || inputs.mode == 'apply')",
     );
     expect(artifact.if).toBe(
       "always() && (inputs.mode == 'preflight' || inputs.mode == 'apply')",
@@ -687,7 +693,7 @@ describe("preflight workflow and module boundaries", () => {
       .filter((s: any) => s.uses?.startsWith("actions/upload-artifact"))
       .map((s: any) => s.with.path);
     expect(paths).toEqual([
-      "output/staging-release/",
+      "output/staging-release/release-evidence.json",
       "output/staging-release/release-evidence.json",
       "output/staging-release/release-evidence.json",
     ]);

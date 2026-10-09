@@ -5,6 +5,7 @@ import { evidenceDigest } from "./staging-release-webhook-history.mjs";
 import { assertReplacementTarget } from "./staging-replacement-target.mjs";
 import { validateVirginBaseline } from "./staging-bootstrap-baseline.mjs";
 import { timingReviewPolicy } from "./staging-timing-evidence.mjs";
+import { FOUNDER_MODE, founderPolicy } from "./staging-founder-governance.mjs";
 import {
   assertDatabaseProof,
   bootstrapDatabasePolicyDigest,
@@ -87,6 +88,7 @@ export function validateBootstrapAuthorization(
   now = Date.now(),
   baseline,
   reviewPolicy = timingReviewPolicy(),
+  governancePolicy = founderPolicy(),
 ) {
   const result = bootstrapAuthorizationSchema.safeParse(raw);
   ensure(result.success, "BOOTSTRAP_AUTHORIZATION_INVALID");
@@ -98,6 +100,7 @@ export function validateBootstrapAuthorization(
     policy,
     now,
     reviewPolicy,
+    governancePolicy,
   );
   validateBoundary(context);
   assertReplacementTarget(context.project, context.origin, policy, true);
@@ -117,6 +120,12 @@ export function validateBootstrapAuthorization(
   const created = Date.parse(a.createdAt),
     expiry = Date.parse(a.expiresAt),
     observed = Date.parse(a.inventoryObservedAt);
+  if (context.governanceMode === FOUNDER_MODE)
+    ensure(
+      expiry <= Date.parse(b.governance.expiresAt) &&
+        observed >= Date.parse(b.governance.createdAt),
+      "BOOTSTRAP_FOUNDER_AUTHORIZATION_WINDOW",
+    );
   ensure(
     created <= now &&
       now < expiry &&

@@ -1,5 +1,10 @@
 # RepSync staging release phases (PAY-05B)
 
+PAY-05BF adds [founder-owned synthetic staging governance](staging-founder-governance.md).
+The protected release workflow requires founder action authority in addition to the
+unchanged inner v3 phase/recovery contracts. This mode is disarmed and externally
+unconfigured; the legacy independent review contracts remain separately validated.
+
 This is deployment tooling, not deployment or Paddle certification evidence. The immutable billing payload is `9a9f79ff2ba7aada9ff2c24f162360d9c03b33a0`. All migrations, application source, final Edge source and Supabase runtime configuration must remain identical in Git to that payload. Windows checkout CRLF conversion is normalized for deterministic artifact hashes; deployment artifacts never rewrite canonical files.
 
 ## Plan and preflight
