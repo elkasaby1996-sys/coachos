@@ -471,3 +471,119 @@ dependencies, grants, RLS, bucket configuration and publication members. Each is
 rejected by the actual complete baseline/delta validator; rollback fixtures do not persist.
 It never downloads a CLI or container image, and leaves failed local state observed
 without repair. Generated artifact copies are removed; the canonical source is untouched.
+
+## First capture and private delivery (local implementation)
+
+`captureBaselineCandidate()` in `scripts/staging-bootstrap-capture.mjs` is a
+dedicated read-only library entry point. It does not require an approved baseline.
+It is not invoked by a workflow or automatically on import. An eventual capture
+requires separate named-project authorization, an actual clean execution SHA/tree,
+the protected release identity, and explicitly supplied operator evidence.
+No credential file is read and no baseline file is registered or written.
+
+The operator must supply the existing schema-v2 `creation` object and an explicit
+expiry. Missing or false history, provenance, authentication-evidence bindings,
+no-import/no-restore, or current writer/ingress exclusions produce
+`EVIDENCE_INCOMPLETE` before transport. The creation-time and retrospective modes
+retain their existing meanings; retrospective access limitations and configuration
+disclosures are not fabricated. Capture exclusion must already be established and
+remain valid beyond expiry. Attestations do not independently prove isolation.
+Their evidence and residual uncertainty still require independent human review.
+
+The collector uses the ordinary observer's fixed Management API GETs and
+`database/query/read-only` POST contract. There is no unrestricted-query fallback,
+arbitrary SQL, retry, mutation, authorization or signing capability. The public
+[read-only endpoint contract](https://supabase.com/docs/reference/api/v1-read-only-query)
+specifies `supabase_read_only_user`, `database:read` / `database_read`, and remains
+experimental. This documentation check does not establish hosted extraction
+completeness or feasibility. Endpoint denial or an incomplete response stops.
+
+Opening, closing and confirmation each perform a fresh database read before and
+after complete project/functions/secrets/Auth/SSO/third-party metadata collection:
+six genuine database proofs, three complete observations. The complete stable
+snapshots must agree. Independent source-owned customer ACL/RLS, roles/parameter
+privileges, managed data emptiness, public objects, policies, publications,
+connectivity and ledger checks apply before candidate equality. Complete catalog
+and managed-row evidence is retained. Schema/owner membership does not prove
+historical creators: the opening namespace set is a drift anchor, not a hosted
+allowlist or proof of pre-capture provenance. Known customization disqualifies
+operator evidence; undisclosed ambiguous historical objects remain a history/review
+trust limitation, never silently inferred as provider-created.
+
+The original 60-second clock begins before source validation and covers all reads
+and candidate validation, with request timeouts bounded by remaining observation
+time. The source identity is checked before reading and after each observation.
+The shared bootstrap reader bounds streamed response bodies before JSON parsing:
+16 MiB per response and 64 MiB total across opening, closing and confirmation.
+These source-controlled limits count actual decoded transport bytes, including
+chunked responses without Content-Length or with an understated length. A declared
+overflow rejects before reading; an actual overflow cancels the body, fails with
+`BOOTSTRAP_READ_FAILED` and stops without retry. The same aggregate applies to each
+ordinary bootstrap observation; separate metadata/proof calls have their own
+budgets. Neither size limits nor streaming reset the observation clock. Limits
+are fail-closed ceilings, not evidence of hosted capacity or timing feasibility.
+The existing `validateBaselineCandidate()` must accept the complete candidate.
+The result is `CANDIDATE_REQUIRES_INDEPENDENT_REVIEW`, `operational: false` and
+private unsigned evidence plus a counts-only summary. It contains no `review`,
+`historyReview`, operational signature, timing admission or bootstrap authority.
+Baseline v2 and `repsync-staging-virgin-baseline/v2` are unchanged.
+
+`withPrivateBaselineDelivery()` in `scripts/staging-bootstrap-delivery.mjs` is the
+local handoff/consumer interface. It has **no configured delivery provider**.
+Without a separately reviewed, independently authenticated private-storage
+adapter it rejects `PRIVATE_BASELINE_DELIVERY_UNCONFIGURED`; there is no network
+fallback or caller-controlled URL. The workflow is unchanged and hosted delivery
+remains disabled. No new OIDC permission, environment secret or trust root is added.
+
+Future integration must supply a protected, authorized transfer descriptor with
+exact project/organization/origin, execution SHA/tree, raw-file SHA-256 and the
+approved `baselineEvidenceSha256`. The latter preserves the existing envelope's
+canonical full signed-document digest; it is not interchangeable with the raw
+byte digest. Both are checked. The complete independently signed baseline and
+bootstrap authorization are validated before installation, including source,
+target, approval, customer-security and expiry checks. An applicant's file hash or
+claimed authenticated flag cannot confer authority.
+
+The fixed ignored location remains
+`output/staging-release/bootstrap-baselines/<exact-project-ref>.json`.
+Installation refuses existing files and dangling links. The production interface
+requires Linux private directory ownership/mode, descriptor-anchored directory
+operations through `/proc/self/fd`, a regular bounded file (32 MiB), mode 0600,
+fsync and atomic no-overwrite hard-link installation. Ancestors, device/inode,
+bytes and digests are rechecked. The existing descriptor-bound baseline reader
+consumes the installed file. Invocation-owned copies and descriptors are cleaned
+on success and exceptions; replacement identities are rejected and never removed
+as automatic repair. Unix modes are not treated as Windows ACL proof: the
+operational handoff fails closed on Windows. Offline Windows tests mock only the
+Linux permission/descriptor-directory primitives and explicitly do not establish
+Linux runner or NTFS privacy readiness.
+
+The handoff uses the original workflow start timestamp; preparation/download and
+consumer execution share the 45-minute budget and cannot renew it. Existing
+15-minute freshness, 30-minute authorization maximum, timing margins and three
+independently reviewed timing samples remain mandatory. The observer source
+binding includes the new capture/delivery implementations; old baseline approvals
+and timing receipts cannot authorize changed source. `reviewKeys: []` stays disarmed.
+
+The future authorized sequence is: establish and evidence the live exclusion
+window; supply authenticated operator history/provenance; capture at the reviewed
+clean source; independently review the complete private candidate and residual
+history risk within freshness; independently sign with separately enrolled review
+authority; bind exact signed evidence to fresh inventory/timing and authorization;
+deliver through a separately reviewed private provider into the protected Linux
+workflow; consume with the existing guarded bootstrap; remove runner copies.
+No stage auto-approves, enrolls, resumes or repairs a baseline. Fresh capture is
+required after expiry or drift, not an automatic refresh.
+
+Outstanding external dependencies are selection/provisioning of privately
+controlled storage, independently authenticated least-privilege retrieval, review
+of its protected descriptor delivery and cleanup/retention policy, and a reviewed
+workflow adapter preserving the existing main/commit/environment/concurrency gates.
+That integration must cover abnormal process termination and runner disposal;
+JavaScript `finally` cannot guarantee cleanup after a runner crash or forced kill.
+Any failed cleanup is fatal and needs separately authorized disposition, never
+automatic overwrite, replacement or repair.
+Reviewer-key enrollment/custody, human historical-risk acceptance, operational
+signing, hosted endpoint completeness and actual hosted timing are separate gates.
+No raw evidence belongs in Git, CI logs or public/unencrypted workflow artifacts.
+This implementation authorizes none of those operational actions.

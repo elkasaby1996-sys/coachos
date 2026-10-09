@@ -1,11 +1,13 @@
 // Separate empty-project observation: the ordinary release observer requires schema 180.
 // Imports are inert. The only network capabilities below are named-project GETs
 // and the management API read-only SQL endpoint; no provider endpoint is used.
+import { Buffer } from "node:buffer";
 import { ensure } from "./staging-release-artifacts.mjs";
 import { evidenceDigest } from "./staging-release-webhook-history.mjs";
 import {
   observeDatabaseProof,
   assertDatabaseProof,
+  assertCustomerState,
   bootstrapDatabaseProfiles,
   BOOTSTRAP_EMPTY_DATABASE_QUERY,
   BOOTSTRAP_EMPTY_LEDGER_QUERY,
@@ -29,6 +31,77 @@ import {
 
 export const EMPTY_DATABASE_QUERY = BOOTSTRAP_EMPTY_DATABASE_QUERY;
 export const EMPTY_LEDGER_QUERY = BOOTSTRAP_EMPTY_LEDGER_QUERY;
+
+// Source-bound ceilings, not caller options. Count decoded transport bytes, not
+// the potentially absent, compressed or understated Content-Length header.
+export const BOOTSTRAP_RESPONSE_MAX_BYTES = 16 * 1024 * 1024;
+export const BOOTSTRAP_OBSERVATION_MAX_BYTES = 64 * 1024 * 1024;
+
+async function boundedResponseJson(response, budget, signal, fresh) {
+  ensure(response.body?.getReader, "BOOTSTRAP_READ_FAILED");
+  const reader = response.body.getReader();
+  let complete = false;
+  const abort = () => {
+    void reader.cancel().catch(() => {});
+  };
+  signal.addEventListener("abort", abort, { once: true });
+  try {
+    const length = response.headers.get("content-length");
+    if (length !== null) {
+      ensure(/^\d+$/.test(length), "BOOTSTRAP_READ_FAILED");
+      const declared = Number(length);
+      ensure(
+        Number.isSafeInteger(declared) &&
+          declared <= BOOTSTRAP_RESPONSE_MAX_BYTES &&
+          declared <= BOOTSTRAP_OBSERVATION_MAX_BYTES - budget.bytes,
+        "BOOTSTRAP_READ_FAILED",
+      );
+    }
+    // Grow a single byte buffer geometrically: a stream of tiny chunks must not
+    // create an unbounded list of retained chunk objects before JSON parsing.
+    let bytes = Buffer.allocUnsafe(64 * 1024);
+    let used = 0;
+    for (;;) {
+      signal.throwIfAborted();
+      fresh?.();
+      const { done, value } = await reader.read();
+      signal.throwIfAborted();
+      fresh?.();
+      if (done) break;
+      ensure(value instanceof Uint8Array, "BOOTSTRAP_READ_FAILED");
+      ensure(
+        value.byteLength <= BOOTSTRAP_RESPONSE_MAX_BYTES - used &&
+          value.byteLength <= BOOTSTRAP_OBSERVATION_MAX_BYTES - budget.bytes,
+        "BOOTSTRAP_READ_FAILED",
+      );
+      const next = used + value.byteLength;
+      if (next > bytes.length) {
+        const grown = Buffer.allocUnsafe(
+          Math.min(
+            BOOTSTRAP_RESPONSE_MAX_BYTES,
+            Math.max(next, bytes.length * 2),
+          ),
+        );
+        bytes.copy(grown, 0, 0, used);
+        bytes = grown;
+      }
+      bytes.set(value, used);
+      used = next;
+      budget.bytes += value.byteLength;
+    }
+    const result = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, used)),
+    );
+    signal.throwIfAborted();
+    fresh?.();
+    complete = true;
+    return result;
+  } finally {
+    signal.removeEventListener("abort", abort);
+    if (!complete) await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
 
 // Terminal bootstrap observation, including three genuine database reads around
 // the unchanged v3 observer. Metadata and project evidence remain complete too.
@@ -152,25 +225,12 @@ export function assertEmptySnapshot(snapshot, baseline) {
   );
 }
 
-export function createBootstrapObserver(
-  context,
-  env,
-  transport = fetch,
-  options = {},
-) {
-  const now = options.now ?? Date.now;
+// Shared fixed-query reader. Approval is enforced by the ordinary observer;
+// first capture uses the same independent hard gates before review can exist.
+function readOnlyReader(context, env, transport, options) {
   const policy = options.policy ?? replacementPolicy;
-  const baseline = options.baseline;
-  const validate = () =>
-    validateVirginBaseline(
-      baseline,
-      options.identity,
-      context,
-      policy(),
-      now(),
-      (options.reviewPolicy ?? timingReviewPolicy)(),
-    );
-  const request = async (suffix, query) => {
+  const request = async (suffix, query, budget = { bytes: 0 }) => {
+    options.beforeRead?.();
     assertReplacementTarget(context.project, context.origin, policy(), true);
     ensure(
       context.project === env.STAGING_SUPABASE_PROJECT_REF &&
@@ -178,12 +238,13 @@ export function createBootstrapObserver(
       "BOOTSTRAP_PROJECT_BOUNDARY",
     );
     try {
+      const signal = AbortSignal.timeout(options.readTimeout?.() ?? 30_000);
       const response = await transport(
         `https://api.supabase.com/v1/projects/${context.project}${suffix ? "/" + suffix : ""}`,
         {
           method: query ? "POST" : "GET",
           redirect: "error",
-          signal: AbortSignal.timeout(30_000),
+          signal,
           headers: {
             Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}`,
             "Content-Type": "application/json",
@@ -191,16 +252,27 @@ export function createBootstrapObserver(
           ...(query ? { body: JSON.stringify({ query }) } : {}),
         },
       );
-      ensure(response.ok, "BOOTSTRAP_READ_FAILED");
-      return await response.json();
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => {});
+        throw new Error("BOOTSTRAP_READ_FAILED");
+      }
+      const value = await boundedResponseJson(
+        response,
+        budget,
+        signal,
+        options.beforeRead,
+      );
+      options.beforeRead?.();
+      return value;
     } catch {
       throw new Error("BOOTSTRAP_READ_FAILED");
     }
   };
-  const database = async () => {
+  const database = async (budget) => {
     const rows = await request(
       "database/query/read-only",
       EMPTY_DATABASE_QUERY,
+      budget,
     );
     ensure(
       rows?.length === 1 &&
@@ -211,7 +283,7 @@ export function createBootstrapObserver(
     );
     const facts = rows[0].facts;
     const ledger = facts.ledgerPresent
-      ? await request("database/query/read-only", EMPTY_LEDGER_QUERY)
+      ? await request("database/query/read-only", EMPTY_LEDGER_QUERY, budget)
       : [{ ledger: { versions: [], sqlContext: SQL_CONTEXT } }];
     ensure(
       ledger?.length === 1 &&
@@ -221,15 +293,11 @@ export function createBootstrapObserver(
       "BOOTSTRAP_LEDGER_INVALID",
     );
     const proof = await observeDatabaseProof(
-      (sql) => request("database/query/read-only", sql),
+      (sql) => request("database/query/read-only", sql, budget),
       0,
     );
-    assertDatabaseProof(proof, 0, baseline);
-    const namespaces = new Set(
-      baseline.databaseProof.catalog
-        .filter((r) => r[0] === "namespace")
-        .map((r) => r[1]),
-    );
+    options.assertProof(proof);
+    const namespaces = options.namespaces(proof);
     return {
       ...facts,
       customSchemas: proof.catalog.filter(
@@ -239,19 +307,19 @@ export function createBootstrapObserver(
       databaseProof: proof,
     };
   };
-  const metadata = async () => {
-    const project = await request("");
+  const metadata = async (budget = { bytes: 0 }) => {
+    const get = (suffix) => request(suffix, undefined, budget);
+    const project = await get("");
     ensure(
       project.id === context.project &&
         project.status === "ACTIVE_HEALTHY" &&
-        project.organization_id === baseline.target.organization &&
-        Date.parse(project.created_at) ===
-          Date.parse(baseline.creation.createdAt),
+        project.organization_id === options.organization &&
+        Date.parse(project.created_at) === Date.parse(options.createdAt),
       "BOOTSTRAP_PROJECT_NOT_HEALTHY",
     );
-    const functions = normalizeFunctionInventory(await request("functions"));
-    const secrets = normalizeSecrets(await request("secrets"));
-    const rawAuth = await request("config/auth");
+    const functions = normalizeFunctionInventory(await get("functions"));
+    const secrets = normalizeSecrets(await get("secrets"));
+    const rawAuth = await get("config/auth");
     const auth = normalizeAuth(rawAuth);
     const p = bootstrapDatabaseProfiles();
     ensure(
@@ -281,8 +349,8 @@ export function createBootstrapObserver(
       ),
       "BOOTSTRAP_CUSTOMER_AUTH_CONFIGURATION",
     );
-    const sso = await request("config/auth/sso/providers"),
-      integrations = await request("config/auth/third-party-auth");
+    const sso = await get("config/auth/sso/providers"),
+      integrations = await get("config/auth/third-party-auth");
     ensure(
       sso &&
         Object.keys(sso).length === 1 &&
@@ -307,18 +375,80 @@ export function createBootstrapObserver(
       },
     };
   };
-  const snapshot = async () => {
-    const facts = await database(),
-      meta = await metadata(),
-      closingFacts = await database();
+  const snapshot = async (budget) => {
+    const facts = await database(budget),
+      meta = await metadata(budget),
+      closingFacts = await database(budget);
     ensure(
       evidenceDigest(facts) === evidenceDigest(closingFacts),
       "DATABASE_DRIFT",
     );
     const value = { facts, ...meta };
-    assertEmptySnapshot(value, baseline);
+    options.assertSnapshot(value);
     return value;
   };
+  return { request, metadata, snapshot };
+}
+
+export const CAPTURE_ORGANIZATION = "aerjnyzewgglcpkbrxyn";
+// No approval, SQL or mutation capability is exposed by this interface.
+export function createBootstrapCaptureReader(context, env, transport, options) {
+  let namespaces;
+  // One budget for all opening/closing/confirmation reads; no reset per snapshot.
+  const budget = { bytes: 0 };
+  const reader = readOnlyReader(context, env, transport, {
+    ...options,
+    organization: CAPTURE_ORGANIZATION,
+    assertProof: (proof) => assertCustomerState(proof, 0),
+    namespaces: (proof) => {
+      namespaces ??= new Set(
+        proof.catalog.filter((r) => r[0] === "namespace").map((r) => r[1]),
+      );
+      return namespaces;
+    },
+    assertSnapshot: options.assertSnapshot,
+  });
+  // The opening catalog is retained in full. Namespace membership does not
+  // establish historical provenance; attestation and independent review do.
+  return { snapshot: () => reader.snapshot(budget) };
+}
+
+export function createBootstrapObserver(
+  context,
+  env,
+  transport = fetch,
+  options = {},
+) {
+  const now = options.now ?? Date.now;
+  const policy = options.policy ?? replacementPolicy;
+  const baseline = options.baseline;
+  const validate = () =>
+    validateVirginBaseline(
+      baseline,
+      options.identity,
+      context,
+      policy(),
+      now(),
+      (options.reviewPolicy ?? timingReviewPolicy)(),
+    );
+  const { request, metadata, snapshot } = readOnlyReader(
+    context,
+    env,
+    transport,
+    {
+      policy,
+      organization: baseline?.target.organization,
+      createdAt: baseline?.creation.createdAt,
+      assertProof: (proof) => assertDatabaseProof(proof, 0, baseline),
+      namespaces: () =>
+        new Set(
+          baseline.databaseProof.catalog
+            .filter((r) => r[0] === "namespace")
+            .map((r) => r[1]),
+        ),
+      assertSnapshot: (value) => assertEmptySnapshot(value, baseline),
+    },
+  );
   return {
     metadata: async () => {
       validate();
@@ -334,6 +464,7 @@ export function createBootstrapObserver(
       return proof;
     },
     async observe() {
+      const budget = { bytes: 0 };
       const startedAt = new Date(now()).toISOString();
       validate();
       const fresh = () =>
@@ -348,11 +479,11 @@ export function createBootstrapObserver(
           },
           now(),
         );
-      const opening = await snapshot();
+      const opening = await snapshot(budget);
       fresh();
-      const closing = await snapshot();
+      const closing = await snapshot(budget);
       fresh();
-      const confirmation = await snapshot();
+      const confirmation = await snapshot(budget);
       fresh();
       const surfaces = {
         DATABASE_DRIFT: (s) => evidenceDigest(s.facts),

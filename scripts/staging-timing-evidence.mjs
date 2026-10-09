@@ -46,6 +46,8 @@ export function timingSampleBinding(
 ) {
   const files = [
     "staging-bootstrap-observation.mjs",
+    "staging-bootstrap-capture.mjs",
+    "staging-bootstrap-delivery.mjs",
     "staging-bootstrap-database.mjs",
     "staging-bootstrap-baseline.mjs",
     "staging-bootstrap-contracts.mjs",
