@@ -6,6 +6,7 @@ import {
   emptyDatabaseFixture,
   checkpointDatabaseFixture,
   signBaselineFixture,
+  retrospectiveBaselineFixture,
 } from "../helpers/staging-timing-fixture";
 import {
   bootstrapDatabaseProfiles,
@@ -255,10 +256,13 @@ function transportHarness(
 async function setup(
   change?: (state: any, pass: number) => void,
   delay?: (pass: number) => number,
+  retrospective = false,
 ) {
   const stable = transportHarness();
+  if (retrospective) retrospectiveBaselineFixture(stable.baseline);
   const inventory = await stable.observer.observe();
   const h = transportHarness(change, delay);
+  if (retrospective) retrospectiveBaselineFixture(h.baseline);
   const auth: any = {
     schemaVersion: 2,
     phase: "EMPTY_TO_180",
@@ -796,6 +800,230 @@ describe("actual empty observation adapter through mutation runner", () => {
       "BOOTSTRAP_ARGUMENTS_INVALID",
     );
   });
+});
+
+describe("PAY-05AW retrospective runner boundaries", () => {
+  it(
+    "permits the signed retrospective control through the actual observer and runner",
+    async () => {
+      const t = await setup(undefined, undefined, true);
+      expect((await t.run()).status).toBe("complete");
+      expect(t.mutations).toHaveLength(1);
+      expect(t.mutations[0]).toEqual(["db", "push", "--linked", "--yes"]);
+    },
+    runnerTestTimeout,
+  );
+  it.each([
+    "no modification",
+    "unknown history",
+    "managed customization",
+    "restore",
+    "unsigned",
+    "self approval",
+    "risk acceptance",
+    "identity evidence",
+    "copied target",
+    "old baseline",
+    "expired authority",
+    "current clients",
+    "current ingress",
+    "current manual",
+    "current background",
+  ])(
+    "blocks retrospective %s before any read or command",
+    async (kind) => {
+      const t = await setup(undefined, undefined, true);
+      const b = t.input.baseline;
+      if (kind === "no modification")
+        b.creation.history.noUnreviewedCustomerModification = false;
+      if (kind === "unknown history")
+        b.creation.history.customerModificationHistoryKnown = false;
+      if (kind === "managed customization")
+        b.creation.knownCustomerCustomizations = ["customer Storage index"];
+      if (kind === "restore") b.creation.noRestoreOrImport = false;
+      if (kind === "self approval")
+        b.historyReview.reviewerIdentity = b.creation.operatorIdentity;
+      if (kind === "risk acceptance")
+        b.historyReview.residualRiskAccepted = false;
+      if (kind === "identity evidence")
+        b.creation.history.operatorAuthenticationEvidenceSha256 = [];
+      if (kind === "copied target") b.target.project = "z".repeat(20);
+      if (kind === "old baseline") b.schemaVersion = 1;
+      signBaselineFixture(b);
+      if (kind === "unsigned") b.review.signature = "A".repeat(86) + "==";
+      if (kind === "expired authority") t.auth.expiresAt = stamp();
+      const current: Record<string, string> = {
+        "current clients": "clientsExcluded",
+        "current ingress": "providerIngressExcluded",
+        "current manual": "manualWritersExcluded",
+        "current background": "backgroundWritersExcluded",
+      };
+      if (current[kind]) t.auth.operational[current[kind]] = false;
+      // Rebind every unrelated digest/sample so the intended precondition rejects.
+      t.auth.baselineEvidenceSha256 = evidenceDigest(b);
+      t.auth.bindingDigest = evidenceDigest(
+        bootstrapBinding(identity, context, policy, contracts, b),
+      );
+      t.input.timingAdmission = timingFixture(
+        "EMPTY_TO_180",
+        t.auth,
+        identity,
+        context,
+        contracts,
+        clock,
+        policy,
+      );
+      const result = await t.run();
+      const expected =
+        kind === "unsigned"
+          ? "BOOTSTRAP_BASELINE_REVIEW_REQUIRED"
+          : kind === "self approval"
+            ? "BOOTSTRAP_BASELINE_HISTORY_REVIEW_INVALID"
+            : kind === "copied target"
+              ? "BOOTSTRAP_BASELINE_BINDING"
+              : kind === "expired authority"
+                ? "BOOTSTRAP_AUTHORIZATION_STALE"
+                : current[kind]
+                  ? "BOOTSTRAP_AUTHORIZATION_INVALID"
+                  : "BOOTSTRAP_BASELINE_INVALID";
+      expect(result.status).toBe("blocked");
+      expect(result.errorCode).toBe(expected);
+      expect(t.h.requests).toHaveLength(0);
+      expect(t.commands).toHaveLength(0);
+      expect(t.mutations).toHaveLength(0);
+    },
+    runnerTestTimeout,
+  );
+  it(
+    "retrospective approval cannot override an unsafe matching ACL",
+    async () => {
+      const t = await setup(undefined, undefined, true);
+      const b = t.input.baseline;
+      const proof = structuredClone(b.databaseProof);
+      proof.customerSecurity.find(
+        (r: any) =>
+          r[0] === "acl" &&
+          r[1].join(".") === "relation.storage.objects" &&
+          r[3][1] === "anon" &&
+          r[4] === "UPDATE",
+      )[5] = true;
+      b.databaseProof = databaseProof(proof);
+      for (const key of ["opening", "closing", "confirmation"])
+        b.capture[key].facts.databaseProof = structuredClone(b.databaseProof);
+      signBaselineFixture(b);
+      t.auth.baselineEvidenceSha256 = evidenceDigest(b);
+      t.auth.bindingDigest = evidenceDigest(
+        bootstrapBinding(identity, context, policy, contracts, b),
+      );
+      expect((await t.run()).errorCode).toBe(
+        "BOOTSTRAP_CUSTOMER_SECURITY_MISMATCH",
+      );
+      expect(t.h.requests).toHaveLength(0);
+      expect(t.commands).toHaveLength(0);
+    },
+    runnerTestTimeout,
+  );
+  it.each(["index", "final read"])(
+    "retrospective %s drift withholds the push",
+    async (kind) => {
+      const t = await setup(undefined, undefined, true);
+      t.h.setCatalogChange((s, n) => {
+        if (n !== (kind === "final read" ? 6 : 2)) return;
+        const proof = s.facts.databaseProof;
+        if (kind === "index") {
+          proof.catalog.push([
+            "index_security",
+            "storage.objects.customer_unique",
+            ["supabase_storage_admin", true, true, true],
+          ]);
+          proof.catalogCount++;
+          delete proof.catalogDigest;
+          delete proof.platformDigest;
+          s.facts.databaseProof = databaseProof(proof);
+        } else proof.sqlPlatformDigest = "f".repeat(64);
+      });
+      const result = await t.run();
+      expect(result.status).toBe("blocked");
+      expect(result.errorCode).toMatch(
+        kind === "index"
+          ? /BOOTSTRAP_DATABASE_PROFILE_MISMATCH/
+          : /DATABASE_DRIFT/,
+      );
+      expect(t.commands).toHaveLength(0);
+      expect(t.mutations).toHaveLength(0);
+    },
+    runnerTestTimeout,
+  );
+  it.each(["before push", "after push"])(
+    "stops when live exclusions lapse %s",
+    async (when) => {
+      const t = await setup(undefined, undefined, true);
+      const original = t.adapter.command;
+      t.adapter.command = (args: string[], directory: string) => {
+        const result = original(args, directory);
+        if (when === "before push" && args.includes("--dry-run")) {
+          t.auth.operational.manualWritersExcluded = false;
+        }
+        return result;
+      };
+      if (when === "after push")
+        t.adapter.observeRelease = async () => {
+          // Lapse during the post-push observation, immediately before the next
+          // authorization guard; earlier timing checks still have valid bindings.
+          t.auth.operational.manualWritersExcluded = false;
+          return t.after;
+        };
+      t.adapter.ledgerCount = async () => (when === "after push" ? 180 : 0);
+      const result = await t.run();
+      expect(result.errorCode).toBe("BOOTSTRAP_AUTHORIZATION_INVALID");
+      expect(result.status).toBe("blocked");
+      expect(result.ledgerCount).toBe(when === "after push" ? 180 : 0);
+      expect(result.automaticResume).toBe(false);
+      expect(t.mutations).toHaveLength(when === "after push" ? 1 : 0);
+      expect(t.commands).toHaveLength(when === "after push" ? 3 : 2);
+    },
+    runnerTestTimeout,
+  );
+  it.each(["authorization", "timing receipts"])(
+    "cannot reuse creation-time %s for retrospective approval",
+    async (kind) => {
+      const t = await setup();
+      retrospectiveBaselineFixture(t.input.baseline);
+      if (kind === "timing receipts") {
+        const oldSamples = t.input.timingAdmission.samples;
+        t.auth.baselineEvidenceSha256 = evidenceDigest(t.input.baseline);
+        t.auth.bindingDigest = evidenceDigest(
+          bootstrapBinding(
+            identity,
+            context,
+            policy,
+            contracts,
+            t.input.baseline,
+          ),
+        );
+        t.input.timingAdmission = timingFixture(
+          "EMPTY_TO_180",
+          t.auth,
+          identity,
+          context,
+          contracts,
+          clock,
+          policy,
+        );
+        t.input.timingAdmission.samples = oldSamples;
+        signTimingFixture(t.input.timingAdmission);
+      }
+      const result = await t.run();
+      expect(result.errorCode).toBe(
+        kind === "authorization"
+          ? "BOOTSTRAP_AUTHORIZATION_BINDING"
+          : "TIMING_RECEIPT_BINDING",
+      );
+      expect(t.h.requests).toHaveLength(0);
+      expect(t.commands).toHaveLength(0);
+    },
+    runnerTestTimeout,
+  );
 });
 
 describe("PAY-05AQ hard gates before any subsequent mutation", () => {

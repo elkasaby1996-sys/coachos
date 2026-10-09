@@ -11,6 +11,7 @@ import {
 import {
   baselineReviewMessage,
   baselineSourceBinding,
+  RETROSPECTIVE_RESIDUAL_RISK,
 } from "../../scripts/staging-bootstrap-baseline.mjs";
 import {
   bootstrapDatabaseProfiles,
@@ -45,15 +46,57 @@ export function signTimingFixture(admission: any) {
   ).toString("base64");
   return admission;
 }
-export function signBaselineFixture(baseline: any) {
+export function signBaselineFixture(baseline: any, domain?: string) {
   baseline.review = { keyId, signature: "" };
   baseline.reviewEvidenceSha256 = evidenceDigest(timingReviewPayload(baseline));
   baseline.review.signature = sign(
     null,
-    baselineReviewMessage(baseline),
+    domain
+      ? Buffer.from(
+          domain + "\n" + evidenceDigest(timingReviewPayload(baseline)),
+          "utf8",
+        )
+      : baselineReviewMessage(baseline),
     keys.privateKey,
   ).toString("base64");
   return baseline;
+}
+export function retrospectiveBaselineFixture(baseline: any) {
+  baseline.creation.history = {
+    schemaVersion: 1,
+    mode: "retrospective_non_modification",
+    operatorAuthenticationEvidenceSha256: ["a".repeat(64)],
+    noUnreviewedCustomerModification: true,
+    customerModificationHistoryKnown: true,
+    historicalAccess: {
+      writeCapabilityMayHaveExisted: true,
+      actors: [
+        {
+          identity: baseline.creation.operatorIdentity,
+          writeCapable: true,
+          evidenceSha256: ["b".repeat(64)],
+        },
+      ],
+      evidenceSha256: ["c".repeat(64)],
+      limitations: [
+        "Synthetic record: direct SQL history is not independently complete.",
+      ],
+    },
+    knownConfigurationChanges: [],
+  };
+  baseline.historyReview = {
+    mode: "retrospective_non_modification",
+    reviewerIdentity: "synthetic-independent-reviewer",
+    independentOfOperator: true,
+    operatorIdentityAuthenticated: true,
+    evidenceBindingsVerified: true,
+    historicalWriteCapabilityAcknowledged: true,
+    accessLimitationsReviewed: true,
+    configurationChangesReviewed: true,
+    residualRiskAccepted: true,
+    residualRiskStatement: RETROSPECTIVE_RESIDUAL_RISK,
+  };
+  return signBaselineFixture(baseline);
 }
 export function emptyDatabaseFixture() {
   const p = bootstrapDatabaseProfiles();
@@ -130,7 +173,7 @@ export function baselineFixture(
 ) {
   const stamp = (n: number) => new Date(n).toISOString();
   return signBaselineFixture({
-    schemaVersion: 1,
+    schemaVersion: 2,
     classification: "AMBIGUOUS_MANAGED_BASELINE_PINNED",
     target: {
       project: context.project,
@@ -146,8 +189,21 @@ export function baselineFixture(
       attestedAt: stamp(now),
       noManagedSchemaCustomizationSinceProjectCreation: true,
       knownCustomerCustomizations: [],
-      writersExcludedSinceCreation: true,
       noRestoreOrImport: true,
+      history: {
+        schemaVersion: 1,
+        mode: "creation_time_exclusion",
+        operatorAuthenticationEvidenceSha256: ["a".repeat(64)],
+        writersExcludedSinceCreation: true,
+      },
+      captureExclusion: {
+        clientsExcluded: true,
+        providerIngressExcluded: true,
+        manualWritersExcluded: true,
+        backgroundWritersExcluded: true,
+        establishedAt: stamp(now),
+        quietWindowEndsAt: stamp(now + 31 * 60_000),
+      },
     },
     databaseProof: snapshot.facts.databaseProof,
     capture: {
@@ -160,6 +216,13 @@ export function baselineFixture(
     },
     completeEvidenceReviewed: true,
     creationHistoryReviewed: true,
+    historyReview: {
+      mode: "creation_time_exclusion",
+      reviewerIdentity: "synthetic-independent-reviewer",
+      independentOfOperator: true,
+      operatorIdentityAuthenticated: true,
+      evidenceBindingsVerified: true,
+    },
     reviewEvidenceSha256: "f".repeat(64),
   });
 }
