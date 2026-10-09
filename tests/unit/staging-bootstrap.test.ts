@@ -200,7 +200,7 @@ function transportHarness(
     else if (url.endsWith("/config/auth/sso/providers")) result = { items: [] };
     else if (url.endsWith("/config/auth/third-party-auth")) result = [];
     else throw Error("unexpected endpoint");
-    return { ok: true, json: async () => structuredClone(result) };
+    return new Response(JSON.stringify(result));
   };
   const secrets = normalizeSecrets(state.secrets),
     auth = normalizeAuth(state.auth);
