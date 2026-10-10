@@ -31,6 +31,7 @@ import {
 import { evidenceDigest } from "../../scripts/staging-release-webhook-history.mjs";
 import { hash } from "../../scripts/billing-retirement-release.mjs";
 import { readBaselineEvidence } from "../../scripts/staging-bootstrap-baseline.mjs";
+import { founderFixture } from "../helpers/staging-founder-fixture";
 
 const redirected = vi.hoisted(() => ({
   root: "",
@@ -195,6 +196,48 @@ function fixture() {
   };
 }
 describe("private baseline delivery boundary", () => {
+  it("delivers only a v2 founder descriptor with scoped action and signed v3 evidence", async () => {
+    const h = fixture(),
+      f = founderFixture(captureContext, captureClock);
+    h.baseline = Object.assign(h.baseline, f.baseline(h.baseline, identity));
+    h.options.context = f.context;
+    h.options.mode = "preflight";
+    h.bind();
+    h.options.authorization.bindingDigest = evidenceDigest(
+      bootstrapBinding(
+        identity,
+        f.context,
+        replacementPolicy(),
+        contracts,
+        h.baseline,
+      ),
+    );
+    h.options.actionEnvelope = f.action({
+      ...h.options,
+      phase: "EMPTY_TO_180",
+    });
+    h.options.workflow = h.options.actionEnvelope.workflow;
+    h.options.delivery = {
+      ...h.options.delivery,
+      schemaVersion: 2,
+      governanceMode: f.context.governanceMode,
+      governancePolicyDigest: evidenceDigest(f.policy),
+      actionEnvelopeDigest: evidenceDigest(h.options.actionEnvelope),
+    };
+    const result = await withPrivateBaselineDelivery(h.options, h.consume, {
+      ...h.deps,
+      ...f.deps,
+    });
+    expect(result).toBe("consumed");
+    expect(existsSync(h.target())).toBe(false);
+    h.options.delivery.schemaVersion = 1;
+    await expect(
+      withPrivateBaselineDelivery(h.options, h.consume, {
+        ...h.deps,
+        ...f.deps,
+      }),
+    ).rejects.toThrow("PRIVATE_BASELINE_DELIVERY_INVALID");
+  });
   it("atomically installs only exact approved bytes for the existing consumer and removes them", async () => {
     const h = fixture();
     expect(

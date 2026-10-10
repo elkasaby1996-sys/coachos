@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "mode": "founder_owned_synthetic_staging_v1",
+  "enabled": false,
+  "scope": {
+    "repository": "elkasaby1996-sys/coachos",
+    "repositoryId": null,
+    "project": "exmrksgdikfprtfeltzu",
+    "organization": "aerjnyzewgglcpkbrxyn",
+    "origin": "https://repsync-staging-replacement.netlify.app",
+    "environment": "supabase-staging",
+    "paddleEnvironment": "sandbox",
+    "customerData": "synthetic_only"
+  },
+  "founder": null,
+  "validFrom": null,
+  "expiresAt": null,
+  "keys": []
+}

@@ -24,6 +24,13 @@ import {
 } from "./staging-bootstrap-database.mjs";
 import { assertObservationFresh } from "./staging-release-observation.mjs";
 import {
+  FOUNDER_MODE,
+  FOUNDER_ACCEPTANCE,
+  founderPolicy,
+  founderGovernanceSchema,
+  assertFounderReview,
+} from "./staging-founder-governance.mjs";
+import {
   assertEvidenceReview,
   timingReviewPolicy,
   timingReviewPayload,
@@ -147,6 +154,21 @@ export const baselineSchema = z.strictObject({
   reviewEvidenceSha256: digest,
   review: timingReviewSchema,
 });
+export const founderBaselineSchema = baselineSchema.extend({
+  schemaVersion: z.literal(3),
+  governance: founderGovernanceSchema,
+  historyReview: z.discriminatedUnion(
+    "mode",
+    historyReview.options.map((schema) =>
+      schema.extend({
+        independentOfOperator: z.literal(false),
+        sameHuman: z.literal(true),
+        residualRiskAccepted: z.literal(true),
+        residualRiskStatement: z.literal(FOUNDER_ACCEPTANCE),
+      }),
+    ),
+  ),
+});
 export const baselineReviewMessage = (baseline) =>
   Buffer.from(
     BASELINE_REVIEW_DOMAIN +
@@ -154,7 +176,12 @@ export const baselineReviewMessage = (baseline) =>
       evidenceDigest(timingReviewPayload(baseline)),
     "utf8",
   );
-export function baselineSourceBinding(identity, context, policy) {
+export function baselineSourceBinding(
+  identity,
+  context,
+  policy,
+  governancePolicy = founderPolicy(),
+) {
   return {
     sha: context.commit,
     tree: context.tree,
@@ -165,6 +192,9 @@ export function baselineSourceBinding(identity, context, policy) {
       policy,
       databasePolicyDigest: bootstrapDatabasePolicyDigest(),
       review: timingReviewPolicy(),
+      ...(context.governanceMode === FOUNDER_MODE
+        ? { founder: governancePolicy }
+        : {}),
     }),
     querySha256: evidenceDigest([
       BOOTSTRAP_CATALOG_QUERY,
@@ -236,25 +266,58 @@ export function validateVirginBaseline(
   policy,
   now = Date.now(),
   reviewPolicy = timingReviewPolicy(),
+  governancePolicy = founderPolicy(),
 ) {
-  const parsed = baselineSchema.safeParse(raw);
+  const founder = context.governanceMode === FOUNDER_MODE;
+  const parsed = (founder ? founderBaselineSchema : baselineSchema).safeParse(
+    raw,
+  );
   ensure(parsed.success, "BOOTSTRAP_BASELINE_INVALID");
   const b = parsed.data;
-  assertEvidenceReview(
-    b,
-    BASELINE_REVIEW_DOMAIN,
-    reviewPolicy,
-    "BOOTSTRAP_BASELINE_REVIEW_REQUIRED",
-  );
+  if (founder) {
+    assertFounderReview(
+      b,
+      "baseline",
+      "EMPTY_TO_180",
+      context,
+      governancePolicy,
+      now,
+    );
+    ensure(
+      b.creation.operatorIdentity === b.governance.operatorIdentity &&
+        b.target.organization === b.governance.scope.organization &&
+        b.historyReview.reviewerIdentity === b.governance.approverIdentity &&
+        Date.parse(b.governance.createdAt) >=
+          Date.parse(b.capture.completedAt) &&
+        Date.parse(b.governance.expiresAt) <= Date.parse(b.capture.expiresAt),
+      "BOOTSTRAP_BASELINE_FOUNDER_BINDING",
+    );
+  } else
+    assertEvidenceReview(
+      b,
+      BASELINE_REVIEW_DOMAIN,
+      reviewPolicy,
+      "BOOTSTRAP_BASELINE_REVIEW_REQUIRED",
+    );
   ensure(
     b.historyReview.mode === b.creation.history.mode &&
-      b.historyReview.reviewerIdentity !== b.creation.operatorIdentity,
+      (founder
+        ? b.historyReview.reviewerIdentity === b.creation.operatorIdentity
+        : b.historyReview.reviewerIdentity !== b.creation.operatorIdentity),
     "BOOTSTRAP_BASELINE_HISTORY_REVIEW_INVALID",
   );
-  assertCandidate(b, identity, context, policy, now);
+  assertCandidate(b, identity, context, policy, now, governancePolicy);
   return b;
 }
 const candidateSchema = baselineSchema.omit({
+  completeEvidenceReviewed: true,
+  creationHistoryReviewed: true,
+  historyReview: true,
+  reviewEvidenceSha256: true,
+  review: true,
+});
+const founderCandidateSchema = founderBaselineSchema.omit({
+  governance: true,
   completeEvidenceReviewed: true,
   creationHistoryReviewed: true,
   historyReview: true,
@@ -267,23 +330,38 @@ export function validateBaselineCandidate(
   context,
   policy,
   now = Date.now(),
+  governancePolicy = founderPolicy(),
 ) {
-  const parsed = candidateSchema.safeParse(raw);
+  const founder = context.governanceMode === FOUNDER_MODE;
+  const parsed = (founder ? founderCandidateSchema : candidateSchema).safeParse(
+    raw,
+  );
   ensure(parsed.success, "BOOTSTRAP_BASELINE_CANDIDATE_INVALID");
-  assertCandidate(parsed.data, identity, context, policy, now);
+  assertCandidate(
+    parsed.data,
+    identity,
+    context,
+    policy,
+    now,
+    governancePolicy,
+  );
   return {
-    status: "CANDIDATE_REQUIRES_INDEPENDENT_REVIEW",
+    status: founder
+      ? "CANDIDATE_REQUIRES_FOUNDER_REVIEW"
+      : "CANDIDATE_REQUIRES_INDEPENDENT_REVIEW",
     operational: false,
     evidenceSha256: evidenceDigest(parsed.data),
   };
 }
-function assertCandidate(b, identity, context, policy, now) {
+function assertCandidate(b, identity, context, policy, now, governancePolicy) {
   assertReplacementTarget(context.project, context.origin, policy, true);
   ensure(
     b.target.project === context.project &&
       b.target.origin === context.origin &&
       evidenceDigest(b.source) ===
-        evidenceDigest(baselineSourceBinding(identity, context, policy)),
+        evidenceDigest(
+          baselineSourceBinding(identity, context, policy, governancePolicy),
+        ),
     "BOOTSTRAP_BASELINE_BINDING",
   );
   const start = Date.parse(b.capture.startedAt),

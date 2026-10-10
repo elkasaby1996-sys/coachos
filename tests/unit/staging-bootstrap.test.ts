@@ -685,14 +685,18 @@ describe("actual empty observation adapter through mutation runner", () => {
       expect(t.mutations).toHaveLength(0);
     },
   );
-  it("re-observes after dry-run and blocks later drift", async () => {
-    const t = await setup((s, pass) => {
-      if (pass === 5) s.auth.disable_signup = true;
-    });
-    expect((await t.run()).status).toBe("blocked");
-    expect(t.commands.some((a: any) => a.includes("--dry-run"))).toBe(true);
-    expect(t.mutations).toHaveLength(0);
-  });
+  it(
+    "re-observes after dry-run and blocks later drift",
+    async () => {
+      const t = await setup((s, pass) => {
+        if (pass === 5) s.auth.disable_signup = true;
+      });
+      expect((await t.run()).status).toBe("blocked");
+      expect(t.commands.some((a: any) => a.includes("--dry-run"))).toBe(true);
+      expect(t.mutations).toHaveLength(0);
+    },
+    runnerTestTimeout,
+  );
   it(
     "rejects local validation consuming the last freshness margin",
     async () => {
@@ -789,12 +793,16 @@ describe("actual empty observation adapter through mutation runner", () => {
     },
     runnerTestTimeout,
   );
-  it("does not claim success from CLI exit when checkpoint fails", async () => {
-    const t = await setup();
-    t.after.facts.policy.sales = true;
-    expect((await t.run()).status).toBe("blocked");
-    expect(t.mutations).toHaveLength(1);
-  });
+  it(
+    "does not claim success from CLI exit when checkpoint fails",
+    async () => {
+      const t = await setup();
+      t.after.facts.policy.sales = true;
+      expect((await t.run()).status).toBe("blocked");
+      expect(t.mutations).toHaveLength(1);
+    },
+    runnerTestTimeout,
+  );
   it("forbids arbitrary target/phase from CLI before remote capability", async () => {
     await expect(runBootstrapCli(["apply", "181"], {})).rejects.toThrow(
       "BOOTSTRAP_ARGUMENTS_INVALID",
@@ -1282,6 +1290,20 @@ describe("handoff and whole-phase feasibility", () => {
       "cancel-in-progress": false,
     });
     expect(workflow.jobs.bootstrap.environment).toBe("supabase-staging");
+    expect(workflow.jobs.bootstrap.env.STAGING_GOVERNANCE_MODE).toBe(
+      "founder_owned_synthetic_staging_v1",
+    );
+    expect(
+      workflow.jobs.bootstrap.steps.some((s: any) =>
+        s.run?.includes("npm run test:unit"),
+      ),
+    ).toBe(true);
+    const operation = workflow.jobs.bootstrap.steps.find(
+      (s: any) => s.env?.STAGING_BOOTSTRAP_AUTHORIZATION,
+    );
+    expect(operation.env.STAGING_FOUNDER_ACTION).toBe(
+      "${{ secrets.STAGING_FOUNDER_ACTION }}",
+    );
     expect(workflow.jobs.bootstrap.if).toBe("github.ref == 'refs/heads/main'");
     expect(workflow.on.workflow_dispatch.inputs.mode.options).toEqual([
       "plan",
@@ -1390,6 +1412,7 @@ describe("PAY-05AD-R2 completion and positive database admission", () => {
       expect(result.ledgerCount).toBe(180);
       expect(result.automaticResume).toBe(false);
     },
+    runnerTestTimeout,
   );
   it.each([
     "identity",
@@ -1478,20 +1501,24 @@ describe("PAY-05AD-R2 completion and positive database admission", () => {
       expect(t.commands).toHaveLength(0);
     },
   );
-  it("blocks a late mutation return with actual ledger evidence", async () => {
-    const t = await setup(),
-      command = t.adapter.command;
-    t.adapter.command = (args: any, dir: any) => {
-      const result = command(args, dir);
-      if (args.includes("--yes")) t.h.setNow(clock + 1001);
-      return result;
-    };
-    t.adapter.ledgerCount = async () => 180;
-    const result = await t.run();
-    expect(result.errorCode).toBe("TIMING_OPERATION_OVERRUN");
-    expect(result.ledgerCount).toBe(180);
-    expect(result.status).toBe("blocked");
-  });
+  it(
+    "blocks a late mutation return with actual ledger evidence",
+    async () => {
+      const t = await setup(),
+        command = t.adapter.command;
+      t.adapter.command = (args: any, dir: any) => {
+        const result = command(args, dir);
+        if (args.includes("--yes")) t.h.setNow(clock + 1001);
+        return result;
+      };
+      t.adapter.ledgerCount = async () => 180;
+      const result = await t.run();
+      expect(result.errorCode).toBe("TIMING_OPERATION_OVERRUN");
+      expect(result.ledgerCount).toBe(180);
+      expect(result.status).toBe("blocked");
+    },
+    runnerTestTimeout,
+  );
 });
 
 it(

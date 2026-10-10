@@ -3,6 +3,7 @@ import { captureBaselineCandidate } from "../../scripts/staging-bootstrap-captur
 import { validateVirginBaseline } from "../../scripts/staging-bootstrap-baseline.mjs";
 import { replacementPolicy } from "../../scripts/staging-replacement-target.mjs";
 import { retrospectiveBaselineFixture } from "../helpers/staging-timing-fixture";
+import { founderFixture } from "../helpers/staging-founder-fixture";
 import {
   captureFixture,
   captureClock,
@@ -47,6 +48,40 @@ function paddedResponse(json: string, size: number, headers?: HeadersInit) {
 }
 
 describe("first-capture unsigned evidence", () => {
+  it("captures an unsigned founder candidate only with scoped capture action authority", async () => {
+    const h = captureFixture();
+    const f = founderFixture(h.options.context, captureClock);
+    const input: any = {
+      phase: "CAPTURE_BASELINE",
+      mode: "preflight",
+      identity: h.identity,
+      context: f.context,
+      contracts: {},
+      authorization: {
+        operator: h.options.operator,
+        expiresAt: h.options.expiresAt,
+      },
+    };
+    input.authorization.operator.operatorIdentity = f.policy.founder.subject;
+    const action = f.action(input);
+    const result = await captureBaselineCandidate(
+      {
+        ...h.options,
+        context: f.context,
+        actionEnvelope: action,
+        workflow: input.workflow,
+      },
+      { ...h.dependencies, ...f.deps },
+    );
+    expect(result).toMatchObject({
+      status: "CANDIDATE_REQUIRES_FOUNDER_REVIEW",
+      operational: false,
+    });
+    expect(result.candidate.schemaVersion).toBe(3);
+    expect(result.candidate.review).toBeUndefined();
+    expect(result.candidate.governance).toBeUndefined();
+    expect(h.reads()).toBe(6);
+  });
   it.each(["creation", "retrospective"])(
     "collects three independent complete observations: %s",
     async (mode) => {

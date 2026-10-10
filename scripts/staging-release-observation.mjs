@@ -15,6 +15,7 @@ import {
 } from "./staging-release-artifacts.mjs";
 import { LS_TOMBSTONES } from "./billing-deployment-contract.mjs";
 import { assertReplacementTarget } from "./staging-replacement-target.mjs";
+import { FOUNDER_MODE } from "./staging-founder-governance.mjs";
 import {
   webhookHistoryQuery,
   classifyWebhookHistory,
@@ -302,9 +303,17 @@ export function createRemoteAdapter(
   env = process.env,
   transport = fetch,
   webhookReview = EMPTY_WEBHOOK_REVIEW,
+  governance = {},
 ) {
   const wrapper = resolve("scripts/supabase-remote-guard.mjs");
   const boundary = () => {
+    if (context.governanceMode === FOUNDER_MODE) {
+      ensure(
+        typeof governance.authorizeFounder === "function",
+        "FOUNDER_ACTION_REQUIRED",
+      );
+      governance.authorizeFounder();
+    }
     assertReplacementTarget(context.project, context.origin);
     ensure(
       context.project === env.STAGING_SUPABASE_PROJECT_REF &&

@@ -6,6 +6,12 @@ import { assertObservationFresh } from "./staging-release-observation.mjs";
 import { assertEmptySnapshot } from "./staging-bootstrap-observation.mjs";
 import { replacementPolicy } from "./staging-replacement-target.mjs";
 import {
+  FOUNDER_MODE,
+  founderPolicy,
+  beginFounderOperation,
+  validateFounderAction,
+} from "./staging-founder-governance.mjs";
+import {
   BOOTSTRAP_PHASE,
   bootstrapArtifact,
   disposableBootstrap,
@@ -27,6 +33,8 @@ export async function runBootstrap(
     baseline,
     timingAdmission,
     workflowStartedAt,
+    actionEnvelope,
+    workflow,
     root = process.cwd(),
   },
   adapter,
@@ -57,8 +65,64 @@ export async function runBootstrap(
     inventoryStarted = false,
     observation,
     directory,
-    timing;
+    timing,
+    founderOperation;
   const authorize = () => {
+    const founder = context.governanceMode === FOUNDER_MODE;
+    ensure(
+      founder ||
+        (!actionEnvelope &&
+          timingAdmission?.schemaVersion !== 3 &&
+          baseline?.schemaVersion !== 3),
+      "FOUNDER_MODE_REQUIRED",
+    );
+    if (founder) {
+      if (!founderOperation && dependencies.founderOperation) {
+        ensure(
+          dependencies.founderOperation.digest ===
+            evidenceDigest(actionEnvelope),
+          "FOUNDER_ACTION_BINDING",
+        );
+        founderOperation = dependencies.founderOperation;
+      }
+      founderOperation ??= beginFounderOperation(
+        actionEnvelope,
+        {
+          phase,
+          mode,
+          identity,
+          context,
+          contracts,
+          authorization,
+          workflow,
+        },
+        {
+          now,
+          policy: dependencies.founderPolicy,
+          verifyWorkflowApproval: dependencies.verifyWorkflowApproval,
+          claimAction: dependencies.claimAction,
+        },
+      );
+      founderOperation.check();
+      if (dependencies.founderOperation)
+        validateFounderAction(
+          actionEnvelope,
+          {
+            phase,
+            mode,
+            identity,
+            context,
+            contracts,
+            authorization,
+            workflow,
+          },
+          {
+            now,
+            policy: dependencies.founderPolicy,
+            verifyWorkflowApproval: dependencies.verifyWorkflowApproval,
+          },
+        );
+    }
     ensure(
       evidenceDigest(currentIdentity()) === evidenceDigest(identity),
       "BOOTSTRAP_SOURCE_DRIFT",
@@ -78,6 +142,7 @@ export async function runBootstrap(
       (
         dependencies.baselineReviewPolicy ?? dependencies.timingReviewPolicy
       )?.(),
+      (dependencies.founderPolicy ?? founderPolicy)(),
     );
     timing ??= createTimingAdmission(
       {
@@ -88,8 +153,15 @@ export async function runBootstrap(
         contracts,
         admission: timingAdmission,
         workflowStartedAt,
+        actionEnvelope,
+        baseline,
       },
-      { now, policy, reviewPolicy: dependencies.timingReviewPolicy },
+      {
+        now,
+        policy,
+        reviewPolicy: dependencies.timingReviewPolicy,
+        founderPolicy: dependencies.founderPolicy,
+      },
     );
     timing.check();
     return a;
@@ -123,11 +195,13 @@ export async function runBootstrap(
       identity,
     );
     stage = "dry_run";
+    if (context.governanceMode === FOUNDER_MODE) authorize();
     adapter.command(
       ["link", "--project-ref", context.project],
       directory.directory,
     );
     verifyBootstrapDirectory(directory.directory, artifact);
+    if (context.governanceMode === FOUNDER_MODE) authorize();
     const output = adapter.command(
       ["db", "push", "--linked", "--dry-run"],
       directory.directory,
@@ -182,6 +256,7 @@ export async function runBootstrap(
     let ledgerCount = null;
     if (inventoryStarted) {
       try {
+        if (context.governanceMode === FOUNDER_MODE) founderOperation.check();
         ledgerCount = await adapter.ledgerCount();
       } catch {
         /* indeterminate remains blocked */

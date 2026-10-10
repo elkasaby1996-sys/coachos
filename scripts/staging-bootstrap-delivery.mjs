@@ -28,6 +28,11 @@ import {
 } from "./staging-replacement-target.mjs";
 import { validateBootstrapAuthorization } from "./staging-bootstrap-contracts.mjs";
 import { timingReviewPolicy } from "./staging-timing-evidence.mjs";
+import {
+  FOUNDER_MODE,
+  founderPolicy,
+  beginFounderOperation,
+} from "./staging-founder-governance.mjs";
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const deliverySchema = z.strictObject({
@@ -39,6 +44,12 @@ const deliverySchema = z.strictObject({
   executionTree: z.string().regex(/^[a-f0-9]{40}$/),
   baselineEvidenceSha256: digest,
   fileSha256: digest,
+});
+export const founderDeliverySchema = deliverySchema.extend({
+  schemaVersion: z.literal(2),
+  governanceMode: z.literal(FOUNDER_MODE),
+  governancePolicyDigest: digest,
+  actionEnvelopeDigest: digest,
 });
 export const PRIVATE_BASELINE_MAX_BYTES = 32 * 1024 * 1024;
 const same = (a, b) => a.dev === b.dev && a.ino === b.ino;
@@ -77,15 +88,49 @@ export async function withPrivateBaselineDelivery(
     authorization,
     delivery,
     workflowStartedAt,
+    actionEnvelope,
+    workflow,
+    mode,
   } = options;
   const root = resolve(
     dependencies.root ?? fileURLToPath(new URL("../", import.meta.url)),
   );
   const policy = replacementPolicy();
   assertReplacementTarget(context.project, context.origin, policy, true);
-  const parsed = deliverySchema.safeParse(delivery);
+  const founder = context.governanceMode === FOUNDER_MODE;
+  const parsed = (founder ? founderDeliverySchema : deliverySchema).safeParse(
+    delivery,
+  );
   ensure(parsed.success, "PRIVATE_BASELINE_DELIVERY_INVALID");
   const d = parsed.data;
+  const now = dependencies.now ?? Date.now;
+  let founderOperation;
+  if (founder) {
+    founderOperation = beginFounderOperation(
+      actionEnvelope,
+      {
+        phase: "EMPTY_TO_180",
+        mode,
+        identity,
+        context,
+        contracts,
+        authorization,
+        workflow,
+      },
+      {
+        now,
+        policy: dependencies.founderPolicy,
+        verifyWorkflowApproval: dependencies.verifyWorkflowApproval,
+        claimAction: dependencies.claimAction,
+      },
+    );
+    ensure(
+      d.actionEnvelopeDigest === founderOperation.digest &&
+        d.governancePolicyDigest ===
+          evidenceDigest((dependencies.founderPolicy ?? founderPolicy)()),
+      "PRIVATE_BASELINE_FOUNDER_BINDING",
+    );
+  } else ensure(!actionEnvelope, "FOUNDER_MODE_REQUIRED");
   ensure(
     d.project === context.project &&
       d.origin === context.origin &&
@@ -101,9 +146,9 @@ export async function withPrivateBaselineDelivery(
     typeof dependencies.receive === "function",
     "PRIVATE_BASELINE_DELIVERY_UNCONFIGURED",
   );
-  const now = dependencies.now ?? Date.now;
   const workflowStart = Date.parse(workflowStartedAt);
   const fresh = () => {
+    founderOperation?.check();
     const elapsed = now() - workflowStart;
     ensure(
       Number.isFinite(elapsed) && elapsed >= 0 && elapsed < 45 * 60_000,
@@ -264,6 +309,7 @@ export async function withPrivateBaselineDelivery(
         now(),
         baseline,
         (dependencies.reviewPolicy ?? timingReviewPolicy)(),
+        (dependencies.founderPolicy ?? founderPolicy)(),
       );
     validate();
     fresh();
@@ -322,7 +368,7 @@ export async function withPrivateBaselineDelivery(
     verifyFile();
     validate();
     fresh();
-    const result = await consume();
+    const result = await consume(baseline, founderOperation);
     verifyFile();
     fresh();
     succeeded = true;
@@ -330,7 +376,7 @@ export async function withPrivateBaselineDelivery(
   } catch (e) {
     // No provider response, raw evidence, URL, token or filesystem path in errors.
     if (
-      /^(PRIVATE_BASELINE_|BOOTSTRAP_|TIMING_|RELEASE_|ARTIFACT_)[A-Z_]+$/.test(
+      /^(PRIVATE_BASELINE_|BOOTSTRAP_|TIMING_|RELEASE_|ARTIFACT_|FOUNDER_)[A-Z_]+$/.test(
         e.message,
       )
     )

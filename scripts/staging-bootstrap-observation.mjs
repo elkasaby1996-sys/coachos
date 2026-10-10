@@ -18,6 +18,7 @@ import {
   assertBaselineSnapshot,
 } from "./staging-bootstrap-baseline.mjs";
 import { timingReviewPolicy } from "./staging-timing-evidence.mjs";
+import { FOUNDER_MODE, founderPolicy } from "./staging-founder-governance.mjs";
 import {
   assertReplacementTarget,
   replacementPolicy,
@@ -422,15 +423,24 @@ export function createBootstrapObserver(
   const now = options.now ?? Date.now;
   const policy = options.policy ?? replacementPolicy;
   const baseline = options.baseline;
-  const validate = () =>
-    validateVirginBaseline(
+  const validate = () => {
+    if (context.governanceMode === FOUNDER_MODE) {
+      ensure(
+        typeof options.authorizeFounder === "function",
+        "FOUNDER_ACTION_REQUIRED",
+      );
+      options.authorizeFounder();
+    }
+    return validateVirginBaseline(
       baseline,
       options.identity,
       context,
       policy(),
       now(),
       (options.reviewPolicy ?? timingReviewPolicy)(),
+      (options.founderPolicy ?? founderPolicy)(),
     );
+  };
   const { request, metadata, snapshot } = readOnlyReader(
     context,
     env,
@@ -438,6 +448,16 @@ export function createBootstrapObserver(
     {
       policy,
       organization: baseline?.target.organization,
+      beforeRead:
+        context.governanceMode === FOUNDER_MODE
+          ? () => {
+              ensure(
+                typeof options.authorizeFounder === "function",
+                "FOUNDER_ACTION_REQUIRED",
+              );
+              options.authorizeFounder();
+            }
+          : undefined,
       createdAt: baseline?.creation.createdAt,
       assertProof: (proof) => assertDatabaseProof(proof, 0, baseline),
       namespaces: () =>

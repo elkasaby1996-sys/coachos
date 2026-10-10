@@ -1,5 +1,10 @@
 # Paddle-only staging certification matrix
 
+[Founder-owned synthetic staging governance](staging-founder-governance.md) changes
+the staging approval contract only. All 31 scenarios retain their actual remote
+status and evidence requirements; synthetic local approval fixtures confer no hosted
+authority, provider certification or production readiness.
+
 Canonical contract: `config/staging-commercial-scenarios.json`. All 31 remote statuses remain `not_run`. Local implementation/regression evidence does not certify a provider capability. Supported scenarios need separately authorized remote certification after retirement and activation migration deployment. Historical webhook observations precede the current architecture.
 
 | Scenario              | Capability                                                               | Evidence classification                                                                                       | Local evidence                                                                                                                                                 | Required |

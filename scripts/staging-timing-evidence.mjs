@@ -8,6 +8,7 @@ import { ensure } from "./staging-release-artifacts.mjs";
 import { evidenceDigest } from "./staging-release-webhook-history.mjs";
 import { hash } from "./billing-retirement-release.mjs";
 import { bootstrapDatabasePolicyDigest } from "./staging-bootstrap-database.mjs";
+import { FOUNDER_MODE, founderPolicy } from "./staging-founder-governance.mjs";
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const surfaces = z.record(z.string(), digest);
@@ -37,12 +38,21 @@ export const timingReceiptSchema = z.strictObject({
     confirmation: surfaces,
   }),
 });
+export const founderTimingReceiptSchema = timingReceiptSchema.extend({
+  schemaVersion: z.literal(3),
+  binding: timingReceiptSchema.shape.binding.extend({
+    executionTree: z.string().regex(/^[a-f0-9]{40}$/),
+    governanceMode: z.literal(FOUNDER_MODE),
+    governancePolicyDigest: digest,
+  }),
+});
 const observerSourceCache = new Map();
 export function timingSampleBinding(
   kind,
   identity,
   context,
   baselineEvidenceSha256 = null,
+  governancePolicy = founderPolicy(),
 ) {
   const files = [
     "staging-bootstrap-observation.mjs",
@@ -58,6 +68,9 @@ export function timingSampleBinding(
     "billing-retirement-remote-inventory.mjs",
     "staging-release-webhook-history.mjs",
     "staging-timing-evidence.mjs",
+    ...(context.governanceMode === FOUNDER_MODE
+      ? ["staging-founder-governance.mjs"]
+      : []),
   ];
   return {
     kind,
@@ -67,6 +80,13 @@ export function timingSampleBinding(
     originSha256: hash(context.origin),
     securityPolicyDigest: bootstrapDatabasePolicyDigest(),
     baselineEvidenceSha256,
+    ...(context.governanceMode === FOUNDER_MODE
+      ? {
+          executionTree: context.tree,
+          governanceMode: FOUNDER_MODE,
+          governancePolicyDigest: evidenceDigest(governancePolicy),
+        }
+      : {}),
     observerSha256: evidenceDigest(
       files.map((path) => {
         const bytes = readFileSync(new URL(path, import.meta.url));
@@ -91,8 +111,13 @@ export function validateTimingReceipt(
   identity,
   context,
   baselineEvidenceSha256 = null,
+  governancePolicy = founderPolicy(),
 ) {
-  const parsed = timingReceiptSchema.safeParse(receipt);
+  const parsed = (
+    context.governanceMode === FOUNDER_MODE
+      ? founderTimingReceiptSchema
+      : timingReceiptSchema
+  ).safeParse(receipt);
   ensure(parsed.success, "TIMING_RECEIPT_INVALID");
   const r = parsed.data;
   ensure(
@@ -102,7 +127,13 @@ export function validateTimingReceipt(
   ensure(
     evidenceDigest(r.binding) ===
       evidenceDigest(
-        timingSampleBinding(kind, identity, context, baselineEvidenceSha256),
+        timingSampleBinding(
+          kind,
+          identity,
+          context,
+          baselineEvidenceSha256,
+          governancePolicy,
+        ),
       ),
     "TIMING_RECEIPT_BINDING",
   );
@@ -126,13 +157,19 @@ export function validateTimingReceipt(
   return r;
 }
 // Called only after a complete observer returns; creates evidence, not authority.
-export function timingReceipt(kind, observation, identity, context) {
+export function timingReceipt(
+  kind,
+  observation,
+  identity,
+  context,
+  governancePolicy = founderPolicy(),
+) {
   ensure(
     observation.observedAt === observation.stability?.startedAt,
     "TIMING_RECEIPT_INVALID",
   );
   const receipt = {
-    schemaVersion: 2,
+    schemaVersion: context.governanceMode === FOUNDER_MODE ? 3 : 2,
     evidenceClass: "hosted_complete_observation",
     sampleId: randomUUID(),
     binding: timingSampleBinding(
@@ -140,6 +177,7 @@ export function timingReceipt(kind, observation, identity, context) {
       identity,
       context,
       kind === "empty" ? observation.baselineEvidenceSha256 : null,
+      governancePolicy,
     ),
     observationDigest: observation.digest,
     completeObservationSha256: evidenceDigest(observation),
@@ -155,6 +193,7 @@ export function timingReceipt(kind, observation, identity, context) {
     identity,
     context,
     kind === "empty" ? observation.baselineEvidenceSha256 : null,
+    governancePolicy,
   );
 }
 export const timingReviewSchema = z.strictObject({

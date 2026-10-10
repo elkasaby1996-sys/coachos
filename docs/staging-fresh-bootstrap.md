@@ -1,5 +1,10 @@
 # Fresh staging bootstrap
 
+PAY-05BF adds [founder-owned synthetic staging governance](staging-founder-governance.md).
+The protected bootstrap workflow selects explicitly non-independent founder mode,
+which remains disarmed and externally unconfigured. Independent-review instructions
+below describe the preserved legacy contract and cannot authorize founder signatures.
+
 This is a source-reviewed exit from irrecoverable historical evidence. It creates
 no exemption, waiver, historical rewrite, classifier exception or release authority.
 The prior staging project remains preserved. This tooling does not create a project.

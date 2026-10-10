@@ -1,5 +1,9 @@
 import { evidenceDigest } from "./staging-release-webhook-history.mjs";
 import { createTimingAdmission } from "./staging-timing-admission.mjs";
+import {
+  FOUNDER_MODE,
+  beginFounderOperation,
+} from "./staging-founder-governance.mjs";
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -89,6 +93,8 @@ export async function runRelease(
     authorization,
     timingAdmission,
     workflowStartedAt,
+    actionEnvelope,
+    workflow,
     context,
     identity,
     contracts,
@@ -127,6 +133,7 @@ export async function runRelease(
   const emit = dependencies.emit ?? (() => {});
   let inventoryStarted = false;
   let timing,
+    founderOperation,
     auth,
     observation,
     reference,
@@ -147,6 +154,36 @@ export async function runRelease(
     commercialCertification: "not_run",
   };
   function authorize() {
+    const founder = context.governanceMode === FOUNDER_MODE;
+    ensure(
+      founder || (!actionEnvelope && timingAdmission?.schemaVersion !== 3),
+      "FOUNDER_MODE_REQUIRED",
+    );
+    if (founder) {
+      ensure(
+        evidenceDigest(currentContext()) === evidenceDigest(context),
+        "FOUNDER_CONTEXT_DRIFT",
+      );
+      founderOperation ??= beginFounderOperation(
+        actionEnvelope,
+        {
+          phase,
+          mode,
+          identity,
+          context,
+          contracts,
+          authorization,
+          workflow,
+        },
+        {
+          now,
+          policy: dependencies.founderPolicy,
+          verifyWorkflowApproval: dependencies.verifyWorkflowApproval,
+          claimAction: dependencies.claimAction,
+        },
+      );
+      founderOperation.check();
+    }
     auth = validateAuthorization(
       authorization,
       phase,
@@ -164,11 +201,13 @@ export async function runRelease(
         contracts,
         admission: timingAdmission,
         workflowStartedAt,
+        actionEnvelope,
       },
       {
         now,
         policy: dependencies.policy,
         reviewPolicy: dependencies.timingReviewPolicy,
+        founderPolicy: dependencies.founderPolicy,
       },
     );
     timing.check();
@@ -232,6 +271,7 @@ export async function runRelease(
     );
     try {
       await gate();
+      if (context.governanceMode === FOUNDER_MODE) authorize();
       adapter.command(
         ["link", "--project-ref", context.project],
         artifact.directory,
@@ -465,6 +505,7 @@ export async function runRelease(
     let actual = null;
     if (inventoryStarted || report.remoteExecuted) {
       try {
+        if (context.governanceMode === FOUNDER_MODE) founderOperation.check();
         actual = await adapter.observe();
         report.ledgerCount = actual.facts.versions.length;
       } catch {

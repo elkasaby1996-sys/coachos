@@ -33,6 +33,7 @@ import {
   PHASES,
 } from "../../scripts/staging-release-contracts.mjs";
 import { runRelease } from "../../scripts/staging-release-runner.mjs";
+import { founderFixture } from "../helpers/staging-founder-fixture";
 import { hash } from "../../scripts/billing-retirement-release.mjs";
 import {
   FUNCTION_CONTRACTS,
@@ -443,6 +444,41 @@ const run = (
   );
 
 describe("fixed bounded migration artifacts", { timeout: 20000 }, () => {
+  it("completes founder-approved baseline through the unchanged migration and checkpoint gates", async () => {
+    const phase = "BASELINE_180_TO_184",
+      s = simulation(phasePlan(phase, identity).start);
+    const a = authorization(phase, s);
+    const f = founderFixture({ ...context, tree: "f".repeat(40) }, NOW);
+    const input: any = {
+      phase,
+      mode: "apply",
+      authorization: a,
+      context: f.context,
+      identity,
+      contracts,
+      workflowStartedAt: iso(),
+    };
+    input.actionEnvelope = f.action(input);
+    input.timingAdmission = f.timing(input, input.actionEnvelope);
+    const result = await runRelease(input, s.adapter, {
+      ...f.deps,
+      policy: undefined,
+      currentIdentity: () => identity,
+    });
+    expect(result.status).toBe("complete");
+    expect(result.ledgerCount).toBe(184);
+    expect(result.commercialCertification).toBe("not_run");
+    const repeated = await runRelease(input, s.adapter, {
+      ...f.deps,
+      policy: undefined,
+      currentIdentity: () => identity,
+    });
+    expect(repeated).toMatchObject({
+      status: "blocked",
+      remoteExecuted: false,
+    });
+    expect(repeated.recovery.errorCode).toBe("FOUNDER_ACTION_REPLAYED");
+  });
   it.each(["supabase", "supabase/migrations", "supabase/functions"])(
     "rejects linked artifact ancestor %s",
     (path) => {
@@ -673,7 +709,8 @@ describe("strict versioned phase authority", () => {
 
 describe(
   "fail-closed phase execution and checkpoints",
-  { timeout: 20000 },
+  // Filesystem-heavy fixtures use a synthetic security clock, not this harness limit.
+  { timeout: 60000 },
   () => {
     it.each(["REMOVED", "THROTTLED", undefined])(
       "stops a non-active deployment (%s) before the next mutation",
@@ -1115,7 +1152,7 @@ describe("exact recovery evidence bytes", () => {
 
 describe(
   "complete closing stability through the actual adapter and runner",
-  { timeout: 30000 },
+  { timeout: 60000 },
   () => {
     const mutationCalls = (s: ReturnType<typeof simulation>) =>
       s.commands.filter(

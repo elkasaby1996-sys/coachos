@@ -15,6 +15,14 @@ import { confirmationInputs, gitState } from "./staging-commercial-plan.mjs";
 import { validateConfirmations } from "./staging-commercial-contracts.mjs";
 import { hash } from "./billing-retirement-release.mjs";
 import { validateRecoveryBundle } from "./staging-release-recovery-evidence.mjs";
+import { execFileSync } from "node:child_process";
+import {
+  FOUNDER_MODE,
+  founderPolicy,
+  assertFounderPolicy,
+  founderWorkflowFromEnvironment,
+  validateFounderAction,
+} from "./staging-founder-governance.mjs";
 import {
   assertReplacementTarget,
   replacementPolicy,
@@ -69,9 +77,33 @@ export async function runCli(argv = process.argv.slice(2), env = process.env) {
       true,
     );
     ensure(env.GITHUB_SHA === state.commit, "RELEASE_SOURCE_INVALID");
-    return { ...inputs, clean: state.clean };
+    return {
+      ...inputs,
+      clean: state.clean,
+      ...(env.STAGING_GOVERNANCE_MODE === FOUNDER_MODE
+        ? {
+            governanceMode: FOUNDER_MODE,
+            organization: "aerjnyzewgglcpkbrxyn",
+            tree: execFileSync("git", ["rev-parse", "HEAD^{tree}"], {
+              cwd: root,
+              encoding: "utf8",
+            }).trim(),
+          }
+        : {}),
+    };
   };
   const context = getContext();
+  ensure(
+    !env.STAGING_GOVERNANCE_MODE ||
+      env.STAGING_GOVERNANCE_MODE === FOUNDER_MODE,
+    "FOUNDER_MODE_INVALID",
+  );
+  ensure(
+    !founderPolicy().enabled || context.governanceMode === FOUNDER_MODE,
+    "FOUNDER_MODE_REQUIRED",
+  );
+  if (context.governanceMode === FOUNDER_MODE)
+    assertFounderPolicy(founderPolicy());
   ensure(
     env.SUPABASE_ACCESS_TOKEN && env.SUPABASE_DB_PASSWORD,
     "RELEASE_RUNNER_SECRET_MISSING",
@@ -82,10 +114,16 @@ export async function runCli(argv = process.argv.slice(2), env = process.env) {
         env.SUPABASE_PROJECT_REF === context.project,
       "RELEASE_MUTATION_AUTHORITY_REQUIRED",
     );
-  let authorization, timingAdmission;
+  let authorization,
+    timingAdmission,
+    actionEnvelope,
+    workflow,
+    founderOperation;
   try {
     authorization = JSON.parse(env.STAGING_RELEASE_AUTHORIZATION);
     timingAdmission = JSON.parse(env.STAGING_TIMING_ADMISSION);
+    if (context.governanceMode === FOUNDER_MODE)
+      actionEnvelope = JSON.parse(env.STAGING_FOUNDER_ACTION);
   } catch {
     throw new Error("RELEASE_AUTHORIZATION_INVALID");
   }
@@ -96,6 +134,21 @@ export async function runCli(argv = process.argv.slice(2), env = process.env) {
     throw new Error("RELEASE_RECOVERY_BUNDLE_MISSING");
   }
   validateRecoveryBundle(recoveryBundle, authorization);
+  if (context.governanceMode === FOUNDER_MODE) {
+    workflow = founderWorkflowFromEnvironment(env, context);
+    const check = () =>
+      validateFounderAction(actionEnvelope, {
+        phase,
+        mode,
+        identity,
+        context,
+        contracts,
+        authorization,
+        workflow,
+      });
+    check();
+    founderOperation = { check };
+  }
   const report = await runRelease(
     {
       phase,
@@ -107,12 +160,15 @@ export async function runCli(argv = process.argv.slice(2), env = process.env) {
       root,
       timingAdmission,
       workflowStartedAt: env.STAGING_WORKFLOW_STARTED_AT,
+      actionEnvelope,
+      workflow,
     },
     createRemoteAdapter(
       context,
       env,
       fetch,
       authorization.webhookHistory?.review,
+      { authorizeFounder: () => founderOperation.check() },
     ),
     { currentContext: getContext, emit: writeReleaseEvidence },
   );

@@ -18,6 +18,13 @@ import {
 import { runBootstrap } from "./staging-bootstrap-runner.mjs";
 import { BOOTSTRAP_PHASE } from "./staging-bootstrap-artifacts.mjs";
 import { readBaselineEvidence } from "./staging-bootstrap-baseline.mjs";
+import {
+  FOUNDER_MODE,
+  founderPolicy,
+  assertFounderPolicy,
+  founderWorkflowFromEnvironment,
+  validateFounderAction,
+} from "./staging-founder-governance.mjs";
 
 export async function runBootstrapCli(
   argv = process.argv.slice(2),
@@ -79,9 +86,26 @@ export async function runBootstrapCli(
       ...inputs,
       tree: git(["rev-parse", "HEAD^{tree}"]),
       clean: state.clean,
+      ...(env.STAGING_GOVERNANCE_MODE === FOUNDER_MODE
+        ? {
+            governanceMode: FOUNDER_MODE,
+            organization: "aerjnyzewgglcpkbrxyn",
+          }
+        : {}),
     };
   };
   const context = getContext();
+  ensure(
+    !env.STAGING_GOVERNANCE_MODE ||
+      env.STAGING_GOVERNANCE_MODE === FOUNDER_MODE,
+    "FOUNDER_MODE_INVALID",
+  );
+  ensure(
+    !founderPolicy().enabled || context.governanceMode === FOUNDER_MODE,
+    "FOUNDER_MODE_REQUIRED",
+  );
+  if (context.governanceMode === FOUNDER_MODE)
+    assertFounderPolicy(founderPolicy());
   ensure(
     env.SUPABASE_ACCESS_TOKEN && env.SUPABASE_DB_PASSWORD,
     "BOOTSTRAP_CREDENTIAL_MISSING",
@@ -92,19 +116,44 @@ export async function runBootstrapCli(
         env.SUPABASE_PROJECT_REF === context.project,
       "BOOTSTRAP_MUTATION_AUTHORITY_REQUIRED",
     );
-  let authorization, timingAdmission;
+  let authorization,
+    timingAdmission,
+    actionEnvelope,
+    workflow,
+    founderOperation;
   try {
     authorization = JSON.parse(env.STAGING_BOOTSTRAP_AUTHORIZATION);
     timingAdmission = JSON.parse(env.STAGING_TIMING_ADMISSION);
+    if (context.governanceMode === FOUNDER_MODE)
+      actionEnvelope = JSON.parse(env.STAGING_FOUNDER_ACTION);
   } catch {
     throw new Error("BOOTSTRAP_AUTHORIZATION_INVALID");
+  }
+  if (context.governanceMode === FOUNDER_MODE) {
+    workflow = founderWorkflowFromEnvironment(env, context);
+    // No trusted hosted verification/claim adapter is configured by PAY-05BF.
+    const check = () =>
+      validateFounderAction(actionEnvelope, {
+        phase: BOOTSTRAP_PHASE,
+        mode,
+        identity,
+        context,
+        contracts,
+        authorization,
+        workflow,
+      });
+    check();
+    founderOperation = { check };
   }
   const baseline = readBaselineEvidence(context.project);
   const empty = createBootstrapObserver(context, env, fetch, {
       identity,
       baseline,
+      authorizeFounder: () => founderOperation.check(),
     }),
-    release = createRemoteAdapter(context, env);
+    release = createRemoteAdapter(context, env, fetch, undefined, {
+      authorizeFounder: () => founderOperation.check(),
+    });
   const adapter = {
     observeEmpty: empty.observe,
     observeRelease: () => observeBootstrapRelease(empty, release, baseline),
@@ -142,6 +191,8 @@ export async function runBootstrapCli(
       baseline,
       timingAdmission,
       workflowStartedAt: env.STAGING_WORKFLOW_STARTED_AT,
+      actionEnvelope,
+      workflow,
       root,
     },
     adapter,
