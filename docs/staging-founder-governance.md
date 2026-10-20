@@ -1,5 +1,7 @@
 # Founder-owned synthetic staging governance
 
+> **Architecture update (20 Oct 2026):** [CI/CD simplification ADR](adr-2026-10-20-ci-cd-simplification.md) adopts an existing-workflow-first approach. This is an **approved direction, not an operational release-policy waiver**. Existing authorizations, hosted-evidence requirements, migration gates and no-go decisions remain effective until independently accepted successor controls are proved. See the [implementation plan](ci-cd-simplification-plan.md) and [control-equivalence register](ci-cd-control-equivalence.md).
+
 PAY-05BF implements the PAY-05BE conditional architecture as local code and tests.
 It enrolls no key, authenticates no real founder, signs no operational evidence,
 verifies no hosted settings and authorizes no remote operation. Separate Astra

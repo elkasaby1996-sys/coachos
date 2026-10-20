@@ -1,5 +1,7 @@
 # RepSync Beta Release Readiness Audit
 
+> **Architecture update (20 Oct 2026):** [CI/CD simplification ADR](adr-2026-10-20-ci-cd-simplification.md) adopts an existing-workflow-first approach. This is an **approved direction, not an operational release-policy waiver**. Existing authorizations, hosted-evidence requirements, migration gates and no-go decisions remain effective until independently accepted successor controls are proved. See the [implementation plan](ci-cd-simplification-plan.md) and [control-equivalence register](ci-cd-control-equivalence.md).
+
 Audit date: 2026-07-07
 
 Scope: release readiness for a controlled RepSync beta, based on the current repository, local configuration files, migrations, tests, and operational docs. This audit does not include a production Supabase dashboard review, production hosting dashboard review, production email-provider dashboard review, or live beta-domain smoke test.

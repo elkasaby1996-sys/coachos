@@ -1,5 +1,7 @@
 # RepSync staging release phases (PAY-05B)
 
+> **Architecture update (20 Oct 2026):** [CI/CD simplification ADR](adr-2026-10-20-ci-cd-simplification.md) adopts an existing-workflow-first approach. This is an **approved direction, not an operational release-policy waiver**. Existing authorizations, hosted-evidence requirements, migration gates and no-go decisions remain effective until independently accepted successor controls are proved. See the [implementation plan](ci-cd-simplification-plan.md) and [control-equivalence register](ci-cd-control-equivalence.md).
+
 PAY-05BF adds [founder-owned synthetic staging governance](staging-founder-governance.md).
 The protected release workflow requires founder action authority in addition to the
 unchanged inner v3 phase/recovery contracts. This mode is disarmed and externally
