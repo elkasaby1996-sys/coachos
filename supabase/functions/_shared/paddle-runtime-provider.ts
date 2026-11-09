@@ -1,5 +1,5 @@
 import { createBillingProviderRegistry } from "./billing-provider-registry.ts";
-import { createPaddleSandboxCheckoutTransport } from "./paddle-checkout/index.ts";
+import { createPaddleCheckoutTransport } from "./paddle-checkout/index.ts";
 import { createPaddlePlanTransport } from "./paddle-plan-change.ts";
 import { createPaddleSeatTransport } from "./paddle-seat-quantity.ts";
 import { createPaddlePaymentMethodTransport } from "./paddle-payment-method.ts";
@@ -11,7 +11,7 @@ export const paddleProviderRegistry = createBillingProviderRegistry(
     {
       provider: "paddle",
       factory: {
-        createCheckoutTransport: createPaddleSandboxCheckoutTransport,
+        createCheckoutTransport: createPaddleCheckoutTransport,
         createPlanTransport: createPaddlePlanTransport,
         createSeatTransport: createPaddleSeatTransport,
         createPaymentMethodTransport: createPaddlePaymentMethodTransport,

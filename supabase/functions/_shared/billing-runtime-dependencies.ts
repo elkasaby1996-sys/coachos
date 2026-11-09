@@ -1,4 +1,5 @@
-import type { createClient as SupabaseCreateClient } from "https://esm.sh/@supabase/supabase-js@2.103.0";
+import type { createClient as SupabaseCreateClient } from "npm:@supabase/supabase-js@2.105.4";
+import { paddleEnvironment } from "./paddle-environment.ts";
 import { BillingError } from "./billing-common.ts";
 import type { BillingDependencies, Rpc } from "./billing-handlers.ts";
 import { planChangeCodes } from "./billing-plan-change.ts";
@@ -74,11 +75,18 @@ export function createBillingRuntimeDependencies(
       paddleProviderRegistry
         .forSubscription(provider)
         .createPaymentMethodTransport(
-          env("PADDLE_ENVIRONMENT") === "sandbox" ? environment : "",
-          env("PADDLE_SANDBOX_PAYMENT_METHOD_API_KEY"),
+          paddleEnvironment(env).environment === environment ? environment : "",
+          paddleEnvironment(env).key("PAYMENT_METHOD_API_KEY"),
           transport,
         ),
     planAction: async (provider, owner, token, action, input) => {
+      const realm = paddleEnvironment(env);
+      if (
+        action !== "cancel" &&
+        (await rpc(service)("billing_paddle_environment_v1", {})) !==
+          realm.environment
+      )
+        throw new BillingError("BILLING_RECONCILIATION_FAILED", 503);
       const adapter = paddleProviderRegistry.forSubscription(provider);
       return projectPaddlePlanResult(
         action,
@@ -87,8 +95,8 @@ export function createBillingRuntimeDependencies(
             ...dependencies,
             paddlePlans: () =>
               adapter.createPlanTransport(
-                env("PADDLE_ENVIRONMENT") === "sandbox" ? "test" : "",
-                env("PADDLE_SANDBOX_API_KEY"),
+                paddleEnvironment(env).environment,
+                paddleEnvironment(env).key(),
                 transport,
               ),
           },
@@ -100,14 +108,21 @@ export function createBillingRuntimeDependencies(
       );
     },
     seatAction: async (provider, owner, token, action, input) => {
+      const realm = paddleEnvironment(env);
+      if (
+        action !== "cancel" &&
+        (await rpc(service)("billing_paddle_environment_v1", {})) !==
+          realm.environment
+      )
+        throw new BillingError("BILLING_RECONCILIATION_FAILED", 503);
       const adapter = paddleProviderRegistry.forSubscription(provider);
       return handlePaddleSeatAction(
         {
           ...dependencies,
           paddleSeats: () =>
             adapter.createSeatTransport(
-              env("PADDLE_ENVIRONMENT") === "sandbox" ? "test" : "",
-              env("PADDLE_SANDBOX_API_KEY"),
+              paddleEnvironment(env).environment,
+              paddleEnvironment(env).key(),
               transport,
             ),
         },

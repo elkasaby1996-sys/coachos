@@ -32,8 +32,8 @@ export function fail(code: PaddleWebhookErrorCode): never {
 /** Trusted server composition only. The secret format does not identify its environment:
  * the secret-store binding must attest sandbox provenance. No environment lookup/fallback. */
 export type PaddleWebhookConfiguration = {
-  environment: "test";
-  secrets: readonly { environment: "sandbox"; value: string }[];
+  environment: "test" | "live";
+  secrets: readonly { environment: "sandbox" | "production"; value: string }[];
   /** Trusted clock in epoch milliseconds; tests may inject a deterministic clock. */
   now?: () => number;
 };
@@ -175,7 +175,7 @@ export function createSignatureVerifier(config: PaddleWebhookConfiguration) {
       Object.keys(config).some(
         (k) => !["environment", "secrets", "now"].includes(k),
       ) ||
-      config.environment !== "test" ||
+      !["test", "live"].includes(config.environment) ||
       !Array.isArray(config.secrets) ||
       config.secrets.length < 1 ||
       config.secrets.length > 2 ||
@@ -186,7 +186,8 @@ export function createSignatureVerifier(config: PaddleWebhookConfiguration) {
       if (
         !entry ||
         Object.keys(entry).sort().join() !== "environment,value" ||
-        entry.environment !== "sandbox" ||
+        entry.environment !==
+          (config.environment === "test" ? "sandbox" : "production") ||
         typeof entry.value !== "string" ||
         !/^[\x21-\x7e]{32,256}$/.test(entry.value)
       )

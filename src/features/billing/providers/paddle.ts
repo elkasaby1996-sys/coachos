@@ -4,6 +4,7 @@ import type { BrowserBillingProvider } from "./contract";
 export function acceptsPaddleCheckoutUrl(
   value: string,
   merchantOrigin: string,
+  environment: "test" | "live" = "test",
 ): boolean {
   try {
     if (
@@ -15,14 +16,16 @@ export function acceptsPaddleCheckoutUrl(
       return false;
     const url = new URL(value);
     if (url.username || url.password || url.port || url.hash) return false;
-    const hosted = ["sandbox-pay.paddle.io", "sandbox.pay.paddle.io"].includes(
-      url.hostname,
-    );
+    const hosted = (
+      environment === "test"
+        ? ["sandbox-pay.paddle.io", "sandbox.pay.paddle.io"]
+        : ["pay.paddle.io"]
+    ).includes(url.hostname);
     if (
       hosted &&
       !(
         /^\/checkout\/[A-Za-z0-9_-]{1,512}$/.test(url.pathname) ||
-        (url.hostname === "sandbox-pay.paddle.io" &&
+        (["sandbox-pay.paddle.io", "pay.paddle.io"].includes(url.hostname) &&
           /^\/hsc_[A-Za-z0-9_-]{1,512}$/.test(url.pathname))
       )
     )
@@ -54,5 +57,8 @@ export const paddleBrowserProvider: BrowserBillingProvider = {
     acceptsPaddleCheckoutUrl(
       value,
       typeof window === "undefined" ? "" : window.location.origin,
+      import.meta.env.VITE_PADDLE_ENVIRONMENT === "production"
+        ? "live"
+        : "test",
     ),
 };

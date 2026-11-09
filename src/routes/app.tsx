@@ -47,6 +47,7 @@ import {
   MarketingNotFoundPage,
   NoWorkspacePage,
   PricingPage,
+  BillingCheckoutPage,
   ProductPage,
   NotificationsPage,
   PrivacyPage,
@@ -625,6 +626,7 @@ export function App() {
           <Route path="/product" element={<ProductPage />} />
           <Route path="/start-trial" element={<StartTrialRedirect />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/billing/checkout" element={<BillingCheckoutPage />} />
           <Route path="/demo" element={<Navigate to="/signup/pt" replace />} />
           <Route
             path="/book-demo"

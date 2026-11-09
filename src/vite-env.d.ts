@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_PADDLE_ENVIRONMENT?: "sandbox" | "production";
+  readonly VITE_PADDLE_LIVE_CLIENT_TOKEN?: string;
   readonly VITE_PADDLE_SANDBOX_CLIENT_TOKEN?: string;
   readonly VITE_BILLING_PROVIDER?: string;
   readonly VITE_SUPABASE_URL?: string;

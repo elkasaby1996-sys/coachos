@@ -31,7 +31,7 @@ export type PaddlePriceObservation = {
 /** Explicit capability; deliberately absent from the active billing provider. */
 export interface PaddleCatalogueCapability {
   readonly provider: "paddle";
-  readonly environment: "test";
+  readonly environment: "test" | "live";
   listProducts(): Promise<PaddleProductObservation[]>;
   retrieveProduct(reference: string): Promise<PaddleProductObservation>;
   listPrices(): Promise<PaddlePriceObservation[]>;

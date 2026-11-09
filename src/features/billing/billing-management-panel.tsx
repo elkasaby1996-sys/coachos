@@ -1,3 +1,4 @@
+import { CustomerPortalButton } from "./customer-portal-button";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import type { AccountSubscriptionSummary } from "../account-entitlements/contracts";
@@ -179,6 +180,7 @@ export function BillingManagementPanel({
   return (
     <div className="space-y-3">
       <BillingRecoveryMessage summary={subscription} />
+      {subscription?.kind === "paid" ? <CustomerPortalButton /> : null}
       {state.data?.available && state.data.maySettleExistingBalance ? (
         <p className="text-sm">
           Updating your payment method may collect your existing outstanding
@@ -215,8 +217,7 @@ export function BillingManagementPanel({
       ) : null}
       {phase === "verifying" ? (
         <p role="status" className="text-sm">
-          Verifying billing update… Waiting for authenticated backend
-          reconciliation.
+          Confirming your payment update with Paddle…
         </p>
       ) : null}
       {phase === "pending" || phase === "refreshed" ? (

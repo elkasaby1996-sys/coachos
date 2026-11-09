@@ -24,16 +24,13 @@ export type { PaddleWebhookConfiguration } from "./signature.ts";
 export { PaddleWebhookError, PADDLE_WEBHOOK_LIMITS } from "./signature.ts";
 
 const unsupported = Symbol("authenticated unsupported Paddle event");
-const scope = Object.freeze({
-  provider: "paddle",
-  environment: "test",
-} as const);
 function replay(
   observation: PaddleEventObservation,
   rawPayloadSha256: string,
 ): PaddleReplayFacts {
   return {
-    ...scope,
+    provider: "paddle",
+    environment: observation.environment,
     eventRef: observation.eventRef,
     notificationRef: observation.notificationRef,
     eventType: observation.eventType,
@@ -44,10 +41,14 @@ function replay(
 }
 
 /** Dormant server-only PREP capability: no HTTP handler, DB port or commercial effect. */
-export function createPaddleSandboxWebhookVerifier(
+export function createPaddleWebhookVerifier(
   config: PaddleWebhookConfiguration,
 ) {
   const authenticate = createSignatureVerifier(config);
+  const scope = Object.freeze({
+    provider: "paddle",
+    environment: config.environment,
+  } as const);
   const observations = new WeakMap<
     VerifiedEventV2,
     PaddleSupportedEventObservation
@@ -56,7 +57,7 @@ export function createPaddleSandboxWebhookVerifier(
     ...scope,
     async verifyEvent(raw, headers) {
       authenticate(raw, headers);
-      const observation = observeEvent(raw);
+      const observation = observeEvent(raw, scope.environment);
       if (observation.kind === "unsupported") throw unsupported;
       return {
         proof: eventProof(observation),
@@ -96,7 +97,7 @@ export function createPaddleSandboxWebhookVerifier(
           if (error !== unsupported) throw error;
           // Only our authenticated port can throw this private marker. Preserve the
           // same byte snapshot; unsupported resources cannot fit merged EventProof.
-          const observation = observeEvent(raw);
+          const observation = observeEvent(raw, scope.environment);
           if (observation.kind !== "unsupported")
             return fail("verification_failed");
           const hash = new Uint8Array(
@@ -114,7 +115,7 @@ export function createPaddleSandboxWebhookVerifier(
         }
         // Re-parse the private snapshot only after the boundary authenticated it.
         // No shared mutable per-request slot: concurrent verifications stay isolated.
-        const observation = observeEvent(raw);
+        const observation = observeEvent(raw, scope.environment);
         if (observation.kind === "unsupported")
           return fail("verification_failed");
         observations.set(receipt, observation);
@@ -138,4 +139,12 @@ export function createPaddleSandboxWebhookVerifier(
       };
     },
   });
+}
+
+export function createPaddleSandboxWebhookVerifier(
+  config: PaddleWebhookConfiguration,
+) {
+  if (config.environment !== "test")
+    throw new PaddleWebhookError("configuration");
+  return createPaddleWebhookVerifier(config);
 }

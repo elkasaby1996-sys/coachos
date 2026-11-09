@@ -3,7 +3,7 @@ import type { PaddleFinancialObservation } from "./financial-observation.ts";
 
 export type PaddleEventEnvelope = {
   provider: "paddle";
-  environment: "test";
+  environment: "test" | "live";
   /** Logical identity; never the notification reference or a serialization hash. */
   eventRef: string;
   notificationRef: string;

@@ -115,6 +115,7 @@ export type PaddleOrchestrationDependencies = {
   serviceRpc: BillingDependencies["serviceRpc"];
   /** Trusted server creates the existing PREP transport; never browser injectable. */
   transport: () => PaddleCheckoutTransport;
+  environment?: "test" | "live";
 };
 export type PaddleCheckoutResult =
   | { status: "ready"; destination: PaddleCheckoutDestination }
@@ -230,7 +231,7 @@ export function createPaddleCheckoutOrchestrator(
         returned = true;
         if (
           observation.provider !== "paddle" ||
-          observation.environment !== "test" ||
+          observation.environment !== (deps.environment ?? "test") ||
           !["draft", "ready"].includes(observation.status) ||
           !ref(observation.transactionReference) ||
           observation.currency !== "USD" ||

@@ -16,7 +16,7 @@ export type PaddleCheckoutDestination = {
 };
 export type PaddleCheckoutObservation = {
   provider: "paddle";
-  environment: "test";
+  environment: "test" | "live";
   transactionReference: string;
   status:
     | "draft"

@@ -504,3 +504,9 @@ export const ClientOnboardingPage = lazy(() =>
     default: m.ClientOnboardingPage,
   })),
 );
+
+export const BillingCheckoutPage = lazy(() =>
+  import("../pages/public/billing-checkout").then((m) => ({
+    default: m.BillingCheckoutPage,
+  })),
+);

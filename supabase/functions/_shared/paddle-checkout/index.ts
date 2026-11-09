@@ -1,5 +1,5 @@
 import type { ServerEnvironmentReader } from "../paddle-catalogue/config.ts";
-import { sandboxCheckoutAuthorization } from "./config.ts";
+import { paddleEnvironment } from "../paddle-environment.ts";
 import type {
   PaddleCheckoutInput,
   PaddleCheckoutRetrieveInput,
@@ -30,10 +30,11 @@ export type PaddleCheckoutDependencies = {
   /** Optional dashboard-created Paddle sandbox hosted-checkout launch URL. */
   hostedCheckoutLaunchUrl?: string;
 };
-export function createPaddleSandboxCheckoutTransport(
+export function createPaddleCheckoutTransport(
   dependencies: PaddleCheckoutDependencies,
 ): PaddleCheckoutTransport {
   let authorization: () => string;
+  let realm: ReturnType<typeof paddleEnvironment>;
   let policy: ReturnType<typeof destinationPolicy>;
   try {
     closed(
@@ -46,15 +47,22 @@ export function createPaddleSandboxCheckoutTransport(
       typeof dependencies.readEnvironment !== "function"
     )
       fail("configuration");
-    authorization = sandboxCheckoutAuthorization(dependencies.readEnvironment);
+    realm = paddleEnvironment(dependencies.readEnvironment);
+    const key = realm.key("CHECKOUT_API_KEY");
+    authorization = () => `Bearer ${key}`;
     policy = destinationPolicy(
       dependencies.paymentPageUrl,
       dependencies.hostedCheckoutLaunchUrl,
+      realm.environment,
     );
   } catch {
     throw new PaddleCheckoutError("configuration");
   }
-  const send = checkoutHttp(dependencies.fetch, authorization);
+  const send = checkoutHttp(
+    dependencies.fetch,
+    authorization,
+    realm.environment,
+  );
   function normalize(
     body: unknown,
     expected: PaddleCheckoutInput,
@@ -64,6 +72,7 @@ export function createPaddleSandboxCheckoutTransport(
     const facts = observation(data, expected, requestedReference);
     return {
       ...facts,
+      environment: realm.environment,
       checkout: policy.checkout(data.checkout, facts.transactionReference),
     };
   }
@@ -106,4 +115,17 @@ export function createPaddleSandboxCheckoutTransport(
       );
     },
   });
+}
+
+/** Compatibility entry point deliberately remains sandbox-only. */
+export function createPaddleSandboxCheckoutTransport(
+  dependencies: PaddleCheckoutDependencies,
+): PaddleCheckoutTransport {
+  try {
+    if (dependencies.readEnvironment("PADDLE_ENVIRONMENT") !== "sandbox")
+      throw new Error();
+    return createPaddleCheckoutTransport(dependencies);
+  } catch {
+    throw new PaddleCheckoutError("configuration");
+  }
 }

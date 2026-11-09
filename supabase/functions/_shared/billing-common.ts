@@ -15,7 +15,10 @@ export function object(value: unknown): Record<string, any> {
 }
 export const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-export async function boundedBody(request: Request, limit = 262_144) {
+export async function boundedBody(
+  request: Pick<Request, "headers" | "body">,
+  limit = 262_144,
+) {
   if (Number(request.headers.get("content-length")) > limit)
     throw new BillingError("BILLING_INVALID_INPUT");
   const reader = request.body?.getReader();

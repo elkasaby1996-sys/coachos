@@ -1,5 +1,6 @@
+import { paddleEnvironment } from "../paddle-environment.ts";
 import {
-  createPaddleSandboxWebhookVerifier,
+  createPaddleWebhookVerifier,
   PADDLE_WEBHOOK_LIMITS,
   PaddleWebhookError,
   type PaddleWebhookConfiguration,
@@ -38,25 +39,24 @@ export function logPaddleWebhookRejection(
 export function webhookConfiguration(
   env: Environment,
 ): PaddleWebhookConfiguration {
-  if (
-    env("PADDLE_ENVIRONMENT") !== "sandbox" ||
-    [
-      "PADDLE_LIVE_WEBHOOK_SECRET",
-      "PADDLE_LIVE_WEBHOOK_SECRET_PREVIOUS",
-      "PADDLE_WEBHOOK_SECRET",
-    ].some((k) => env(k) !== undefined)
-  ) {
+  try {
+    const realm = paddleEnvironment(env);
+    if (env("PADDLE_WEBHOOK_SECRET")) throw new Error();
+    const current = realm.setting("WEBHOOK_SECRET");
+    const previous = realm.setting("WEBHOOK_SECRET_PREVIOUS");
+    if (!current) throw new Error();
+    return {
+      environment: realm.environment,
+      secrets: [current, ...(previous === undefined ? [] : [previous])].map(
+        (value) => ({
+          environment: realm.environment === "test" ? "sandbox" : "production",
+          value,
+        }),
+      ),
+    };
+  } catch {
     throw new PaddleWebhookError("configuration");
   }
-  const current = env("PADDLE_SANDBOX_WEBHOOK_SECRET");
-  const previous = env("PADDLE_SANDBOX_WEBHOOK_SECRET_PREVIOUS");
-  if (!current) throw new PaddleWebhookError("configuration");
-  return {
-    environment: "test",
-    secrets: [current, ...(previous === undefined ? [] : [previous])].map(
-      (value) => ({ environment: "sandbox", value }),
-    ),
-  };
 }
 
 const response = (status: number) =>
@@ -98,7 +98,7 @@ async function rawBody(request: Request): Promise<Uint8Array> {
 }
 
 type IngestionArguments = ReturnType<
-  ReturnType<typeof createPaddleSandboxWebhookVerifier>["ingestionArguments"]
+  ReturnType<typeof createPaddleWebhookVerifier>["ingestionArguments"]
 >;
 export interface PaddleWebhookDatabase {
   rpc(
@@ -179,7 +179,7 @@ export function createPaddleWebhookIngress(
   config: PaddleWebhookConfiguration,
   database: PaddleWebhookDatabase,
 ) {
-  const verifier = createPaddleSandboxWebhookVerifier(config);
+  const verifier = createPaddleWebhookVerifier(config);
   return async (request: Request): Promise<Response> => {
     if (request.method !== "POST") return response(405);
     let result;

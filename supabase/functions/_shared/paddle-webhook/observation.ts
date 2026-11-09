@@ -204,7 +204,10 @@ function items(
 }
 
 /** Structural only; cannot mint receipts. Call only AFTER signature verification. */
-export function observeEvent(raw: Uint8Array): PaddleEventObservation {
+export function observeEvent(
+  raw: Uint8Array,
+  environment: "test" | "live" = "test",
+): PaddleEventObservation {
   let envelope: Record<string, unknown>;
   try {
     // Keep a BOM visible so JSON parsing rejects it instead of silently removing bytes.
@@ -218,7 +221,7 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
   }
   const base = {
     provider: "paddle" as const,
-    environment: "test" as const,
+    environment,
     eventRef: reference(envelope.event_id),
     notificationRef: reference(envelope.notification_id),
     eventType: reference(envelope.event_type),
@@ -346,7 +349,7 @@ export function observeEvent(raw: Uint8Array): PaddleEventObservation {
       items: rows,
       ...planOperation(data),
       ...seatOperation(data),
-      ...(base.eventType !== "subscription.created" ? lifecycle(data) : {}),
+      ...lifecycle(data),
     };
   }
   if (
@@ -377,7 +380,7 @@ export function eventProof(
     schema: "billing-proof-v2",
     validator: "paddle-contract-v1",
     provider: "paddle",
-    environment: "test",
+    environment: observation.environment,
     kind: "event",
     source: "webhook",
     evidenceClass: "authenticated_provider",

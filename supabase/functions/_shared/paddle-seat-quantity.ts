@@ -1,3 +1,7 @@
+import {
+  paddleApiOrigin,
+  paddleKeyMatchesEnvironment,
+} from "./paddle-environment.ts";
 import { BillingError, object, uuidPattern } from "./billing-common.ts";
 import type { BillingDependencies } from "./billing-handlers.ts";
 import type { SeatAction } from "./billing-seat-quantity.ts";
@@ -58,7 +62,7 @@ export function createPaddleSeatTransport(
   key: string,
   fetcher: typeof fetch,
 ) {
-  if (environment !== "test" || !/^pdl_sdbx_[A-Za-z0-9_]+$/.test(key)) fail();
+  if (!paddleKeyMatchesEnvironment(environment, key)) fail();
   async function call(
     method: "GET" | "PATCH",
     id: string,
@@ -74,7 +78,7 @@ export function createPaddleSeatTransport(
       return await Promise.race([
         (async () => {
           const response = await fetcher(
-            `https://sandbox-api.paddle.com/subscriptions/${id}${preview ? "/preview" : ""}`,
+            `${paddleApiOrigin(environment)}/subscriptions/${id}${preview ? "/preview" : ""}`,
             {
               method,
               redirect: "error",

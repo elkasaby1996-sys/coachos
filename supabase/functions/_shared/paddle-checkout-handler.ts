@@ -4,10 +4,12 @@ import {
 } from "./paddle-catalogue/config.ts";
 import {
   createPaddleCheckoutOrchestrator,
+  parsePaddleCheckoutIntent,
   PaddleOrchestrationError,
 } from "./paddle-checkout-orchestration.ts";
 import type { BillingDependencies } from "./billing-handlers.ts";
 import { boundedBody } from "./billing-common.ts";
+import { paddleEnvironment } from "./paddle-environment.ts";
 import { paddleProviderRegistry } from "./paddle-runtime-provider.ts";
 
 export type PaddleCheckoutRuntime = Pick<
@@ -110,26 +112,33 @@ export async function handlePaddleCheckout(
     } catch {
       fail("PADDLE_CHECKOUT_INVALID");
     }
+    input = parsePaddleCheckoutIntent(input);
     // Validate configuration before any checkout persistence. This factory performs no HTTP.
     let transport;
+    let environment: "test" | "live";
     try {
-      const hosted = deps.readEnvironment(
-        "PADDLE_SANDBOX_HOSTED_CHECKOUT_LAUNCH_URL",
-      );
+      const realm = paddleEnvironment(deps.readEnvironment);
+      environment = realm.environment;
+      const hosted = realm.setting("HOSTED_CHECKOUT_LAUNCH_URL");
       transport = paddleProviderRegistry.forNewSales().createCheckoutTransport({
         fetch: deps.fetch,
         readEnvironment: deps.readEnvironment,
-        paymentPageUrl:
-          deps.readEnvironment("PADDLE_SANDBOX_PAYMENT_PAGE_URL") ?? "",
+        paymentPageUrl: realm.setting("PAYMENT_PAGE_URL") ?? "",
         ...(hosted === undefined ? {} : { hostedCheckoutLaunchUrl: hosted }),
       });
     } catch {
       fail("PADDLE_CHECKOUT_CONFIGURATION");
     }
+    if (
+      (await deps.serviceRpc("billing_paddle_environment_v1", {})) !==
+      environment
+    )
+      fail("PADDLE_CHECKOUT_CONFIGURATION");
     const result = await createPaddleCheckoutOrchestrator({
       authenticate: async () => actor,
       serviceRpc: deps.serviceRpc,
       transport: () => transport,
+      environment,
     }).checkout(token, input);
     if (!("destination" in result))
       return response(

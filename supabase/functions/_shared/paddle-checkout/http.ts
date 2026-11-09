@@ -1,4 +1,7 @@
-import { PADDLE_SANDBOX_ORIGIN } from "../paddle-catalogue/config.ts";
+import {
+  paddleApiOrigin,
+  type PaddleEnvironment,
+} from "../paddle-environment.ts";
 import {
   fail,
   PaddleCheckoutError,
@@ -14,6 +17,7 @@ export const PADDLE_CHECKOUT_LIMITS = Object.freeze({
 export function checkoutHttp(
   fetcher: typeof fetch,
   authorization: () => string,
+  environment: PaddleEnvironment = "test",
 ) {
   return async (
     method: "GET" | "POST",
@@ -49,7 +53,7 @@ export function checkoutHttp(
       }, PADDLE_CHECKOUT_LIMITS.timeoutMs);
     });
     async function operation() {
-      response = await fetcher(new URL(path, PADDLE_SANDBOX_ORIGIN), {
+      response = await fetcher(new URL(path, paddleApiOrigin(environment)), {
         method,
         redirect: "error",
         signal: controller.signal,

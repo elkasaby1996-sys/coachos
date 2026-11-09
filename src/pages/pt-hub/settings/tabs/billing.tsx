@@ -51,7 +51,7 @@ export function PtHubSettingsBillingTab() {
     <div className="space-y-4">
       <SettingsSectionCard
         title="Plan and Subscription"
-        description="Global PT Hub subscription controls."
+        description="Manage your RepSync subscription, payments, and coach seats."
       >
         {entitlementsQuery.isLoading ? (
           <p role="status" className="text-sm text-muted-foreground">
@@ -103,7 +103,7 @@ export function PtHubSettingsBillingTab() {
             subscription.trialRecoveryEndsAt ? (
               <SettingsFieldRow
                 label="Recovery end date"
-                hint="Trial ended. The recovery state is existing delivery only; access restrictions are not enforced yet."
+                hint="Your trial has ended. Existing coaching delivery remains available during recovery."
               >
                 <span className="text-sm">
                   {dateLabel(subscription.trialRecoveryEndsAt)}
@@ -112,8 +112,7 @@ export function PtHubSettingsBillingTab() {
             ) : null}
             {subscription.kind === "complimentary" ? (
               <p className="text-sm text-muted-foreground">
-                Complimentary beta access follows the Scale v1 entitlement
-                contract.
+                Complimentary beta access includes the Scale plan features.
               </p>
             ) : null}
             {subscription.kind === "paid" &&
@@ -131,9 +130,7 @@ export function PtHubSettingsBillingTab() {
             ) ? (
               <p className="text-sm text-muted-foreground">
                 Subscription state: {subscription.effectiveStatus}. Access mode:{" "}
-                {subscription.accessMode.replace(/_/g, " ")}. This is a
-                read-only status display; access restrictions are not enforced
-                yet.
+                {subscription.accessMode.replace(/_/g, " ")}.
               </p>
             ) : null}
             {entitlementsQuery.data ? (

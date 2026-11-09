@@ -36,7 +36,10 @@ function secureUrl(value: unknown): URL {
 export function destinationPolicy(
   paymentPageUrl: string,
   hostedCheckoutLaunchUrl?: string,
+  environment: "test" | "live" = "test",
 ) {
+  const hosts =
+    environment === "test" ? sandboxHostedHosts : new Set(["pay.paddle.io"]);
   const payment = secureUrl(paymentPageUrl);
   if (
     ["paddle.io", "paddle.com"].some(
@@ -51,12 +54,12 @@ export function destinationPolicy(
   if (hostedCheckoutLaunchUrl !== undefined) {
     hosted = secureUrl(hostedCheckoutLaunchUrl);
     if (
-      !sandboxHostedHosts.has(hosted.hostname) ||
+      !hosts.has(hosted.hostname) ||
       hosted.search ||
       hostedCheckoutLaunchUrl.includes("?") ||
       !(
         /^\/checkout\/[A-Za-z0-9_-]{1,512}$/.test(hosted.pathname) ||
-        (hosted.hostname === "sandbox-pay.paddle.io" &&
+        (["sandbox-pay.paddle.io", "pay.paddle.io"].includes(hosted.hostname) &&
           /^\/hsc_[A-Za-z0-9_-]{1,512}$/.test(hosted.pathname))
       )
     )

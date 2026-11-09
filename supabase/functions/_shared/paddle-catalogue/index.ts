@@ -1,9 +1,8 @@
+import { paddleEnvironment } from "../paddle-environment.ts";
 import type { PaddleCatalogueCapability } from "./contract.ts";
 import {
   assertServer,
-  PADDLE_SANDBOX_ORIGIN,
   readServerEnvironment,
-  sandboxAuthorization,
   type ServerEnvironmentReader,
 } from "./config.ts";
 import {
@@ -33,13 +32,21 @@ type Dependencies = {
   fetch?: typeof fetch;
 };
 
-export function createPaddleSandboxCatalogue(
+export function createPaddleCatalogue(
   dependencies: Dependencies = {},
 ): PaddleCatalogueCapability {
   assertServer();
-  const authorization = sandboxAuthorization(
-    dependencies.readEnvironment ?? readServerEnvironment,
-  );
+  let realm: ReturnType<typeof paddleEnvironment>;
+  let key: string;
+  try {
+    realm = paddleEnvironment(
+      dependencies.readEnvironment ?? readServerEnvironment,
+    );
+    key = realm.key();
+  } catch {
+    throw new PaddleCatalogueError("configuration");
+  }
+  const authorization = () => `Bearer ${key}`;
   const fetcher = dependencies.fetch ?? globalThis.fetch.bind(globalThis);
   const limits = PADDLE_CATALOGUE_LIMITS;
 
@@ -190,7 +197,7 @@ export function createPaddleSandboxCatalogue(
     return malformed();
   }
   function listUrl(resource: Resource, after?: string): URL {
-    const url = new URL(`/${resource}`, PADDLE_SANDBOX_ORIGIN);
+    const url = new URL(`/${resource}`, realm.origin);
     url.searchParams.set("per_page", String(limits.pageSize));
     url.searchParams.set("status", "active,archived");
     if (after !== undefined) url.searchParams.set("after", after);
@@ -232,7 +239,7 @@ export function createPaddleSandboxCatalogue(
         return malformed();
       }
       if (
-        next.origin !== PADDLE_SANDBOX_ORIGIN ||
+        next.origin !== realm.origin ||
         next.pathname !== `/${resource}` ||
         next.username ||
         next.password ||
@@ -262,7 +269,7 @@ export function createPaddleSandboxCatalogue(
       throw new PaddleCatalogueError("invalid_reference");
     }
     const body = await get(
-      new URL(`/${resource}/${pathReference}`, PADDLE_SANDBOX_ORIGIN),
+      new URL(`/${resource}/${pathReference}`, realm.origin),
     );
     const item = normalize(body.data);
     if (ref(item) !== id) return malformed();
@@ -270,7 +277,7 @@ export function createPaddleSandboxCatalogue(
   }
   return Object.freeze({
     provider: "paddle",
-    environment: "test",
+    environment: realm.environment,
     listProducts: () =>
       list("products", productObservation, (p) => p.productReference),
     retrieveProduct: (id: string) =>
@@ -279,4 +286,21 @@ export function createPaddleSandboxCatalogue(
     retrievePrice: (id: string) =>
       retrieve("prices", id, priceObservation, (p) => p.priceReference),
   });
+}
+
+export function createPaddleSandboxCatalogue(
+  dependencies: Dependencies = {},
+): PaddleCatalogueCapability {
+  assertServer();
+  try {
+    if (
+      (dependencies.readEnvironment ?? readServerEnvironment)(
+        "PADDLE_ENVIRONMENT",
+      ) !== "sandbox"
+    )
+      throw new Error();
+    return createPaddleCatalogue(dependencies);
+  } catch {
+    throw new PaddleCatalogueError("configuration");
+  }
 }

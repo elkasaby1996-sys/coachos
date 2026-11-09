@@ -35,7 +35,7 @@ export type ExpectedCatalogue = {
 };
 export type CatalogueBinding = {
   schema: "repsync-paddle-catalogue-binding-v1";
-  environment: "test";
+  environment: "test" | "live";
   expectedCatalogue: ExpectedCatalogue;
   selections: { pair: CataloguePair; productRef: string; priceRef: string }[];
 };
@@ -138,7 +138,7 @@ export function parsePrivateCatalogueBinding(value: unknown): CatalogueBinding {
   ]);
   if (b.schema !== "repsync-paddle-catalogue-binding-v1")
     fail("BINDING_INVALID");
-  if (b.environment !== "test") fail("ENVIRONMENT");
+  if (b.environment !== "test" && b.environment !== "live") fail("ENVIRONMENT");
   expectedCatalogue(b.expectedCatalogue);
   if (!Array.isArray(b.selections) || b.selections.length !== 8)
     fail("BINDING_INVALID");
@@ -225,7 +225,7 @@ export function verifyCatalogueObservations(
     matchExpected(binding, review);
     if (
       observations.provider !== "paddle" ||
-      observations.environment !== "test"
+      observations.environment !== binding.environment
     )
       return failedCatalogueSummary("ENVIRONMENT");
     const products = structuredClone(observations.products),
@@ -342,7 +342,7 @@ export function createPaddleCatalogueVerifier(
   const unavailable = async (): Promise<never> => fail("RECEIPT");
   const boundary = createVerifiedEvidenceBoundaryV2({
     provider: "paddle",
-    environment: "test",
+    environment: binding.environment,
     verifyEvent: unavailable,
     retrieveSubscription: unavailable,
     retrieveTransaction: unavailable,
@@ -353,7 +353,10 @@ export function createPaddleCatalogueVerifier(
     },
   });
   const scope = () => {
-    if (capability.provider !== "paddle" || capability.environment !== "test")
+    if (
+      capability.provider !== "paddle" ||
+      capability.environment !== binding.environment
+    )
       fail("ENVIRONMENT");
   };
   const listProducts = capability.listProducts.bind(capability),
@@ -428,7 +431,7 @@ export function createPaddleCatalogueVerifier(
             source: "catalogue_api",
             evidenceClass: "verified_catalogue",
             provider: "paddle",
-            environment: "test",
+            environment: binding.environment,
             verificationRef: observation,
             observedAt,
             catalogue: {

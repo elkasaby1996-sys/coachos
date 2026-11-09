@@ -1,3 +1,4 @@
+import { paddleBrowserConfiguration } from "../paddle-browser-config";
 import type { initializePaddle, Paddle } from "@paddle/paddle-js";
 import { paymentMethodContinuationSchema } from "../payment-method-contracts";
 import { PaymentMethodError } from "../payment-method-errors";
@@ -18,18 +19,29 @@ type Initializer = (
 export function createPaddlePaymentMethodBrowser(
   token: unknown,
   initialize: Initializer,
+  environment: "test" | "live" = "test",
 ): BrowserPaymentMethodUpdateCapability {
   let initialization: Promise<CheckoutSDK> | undefined;
   const listeners = new Set<(signal: PaymentMethodCheckoutSignal) => void>();
   function instance() {
     // Retain only SDK initialization, never a transaction or continuation.
     initialization ??= (async () => {
-      const clientToken = sandboxClientToken(token);
+      let config: ReturnType<typeof paddleBrowserConfiguration>;
+      try {
+        config = paddleBrowserConfiguration(
+          environment === "test" ? "sandbox" : "production",
+          environment === "test" ? token : undefined,
+          environment === "live" ? token : undefined,
+        );
+      } catch {
+        throw new PaymentMethodError("client_configuration");
+      }
+      const clientToken = config.token;
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         const sdk = await Promise.race([
           initialize({
-            environment: "sandbox",
+            environment: config.environment,
             token: clientToken,
             eventCallback(event) {
               const signal =
@@ -65,7 +77,7 @@ export function createPaddlePaymentMethodBrowser(
   return {
     accepts: (value) =>
       value.provider === "paddle" &&
-      value.environment === "test" &&
+      value.environment === environment &&
       /^txn_[a-z0-9]{26}$/.test(value.token),
     async ready() {
       await instance();
@@ -75,7 +87,7 @@ export function createPaddlePaymentMethodBrowser(
       if (
         !parsed.success ||
         parsed.data.provider !== "paddle" ||
-        parsed.data.environment !== "test" ||
+        parsed.data.environment !== environment ||
         !/^txn_[a-z0-9]{26}$/.test(parsed.data.token)
       )
         throw new PaymentMethodError("client_launch");
@@ -95,7 +107,10 @@ export function createPaddlePaymentMethodBrowser(
   };
 }
 export const paddlePaymentMethodBrowser = createPaddlePaymentMethodBrowser(
-  import.meta.env.VITE_PADDLE_SANDBOX_CLIENT_TOKEN,
+  import.meta.env.VITE_PADDLE_ENVIRONMENT === "production"
+    ? import.meta.env.VITE_PADDLE_LIVE_CLIENT_TOKEN
+    : import.meta.env.VITE_PADDLE_SANDBOX_CLIENT_TOKEN,
   async (options) =>
     (await import("@paddle/paddle-js")).initializePaddle(options),
+  import.meta.env.VITE_PADDLE_ENVIRONMENT === "production" ? "live" : "test",
 );

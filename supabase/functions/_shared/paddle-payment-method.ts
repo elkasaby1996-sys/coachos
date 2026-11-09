@@ -1,3 +1,7 @@
+import {
+  paddleApiOrigin,
+  paddleKeyMatchesEnvironment,
+} from "./paddle-environment.ts";
 import { BillingError } from "./billing-common.ts";
 import type {
   PaymentMethodDispatchPermit,
@@ -47,11 +51,7 @@ export function createPaddlePaymentMethodTransport(
   fetcher: typeof fetch,
 ): PaymentMethodUpdateCapability {
   function validateConfiguration() {
-    if (
-      environment !== "test" ||
-      !/^pdl_sdbx_[A-Za-z0-9_]+$/.test(dedicatedKey)
-    )
-      failed();
+    if (!paddleKeyMatchesEnvironment(environment, dedicatedKey)) failed();
   }
   async function retrieve(
     path: string,
@@ -65,7 +65,7 @@ export function createPaddlePaymentMethodTransport(
       return await Promise.race([
         (async () => {
           const response = await fetcher(
-            `https://sandbox-api.paddle.com/${path}`,
+            `${paddleApiOrigin(environment)}/${path}`,
             {
               method: "GET",
               redirect: "error",
@@ -138,7 +138,7 @@ export function createPaddlePaymentMethodTransport(
     if (requestedRef && transactionReference !== requestedRef) failed();
     if (
       expected.identity.provider !== "paddle" ||
-      expected.identity.environment !== "test" ||
+      expected.identity.environment !== environment ||
       row.customer_id !== ref(expected.identity.customerReference, "ctm") ||
       row.subscription_id !==
         ref(expected.identity.subscriptionReference, "sub") ||
@@ -308,7 +308,7 @@ export function createPaddlePaymentMethodTransport(
         return {
           kind: "provider_checkout",
           provider: "paddle",
-          environment: "test",
+          environment: environment as "test" | "live",
           token: transactionReference,
         };
       },
