@@ -95,8 +95,6 @@ jobs:
       STAGING_UPGRADE_ENVIRONMENT: supabase-staging
       STAGING_SUPABASE_PROJECT_REF: dgogugyuyfourdttvwuy
       STAGING_APPLICATION_ORIGIN: https://repsync-staging.netlify.app
-      STAGING_SCHEMA_REFERENCE_PATH: ${{ runner.temp }}/staging-upgrade-source/staging-schema-reference.json
-      STAGING_UPGRADE_BACKUP_PATH: ${{ runner.temp }}/staging-upgrade-backup.json.aes
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -117,6 +115,8 @@ jobs:
           merge-multiple: true
       - name: Capture encrypted backup and prove local recovery
         env:
+          STAGING_SCHEMA_REFERENCE_PATH: ${{ runner.temp }}/staging-upgrade-source/staging-schema-reference.json
+          STAGING_UPGRADE_BACKUP_PATH: ${{ runner.temp }}/staging-upgrade-backup.json.aes
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: node scripts/staging-populated-upgrade.mjs prepare
@@ -131,6 +131,8 @@ jobs:
       - name: Apply canonical migrations and deploy sandbox billing
         if: github.event_name == 'push' || inputs.mode == 'apply'
         env:
+          STAGING_SCHEMA_REFERENCE_PATH: ${{ runner.temp }}/staging-upgrade-source/staging-schema-reference.json
+          STAGING_UPGRADE_BACKUP_PATH: ${{ runner.temp }}/staging-upgrade-backup.json.aes
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           ALLOW_REMOTE_SUPABASE: I_UNDERSTAND_THIS_TOUCHES_REMOTE
