@@ -107,7 +107,7 @@ export function validateBillingRetirement(root = process.cwd()) {
     )
       fail("UNSUPPORTED_SCENARIO_CONTRACT_INVALID");
     if (
-      /lemon|squeezy|portal/i.test(scene.title) &&
+      /lemon|squeezy/i.test(scene.title) &&
       scene.id !== "CERT-LS-NEGATIVE-001"
     )
       fail("LIVE_LS_CERTIFICATION_SCENARIO");
@@ -122,7 +122,7 @@ export function validateBillingRetirement(root = process.cwd()) {
   return {
     valid: true,
     activeProvider: "paddle",
-    migrations: 186,
+    migrations: manifest.migrations.approved.length,
     billingFunctions: manifest.functions.billing.length,
     tombstones: LS_TOMBSTONES.length,
     activeLSRuntime: 0,

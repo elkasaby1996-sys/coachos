@@ -12,10 +12,10 @@ import { spawnSync } from "node:child_process";
 import { syntheticCatalogue } from "../fixtures/paddle-catalogue-verifier";
 import { readPrivateCatalogueBinding } from "../../scripts/paddle-catalogue-private-binding";
 import { runPaddleCataloguePreflight } from "../../scripts/paddle-catalogue-preflight";
-import { createPaddleSandboxCatalogue } from "../../supabase/functions/_shared/paddle-catalogue";
+import { createPaddleCatalogue } from "../../supabase/functions/_shared/paddle-catalogue";
 
 vi.mock("../../supabase/functions/_shared/paddle-catalogue", () => ({
-  createPaddleSandboxCatalogue: vi.fn(),
+  createPaddleCatalogue: vi.fn(),
 }));
 vi.mock("node:child_process", async (importOriginal) => {
   const original = await importOriginal<typeof import("node:child_process")>();
@@ -60,7 +60,7 @@ beforeEach(() => {
   }
   vi.mocked(spawnSync).mockImplementation(outsideGit as typeof spawnSync);
   vi.stubEnv("PADDLE_CATALOGUE_BINDING_PATH", bindingPath);
-  vi.mocked(createPaddleSandboxCatalogue).mockReturnValue(
+  vi.mocked(createPaddleCatalogue).mockReturnValue(
     syntheticCatalogue().capability,
   );
 });
@@ -215,7 +215,7 @@ describe("read-only preflight runner", () => {
     ];
     const price = vi.spyOn(capability, "retrievePrice"),
       product = vi.spyOn(capability, "retrieveProduct");
-    vi.mocked(createPaddleSandboxCatalogue).mockReturnValue(capability);
+    vi.mocked(createPaddleCatalogue).mockReturnValue(capability);
     const result = await runPaddleCataloguePreflight();
     expect(result.receiptCount).toBe(8);
     expect(result.productsObserved).toBe(4);
@@ -244,10 +244,10 @@ describe("read-only preflight runner", () => {
     vi.stubEnv("PADDLE_CATALOGUE_BINDING_PATH", "");
     const result = await runPaddleCataloguePreflight();
     expect(result.discrepancyCodes).toEqual(["BINDING_PATH_REQUIRED"]);
-    expect(createPaddleSandboxCatalogue).not.toHaveBeenCalled();
+    expect(createPaddleCatalogue).not.toHaveBeenCalled();
   });
   it("sanitizes configuration failures", async () => {
-    vi.mocked(createPaddleSandboxCatalogue).mockImplementation(() => {
+    vi.mocked(createPaddleCatalogue).mockImplementation(() => {
       throw Error("synthetic-api-key");
     });
     const result = await runPaddleCataloguePreflight();
@@ -257,6 +257,6 @@ describe("read-only preflight runner", () => {
   it("rejects browser execution before file or transport access", async () => {
     vi.stubGlobal("window", {});
     await expect(runPaddleCataloguePreflight()).rejects.toThrow();
-    expect(createPaddleSandboxCatalogue).not.toHaveBeenCalled();
+    expect(createPaddleCatalogue).not.toHaveBeenCalled();
   });
 });

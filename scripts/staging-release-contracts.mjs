@@ -28,9 +28,9 @@ import {
 export const PHASES = Object.freeze({
   BASELINE_180_TO_184: { start: 180, end: 184, steps: ["baseline"] },
   RESUME_BASELINE_180_TO_184: { start: 180, end: 184, steps: ["baseline"] },
-  RETIREMENT_ACTIVATION_184_TO_186: {
+  RETIREMENT_ACTIVATION_184_TO_188: {
     start: 184,
-    end: 186,
+    end: 188,
     steps: [
       "containment",
       "drain",
@@ -44,9 +44,9 @@ export const PHASES = Object.freeze({
   RESUME_BASELINE_181_TO_184: { start: 181, end: 184, steps: ["baseline"] },
   RESUME_BASELINE_182_TO_184: { start: 182, end: 184, steps: ["baseline"] },
   RESUME_BASELINE_183_TO_184: { start: 183, end: 184, steps: ["baseline"] },
-  RESUME_CUTOVER_184_TO_186: {
+  RESUME_CUTOVER_184_TO_188: {
     start: 184,
-    end: 186,
+    end: 188,
     steps: [
       "containment",
       "drain",
@@ -57,9 +57,9 @@ export const PHASES = Object.freeze({
       "final",
     ],
   },
-  RESUME_ACTIVATION_185_TO_186: {
+  RESUME_ACTIVATION_185_TO_188: {
     start: 185,
-    end: 186,
+    end: 188,
     steps: [
       "containment",
       "drain",
@@ -70,9 +70,35 @@ export const PHASES = Object.freeze({
       "final",
     ],
   },
-  RESUME_FINAL_186: {
+  RESUME_BILLING_186_TO_188: {
     start: 186,
-    end: 186,
+    end: 188,
+    steps: [
+      "containment",
+      "drain",
+      "retirement_checkpoint",
+      "activation",
+      "billing",
+      "nonbilling",
+      "final",
+    ],
+  },
+  RESUME_BILLING_187_TO_188: {
+    start: 187,
+    end: 188,
+    steps: [
+      "containment",
+      "drain",
+      "retirement_checkpoint",
+      "activation",
+      "billing",
+      "nonbilling",
+      "final",
+    ],
+  },
+  RESUME_FINAL_188: {
+    start: 188,
+    end: 188,
     steps: [
       "containment",
       "drain",
@@ -101,7 +127,7 @@ export const recoverySchema = z.strictObject({
   authorizationDigest: digest,
   executionCommit: sha,
   observedAt: timestamp,
-  ledgerCount: z.number().int().min(0).max(186).nullable(),
+  ledgerCount: z.number().int().min(0).max(188).nullable(),
   inventoryDigest: digest.nullable(),
   functionStates: z.array(
     z.strictObject({
@@ -492,12 +518,16 @@ export function recoveryPlan(evidence) {
           : count === 183
             ? "RESUME_BASELINE_183_TO_184"
             : count === 184
-              ? "RESUME_CUTOVER_184_TO_186"
+              ? "RESUME_CUTOVER_184_TO_188"
               : count === 185
-                ? "RESUME_ACTIVATION_185_TO_186"
+                ? "RESUME_ACTIVATION_185_TO_188"
                 : count === 186
-                  ? "RESUME_FINAL_186"
-                  : null;
+                  ? "RESUME_BILLING_186_TO_188"
+                  : count === 187
+                    ? "RESUME_BILLING_187_TO_188"
+                    : count === 188
+                      ? "RESUME_FINAL_188"
+                      : null;
   return {
     status: "authorization_required",
     phase,

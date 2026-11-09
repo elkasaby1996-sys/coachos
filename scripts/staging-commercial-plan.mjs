@@ -65,7 +65,7 @@ export function proposedCommands(manifest) {
     "npm run supabase:remote -- migration list --linked",
     "ASSERT remote migration versions equal the separately reviewed prefix",
     "npm run supabase:remote -- db push --linked --dry-run",
-    "ASSERT actual dry-run suffix is exactly the reviewed ordered 185/186 suffix, or empty for reviewed redeployment; otherwise STOP",
+    "ASSERT actual dry-run suffix is exactly the reviewed ordered 185/188 suffix, or empty for reviewed redeployment; otherwise STOP",
     "npm run supabase:remote -- db push --linked --yes",
     ...[...manifest.functions.billing, ...manifest.functions.nonbilling].map(
       (name) =>
@@ -115,7 +115,7 @@ export function authorizationRequest(
       "All full-unit tests green",
       "Reviewed remote migration prefix and private recoverable backup",
       "Fresh read-only remote function/JWT/secret-name/schema/ledger inventory; exact reviewed digest rechecked before mutation",
-      "Fresh environment/commit-bound backup and restore-proof digest; only the reviewed ordered migration 185/186 suffix may be pending",
+      "Fresh environment/commit-bound backup and restore-proof digest; only the reviewed ordered migration 185/188 suffix may be pending",
       "Verified staging auth, Paddle sandbox catalogue/seat mappings and active secret names; no LS secret requirement",
       "All three retired LS function names must be overwritten and independently probed before reset/certification",
       "Protected supabase-staging approval and exact current main commit",

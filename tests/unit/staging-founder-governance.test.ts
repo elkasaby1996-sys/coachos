@@ -488,7 +488,7 @@ describe("workflow approval, replay and real runner boundaries", () => {
       a.workflow.workflowRef = "other/workflow@refs/heads/main";
     if (kind === "actor") a.workflow.actorId = "99999";
     if (kind === "mode") a.mode = "apply";
-    if (kind === "phase") a.phase = "RESUME_FINAL_186";
+    if (kind === "phase") a.phase = "RESUME_FINAL_188";
     if (kind === "authorization") a.authorizationDigest = "f".repeat(64);
     if (kind === "migrations")
       a.migrationApproval.orderedMigrationsDigest = "f".repeat(64);

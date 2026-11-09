@@ -30,8 +30,7 @@ describe("PT Hub Billing canonical status", () => {
       "Recovery end date",
       "Intended paid plan",
       "Complimentary beta access",
-      "Scale v1 entitlement contract",
-      "access restrictions are not enforced yet",
+      "Scale plan features",
       "no automatic conversion",
     ])
       expect(source).toContain(text);

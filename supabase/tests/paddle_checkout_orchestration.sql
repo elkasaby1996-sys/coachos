@@ -30,7 +30,7 @@ begin
  update public.billing_runtime_policy set entitlement_environment='live' where id=1;
  perform pg_temp.start((select u from checkout_actors));
 end $$;
-select throws_ok($$select pg_temp.wrong_environment()$$,'P0001','BILLING_GUARD_ENVIRONMENT_MISMATCH','production environment blocked');
+select throws_ok($$select pg_temp.wrong_environment()$$,'P0001','BILLING_CATALOGUE_INCOMPLETE','live checkout requires its own verified catalogue');
 select throws_ok($$update billing_price_mappings set catalogue_evidence_id=null,verification_sha256=null where provider='paddle' and canonical_key='launch'$$,'P0001','BILLING_V2_MAPPING_IMMUTABLE','active mapping cannot lose verified provenance');
 select throws_ok($$update billing_price_mappings set plan_version_id=gen_random_uuid() where provider='paddle' and canonical_key='launch'$$,'P0001','BILLING_V2_MAPPING_IMMUTABLE','wrong canonical version cannot replace publication');
 create temp table cases as select k,c,u,pg_temp.start(u,k,c,0) result from

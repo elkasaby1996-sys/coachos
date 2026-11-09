@@ -1,0 +1,138 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path=public,extensions;
+select no_plan();
+\ir billing_catalogue_fixture.psql
+\ir billing_v2_legacy_seed.psql
+\ir billing_cross_ledger_helpers.psql
+\ir paddle_webhook_fixture.psql
+
+create function pg_temp.purchase_transaction(u uuid) returns text language sql as $$
+ select 'txn_'||substr(replace(u::text,'-',''),1,26)
+$$;
+create function pg_temp.purchase_owner(plan text,cad text,seats integer) returns uuid language plpgsql as $$
+declare u uuid:=pg_temp.guard_owner(); checkout jsonb;
+begin
+ checkout:=begin_paddle_checkout_v1(u,plan,cad,seats,gen_random_uuid(),true,true,'2026-09-18','2026-09-18');
+ perform mark_paddle_checkout_ready_v1(u,(checkout->>'attemptReference')::uuid,(checkout->>'operationReference')::uuid,
+  pg_temp.purchase_transaction(u),'ready','USD',jsonb_build_array(checkout->'base')||case when seats>0 then jsonb_build_array(checkout->'seats') else '[]'::jsonb end);
+ return u;
+end $$;
+create function pg_temp.purchase_observation(u uuid,kind text) returns jsonb language sql as $$
+ select pg_temp.webhook_observation(kind,'purchase/'||kind||'/'||u,'purchase/'||kind||'/'||u)
+ ||jsonb_build_object('environment',c.environment,'customerRef','ctm_'||substr(replace(u::text,'-',''),1,26),
+ 'subscriptionRef','sub_'||substr(replace(u::text,'-',''),1,26),'items',(
+  select jsonb_agg(jsonb_build_object('priceRef',m.provider_price_ref,'productRef',m.provider_product_ref,
+   'quantity',case when m.identity_kind='plan' then 1 else c.requested_additional_seats end,
+   'unitPrice',jsonb_build_object('amount',m.unit_amount_minor::text,'currency','USD'))
+   ||case when kind like 'subscription.%' then jsonb_build_object('status','active') else '{}'::jsonb end order by m.identity_kind)
+  from billing_price_mappings m where m.id in (c.base_mapping_id,c.seat_mapping_id)))
+ ||case when kind='transaction.completed' then jsonb_build_object('transactionRef',pg_temp.purchase_transaction(u),
+  'origin','web','billingPeriod',jsonb_build_object('startsAt','2026-09-20T00:00:00Z',
+  'endsAt',case c.cadence when 'annual' then '2027-09-20T00:00:00Z' else '2026-10-20T00:00:00Z' end))
+ else jsonb_build_object('transactionCorrelationRef',case when kind='subscription.created' then pg_temp.purchase_transaction(u) else null end) end
+ ||case when kind='subscription.created' then jsonb_build_object('updatedAt','2026-09-20T10:00:00Z',
+  'currentBillingPeriod',jsonb_build_object('startsAt','2026-09-20T00:00:00Z','endsAt',case c.cadence when 'annual' then '2027-09-20T00:00:00Z' else '2026-10-20T00:00:00Z' end),
+  'nextBilledAt',case c.cadence when 'annual' then '2027-09-20T00:00:00Z' else '2026-10-20T00:00:00Z' end,
+  'canceledAt',null,'pausedAt',null,'scheduledChange',null) else '{}'::jsonb end
+ from billing_checkouts_v2 c join billing_accounts a on a.id=c.billing_account_id where a.owner_user_id=u
+$$;
+create function pg_temp.purchase_dispatch(u uuid,kind text) returns text language plpgsql as $$
+declare observation jsonb; event_id uuid;
+begin
+ observation:=pg_temp.purchase_observation(u,kind);
+ perform pg_temp.webhook_ingest(observation);
+ select id into event_id from billing_webhook_events_v2 where environment=billing_paddle_environment_v1() and provider_event_ref=observation->>'eventRef';
+ return reconcile_paddle_initial_purchase_event_v1(event_id)->>'status';
+end $$;
+
+-- This fixture is run in separate rolled-back transactions for each realm.
+-- A project with paid authority cannot switch realm, including in tests.
+update billing_runtime_policy set paddle_sales_enabled=true,paddle_reconciliation_enabled=true,entitlement_environment=:'purchase_realm';
+select pg_temp.catalogue_publish(pg_temp.catalogue(k,c,billing_paddle_environment_v1())) from unnest(array['launch','growth','scale','coach-seat']) k cross join unnest(array['monthly','annual']) c;
+create temp table purchases(realm text,plan text,cad text,seats integer,first_event text,u uuid);
+do $$declare realm text; c record;begin
+ realm:=billing_paddle_environment_v1();
+  for c in select * from (values ('launch',0),('launch',1),('growth',0),('growth',1),('growth',2),('growth',3),('scale',0),('scale',1),('scale',2),('scale',3),('scale',4),('scale',5)) p(plan,seats)
+   cross join unnest(array['monthly','annual']) cad cross join unnest(array['transaction.completed','subscription.created']) first_event loop
+   insert into purchases values(realm,c.plan,c.cad,c.seats,c.first_event,pg_temp.purchase_owner(c.plan,c.cad,c.seats));
+  end loop;
+end $$;
+
+create function pg_temp.purchase_assertions() returns setof text language plpgsql as $$
+declare c record; other text; label text; subscription uuid; before_count integer;
+begin
+ for c in select * from purchases loop
+  label:=c.realm||'/'||c.plan||'/'||c.cad||'/'||c.seats||'/'||c.first_event;
+  other:=case c.first_event when 'subscription.created' then 'transaction.completed' else 'subscription.created' end;
+  return next is(pg_temp.purchase_dispatch(c.u,c.first_event),'pending','one event cannot grant access: '||label);
+  return next is((select count(*) from account_subscriptions a join billing_accounts b on b.id=a.billing_account_id where b.owner_user_id=c.u),0::bigint,'no paid authority before both proofs: '||label);
+  return next is(pg_temp.purchase_dispatch(c.u,other),'applied','paired payment and subscription activate: '||label);
+  select s.id into subscription from billing_subscriptions_v2 s join billing_accounts a on a.id=s.billing_account_id where a.owner_user_id=c.u;
+  return next is((select approved_additional_coach_seats from billing_subscriptions_v2 where id=subscription),c.seats,'exact purchased seats: '||label);
+  return next is((select count(*) from billing_subscription_items_v2 where subscription_id=subscription),(case when c.seats=0 then 1 else 2 end)::bigint,'exact item set: '||label);
+  return next ok((select current_period_ends_at is not null from billing_subscriptions_v2 where id=subscription),'paid period bootstrapped: '||label);
+  return next is(pg_temp.purchase_dispatch(c.u,other),'reused','duplicate applies once: '||label);
+  return next is((select count(*) from billing_payment_applications_v2 where subscription_id=subscription),1::bigint,'one payment application: '||label);
+  return next is(paddle_customer_portal_context_v1(c.u)->>'environment',c.realm,'owner portal uses same realm: '||label);
+  perform set_config('request.jwt.claim.sub',c.u::text,true);
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',c.u,'role','authenticated')::text,true);
+  return next is(get_my_paddle_checkout_status_v1(pg_temp.purchase_transaction(c.u))->>'status','confirmed','checkout confirmed by stored proof: '||label);
+ end loop;
+end $$;
+select * from pg_temp.purchase_assertions();
+
+select set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+select set_config('request.jwt.claims',jsonb_build_object('sub',gen_random_uuid(),'role','authenticated')::text,true);
+select is(get_my_paddle_checkout_status_v1(pg_temp.purchase_transaction(u))->>'status','unavailable','another owner cannot inspect purchase') from purchases limit 1;
+select throws_ok($$select paddle_customer_portal_context_v1(gen_random_uuid())$$,'42501','BILLING_FORBIDDEN','unknown owner cannot open portal');
+select ok(not has_function_privilege('authenticated','paddle_customer_portal_context_v1(uuid)','execute'),'browser cannot choose portal owner');
+select ok(not has_function_privilege('anon','get_my_paddle_checkout_status_v1(text)','execute'),'anonymous cannot inspect confirmation');
+select ok(not has_function_privilege('authenticated','billing_paddle_environment_v1()','execute'),'browser cannot read private realm policy');
+select throws_ok($$update billing_runtime_policy set entitlement_environment=case entitlement_environment when 'test' then 'live' else 'test' end$$,'P0001','PADDLE_RECONCILIATION_ENVIRONMENT_PINNED','paid authority pins the deployment realm');
+select throws_ok($$select pg_temp.webhook_ingest(pg_temp.purchase_observation(u,'transaction.completed')||jsonb_build_object('environment',case realm when 'test' then 'live' else 'test' end)) from purchases limit 1$$,'P0001','PADDLE_INGRESS_SCOPE','the other realm cannot replay a payment');
+
+select set_config('request.jwt.claim.sub',(select u::text from purchases limit 1),true);
+-- Continue from a real initial purchase through the existing plan/seat workflows.
+\ir paddle_auto_reconciliation_fixture.psql
+\ir paddle_lifecycle_fixture.psql
+\ir paddle_plan_change_fixture.psql
+\ir paddle_seat_fixture.psql
+create or replace function pg_temp.auto_observation(u uuid,k text) returns jsonb language sql as $$
+ select pg_temp.purchase_observation(u,k)
+$$;
+create temp table seat_followup as select u from purchases where plan='growth' and cad='monthly' and seats=1 limit 1;
+select ok((pg_temp.paddle_seat_begin(u,3)->>'dispatch')::boolean,'purchased subscription admits extra seats') from seat_followup;
+select is(pg_temp.lifecycle_dispatch(pg_temp.paddle_seat_observation(u,'increase-sub')),'pending','seat increase waits for payment') from seat_followup;
+select is(pg_temp.lifecycle_dispatch(pg_temp.paddle_seat_observation(u,'increase-payment','transaction.completed')),'applied','verified extra-seat payment grants capacity') from seat_followup;
+select is((select s.approved_additional_coach_seats from billing_subscriptions_v2 s join billing_accounts a on a.id=s.billing_account_id where a.owner_user_id=u),3,'paid seat increase is effective') from seat_followup;
+select ok((pg_temp.paddle_seat_begin(u,2)->>'dispatch')::boolean,'seat reduction admitted') from seat_followup;
+select is(pg_temp.lifecycle_dispatch(pg_temp.paddle_seat_observation(u,'reduction')),'applied','reduction scheduled from provider evidence') from seat_followup;
+select is((select status from billing_operations_v2 where created_by_user_id=u order by provider_requested_at desc limit 1),'scheduled','reduction keeps seats until renewal') from seat_followup;
+create temp table plan_followup as select u from purchases where plan='growth' and cad='monthly' and seats=0 limit 1;
+select ok((pg_temp.plan_begin(u,'scale')->>'dispatch')::boolean,'plan upgrade admitted') from plan_followup;
+select is(pg_temp.lifecycle_dispatch(pg_temp.plan_observation(u,'upgrade-sub')),'pending','upgrade awaits payment') from plan_followup;
+select is(pg_temp.lifecycle_dispatch(pg_temp.plan_observation(u,'upgrade-payment','transaction.completed')),'applied','verified upgrade grants Scale') from plan_followup;
+select is(pg_temp.plan_status(u)->>'plan','scale','upgraded plan is authoritative') from plan_followup;
+create temp table method_followup as select u,(begin_billing_payment_method_preparation_v1(u)->>'preparationId')::uuid preparation from purchases where plan='launch' and cad='monthly' limit 1;
+select is(claim_billing_payment_method_dispatch_v1(u,preparation,repeat('a',64))->>'dispatch','true','payment method dispatch authorized in selected realm') from method_followup;
+select is(record_billing_payment_method_preparation_result_v1(u,preparation,repeat('a',64),'txn_'||repeat('z',26),'paddle-payment-method-transaction-v1',repeat('b',64))->>'status','ready','payment method prepared in selected realm') from method_followup;
+select is(authorize_billing_payment_method_continuation_v1(u,preparation)->>'transactionRef','txn_'||repeat('z',26),'owner receives authorized continuation') from method_followup;
+create temp table cancellation_followup as select u from purchases where plan='scale' and cad='monthly' and seats=1 limit 1;
+select is(pg_temp.lifecycle_dispatch(pg_temp.lifecycle_observation(u,'portal-cancel','subscription.updated','active','2026-09-22T00:00:00Z','2026-09-20T00:00:00Z','2026-10-20T00:00:00Z')||jsonb_build_object('scheduledChange',jsonb_build_object('action','cancel','effectiveAt','2026-10-20T00:00:00Z'))),'applied','Paddle portal cancellation reconciles') from cancellation_followup;
+select ok((select a.cancel_at_period_end from account_subscriptions a join billing_accounts b on b.id=a.billing_account_id where b.owner_user_id=u),'portal cancellation retains access through paid period') from cancellation_followup;
+
+create temp table bad_purchase as select pg_temp.purchase_owner('growth','monthly',2) u;
+create function pg_temp.reject_mismatched_purchase(u uuid) returns text language plpgsql as $$
+declare o jsonb;begin
+ o:=pg_temp.purchase_observation(u,'transaction.completed');
+ o:=jsonb_set(o,'{items,0,quantity}','1'); -- addon is first, base remains one
+ perform pg_temp.webhook_ingest(o);
+ perform pg_temp.purchase_dispatch(u,'subscription.created');
+ return 'accepted';
+exception when others then return 'blocked';end $$;
+select is(pg_temp.reject_mismatched_purchase(u),'blocked','paid quantity must match every purchased seat') from bad_purchase;
+select is((select count(*) from account_subscriptions a join billing_accounts b on b.id=a.billing_account_id where b.owner_user_id=u),0::bigint,'mismatched payment never grants plan or seats') from bad_purchase;
+set constraints all immediate;
+select * from finish();
+rollback;

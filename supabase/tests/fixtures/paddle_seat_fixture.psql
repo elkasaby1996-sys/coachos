@@ -13,7 +13,7 @@ declare op billing_operations_v2%rowtype;o jsonb;stamp text;start_at timestamptz
  select * into op from billing_operations_v2 where created_by_user_id=u and operation_kind='seat_quantity' order by provider_requested_at desc nulls last,id desc limit 1;
  start_at:=case when renewal then op.source_period_ends_at else op.source_period_started_at end;
  end_at:=case when renewal then (op.source_period_ends_at at time zone 'UTC'+case op.source_cadence when 'monthly' then interval '1 month' else interval '1 year' end) at time zone 'UTC' else op.source_period_ends_at end;
- stamp:=to_char(greatest(billing_paddle_plan_now_v1(),clock_timestamp(),(select provider_updated_at from billing_subscriptions_v2 where id=op.subscription_id)+interval '1 millisecond',op.provider_requested_at+interval '1 millisecond',start_at) at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"');
+ stamp:=to_char(greatest(billing_paddle_plan_now_v1(),(select provider_updated_at from billing_subscriptions_v2 where id=op.subscription_id)+interval '1 millisecond',op.provider_requested_at+interval '1 millisecond',start_at) at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"');
  o:=pg_temp.lifecycle_observation(u,label,k,state,stamp,to_char(start_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),to_char(end_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
  items:=billing_paddle_seat_items_v1(op.target_base_mapping_id,op.target_seat_mapping_id,op.target_additional_seats,case when k='subscription.updated' then case when state='canceled' then 'inactive' else 'active' end end);
  if k='transaction.completed' and not renewal then items:=billing_paddle_seat_settlement_items_v1(op.id);end if;

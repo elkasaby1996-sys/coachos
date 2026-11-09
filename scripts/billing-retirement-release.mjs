@@ -4,6 +4,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import {
   FUNCTION_CONTRACTS,
+  BILLING_EXTENSION_MIGRATIONS,
+  BILLING_MIGRATION_COUNT,
   RETIREMENT_MIGRATION,
   ACTIVATION_MIGRATION,
   ACTIVATION_SHA,
@@ -23,8 +25,14 @@ export const retirementEvidenceSchema = z.strictObject({
   inventorySha256: digest,
   functionArtifactSha256: digest,
   expectedPendingMigrations: z
-    .array(z.enum([RETIREMENT_MIGRATION, ACTIVATION_MIGRATION]))
-    .max(2),
+    .array(
+      z.enum([
+        RETIREMENT_MIGRATION,
+        ACTIVATION_MIGRATION,
+        ...BILLING_EXTENSION_MIGRATIONS.map((m) => m.filename),
+      ]),
+    )
+    .max(4),
   backupCreatedAt: z.iso.datetime(),
   backupEnvironment: z.enum(["staging", "production"]),
   backupCommitSha: sha,
@@ -105,10 +113,10 @@ export function validateRetirementEvidence(
     m.filename.slice(0, 14),
   );
   if (
-    versions.length !== 186 ||
+    versions.length !== BILLING_MIGRATION_COUNT ||
     manifest.migrations.approved[184].sha256 !== RETIREMENT_SHA ||
     manifest.migrations.approved[185].sha256 !== ACTIVATION_SHA ||
-    ![184, 185, 186].includes(approvedRemoteVersions.length) ||
+    ![184, 185, 186, 187, 188].includes(approvedRemoteVersions.length) ||
     JSON.stringify(approvedRemoteVersions) !==
       JSON.stringify(versions.slice(0, approvedRemoteVersions.length)) ||
     JSON.stringify(e.expectedPendingMigrations) !==

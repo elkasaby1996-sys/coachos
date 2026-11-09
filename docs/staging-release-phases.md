@@ -9,7 +9,7 @@ This is deployment tooling, not deployment or Paddle certification evidence. The
 
 ## Plan and preflight
 
-`npm run staging:release:plan -- BASELINE_180_TO_184` is local only. It validates the full 186 manifest/frozen payload and emits a sanitized deterministic plan. There is no arbitrary migration target, skip, force or repair input.
+`npm run staging:release:plan -- BASELINE_180_TO_184` is local only. It validates the full 188 manifest/frozen payload and emits a sanitized deterministic plan. There is no arbitrary migration target, skip, force or repair input.
 
 The manual main-only `supabase-deploy-staging.yml` workflow runs quality checks and the full unit suite before protected preflight/apply. Both remote modes require a version-3 `STAGING_RELEASE_AUTHORIZATION` (PAY-05H evidence-based drain) and the existing `STAGING_RELEASE_RECOVERY_BUNDLE`. Version-2 authorizations lack webhook disposition bindings and are incompatible. Recovery/backup formats remain unchanged. The old unbounded staging apply CLI is disabled. Production has a separate workflow and receives no request from this runner. Production project/origin values are deny-targets only.
 
@@ -23,13 +23,13 @@ Secrets observation uses only the trusted hosted `GET https://api.supabase.com/v
 
 ## Baseline 180 to 184 and checkpoint 184
 
-`BASELINE_180_TO_184` requires exactly the reviewed 180 prefix. It constructs a disposable directory containing precisely migrations 1–184 and independently checks filenames/hashes. The pinned CLI dry-run must list 181–184 in order, then the guarded push runs in that directory. Canonical migrations 185/186 remain present in the repository and absent from this artifact.
+`BASELINE_180_TO_184` requires exactly the reviewed 180 prefix. It constructs a disposable directory containing precisely migrations 1–184 and independently checks filenames/hashes. The pinned CLI dry-run must list 181–184 in order, then the guarded push runs in that directory. Canonical migrations 185–188 remain present in the repository and absent from this artifact.
 
 No function deployment occurs in baseline. Post-apply requires ledger 184, the populated-rehearsal database contract (definitions, ACL/RLS and schema), an empty payment-method preparation table, disabled policy, and unchanged retained public rows/Auth users. The generated checkpoint contains hashes/counts and can be bound into the next private authorization. CLI success alone cannot pass it.
 
 ## Containment and drain
 
-`RETIREMENT_ACTIVATION_184_TO_186` is a separate authorization with a fresh 184 recovery checkpoint. It first deploys the three final frozen LS tombstones, then static release-only 503 artifacts for the eleven remaining approved billing names, including the otherwise missing payment-method name. The final business source is never modified. Containment has no imports, environment access, database client or provider capability; exact source equality is enforced. Webhooks return retryable failure and never acknowledge discarded evidence.
+`RETIREMENT_ACTIVATION_184_TO_188` is a separate authorization with a fresh 184 recovery checkpoint. It first deploys the three final frozen LS tombstones, then static release-only 503 artifacts for the twelve remaining approved billing names, including the otherwise missing payment-method name. The final business source is never modified. Containment has no imports, environment access, database client or provider capability; exact source equality is enforced. Webhooks return retryable failure and never acknowledge discarded evidence.
 
 Every deployment is followed by pinned CLI `functions download --use-api` and exact transitive source-digest verification. This includes the existing Paddle checkout's relative dependency on `src/lib/legal-site.ts`. JWT metadata and `ACTIVE` status are independently checked; missing status, `THROTTLED` and `REMOVED` cannot pass. Missing, relocated, rewritten or incomplete downloaded source fails closed; a version increment is insufficient. The first authorized remote release must establish that the pinned download format preserves this source closure. No remote validation is claimed by local tests.
 
@@ -57,11 +57,11 @@ This correction does not establish quiescence or resolve configuration. Operator
 
 The retirement artifact contains precisely 1–185. From verified 184, dry-run must contain only 185. After push, exact ledger/schema contracts, all 28 native RPC denials, indirect callable-wrapper reachability, retained history and disabled policy are checked. Tombstones remain deployed throughout. Any failed retirement proof stops before 186. No LS grant/code restoration occurs.
 
-## Activation 186 and final function deployment
+## Activation through 188 and final function deployment
 
-From a passed 185 checkpoint, the 1–186 artifact dry-run must contain only 186. Exact 186 database contracts prove the reviewed provider/catalogue surfaces and permissions. No provider transaction or runtime-flag activation occurs.
+From a passed 185 checkpoint, the 1–188 artifact dry-run must contain exactly migrations 186–188. Exact 188 database contracts prove the reviewed provider/catalogue surfaces and permissions. No provider transaction or runtime-flag activation occurs.
 
-Only then deploy the fourteen final billing functions. Deploy the two allowlisted nonbilling functions in a distinct substage. Verify each exact source closure and JWT setting. Final verification repeats ledger/database/history/policy checks and requires final identities for every billing/nonbilling name, all tombstones intact, and zero containment remaining. The outside-scope `marketing-lead-submit` is never deployed/deleted; if present, its frozen source identity is independently checked. Unclassified remote functions block the release.
+Only then deploy the fifteen final billing functions. Deploy the two allowlisted nonbilling functions in a distinct substage. Verify each exact source closure and JWT setting. Final verification repeats ledger/database/history/policy checks and requires final identities for every billing/nonbilling name, all tombstones intact, and zero containment remaining. The outside-scope `marketing-lead-submit` is never deployed/deleted; if present, its frozen source identity is independently checked. Unclassified remote functions block the release.
 
 Only these successful source/behavior/database checks permit ZERO classifications for application LS execution, database application LS authority, active tooling LS dependency and remote deployed LS execution. Historical migration bodies and retained LS rows remain evidence and do not fail the retirement classification merely because they reference LS.
 
@@ -81,10 +81,12 @@ Backup and release workflows share concurrency group `supabase-staging-commercia
 
 Every failure stops. Sanitized recovery evidence records the actual freshly observed ledger count/inventory digest, completed substages, each approved function's version/JWT and final/containment/unknown identity, failure category, execution SHA and previous authorization digest. A source proof is valid only for the same observed deployed generation; changes during download block. If observation fails, state is unknown; do not infer it from CLI status. No ledger repair, automatic retry/resume or LS restoration exists.
 
-Supported newly authorized resume phases are fixed: baseline from 180/181/182/183 to 184, cutover from 184, activation from 185, and finalization from 186. A resume envelope must bind the previous recovery evidence/digest, be created later, re-observe the exact supported prefix and bind a fresh backup/restore proof for that actual starting state. It redeploys containment and re-proves retirement before proceeding where applicable. Unsupported prefixes require a separate review; they cannot select an arbitrary target. Recovery plans never execute themselves.
+Supported newly authorized resume phases are fixed: baseline from 180/181/182/183 to 184, cutover from 184, activation from 185, billing completion from 186/187, and finalization from 188. A resume envelope must bind the previous recovery evidence/digest, be created later, re-observe the exact supported prefix and bind a fresh backup/restore proof for that actual starting state. It redeploys containment and re-proves retirement before proceeding where applicable. Unsupported prefixes require a separate review; they cannot select an arbitrary target. Recovery plans never execute themselves.
 
 Completed deployment evidence leaves every commercial scenario `not_run`. First purchase, webhook delivery certification, catalogue validation, plan/seat/payment recovery and production commercial readiness require their own authorization and observable outcomes.
 
 ## Local rehearsal
 
-`scripts/test-staging-release-rehearsal.py` only accepts the fixed disposable local reconciliation workdir/container and cached CLI 2.109.1. It reuses existing legacy/catalogue/signed-ingress/initial-period fixtures, preserving all fixture actors. It reconstructs 180, exercises bounded local pushes to 184/185/186, compares retained rows/Auth users, checks ACL/RLS and retirement/provider boundaries, and generates source-bound checkpoint digests. Fixed local resets also establish partial-baseline resume contracts. Existing checkpoint digests must match; a rehearsal never silently replaces reviewed digests. Cleanup reconstructs the disposable DB at 186 with disabled policy.
+`scripts/test-staging-release-rehearsal.py` only accepts the fixed disposable local reconciliation workdir/container and cached CLI 2.109.1. It reuses existing legacy/catalogue/signed-ingress/initial-period fixtures, preserving all fixture actors. It reconstructs 180, exercises bounded local pushes to 184/185/188, compares retained rows/Auth users, checks ACL/RLS and retirement/provider boundaries, and generates source-bound checkpoint digests. Fixed local resets also establish partial-baseline resume contracts. Existing checkpoint digests must match; a rehearsal never silently replaces reviewed digests. Cleanup reconstructs the disposable DB at 188 with disabled policy.
+
+The `Ahmed-billing` change preserves the original 186 checkpoint and adds schema checkpoints 187/188 from a clean local database. New `RESUME_BILLING_186_TO_188` and `RESUME_BILLING_187_TO_188` phases require fresh authorization and the exact observed schema. The Windows-only full retained-data rehearsal has not been rerun in this Linux workspace; the full local database suite and clean reset cover the new migrations.

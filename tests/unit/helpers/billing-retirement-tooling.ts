@@ -2,10 +2,6 @@ import {
   functionArtifactDigest,
   hash,
 } from "../../../scripts/billing-retirement-release.mjs";
-import {
-  RETIREMENT_MIGRATION,
-  ACTIVATION_MIGRATION,
-} from "../../../scripts/billing-deployment-contract.mjs";
 
 /** Synthetic metadata only; not authorization or evidence for a real environment. */
 export function retirementFixture(
@@ -21,7 +17,9 @@ export function retirementFixture(
     observedAt: new Date().toISOString(),
     inventorySha256: "b".repeat(64),
     functionArtifactSha256: functionArtifactDigest(root),
-    expectedPendingMigrations: [RETIREMENT_MIGRATION, ACTIVATION_MIGRATION],
+    expectedPendingMigrations: manifest.migrations.approved
+      .slice(184)
+      .map((m: { filename: string }) => m.filename),
     backupCreatedAt: new Date().toISOString(),
     backupEnvironment: environment,
     backupCommitSha: commit,

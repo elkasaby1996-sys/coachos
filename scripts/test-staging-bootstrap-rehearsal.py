@@ -235,7 +235,7 @@ set local bytea_output='escape';set local standard_conforming_strings=off;
         print("PASS local rollback probes: hidden extension/auth data and standalone enum rejected", flush=True)
         print("PASS cold local database: no application objects, users, storage or migration rows", flush=True)
         before = None
-        for stage, start, end in (("bootstrap", 0, 180), ("baseline", 180, 184), ("retirement", 184, 185), ("activation", 185, 186)):
+        for stage, start, end in (("bootstrap", 0, 180), ("baseline", 180, 184), ("retirement", 184, 185), ("activation", 185, 188)):
             directory = local_artifact(stage)
             dry, _ = cli(directory, "db", "push", "--dry-run")
             pending = [m["filename"] for m in identity["manifest"]["migrations"]["approved"][start:end]]

@@ -1378,3 +1378,27 @@ When working in this repository, every agent or human contributor should treat t
   - the docs reflect the current PT Hub direction more accurately than the raw skill output
 - Next step:
   - apply the same system page-by-page across PT pages, settings, client detail pages, and public/auth surfaces
+
+## 2026-11-09 — Paddle subscriptions and coach seats (11:10 UTC, approximate)
+
+- Branch: `Ahmed-billing`, created from `main` at `9089060`.
+- Goal: complete RepSync Launch/Growth/Scale subscription payments and extra coach seats with Paddle; the user confirmed this is RepSync SaaS billing.
+- Changes: added the merchant checkout page and transaction-specific server confirmation; owner-authorized invoice/cancellation portal; explicit isolated sandbox/production configuration; verified initial plan-plus-seat reconciliation; retained subsequent plan, seat, payment-method, lifecycle, and recovery controls. Two new migrations preserve the original 186 migration hashes. Release tooling now accounts for 188 migrations and 15 billing functions without enabling sales or relaxing remote approval gates.
+- Files: billing UI and providers under `src/features/billing`, `/billing/checkout` route/page, Paddle Edge adapters and new portal endpoint, migrations `20261109090000`/`20261109090100`, database/unit/browser tests, deployment manifest/checkpoints/workflow, and `docs/paddle-billing.md`.
+- Design: applied the mandatory `ui-ux-pro-max` design-system search and existing RepSync design guidance; visually checked the mobile checkout error state.
+- Validation so far: clean local reset through all 188 migrations; full database suite **4,692 assertions passed**; database lint passed; build and formatting passed; ESLint has zero errors and three pre-existing warnings; all 15 billing Edge entrypoints passed Deno typechecking. New checkout/portal Chromium tests passed (4); remaining full unit and browser regression runs are in progress and will be recorded below.
+- Fixes found during verification: initial seat mapping was unavailable to later changes; initial evidence was not marked processed for immediate card updates; creation observations dropped their revision; historical plan test fixtures depended on the real date. Added coverage and corrected these paths.
+- Blockers: no Paddle account credentials, verified catalogue binding, approved payment domain, or named remote Supabase project are available. Provider calls are stubbed in browser/transport tests. No remote deployment, real payment, or provider certification has been performed. Local Docker Edge Runtime cannot start under this machine's file-limit restriction; Deno validates the entrypoints directly.
+- Limits: plan changes still require no extra seats; undoing scheduled plan/seat reductions and subscription resume remain unsupported RepSync actions. These limits and activation/configuration steps are documented.
+- Repository state: implementation prepared locally on `Ahmed-billing`; live sales gates remain disabled. Freeze the implementation commit for artifact validation, finish regression tests, and publish a reviewable PR before deployment.
+
+### Billing verification follow-up — 2026-11-09, 11:24 UTC (approximate)
+
+- Final full unit run: **316 files passed, 4,737 tests passed, 2 intentional skips**. A subsequent checkout UI guard was verified by another **521 passing billing unit tests** and six new browser cases.
+- The checkout seat input now enforces the existing plan limits: Launch 1, Growth 3, Scale 5 additional seats, including disabling invalid submissions and clamping the quantity when changing plans. Expanded database coverage to every allowed initial seat quantity, both cadences, both delivery orders, and both realms.
+- Final database run: **41 files, 5,092 assertions passed**. Clean local reset through 188 and database lint passed; sales and reconciliation remain disabled. All original 186 migration records/hashes are unchanged.
+- Browser checks: **41 distinct billing scenarios passed**, plus the auth-guard smoke check. Coverage includes 19 checkout contract cases, initial seat limits, payment-method updates and recovery, plan/seat management, owner/member portal access, mobile checkout, and server-confirmed activation. Provider calls remain intercepted; these results are not real Paddle certification.
+- Build, full formatting, and ESLint passed (three existing warnings). All 15 billing Edge entrypoints passed Deno typechecking. The release planner validates the updated manifest, frozen payload, and schema checkpoints. The Windows-specific retained-data rehearsal was updated for 188 but was not executed here.
+- Fixed deployment fixtures to account for the portal function, validated-manifest serialization, and multi-migration activation; the production/staging approval and disabled-sales contracts remain intact.
+- GitHub API requests return HTTP 403 under the cloud network policy, preventing automatic PR creation. A PR description has been prepared outside the checkout. Git transport is available; branch publication follows the final local commit. The prepared PR body is `/workspace/ahmed-billing-pr.md`.
+- Remote activation still requires actual Paddle configuration, the approved merchant domain, a named Supabase project, and provider certification. No remote Supabase change or real payment was attempted.

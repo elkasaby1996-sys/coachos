@@ -102,7 +102,7 @@ select is(pg_temp.lifecycle_dispatch(event),'reused','stale prior plan event can
 select is(pg_temp.lifecycle_dispatch(event||jsonb_build_object('eventRef',event->>'eventRef'||'/late','notificationRef',event->>'notificationRef'||'/late')),'manual_review','new delivery of stale old plan cannot reapply') from events where label='upgrade' and kind='subscription';
 select is(pg_temp.plan_status(u)->>'plan','growth','stale old plan leaves Growth authoritative') from cases where label='upgrade';
 select is((select count(*) from account_subscriptions where billing_account_id=(select id from billing_accounts where owner_user_id=u) and status='active'),1::bigint,'exactly one active canonical') from cases where label='upgrade';
-create or replace function public.billing_paddle_plan_now_v1() returns timestamptz language sql volatile set search_path=pg_catalog as $$ select clock_timestamp() $$;
+create or replace function public.billing_paddle_plan_now_v1() returns timestamptz language sql volatile set search_path=pg_catalog as $$ select '2026-09-21T12:00:00Z'::timestamptz + (clock_timestamp()-transaction_timestamp()) $$;
 
 select ok(not has_function_privilege('anon','begin_paddle_plan_change_v1(uuid,text,text,uuid,jsonb)','execute'),'anonymous mutation denied');
 select ok(not has_function_privilege('authenticated','begin_paddle_plan_change_v1(uuid,text,text,uuid,jsonb)','execute'),'browser mutation denied');

@@ -47,6 +47,7 @@ function setup(overrides: Record<string, string | undefined> = {}) {
     failAmbiguous = false,
     open = false;
   const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
+    if (name === "billing_paddle_environment_v1") return "test";
     if (name === "begin_paddle_checkout_v1") {
       if (beginError)
         throw Error(paddleCheckoutRpcError(name, { message: beginError })!);
@@ -144,7 +145,7 @@ describe("Supabase Edge Runtime checkout gates", () => {
   it.each([
     ["disabled", "PADDLE_CHECKOUT_ROLLOUT_DISABLED", 0],
     ["non-pilot", "PADDLE_CHECKOUT_FORBIDDEN", 0],
-    ["sales-disabled", "PADDLE_CHECKOUT_DISABLED", 1],
+    ["sales-disabled", "PADDLE_CHECKOUT_DISABLED", 2],
   ] as const)(
     "preserves %s without provider dispatch",
     async (gate, code, rpcCalls) => {
@@ -165,7 +166,7 @@ describe("Supabase Edge Runtime checkout gates", () => {
       expect(x.auth).toHaveBeenCalledExactlyOnceWith("synthetic-session");
       expect(x.rpc).toHaveBeenCalledTimes(rpcCalls);
       if (rpcCalls)
-        expect(x.rpc.mock.calls[0]![0]).toBe("begin_paddle_checkout_v1");
+        expect(x.rpc.mock.calls[1]![0]).toBe("begin_paddle_checkout_v1");
       expect(x.http).not.toHaveBeenCalled();
     },
   );
@@ -248,11 +249,11 @@ describe("Paddle HTTP runtime with real orchestration and mocked provider HTTP",
           "https://sandbox-pay.paddle.io/checkout/synthetic-launch?transaction_id=synthetic%2Ftransaction",
       });
       expect(x.auth).toHaveBeenCalledExactlyOnceWith("synthetic-session");
-      expect(x.rpc.mock.calls[0]![1].p_actor).toBe(x.actor);
+      expect(x.rpc.mock.calls[1]![1].p_actor).toBe(x.actor);
       expect(x.rpc.mock.invocationCallOrder[0]).toBeLessThan(
         x.http.mock.invocationCallOrder[0]!,
       );
-      expect(x.rpc.mock.calls[1]![0]).toBe("mark_paddle_checkout_ready_v1");
+      expect(x.rpc.mock.calls[2]![0]).toBe("mark_paddle_checkout_ready_v1");
       expect(x.http).toHaveBeenCalledOnce();
       expect(
         new Headers(x.http.mock.calls[0]![1]?.headers).get("authorization"),
@@ -367,23 +368,25 @@ describe("Paddle HTTP runtime with real orchestration and mocked provider HTTP",
   });
   it("records a non-dispatched outcome for unusable admitted mapping facts", async () => {
     const x = setup();
-    x.rpc.mockImplementationOnce(async (_name, args) => ({
-      dispatch: true,
-      status: "creating",
-      attemptReference: randomUUID(),
-      operationReference: args.p_operation,
-      base: {
-        priceReference: "",
-        productReference: "synthetic/product",
-        quantity: 1,
-      },
-      seats: null,
-    }));
+    x.rpc
+      .mockResolvedValueOnce("test" as never)
+      .mockImplementationOnce(async (_name, args) => ({
+        dispatch: true,
+        status: "creating",
+        attemptReference: randomUUID(),
+        operationReference: args.p_operation,
+        base: {
+          priceReference: "",
+          productReference: "synthetic/product",
+          quantity: 1,
+        },
+        seats: null,
+      }));
     expect(await (await x.run()).json()).toEqual({
       code: "PADDLE_CHECKOUT_NOT_DISPATCHED",
       retryable: false,
     });
-    expect(x.rpc.mock.calls[1]![0]).toBe("mark_paddle_checkout_failed_v1");
+    expect(x.rpc.mock.calls[2]![0]).toBe("mark_paddle_checkout_failed_v1");
     expect(x.http).not.toHaveBeenCalled();
   });
   it("sanitizes provider rejection and unsafe destination", async () => {
@@ -410,7 +413,9 @@ describe("Paddle HTTP runtime with real orchestration and mocked provider HTTP",
     "reused %s never fabricates a destination",
     async (status) => {
       const x = setup();
-      x.rpc.mockResolvedValueOnce({ dispatch: false, status } as never);
+      x.rpc
+        .mockResolvedValueOnce("test" as never)
+        .mockResolvedValueOnce({ dispatch: false, status } as never);
       expect(await (await x.run()).json()).toEqual({
         code: "PADDLE_CHECKOUT_RECOVERY_REQUIRED",
         status,

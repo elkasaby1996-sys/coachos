@@ -1,8 +1,12 @@
+-- Transaction-scoped deterministic clock for the synthetic September fixtures.
+-- Every test rolls this back; production continues to use clock_timestamp().
+create or replace function public.billing_paddle_plan_now_v1() returns timestamptz
+language sql volatile set search_path=pg_catalog as $$ select '2026-09-21T12:00:00Z'::timestamptz + (clock_timestamp()-transaction_timestamp()) $$;
 -- Synthetic local-only identities, signed-ingress contract and real dispatchers.
 create function pg_temp.plan_owner() returns uuid language plpgsql as $$
 declare u uuid:=pg_temp.lifecycle_owner();begin
  perform pg_temp.lifecycle_dispatch(pg_temp.lifecycle_observation(u,'baseline','subscription.updated','active',
- to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),'2026-09-20T00:00:00Z','2026-10-20T00:00:00Z'));
+ to_char(billing_paddle_plan_now_v1() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),'2026-09-20T00:00:00Z','2026-10-20T00:00:00Z'));
  return u;end $$;
 create function pg_temp.plan_snapshot(u uuid) returns jsonb language sql as $$
  select jsonb_build_object('subscriptionRef',c->'subscriptionRef','customerRef',c->'customerRef','priceRef',c->'sourcePriceRef','productRef',c->'sourceProductRef',
@@ -58,4 +62,12 @@ begin
  alter table account_subscriptions enable trigger user;alter table billing_subscriptions_v2 enable trigger user;alter table billing_subscription_items_v2 enable trigger user;alter table billing_evidence_v2 enable trigger user;
  set constraints all deferred;
  return u;
+end $$;
+
+-- The paid-state adapter defaults to now() in production. Route only its
+-- entitlement read through this transaction's clock so renewal dates stay deterministic.
+do $$declare definition text; needle text:='public.billing_paid_state_v1(s.id)';begin
+ definition:=pg_get_functiondef('public.resolve_account_entitlements(uuid)'::regprocedure);
+ if position(needle in definition)=0 then raise exception 'TEST_PAID_STATE_CLOCK_SHAPE'; end if;
+ execute replace(definition,needle,'public.billing_paid_state_v1(s.id,public.billing_paddle_plan_now_v1())');
 end $$;

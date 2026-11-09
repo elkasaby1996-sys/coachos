@@ -13,7 +13,7 @@ import { timingReviewPolicy } from "../../scripts/staging-timing-evidence.mjs";
 
 const now = Date.parse("2026-10-07T10:00:00Z");
 const stamp = (offset = 0) => new Date(now + offset).toISOString();
-function fixture(phase = "RETIREMENT_ACTIVATION_184_TO_186") {
+function fixture(phase = "RETIREMENT_ACTIVATION_184_TO_188") {
   const authorization = {
     baselineEvidenceSha256: "e".repeat(64),
     expiresAt: stamp(30 * 60_000),
@@ -97,7 +97,7 @@ describe("independently reviewed timing admission", () => {
     f.resign();
     expect(f.run).toThrow("TIMING_ADMISSION_REQUIRED");
   });
-  it.each(["EMPTY_TO_180", "RETIREMENT_ACTIVATION_184_TO_186"])(
+  it.each(["EMPTY_TO_180", "RETIREMENT_ACTIVATION_184_TO_188"])(
     "accepts a signed, complete local test control for %s",
     (phase) => {
       expect(fixture(phase).run().check().estimatedRemainingMs).toBeGreaterThan(

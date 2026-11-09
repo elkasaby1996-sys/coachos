@@ -116,7 +116,8 @@ export async function runProductionRetirement(
     mode,
     remoteMutationPerformed: false,
     retirementDeployment: "authorization_required",
-    productionCommercialRelease: "BLOCKED_SANDBOX_ONLY_RUNTIME",
+    productionCommercialRelease:
+      "BLOCKED_PENDING_PADDLE_CONFIGURATION_AND_CERTIFICATION",
     lastCompletedStage: "local_contract_validation",
     deployedFunctionCount: 0,
     certification: "not_run",

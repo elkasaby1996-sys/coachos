@@ -55,7 +55,7 @@ export function bootstrapArtifact(identity, phase = BOOTSTRAP_PHASE) {
     BOOTSTRAP_TARGET,
   );
   ensure(
-    identity.manifest.migrations.approved.length === 186 &&
+    identity.manifest.migrations.approved.length === 188 &&
       migrations.length === 180,
     "BOOTSTRAP_MANIFEST_INVALID",
   );

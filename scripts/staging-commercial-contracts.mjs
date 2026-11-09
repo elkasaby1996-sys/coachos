@@ -9,7 +9,9 @@ import {
   SCENARIO_IDS,
   SECRET_NAMES,
   JWT_CONTRACTS,
-  ACTIVATION_MIGRATION,
+  BILLING_EXTENSION_MIGRATIONS,
+  BILLING_MIGRATION_COUNT,
+  BILLING_LATEST_MIGRATION,
   ACTIVATION_SHA,
   RETIREMENT_SHA,
   EVIDENCE_CLASSES,
@@ -59,8 +61,8 @@ export const manifestSchema = z.strictObject({
   requiredSupabaseProjectRef: z.literal("input:STAGING_SUPABASE_PROJECT_REF"),
   migrations: z.strictObject({
     directory: z.literal("supabase/migrations"),
-    approved: z.array(migrationSchema).length(186),
-    expectedLatestMigration: z.literal(ACTIVATION_MIGRATION),
+    approved: z.array(migrationSchema).length(BILLING_MIGRATION_COUNT),
+    expectedLatestMigration: z.literal(BILLING_LATEST_MIGRATION),
   }),
   functions: z.strictObject({
     billing: exactList(BILLING_FUNCTIONS),
@@ -146,8 +148,13 @@ export function validateRepository(root, input) {
     "RETIREMENT_MIGRATION_DRIFT",
   );
   requireCheck(
-    actual.at(-1).sha256 === ACTIVATION_SHA,
+    actual[185].sha256 === ACTIVATION_SHA,
     "ACTIVATION_MIGRATION_DRIFT",
+  );
+  requireCheck(
+    JSON.stringify(actual.slice(186)) ===
+      JSON.stringify(BILLING_EXTENSION_MIGRATIONS),
+    "BILLING_EXTENSION_MIGRATION_DRIFT",
   );
   for (const name of [
     ...manifest.functions.billing,

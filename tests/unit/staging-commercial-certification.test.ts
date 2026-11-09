@@ -241,7 +241,7 @@ describe("staging commercial manifest and local planner", () => {
       plan.authorization.commands.filter((s: string) =>
         s.includes("functions deploy"),
       ),
-    ).toHaveLength(16);
+    ).toHaveLength(17);
     expect(network).not.toHaveBeenCalled();
     // No apply module is reachable from the planner import graph.
     expect(
@@ -755,14 +755,16 @@ describe("apply safety and workflow contract", () => {
     expect(dispatch.phase.default).toBe("BASELINE_180_TO_184");
     expect(dispatch.phase.options).toEqual([
       "BASELINE_180_TO_184",
-      "RETIREMENT_ACTIVATION_184_TO_186",
+      "RETIREMENT_ACTIVATION_184_TO_188",
       "RESUME_BASELINE_180_TO_184",
       "RESUME_BASELINE_181_TO_184",
       "RESUME_BASELINE_182_TO_184",
       "RESUME_BASELINE_183_TO_184",
-      "RESUME_CUTOVER_184_TO_186",
-      "RESUME_ACTIVATION_185_TO_186",
-      "RESUME_FINAL_186",
+      "RESUME_CUTOVER_184_TO_188",
+      "RESUME_ACTIVATION_185_TO_188",
+      "RESUME_BILLING_186_TO_188",
+      "RESUME_BILLING_187_TO_188",
+      "RESUME_FINAL_188",
     ]);
     const job = yaml.jobs.certification,
       steps = job.steps;

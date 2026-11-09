@@ -1333,15 +1333,15 @@ describe("handoff and whole-phase feasibility", () => {
       migrations: 1,
       deployments: 0,
     });
-    expect(phaseWorkload("RETIREMENT_ACTIVATION_184_TO_186")).toEqual({
-      observations: 129,
+    expect(phaseWorkload("RETIREMENT_ACTIVATION_184_TO_188")).toEqual({
+      observations: 137,
       migrations: 2,
-      deployments: 30,
+      deployments: 32,
     });
   });
   it("blocks historical 42-45s observations despite individual freshness passing", () => {
     const result = phaseTimingAssessment({
-      phase: "RETIREMENT_ACTIVATION_184_TO_186",
+      phase: "RETIREMENT_ACTIVATION_184_TO_188",
       observationSamplesMs: [42267, 43500, 44586],
       mutationAllowanceMs: 60_000,
       localValidationAllowanceMs: 30_000,
@@ -1358,7 +1358,7 @@ describe("handoff and whole-phase feasibility", () => {
   });
   it("fast measured control fits but is explicitly not a guarantee", () => {
     const result = phaseTimingAssessment({
-      phase: "RETIREMENT_ACTIVATION_184_TO_186",
+      phase: "RETIREMENT_ACTIVATION_184_TO_188",
       observationSamplesMs: [900, 1000, 1100],
       mutationAllowanceMs: 300_000,
       localValidationAllowanceMs: 60_000,

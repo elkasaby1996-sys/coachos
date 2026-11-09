@@ -20,11 +20,11 @@ import {
 } from "./billing-deployment-contract.mjs";
 import { hash } from "./billing-retirement-release.mjs";
 
-export const FROZEN_PAYLOAD = "9a9f79ff2ba7aada9ff2c24f162360d9c03b33a0";
+export const FROZEN_PAYLOAD = "8af05aa48cbccca694b2da447d77f8977ec3401a";
 export const TARGETS = Object.freeze({
   baseline: 184,
   retirement: 185,
-  activation: 186,
+  activation: 188,
 });
 const protectedPaths = [
   "src",

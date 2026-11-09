@@ -7,7 +7,7 @@ test.describe.configure({ mode: "parallel" });
 test.afterEach(async ({ context }) => {
   await context.unrouteAll({ behavior: "wait" });
 });
-test("owner sees RepSync action, never broad portal or portal-return polling", async ({
+test("owner sees payment and invoice actions without portal-return polling", async ({
   page,
   context,
 }) => {
@@ -16,21 +16,29 @@ test("owner sees RepSync action, never broad portal or portal-return polling", a
     page.getByRole("button", { name: "Update payment method", exact: true }),
   ).toBeEnabled();
   await expect(
-    page.getByRole("button", { name: "Manage billing", exact: true }),
-  ).toHaveCount(0);
+    page.getByRole("button", {
+      name: "Invoices and subscription management",
+      exact: true,
+    }),
+  ).toBeEnabled();
   await gotoBilling(page, "/pt-hub/settings/billing?portal=return");
   await expect(
     page.getByRole("button", { name: "Update payment method", exact: true }),
   ).toBeEnabled();
   await expect(
-    page.getByText("Verifying billing update…", { exact: false }),
+    page.getByText("Confirming your payment update with Paddle…", {
+      exact: false,
+    }),
   ).toHaveCount(0);
   expect(f.fixture.requests).toBe(0);
   expect(f.fixture.portalRequests).toBe(0);
   expect(f.fixture.summaryReads).toBe(0);
   await f.waitForReads();
 });
-test("nonowner has no payment-method action", async ({ page, context }) => {
+test("nonowner has no payment-method or customer portal action", async ({
+  page,
+  context,
+}) => {
   const f = await paymentMethodFixture(
     page,
     context,
@@ -40,6 +48,9 @@ test("nonowner has no payment-method action", async ({ page, context }) => {
   );
   await expect(
     page.getByRole("button", { name: "Update payment method", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Invoices and subscription management" }),
   ).toHaveCount(0);
   expect(f.fixture.requests).toBe(0);
 });

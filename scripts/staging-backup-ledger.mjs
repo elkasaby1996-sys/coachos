@@ -9,7 +9,7 @@ const fail = () => {
 export const LEDGER_QUERY =
   "select coalesce(jsonb_agg(to_jsonb(m) order by version),'[]'::jsonb) from supabase_migrations.schema_migrations m;";
 export function ledgerVersions(rows) {
-  if (!Array.isArray(rows) || rows.length < 180 || rows.length > 186) fail();
+  if (!Array.isArray(rows) || rows.length < 180 || rows.length > 188) fail();
   const approved = JSON.parse(
     readFileSync(
       new URL(

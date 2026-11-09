@@ -147,8 +147,8 @@ const source = z.strictObject({
   manifestDigest: digest,
 });
 const plan = z.strictObject({
-  startCheckpoint: z.number().int().min(0).max(186).nullable(),
-  endCheckpoint: z.number().int().min(0).max(186).nullable(),
+  startCheckpoint: z.number().int().min(0).max(188).nullable(),
+  endCheckpoint: z.number().int().min(0).max(188).nullable(),
   orderedMigrationsDigest: digest,
   checkpointContractDigest: digest,
   artifactPlanDigest: digest,

@@ -28,7 +28,7 @@ select is((select count(*)::int from billing_paddle_event_deliveries where event
 update billing_runtime_policy set paddle_reconciliation_enabled=true;
 savepoint wrong_environment;
 update billing_runtime_policy set entitlement_environment='live';
-select throws_ok($$select pg_temp.auto_dispatch(u,'transaction.completed') from cases$$,'P0001','BILLING_GUARD_ENVIRONMENT_MISMATCH','test event cannot activate live authority');
+select throws_ok($$select pg_temp.auto_dispatch(u,'transaction.completed') from cases$$,'P0001','PADDLE_AUTO_RECONCILIATION_SCOPE','test event cannot activate live authority');
 rollback to wrong_environment;
 select is(pg_temp.auto_dispatch(u,'transaction.completed'),'pending','transaction first waits') from cases;
 select pg_temp.auto_ingest(u,'subscription.created') from cases;

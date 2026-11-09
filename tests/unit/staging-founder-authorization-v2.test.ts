@@ -163,7 +163,7 @@ describe("V2 pure authorization contracts", () => {
         ),
       );
     }
-    expect(V2_CAPABILITIES).toHaveLength(17);
+    expect(V2_CAPABILITIES).toHaveLength(19);
   });
 
   it.each(Object.keys(PHASES))(

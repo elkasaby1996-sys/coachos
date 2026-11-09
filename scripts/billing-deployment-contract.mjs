@@ -1,3 +1,16 @@
+export const BILLING_EXTENSION_MIGRATIONS = Object.freeze([
+  {
+    filename: "20261109090000_paddle_production_billing.sql",
+    sha256: "728ba329ba6506f7a31d000642b2ddf15e095f3c05d908513cb69d7c8f7330ac",
+  },
+  {
+    filename: "20261109090100_paddle_checkout_confirmation.sql",
+    sha256: "35a98ad80e72ead2b836c5b6adeb7c93badd5a606b9ef1c94319a6196b1f4d08",
+  },
+]);
+export const BILLING_MIGRATION_COUNT = 188;
+export const BILLING_LATEST_MIGRATION =
+  BILLING_EXTENSION_MIGRATIONS.at(-1).filename;
 // Repository-authoritative deployment metadata. No transport, credentials or mutation.
 export const RETIREMENT_MIGRATION =
   "20261001224659_lemon_squeezy_retirement_disposition.sql";
@@ -49,6 +62,7 @@ export const FUNCTION_CONTRACTS = Object.freeze([
     unauthorized: "400; oversize-413; configuration-503",
   },
   ...[
+    "billing-create-paddle-portal",
     "billing-update-payment-method",
     "billing-preview-plan-change",
     "billing-change-subscription-plan",
@@ -101,6 +115,7 @@ export const CONFIGURATION_CLASSES = Object.freeze({
     "PADDLE_SANDBOX_API_KEY",
     "PADDLE_SANDBOX_CHECKOUT_API_KEY",
     "PADDLE_SANDBOX_PAYMENT_METHOD_API_KEY",
+    "PADDLE_SANDBOX_PORTAL_API_KEY",
     "PADDLE_SANDBOX_WEBHOOK_SECRET",
     "PADDLE_SANDBOX_PAYMENT_PAGE_URL",
     "PADDLE_CHECKOUT_ACCESS_MODE",
@@ -176,7 +191,6 @@ export const SCENARIO_IDS = Object.freeze(Object.keys(SCENARIO_ASSERTIONS));
 export const UNSUPPORTED_SCENARIOS = Object.freeze([
   "CERT-PLAN-003",
   "CERT-SEAT-003",
-  "CERT-SUBSCRIPTION-001",
   "CERT-SUBSCRIPTION-002",
 ]);
 export const EVIDENCE_CLASSES = Object.freeze([

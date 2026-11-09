@@ -59,7 +59,7 @@ export function phaseWorkload(phase, outsideFunctions = 0) {
       migrations++;
       observations += 3;
     } else if (["containment", "billing", "nonbilling"].includes(step)) {
-      const count = step === "nonbilling" ? 2 : 14;
+      const count = step === "nonbilling" ? 2 : 15;
       deployments += count;
       observations += 4 * count;
     } else if (

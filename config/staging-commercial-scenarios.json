@@ -1,7 +1,7 @@
 [
   {
     "id": "CERT-DEPLOY-001",
-    "title": "Reviewed retirement 185 and catalogue activation 186",
+    "title": "Reviewed retirement and Paddle activation through migration 188",
     "criticality": "critical",
     "prerequisites": [
       "Separate explicit authorization naming environment, commit, resources and allowed actions",
@@ -9,14 +9,14 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
-      "Compare the exact reviewed remote prefix through 184, 185 or 186 and the corresponding pending 185/186 suffix hashes",
-      "Apply only the separately authorized ordered suffix",
-      "Compare the complete 186 ledger, ACL/call graph and retained row hashes"
+      "Compare the exact reviewed remote prefix through 184–188 and its corresponding pending suffix hashes",
+      "Apply only the reviewed pending suffix through the guarded deployment workflow",
+      "Compare the complete 188 ledger, ACL/call graph and retained row hashes"
     ],
-    "expectedLocalOutcome": "186/186; zero LS authority; historical row identities unchanged; trusted monthly/annual activation",
+    "expectedLocalOutcome": "188/188; zero LS authority; historical rows preserved; realm-bound subscription and seat activation",
     "expectedProviderOutcome": "No provider request",
     "requiredEvidence": [
       "MIGRATION_HISTORY_MATCH",
@@ -34,7 +34,9 @@
     "localEvidence": [
       "supabase/tests/lemon_squeezy_database_retirement.sql",
       "tests/unit/billing-retirement-deployment.test.ts",
-      "supabase/tests/paddle_catalogue_initial_activation.sql"
+      "supabase/tests/paddle_catalogue_initial_activation.sql",
+      "supabase/tests/paddle_subscription_purchase.sql",
+      "supabase/tests/paddle_live_subscription_purchase.sql"
     ],
     "historicalEvidence": [],
     "requiredForCertification": true
@@ -49,10 +51,10 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
-      "Deploy the exact 14 billing and two nonbilling entries",
+      "Deploy the exact 15 billing and two nonbilling entries",
       "Overwrite all three LS endpoint names",
       "Bind deployed function version/artifact identities and verify JWT/auth contracts"
     ],
@@ -88,7 +90,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Verify exact approved origin/callbacks",
@@ -127,7 +129,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Compare public catalogue to frozen snapshot",
@@ -166,7 +168,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Use fresh synthetic monthly cohort and legal acknowledgement",
@@ -206,7 +208,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Use fresh synthetic annual cohort",
@@ -246,7 +248,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Capture private provider-signed raw-body delivery",
@@ -285,7 +287,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Send bounded missing/tampered/expired signature samples",
@@ -321,7 +323,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Replay identical verified delivery under separate authorization",
@@ -356,7 +358,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Delay subscription/settlement events within controlled synthetic cohort",
@@ -392,7 +394,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Preview owner upgrade and capacity",
@@ -428,7 +430,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Preview capacity/remediation blockers",
@@ -464,7 +466,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Record the existing HTTP 409 BILLING_PLAN_CHANGE_CANNOT_CANCEL contract; do not attempt a provider mutation"
@@ -495,7 +497,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Wait for a real sandbox effective boundary without editing timestamps",
@@ -531,7 +533,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Preview reserved/current seat capacity",
@@ -567,7 +569,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Schedule reduction with capacity checks",
@@ -602,7 +604,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Record the existing HTTP 409 BILLING_SEAT_QUANTITY_CANNOT_CANCEL contract; do not attempt a provider mutation"
@@ -633,7 +635,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Wait for real sandbox boundary",
@@ -669,7 +671,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Prepare authenticated owner-scoped update",
@@ -705,7 +707,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Use separately authorized sandbox failure/recovery cohort",
@@ -741,7 +743,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Verify active plan features, counted clients, seats and reservations"
@@ -778,7 +780,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": ["Verify existing-delivery-only behavior and blocked growth"],
     "expectedLocalOutcome": "No new capacity under restricted state",
@@ -813,7 +815,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Verify expired paid state and explicit unavailable behavior",
@@ -851,7 +853,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Create fresh eligible trial cohort",
@@ -890,7 +892,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Inspect sanitized browser, handler and operator evidence",
@@ -925,7 +927,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Exercise foreign-account intents with synthetic authenticated actors",
@@ -963,7 +965,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Exercise timeout/retry fixture under separate authorization",
@@ -1002,7 +1004,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Validate private backup restore in disposable isolated target",
@@ -1038,7 +1040,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Probe all three tombstones: POST 410, other methods 405, inert OPTIONS and no-store",
@@ -1069,7 +1071,7 @@
   },
   {
     "id": "CERT-SUBSCRIPTION-001",
-    "title": "Subscription cancellation support decision",
+    "title": "Paddle customer portal subscription cancellation",
     "criticality": "critical",
     "prerequisites": [
       "Separate explicit authorization naming environment, commit, resources and allowed actions",
@@ -1077,15 +1079,15 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
-      "Inspect actual runtime capability and endpoint inventory",
-      "Record unsupported application cancellation and obtain product decision",
-      "Do not substitute scheduled plan/seat cancellation or retired portal"
+      "Open the authenticated account owner billing portal from RepSync",
+      "Confirm cancellation in Paddle and verify the signed subscription update",
+      "Verify paid-period access, invoices, and access expiry at the confirmed boundary"
     ],
-    "expectedLocalOutcome": "UNSUPPORTED / PRODUCT DECISION REQUIRED; no application cancel command",
-    "expectedProviderOutcome": "No cancellation request implemented by RepSync",
+    "expectedLocalOutcome": "Only the owning account can open its portal; verified cancellation preserves paid-period access",
+    "expectedProviderOutcome": "Paddle confirms cancellation and emits the signed subscription state update",
     "requiredEvidence": [
       "SUBSCRIPTION_CANCELLATION_SUPPORTED",
       "Fresh environment/commit/artifact-bound sanitized assertions; local tests are not remote certification"
@@ -1095,10 +1097,17 @@
     ],
     "status": "not_run",
     "provider": "paddle",
-    "evidenceClasses": ["PRODUCT_DECISION_PENDING"],
-    "localEvidence": ["tests/unit/billing-retirement-deployment.test.ts"],
+    "evidenceClasses": [
+      "IMPLEMENTED_LOCAL",
+      "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION"
+    ],
+    "localEvidence": [
+      "tests/unit/paddle-production.test.ts",
+      "tests/e2e/paddle-subscription-payment.spec.ts",
+      "supabase/tests/paddle_subscription_purchase.sql"
+    ],
     "historicalEvidence": [],
-    "requiredForCertification": false
+    "requiredForCertification": true
   },
   {
     "id": "CERT-SUBSCRIPTION-002",
@@ -1110,7 +1119,7 @@
     ],
     "safeInputs": [
       "Synthetic aliases only; no secret values, customer PII, provider identifiers or raw payloads in public evidence",
-      "Paddle sandbox only; production commercial release remains blocked pending live runtime implementation/certification"
+      "Paddle sandbox only; production commercial release remains blocked pending live configuration and certification"
     ],
     "steps": [
       "Inspect actual runtime capability and endpoint inventory",

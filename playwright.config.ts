@@ -49,7 +49,13 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: false,
         timeout: 120_000,
-        env: { VITE_BILLING_PROVIDER: "paddle", VITE_SENTRY_DSN: "" },
+        env: {
+          VITE_BILLING_PROVIDER: "paddle",
+          VITE_PADDLE_ENVIRONMENT: "sandbox",
+          // Public, synthetic token; payment tests intercept Paddle's SDK/network.
+          VITE_PADDLE_SANDBOX_CLIENT_TOKEN: `test_${"a".repeat(26)}`,
+          VITE_SENTRY_DSN: "",
+        },
       }
     : undefined,
   projects: [

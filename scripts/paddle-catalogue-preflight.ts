@@ -1,7 +1,7 @@
 import { billingOutput } from "./billing-operator-output.mjs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPaddleSandboxCatalogue } from "../supabase/functions/_shared/paddle-catalogue/index.ts";
+import { createPaddleCatalogue } from "../supabase/functions/_shared/paddle-catalogue/index.ts";
 import {
   assertServer,
   readServerEnvironment,
@@ -23,7 +23,7 @@ export async function runPaddleCataloguePreflight(): Promise<CatalogueVerificati
       readServerEnvironment("PADDLE_CATALOGUE_BINDING_PATH"),
     );
     const verifier = createPaddleCatalogueVerifier(
-      createPaddleSandboxCatalogue(),
+      createPaddleCatalogue(),
       binding,
       binding.expectedCatalogue,
     );

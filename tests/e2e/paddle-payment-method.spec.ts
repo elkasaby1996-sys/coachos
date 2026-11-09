@@ -24,7 +24,9 @@ test("active update opens exact transaction, stays pending, and preserves privac
   expect(f.fixture.requests).toBe(1);
   await f.signal("checkout.completed");
   await expect(
-    page.getByText("Verifying billing update…", { exact: false }),
+    page.getByText("Confirming your payment update with Paddle…", {
+      exact: false,
+    }),
   ).toBeVisible();
   await f.waitForReads();
   await page.clock.fastForward(31_000);
@@ -73,7 +75,9 @@ test("past-due checkout waits for backend recovery, not a completion callback", 
     .toEqual([{ transactionId: syntheticTransaction }]);
   await f.signal("checkout.completed");
   await expect(
-    page.getByText("Verifying billing update…", { exact: false }),
+    page.getByText("Confirming your payment update with Paddle…", {
+      exact: false,
+    }),
   ).toBeVisible();
   await expect(
     page.getByText("A payment failed.", { exact: false }),

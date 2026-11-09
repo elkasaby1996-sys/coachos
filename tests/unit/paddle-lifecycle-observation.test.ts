@@ -101,7 +101,7 @@ describe("Paddle retained lifecycle projection", () => {
     );
     expect(
       observation({ updated_at: stamp }, "subscription.created"),
-    ).not.toHaveProperty("updatedAt");
+    ).toHaveProperty("updatedAt", stamp);
   });
   it.each([
     "2026-02-30T00:00:00Z",

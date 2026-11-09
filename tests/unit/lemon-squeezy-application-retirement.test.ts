@@ -199,8 +199,8 @@ describe("runtime composition without retired configuration", () => {
         SUPABASE_URL: "https://platform.invalid",
         SUPABASE_SERVICE_ROLE_KEY: "synthetic",
         PADDLE_ENVIRONMENT: "sandbox",
-        PADDLE_SANDBOX_API_KEY: "pdl_sdbx_synthetic",
-        PADDLE_SANDBOX_PAYMENT_METHOD_API_KEY: "pdl_sdbx_synthetic",
+        PADDLE_SANDBOX_API_KEY: `pdl_sdbx_apikey_${"a".repeat(26)}_${"b".repeat(22)}_Tst`,
+        PADDLE_SANDBOX_PAYMENT_METHOD_API_KEY: `pdl_sdbx_apikey_${"a".repeat(26)}_${"b".repeat(22)}_Tst`,
       };
       if (
         /LEMON|BILLING_PROVIDER_ENVIRONMENT|BILLING_APP_BASE_URL|BILLING_PORTAL/.test(

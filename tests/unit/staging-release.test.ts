@@ -145,7 +145,7 @@ const context = {
 };
 const contracts = {
   checkpoints: Object.fromEntries(
-    [179, 180, 181, 182, 183, 184, 185, 186].map((n) => [
+    [179, 180, 181, 182, 183, 184, 185, 186, 187, 188].map((n) => [
       n,
       { digest: hash("database-" + n) },
     ]),
@@ -262,7 +262,7 @@ function simulation(start: number) {
           throw Error("SYNTHETIC_CONTAINMENT_FAILURE");
         if (
           fail === "final" &&
-          count === 186 &&
+          count === 188 &&
           args[2] === "billing-create-paddle-checkout"
         )
           throw Error("SYNTHETIC_FINAL_FAILURE");
@@ -272,7 +272,7 @@ function simulation(start: number) {
       }
       if (args.includes("--dry-run")) {
         if (dryRunOverride !== null) return dryRunOverride;
-        const target = count < 184 ? 184 : count === 184 ? 185 : 186;
+        const target = count < 184 ? 184 : count === 184 ? 185 : 188;
         return identity.manifest.migrations.approved
           .slice(count, target)
           .map((m) => m.filename)
@@ -285,7 +285,7 @@ function simulation(start: number) {
         }
         if (fail === "activation" && count === 185)
           throw Error("SYNTHETIC_ACTIVATION_FAILURE");
-        count = count < 184 ? 184 : count + 1;
+        count = count < 184 ? 184 : count === 184 ? 185 : 188;
       }
       return "";
     }),
@@ -655,7 +655,7 @@ describe("strict versioned phase authority", () => {
         a.pendingMigrations.push(identity.manifest.migrations.approved[184]),
     ],
     ["reordered migrations", (a) => a.pendingMigrations.reverse()],
-    ["cross phase", (a) => (a.phase = "RETIREMENT_ACTIVATION_184_TO_186")],
+    ["cross phase", (a) => (a.phase = "RETIREMENT_ACTIVATION_184_TO_188")],
     ["stale inventory", (a) => (a.inventory.observedAt = iso(-16 * 60_000))],
     [
       "configuration missing payment credential",
@@ -716,7 +716,7 @@ describe(
       "stops a non-active deployment (%s) before the next mutation",
       async (status) => {
         const s = simulation(184),
-          a = authorization("RETIREMENT_ACTIVATION_184_TO_186", s);
+          a = authorization("RETIREMENT_ACTIVATION_184_TO_188", s);
         s.adapter.observe.mockImplementation(async () => {
           const o = s.observation();
           if (s.commands.length)
@@ -724,7 +724,7 @@ describe(
               status;
           return o;
         });
-        const result = await run("RETIREMENT_ACTIVATION_184_TO_186", s, a);
+        const result = await run("RETIREMENT_ACTIVATION_184_TO_188", s, a);
         expect(result.recovery.errorCode).toBe("RELEASE_FUNCTION_NOT_ACTIVE");
         expect(s.commands).toHaveLength(1);
       },
@@ -732,7 +732,7 @@ describe(
     it.each(["REMOVED", "THROTTLED", undefined])(
       "rejects non-active final Paddle webhook (%s)",
       (status) => {
-        const o = simulation(186).observation();
+        const o = simulation(188).observation();
         o.artifacts = Object.fromEntries(
           identity.functions.map((f) => [f.name, f.digest]),
         );
@@ -805,7 +805,7 @@ describe(
     it("rejects a wrong deployed digest immediately before subsequent deployments", async () => {
       const s = simulation(184);
       s.adapter.verifyArtifact.mockResolvedValue(hash("wrong"));
-      const r = await run("RETIREMENT_ACTIVATION_184_TO_186", s);
+      const r = await run("RETIREMENT_ACTIVATION_184_TO_188", s);
       expect(r.status).toBe("blocked");
       expect(s.commands).toHaveLength(1);
       expect(s.count).toBe(184);
@@ -815,7 +815,7 @@ describe(
       s.adapter.probe.mockImplementation(async () => {
         s.setEnabled();
       });
-      expect((await run("RETIREMENT_ACTIVATION_184_TO_186", s)).status).toBe(
+      expect((await run("RETIREMENT_ACTIVATION_184_TO_188", s)).status).toBe(
         "blocked",
       );
       expect(s.commands).toHaveLength(1);
@@ -865,7 +865,7 @@ describe(
     it("blocks in-flight work", async () => {
       const s = simulation(184);
       s.setBusy();
-      const r = await run("RETIREMENT_ACTIVATION_184_TO_186", s);
+      const r = await run("RETIREMENT_ACTIVATION_184_TO_188", s);
       expect(r.status).toBe("blocked");
       expect(s.commands).toHaveLength(0);
     });
@@ -878,11 +878,11 @@ describe(
       expect(recoveryPlan(r.recovery).phase).toBe("RESUME_BASELINE_182_TO_184");
       expect(s.commands.filter((c) => c.includes("--yes"))).toHaveLength(1);
     });
-    it("runs containment then verified 185 and 186 then distinct final substages", async () => {
+    it("runs containment then verified 185 and 188 then distinct final substages", async () => {
       const s = simulation(184),
-        r = await run("RETIREMENT_ACTIVATION_184_TO_186", s);
+        r = await run("RETIREMENT_ACTIVATION_184_TO_188", s);
       expect(r.status).toBe("complete");
-      expect(s.count).toBe(186);
+      expect(s.count).toBe(188);
       expect(r.checkpoints.map((c: any) => c.stage)).toContain(
         "retirement_checkpoint",
       );
@@ -893,15 +893,15 @@ describe(
     it("stops containment failure before SQL mutation", async () => {
       const s = simulation(184);
       s.setFail("containment");
-      const r = await run("RETIREMENT_ACTIVATION_184_TO_186", s);
+      const r = await run("RETIREMENT_ACTIVATION_184_TO_188", s);
       expect(r.status).toBe("blocked");
       expect(s.count).toBe(184);
       expect(s.commands.some((c) => c.includes("--yes"))).toBe(false);
     });
-    it("stops at 185 on retirement proof failure, never attempts 186", async () => {
+    it("stops at 185 on retirement proof failure, never attempts 188", async () => {
       const s = simulation(184);
       s.setRetirementFailure();
-      const r = await run("RETIREMENT_ACTIVATION_184_TO_186", s);
+      const r = await run("RETIREMENT_ACTIVATION_184_TO_188", s);
       expect(r.status).toBe("blocked");
       expect(r.recovery.ledgerCount).toBe(185);
       expect(s.commands.filter((c) => c.includes("--yes"))).toHaveLength(1);
@@ -909,16 +909,16 @@ describe(
     it("records failed activation at 185", async () => {
       const s = simulation(184);
       s.setFail("activation");
-      const r = await run("RETIREMENT_ACTIVATION_184_TO_186", s);
+      const r = await run("RETIREMENT_ACTIVATION_184_TO_188", s);
       expect(r.recovery.ledgerCount).toBe(185);
       expect(r.recovery.failedStep).toBe("activation");
     });
-    it("records partial final deployment at 186", async () => {
+    it("records partial final deployment at 188", async () => {
       const s = simulation(184);
       s.setFail("final");
-      const r = await run("RETIREMENT_ACTIVATION_184_TO_186", s);
+      const r = await run("RETIREMENT_ACTIVATION_184_TO_188", s);
       expect(r.status).toBe("blocked");
-      expect(r.recovery.ledgerCount).toBe(186);
+      expect(r.recovery.ledgerCount).toBe(188);
       expect(r.completedSteps).not.toContain("nonbilling");
       expect(
         r.recovery.functionStates.some((f) => f.artifact === "containment"),
@@ -927,21 +927,21 @@ describe(
     });
     it("blocks JWT drift before proceeding to another function", async () => {
       const s = simulation(184),
-        a = authorization("RETIREMENT_ACTIVATION_184_TO_186", s);
+        a = authorization("RETIREMENT_ACTIVATION_184_TO_188", s);
       s.adapter.observe.mockImplementation(async () => {
         const o = s.observation();
         if (s.commands.length)
           o.functions[0].verify_jwt = !o.functions[0].verify_jwt;
         return o;
       });
-      expect((await run("RETIREMENT_ACTIVATION_184_TO_186", s, a)).status).toBe(
+      expect((await run("RETIREMENT_ACTIVATION_184_TO_188", s, a)).status).toBe(
         "blocked",
       );
       expect(s.commands).toHaveLength(1);
     });
     it("blocks a generation change while deployed source is being verified", async () => {
       const s = simulation(184),
-        a = authorization("RETIREMENT_ACTIVATION_184_TO_186", s);
+        a = authorization("RETIREMENT_ACTIVATION_184_TO_188", s);
       let downloaded = false;
       s.adapter.verifyArtifact.mockImplementation(async (_name, expected) => {
         downloaded = true;
@@ -957,19 +957,19 @@ describe(
         }
         return o;
       });
-      const r = await run("RETIREMENT_ACTIVATION_184_TO_186", s, a);
+      const r = await run("RETIREMENT_ACTIVATION_184_TO_188", s, a);
       expect(r.recovery.errorCode).toBe("RELEASE_DEPLOYED_GENERATION_DRIFT");
       expect(s.commands).toHaveLength(1);
     });
     it("rejects remaining containment during final verification", async () => {
       const s = simulation(184);
       s.setRemainingContainment();
-      const r = await run("RETIREMENT_ACTIVATION_184_TO_186", s);
+      const r = await run("RETIREMENT_ACTIVATION_184_TO_188", s);
       expect(r.status).toBe("blocked");
       expect(r.recovery.errorCode).toBe("RELEASE_FUNCTION_IDENTITY_DRIFT");
     });
     it("rejects missing tombstone and unexpected legacy function", () => {
-      const s = simulation(186),
+      const s = simulation(188),
         o = s.observation();
       o.artifacts = Object.fromEntries(
         identity.functions.map((f) => [f.name, f.digest]),
@@ -984,7 +984,7 @@ describe(
       expect(() => verifyFunctions(o, identity, "final")).toThrow();
     });
     it("verifies the JWT contract of an observed outside-scope function without deploying it", () => {
-      const o = simulation(186).observation();
+      const o = simulation(188).observation();
       o.artifacts = Object.fromEntries(
         identity.functions.map((f) => [f.name, f.digest]),
       );
@@ -994,7 +994,7 @@ describe(
       o.functions.at(-1).verify_jwt = !f.verifyJwt;
       expect(() => verifyFunctions(o, identity, "final")).toThrow("JWT_DRIFT");
     });
-    it.each([180, 181, 182, 183, 184, 185, 186])(
+    it.each([180, 181, 182, 183, 184, 185, 186, 187, 188])(
       "supports newly authorized resume from %s",
       async (count) => {
         const e = {
@@ -1021,7 +1021,7 @@ describe(
     );
     it("rejects resume without fresh recovery authorization", async () => {
       const s = simulation(185);
-      expect((await run("RESUME_ACTIVATION_185_TO_186", s)).status).toBe(
+      expect((await run("RESUME_ACTIVATION_185_TO_188", s)).status).toBe(
         "blocked",
       );
       expect(s.commands).toHaveLength(0);
@@ -1202,7 +1202,7 @@ describe(
       const s = simulation(PHASES[phase].start);
       const localContracts = {
         checkpoints: Object.fromEntries(
-          [180, 181, 182, 183, 184, 185, 186].map((n) => [
+          [180, 181, 182, 183, 184, 185, 186, 187, 188].map((n) => [
             n,
             {
               digest: databaseContract(
@@ -1919,7 +1919,7 @@ describe(
       "protects the isolated migration after the %s dry-run",
       async (count) => {
         const { s, result } = await harness({
-          phase: "RETIREMENT_ACTIVATION_184_TO_186",
+          phase: "RETIREMENT_ACTIVATION_184_TO_188",
           armAfterDryRun: count,
           mutate: changes[10][2],
         });
@@ -1930,38 +1930,38 @@ describe(
         expect(s.count).toBe(count);
       },
     );
-    it("protects final billing activation after the 186 checkpoint", async () => {
+    it("protects final billing activation after the 188 checkpoint", async () => {
       const { s, result } = await harness({
-        phase: "RETIREMENT_ACTIVATION_184_TO_186",
+        phase: "RETIREMENT_ACTIVATION_184_TO_188",
         armAfterCheckpoint: "activation_checkpoint",
         mutate: changes[12][2],
       });
       expect(result.recovery.errorCode).toBe("AUTH_CONFIGURATION_DRIFT");
-      // Fourteen containment deployments occurred under earlier stable snapshots;
+      // Fifteen containment deployments occurred under earlier stable snapshots;
       // no final business function deployment may follow the newly detected drift.
       expect(
         mutationCalls(s).filter((args) => args[0] === "functions"),
-      ).toHaveLength(14);
+      ).toHaveLength(15);
     });
     it("protects the distinct final nonbilling substage", async () => {
       const { s, result } = await harness({
-        phase: "RETIREMENT_ACTIVATION_184_TO_186",
+        phase: "RETIREMENT_ACTIVATION_184_TO_188",
         armAfterStep: "billing",
         mutate: changes[3][2],
       });
       expect(result.recovery.errorCode).toBe("FUNCTION_INVENTORY_DRIFT");
       expect(
         mutationCalls(s).filter((args) => args[0] === "functions"),
-      ).toHaveLength(28);
-      expect(s.count).toBe(186);
+      ).toHaveLength(30);
+      expect(s.count).toBe(188);
     });
     it("completes a stable cutover through containment, both checkpoints and final artifacts", async () => {
       const { s, result } = await harness({
-        phase: "RETIREMENT_ACTIVATION_184_TO_186",
+        phase: "RETIREMENT_ACTIVATION_184_TO_188",
       });
       expect(result.status).toBe("complete");
-      expect(s.count).toBe(186);
-      expect(mutationCalls(s)).toHaveLength(32);
+      expect(s.count).toBe(188);
+      expect(mutationCalls(s)).toHaveLength(34);
       expect(result.completedSteps).toContain("nonbilling");
       expect(result.observationStability.stable).toBe(true);
     });
@@ -3449,7 +3449,7 @@ describe("enforced supplemental timing admission", () => {
   it.each(["missing", "binding", "slow", "expired", "workflow"])(
     "rejects %s before inventory or mutation",
     async (kind) => {
-      const phase = "RETIREMENT_ACTIVATION_184_TO_186",
+      const phase = "RETIREMENT_ACTIVATION_184_TO_188",
         s = simulation(184),
         a = authorization(phase, s);
       let timing: any = timingFixture(
@@ -3501,7 +3501,7 @@ describe("enforced supplemental timing admission", () => {
 it.each(["inventory", "configuration", "workflow", "backup-age"])(
   "blocks insufficient remaining %s budget before reads",
   async (deadline) => {
-    const phase = "RETIREMENT_ACTIVATION_184_TO_186",
+    const phase = "RETIREMENT_ACTIVATION_184_TO_188",
       s = simulation(184),
       a = authorization(phase, s);
     if (deadline === "backup-age")

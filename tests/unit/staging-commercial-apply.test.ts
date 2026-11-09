@@ -28,8 +28,6 @@ import { readDeploymentInventory } from "../../scripts/billing-retirement-remote
 import {
   FUNCTION_CONTRACTS,
   JWT_CONTRACTS,
-  RETIREMENT_MIGRATION,
-  ACTIVATION_MIGRATION,
 } from "../../scripts/billing-deployment-contract.mjs";
 
 // Every process and write boundary is mocked, including the default unexpected
@@ -132,7 +130,10 @@ function configure({
         : index === commands.length - 1
           ? after
           : index === 2
-            ? `Would push: ${RETIREMENT_MIGRATION}\n${ACTIVATION_MIGRATION}`
+            ? `Would push: ${manifest.migrations.approved
+                .slice(184)
+                .map((m: any) => m.filename)
+                .join("\n")}`
             : privateText;
     },
   );
@@ -158,7 +159,9 @@ beforeEach(() => {
       retirement: {
         environment: "staging",
         inventorySha256: "b".repeat(64),
-        expectedPendingMigrations: [RETIREMENT_MIGRATION, ACTIVATION_MIGRATION],
+        expectedPendingMigrations: manifest.migrations.approved
+          .slice(184)
+          .map((m: any) => m.filename),
       },
     },
   });
@@ -172,7 +175,7 @@ beforeEach(() => {
     functions: FUNCTION_CONTRACTS.map((f) => ({
       name: f.name,
       id: "synthetic",
-      version: v.length === 186 ? 2 : 1,
+      version: v.length === 188 ? 2 : 1,
       verify_jwt: f.verifyJwt,
     })),
     facts: {
@@ -240,8 +243,8 @@ describe("apply remote-stage evidence", () => {
     ["db_push_apply", "db_push_dry_run", 3, 4, 0],
     ["function_deploy", "db_push_apply", 4, 5, 0],
     ["function_deploy", "function_deploy", 7, 8, 3],
-    ["migration_list_after", "function_deploy", 20, 21, 16],
-    ["history_validation_after", "migration_list_after", -1, 21, 16],
+    ["migration_list_after", "function_deploy", 21, 22, 17],
+    ["history_validation_after", "migration_list_after", -1, 22, 17],
   ])(
     "fails closed at %s after %s",
     async (stage, last, commandFailure, callCount, deployedCount) => {
@@ -350,7 +353,7 @@ describe("apply remote-stage evidence", () => {
       expect(JSON.stringify(snapshots) + applyFailureLine(error)).not.toContain(
         privateText,
       );
-      expect(attempted).toHaveLength(when === "before" ? 2 : 21);
+      expect(attempted).toHaveLength(when === "before" ? 2 : commands.length);
     },
   );
   it.each([

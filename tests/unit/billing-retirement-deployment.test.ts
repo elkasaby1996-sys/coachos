@@ -104,7 +104,7 @@ describe("Paddle-only billing deployment contracts", () => {
     try {
       expect(validateBillingRetirement()).toMatchObject({
         valid: true,
-        billingFunctions: 14,
+        billingFunctions: 15,
         tombstones: 3,
         activeLSRuntime: 0,
       });
@@ -114,7 +114,7 @@ describe("Paddle-only billing deployment contracts", () => {
     expect(network).not.toHaveBeenCalled();
   });
   it("includes the actual Paddle webhook and exactly three deployable static tombstones", () => {
-    expect(BILLING_FUNCTIONS).toHaveLength(14);
+    expect(BILLING_FUNCTIONS).toHaveLength(15);
     expect(BILLING_FUNCTIONS).toContain("billing-paddle-webhook");
     expect(LS_TOMBSTONES).toEqual([
       "billing-create-lemon-squeezy-checkout",
@@ -142,13 +142,13 @@ describe("Paddle-only billing deployment contracts", () => {
     expect(SECRET_NAMES).toContain("PADDLE_SANDBOX_PAYMENT_METHOD_API_KEY");
     expect(manifest.requiredSecretNames).toEqual(SECRET_NAMES);
   });
-  it("freezes 186 migrations with unchanged retirement and separate activation hashes", () => {
-    expect(manifest.migrations.approved).toHaveLength(186);
+  it("pins 188 migrations with unchanged retirement and separate activation hashes", () => {
+    expect(manifest.migrations.approved).toHaveLength(188);
     expect(manifest.migrations.approved[184]).toEqual({
       filename: RETIREMENT_MIGRATION,
       sha256: RETIREMENT_SHA,
     });
-    expect(manifest.migrations.approved.at(-1)).toEqual({
+    expect(manifest.migrations.approved[185]).toEqual({
       filename: ACTIVATION_MIGRATION,
       sha256: ACTIVATION_SHA,
     });
@@ -218,7 +218,6 @@ describe("Paddle-only billing deployment contracts", () => {
       scenarios.find((s: any) => s.id === "CERT-PLAN-004").title,
     ).toContain("Natural");
     for (const id of [
-      "CERT-SUBSCRIPTION-001",
       "CERT-SUBSCRIPTION-002",
       "CERT-PLAN-003",
       "CERT-SEAT-003",
@@ -231,6 +230,16 @@ describe("Paddle-only billing deployment contracts", () => {
           : "INTENTIONALLY_UNSUPPORTED",
       );
     }
+    expect(
+      scenarios.find((s: any) => s.id === "CERT-SUBSCRIPTION-001"),
+    ).toMatchObject({
+      status: "not_run",
+      requiredForCertification: true,
+      evidenceClasses: [
+        "IMPLEMENTED_LOCAL",
+        "IMPLEMENTED_NEEDS_REMOTE_CERTIFICATION",
+      ],
+    });
     const fake = JSON.parse(
       readFileSync("config/staging-commercial-evidence.template.json", "utf8"),
     );
@@ -287,7 +296,9 @@ describe("retirement preflight, authority and dry-run boundaries", () => {
   });
   it("permits the exact reviewed 185-prefix/186 suffix and 186 redeployment, but rejects older prefixes", () => {
     const e: any = retirementFixture(manifest, commit, project);
-    e.expectedPendingMigrations = [ACTIVATION_MIGRATION];
+    e.expectedPendingMigrations = manifest.migrations.approved
+      .slice(185)
+      .map((m: any) => m.filename);
     expect(() =>
       validateRetirementEvidence(e, {
         ...context(),
@@ -653,7 +664,10 @@ describe("production and staging separation", () => {
             ledgerCalls++ === 0 ? auth.approvedRemoteVersions : versions,
           )
         : args.includes("--dry-run")
-          ? `Would push ${RETIREMENT_MIGRATION}\n${ACTIVATION_MIGRATION}`
+          ? `Would push ${manifest.migrations.approved
+              .slice(184)
+              .map((m: any) => m.filename)
+              .join("\n")}`
           : "synthetic command completed",
     );
     const reports: any[] = [];
@@ -698,7 +712,7 @@ describe("production and staging separation", () => {
       f.env,
       f.dependencies,
     );
-    expect(f.remote).toHaveBeenCalledTimes(21);
+    expect(f.remote).toHaveBeenCalledTimes(22);
     expect(f.read).toHaveBeenCalledTimes(2);
     const calls = f.remote.mock.calls.map((c) => c[0]);
     expect(calls.slice(0, 4)).toEqual([
@@ -718,9 +732,10 @@ describe("production and staging separation", () => {
       ]),
     );
     expect(result).toMatchObject({
-      deployedFunctionCount: 16,
+      deployedFunctionCount: 17,
       certification: "not_run",
-      productionCommercialRelease: "BLOCKED_SANDBOX_ONLY_RUNTIME",
+      productionCommercialRelease:
+        "BLOCKED_PENDING_PADDLE_CONFIGURATION_AND_CERTIFICATION",
       retirementDeployment:
         "commands_complete_response_and_side_effect_probes_pending",
     });
@@ -800,7 +815,7 @@ describe("production and staging separation", () => {
       { readDeploymentInventory: read, remote, persist },
     );
     expect(result.productionCommercialRelease).toBe(
-      "BLOCKED_SANDBOX_ONLY_RUNTIME",
+      "BLOCKED_PENDING_PADDLE_CONFIGURATION_AND_CERTIFICATION",
     );
     expect(result.remoteMutationPerformed).toBe(false);
     expect(read).not.toHaveBeenCalled();

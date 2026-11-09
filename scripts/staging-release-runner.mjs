@@ -460,7 +460,7 @@ export async function runRelease(
         await deploy("final", step);
       else if (step === "final") {
         await gate();
-        verifyDatabase(observation, 186, contracts, native);
+        verifyDatabase(observation, 188, contracts, native);
         verifyFunctions(
           { ...observation, artifacts: report.artifacts },
           identity,

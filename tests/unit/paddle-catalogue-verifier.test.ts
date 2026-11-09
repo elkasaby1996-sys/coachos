@@ -50,7 +50,7 @@ describe("private explicit catalogue binding", () => {
       (b: any) => (b.selections[1].productRef = "synthetic/other"),
     ],
     ["unknown key", (b: any) => (b.selections[0].pair = "unknown.monthly")],
-    ["wrong environment", (b: any) => (b.environment = "live")],
+    ["wrong environment", (b: any) => (b.environment = "invalid")],
     ["wrong schema", (b: any) => (b.schema = "unknown")],
     ["whitespace ref", (b: any) => (b.selections[0].priceRef = " secret ")],
     ["control ref", (b: any) => (b.selections[0].priceRef = "secret\nvalue")],

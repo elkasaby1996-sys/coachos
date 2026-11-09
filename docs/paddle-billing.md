@@ -1,0 +1,62 @@
+# RepSync subscriptions and coach seats
+
+Implemented on `Ahmed-billing`: Paddle checkout for Launch, Growth, and Scale, monthly or annual subscriptions, seats purchased at checkout, subsequent seat changes, existing plan changes, payment-method updates, and Paddle customer portal access for invoices and cancellation. The merchant payment page is `/billing/checkout`.
+
+Browser completion starts confirmation polling. Only paired, authenticated payment/subscription evidence grants access. Replays do not create another subscription, seat allocation, or payment application. Closing checkout does not confirm payment.
+
+## Configuration
+
+Use separate Supabase projects for sandbox and production. The database pins its environment after paid authority exists; do not convert an existing sandbox billing project into production.
+
+| Setting                                                   | Sandbox                                       | Production                                 |
+| --------------------------------------------------------- | --------------------------------------------- | ------------------------------------------ |
+| Server `PADDLE_ENVIRONMENT`                               | `sandbox`                                     | `production`                               |
+| Database `billing_runtime_policy.entitlement_environment` | `test`                                        | `live`                                     |
+| Browser `VITE_PADDLE_ENVIRONMENT`                         | `sandbox`                                     | `production`                               |
+| Browser `VITE_BILLING_PROVIDER`                           | `paddle`                                      | `paddle`                                   |
+| Public browser token                                      | `VITE_PADDLE_SANDBOX_CLIENT_TOKEN` (`test_…`) | `VITE_PADDLE_LIVE_CLIENT_TOKEN` (`live_…`) |
+| Catalogue/plan/seat API key                               | `PADDLE_SANDBOX_API_KEY`                      | `PADDLE_LIVE_API_KEY`                      |
+| Checkout API key                                          | `PADDLE_SANDBOX_CHECKOUT_API_KEY`             | `PADDLE_LIVE_CHECKOUT_API_KEY`             |
+| Payment-method API key                                    | `PADDLE_SANDBOX_PAYMENT_METHOD_API_KEY`       | `PADDLE_LIVE_PAYMENT_METHOD_API_KEY`       |
+| Customer portal API key                                   | `PADDLE_SANDBOX_PORTAL_API_KEY`               | `PADDLE_LIVE_PORTAL_API_KEY`               |
+| Notification secret                                       | `PADDLE_SANDBOX_WEBHOOK_SECRET`               | `PADDLE_LIVE_WEBHOOK_SECRET`               |
+| Previous notification secret, optional                    | `PADDLE_SANDBOX_WEBHOOK_SECRET_PREVIOUS`      | `PADDLE_LIVE_WEBHOOK_SECRET_PREVIOUS`      |
+| Merchant payment page                                     | `PADDLE_SANDBOX_PAYMENT_PAGE_URL`             | `PADDLE_LIVE_PAYMENT_PAGE_URL`             |
+| Optional dashboard-created hosted launcher                | `PADDLE_SANDBOX_HOSTED_CHECKOUT_LAUNCH_URL`   | `PADDLE_LIVE_HOSTED_CHECKOUT_LAUNCH_URL`   |
+
+The payment page must be the approved HTTPS app URL ending in `/billing/checkout`, without a query or fragment. Configure Paddle's default payment link and approved domain accordingly. The SPA host must serve the app on that path. API origins are fixed to `sandbox-api.paddle.com` and `api.paddle.com`. Mixed-realm credentials and custom API origins are rejected. Server keys, notification secrets, and Supabase service keys must never enter `VITE_*` configuration.
+
+Scope keys to their routes: products/prices read for catalogue; subscriptions read/update for plans/seats; transactions create/read for checkout; subscription/payment-method transaction access for card updates; customer portal session creation for invoices/cancellation. Portal authority comes from the authenticated account owner. Session URLs are ephemeral and must not be logged or saved.
+
+Existing Supabase URL, anon key, service-role key, and authenticated browser sessions remain required. The webhook is the only billing route without gateway JWT verification; it verifies the raw body, signature, timestamp, and selected realm's notification secret.
+
+## Catalogue and activation
+
+Create four recurring products and eight USD prices, without provider trials or geographic price overrides. RepSync manages its own trial. Base-plan quantity is one; additional seats are a separate recurring item with the same cadence.
+
+| Product    | Monthly      | Annual        | Additional seat maximum |
+| ---------- | ------------ | ------------- | ----------------------- |
+| Launch     | $19          | $190          | 1                       |
+| Growth     | $59          | $590          | 3                       |
+| Scale      | $119         | $1,190        | 5                       |
+| Coach seat | $12 per seat | $120 per seat | Determined by the plan  |
+
+Bind actual product/price IDs and RepSync canonical version IDs in a private catalogue binding with `environment: test` or `live`. The [catalogue verifier](paddle-catalogue-verifier.md) and [publication contract](paddle-catalogue-publication.md) verify all eight prices before activation. `scripts/paddle-catalogue-preflight.ts` now selects the configured realm and remains read-only. Do not commit provider IDs or secrets.
+
+Apply both new migrations, deploy all 15 billing functions (including `billing-create-paddle-portal`), and build the frontend with matching public configuration. The manifest pins 188 migrations; the first 186 are unchanged. Old release approvals and artifact digests do not authorize this changed payload. Retirement deployment continues to leave commercial sales disabled. Preserve the pinned implementation commit when merging this branch (use a merge commit); squashing requires a new reviewed payload pin and checkpoint binding before the release planner can pass.
+
+Register `billing-paddle-webhook` for `subscription.created`, `subscription.updated`, `subscription.past_due`, `transaction.completed`, `transaction.updated`, `transaction.paid`, `transaction.payment_failed`, `transaction.past_due`, and `transaction.canceled`. Retain existing adjustment notification subscriptions if configured. Verify notification delivery and retries in the selected environment.
+
+After verifying the catalogue and configuration, enable reconciliation using the existing trusted operator workflow. `PADDLE_CHECKOUT_ACCESS_MODE=pilot` plus `PADDLE_CHECKOUT_PILOT_USER_ID` limits checkout to the chosen account owner; `all` opens checkout to authenticated account owners. Unknown/missing modes are disabled. Database gates `paddle_sales_enabled` and `paddle_reconciliation_enabled` also require explicit activation. No migration enables them.
+
+Remote changes require a named project and the guarded workflow in [AGENTS.md](../AGENTS.md). This branch has not been deployed remotely or used to make a real payment.
+
+## Verification and limits
+
+Local database tests cover both realms, every plan/cadence, supported seat quantities, both webhook orders, duplicate payments, cross-owner and cross-realm rejection, later seat/plan changes, payment-method preparation, and verified cancellation updates. Browser tests use an injected Paddle SDK and local Supabase; they cannot certify a real Paddle account.
+
+Before live sales, complete real sandbox checkout, renewal, failed-payment recovery, invoice, seat proration, cancellation, and retry tests, followed by a controlled live purchase on the approved domain. Verify taxes, receipts, notification delivery, and entitlement changes.
+
+Existing limits remain: plan changes require no additional seats; scheduled plan/seat reductions cannot be undone through RepSync; payment-method updates wait for conflicting/uncertain operations to resolve. Seat reductions take effect at renewal; increases require confirmed payment. Portal cancellation follows Paddle's confirmation flow and paid-period access rules. Subscription resume is not exposed as a RepSync action.
+
+If a provider request may have succeeded, inspect the retained operation and provider transaction before starting another charge. Disable new checkout during an incident while preserving reconciliation and financial history.

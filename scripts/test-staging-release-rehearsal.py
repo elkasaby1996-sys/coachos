@@ -165,16 +165,16 @@ assert.ok(captured);console.log(JSON.stringify(captured));
         checkpoints["185"] = {"digest": contract(f185)}
         print("PASS bounded 185 direct/indirect authority retirement, retained history", flush=True)
         bounded("activation")
-        f186 = facts()
-        retained186 = data()
-        assert all(retained186[k] == v for k, v in before.items()), "Activation rewrote retained history"
+        f188 = facts()
+        retained188 = data()
+        assert all(retained188[k] == v for k, v in before.items()), "Activation rewrote retained history"
         assert r.sql("select to_regprocedure('public.billing_workflow_provider_v1(uuid)') is not null;") == "t"
         assert r.sql("select has_function_privilege('authenticated','public.billing_workflow_provider_v1(uuid)','EXECUTE');") == "f"
-        checkpoints["186"] = {"digest": contract(f186)}
+        checkpoints["188"] = {"digest": contract(f188)}
         manifest_digest = node('import {hash} from "./scripts/billing-retirement-release.mjs";let s="";for await(const c of process.stdin)s+=c;console.log(JSON.stringify(hash(JSON.stringify(JSON.parse(s)))));', identity["manifest"])
         # Fixed partial-baseline recovery contracts. Reset is disposable LOCAL only;
         # no migration-ledger repair or arbitrary remote target is introduced.
-        for count, version in ((181, "20260929073334"), (182, "20260930201815"), (183, "20261001063502")):
+        for count, version in ((181, "20260929073334"), (182, "20260930201815"), (183, "20261001063502"), (186, "20261004065506"), (187, "20261109090000")):
             h.reset(version)
             checkpoints[str(count)] = {"digest": contract(facts())}
         output = {"schemaVersion": 2, "frozenPayloadCommit": identity["frozenPayloadCommit"], "manifestDigest": manifest_digest, "checkpoints": checkpoints}
@@ -183,13 +183,13 @@ assert.ok(captured);console.log(JSON.stringify(captured));
             assert json.loads(path.read_text()) == output, "Reviewed checkpoint fixture drift; never silently replace"
         else:
             path.write_text(json.dumps(output, indent=2) + "\n")
-        print(json.dumps({"migrationCount": 186, "retainedShape": shape, "retainedHistoryUnchanged": True, "authorityRetired": True, "providerBoundaryPresent": True, "remoteRequests": 0, "providerRequests": 0}), flush=True)
+        print(json.dumps({"migrationCount": 188, "retainedShape": shape, "retainedHistoryUnchanged": True, "authorityRetired": True, "providerBoundaryPresent": True, "remoteRequests": 0, "providerRequests": 0}), flush=True)
     finally:
         for directory in artifacts:
             assert directory.parent.resolve() == Path(tempfile.gettempdir()).resolve() and directory.name.startswith("repsync-release-")
             shutil.rmtree(directory)
         h.reset()
-        print("CLEAN local disposable database reconstructed at 186, flags disabled", flush=True)
+        print("CLEAN local disposable database reconstructed at 188, flags disabled", flush=True)
 
 
 if __name__ == "__main__":
