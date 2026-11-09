@@ -10,7 +10,7 @@ The user corrected the staging target on 2026-11-09:
 - Application origin: `https://repsync-staging.netlify.app`
 - Workflow branch: **`Ahmed-billing`**
 
-[Migration Status run 42702256586](https://github.com/elkasaby1996-sys/coachos/actions/runs/42702256586) successfully inspected this project at `344dad4`. The uploaded ZIP matches GitHub's SHA-256 `064887ca5239f86975c4fdb554c1df30e7cd5927a89d9e97b33d145b76673556`. It confirms **180 of 188 migrations**, with the exact canonical prefix and eight pending migrations. The inspection passed; deployment readiness still requires review. The project needs an upgrade; **do not run the empty-project installer**.
+[Migration Status run 42707688666](https://github.com/elkasaby1996-sys/coachos/actions/runs/42707688666) successfully inspected this project at `131f1bc`. Its public notices identify the precise schema differences and retained work below. The earlier uploaded run 42702256586 report was verified against GitHub's SHA-256 `064887ca5239f86975c4fdb554c1df30e7cd5927a89d9e97b33d145b76673556`. Staging has **180 of 188 migrations**, with the exact canonical prefix and eight pending migrations. These are successful inspections, not deployments. The next operation is **Supabase Staging Billing Upgrade** on `Ahmed-billing`; **do not run the empty-project installer**.
 
 | Item                                | Verified result                                                                        |
 | ----------------------------------- | -------------------------------------------------------------------------------------- |
@@ -19,10 +19,10 @@ The user corrected the staging target on 2026-11-09:
 | Missing functions                   | `billing-update-payment-method`, `billing-create-paddle-portal`                        |
 | Missing setting names at inspection | None; both new API key names are present                                               |
 | Live Paddle setting names           | None reported                                                                          |
-| Actual database schema              | Differs from the source checkpoint for migration 180                                   |
+| Actual database schema              | 22 changed fields: four table ACLs, 15 UUID defaults, three constraints                |
 | Retained history                    | 128 public tables plus Auth users; stable during the inspection                        |
-| Unfinished Paddle webhook records   | 28; their processing states still need inspection                                      |
-| Scheduled operations                | One, with an effective date of 2026-10-23                                              |
+| Unfinished Paddle webhook records   | 17 deferred and 11 manual review; all in the test environment                          |
+| Scheduled operations                | One overdue Paddle test operation, effective 2026-10-23                                |
 
 The user confirmed that this project contains entirely synthetic test data. The upgrade will preserve those records; this classification does not authorize a reset, deletion, or replay. Key values, provider permissions, and payments remain unverified.
 
@@ -38,9 +38,41 @@ The assessment compares actual public function definitions, permissions, RLS and
 
 The assessment hashes retained public rows and Auth users without exporting them, then repeats the observations to reject drift or an observation older than one minute. Schema responses have a fixed 8 MiB limit. Public **Staging schema comparison**, **Staging schema differences**, and **Staging retained ...** notices expose the sanitized diagnostic results alongside the JSON report, so basic investigation does not require downloading another artifact.
 
-Use `upgradeReadiness.schema.diagnostics`, `retainedWorkDetails`, and `blockers` to resolve the recorded mismatch and retained work before preparing an apply run. Run 12 established the mismatch but did not identify the changed objects; the new comparison has been verified locally and awaits its first hosted inspection. A zero-blocker result means the upgrade can be prepared; it does not claim a verified backup, deployed source, provider certification, or deployment authorization.
+Run 13 identifies ACL differences on `_archive_workout_log_items`, `_archive_workout_template_items`, `notification_preferences`, and `notifications`. The remaining changes are 15 UUID defaults and three digest constraints. Public function definitions/grants, RLS, policies, indexes and triggers match the source. These notices identify changed fields without proving their values are equivalent. The apply path accepts only the exact source schema or the recorded hosted baseline digest, allowing narrowly specified extension qualification for those expressions and preserving the four inventoried ACLs. An unexpected expression or permission value stops the run before hosted writes; the workflow does not repair or replace those permissions.
 
-The pending upgrade sequence is migrations 181–184, retirement migration 185, then migrations 186–188, followed by the canonical billing and non-billing functions. Existing history must remain intact. Before applying, establish a recoverable staging backup and review retained billing obligations and in-flight work. The main-only signed-release runner remains separate; an operational feature-branch upgrade must use the chosen GitHub review model with these data-preservation checks. The initial-install script is intentionally unsuitable for this populated project and will reject it before writes.
+The retained subscriptions are six active legacy subscriptions and four Paddle subscriptions (two active, one canceled, one paused), all labelled test. The upgrade preserves these records, all 28 deferred/manual-review webhook records and the overdue test operation. It rejects runnable checkouts, active operations, received/processing webhooks, future scheduled changes, and live/unknown environment labels. It does not replay, expire, or mark retained work complete.
+
+## Upgrade the populated project with GitHub environment review
+
+[Supabase Staging Billing Upgrade](https://github.com/elkasaby1996-sys/coachos/actions/workflows/supabase-staging-billing-upgrade.yml) is the operational path for the current project. A push changing this workflow or its upgrade scripts on `Ahmed-billing` automatically queues an **apply** run. Source quality, unit tests, database tests and all nine schema checkpoints run before the protected job. This branch-triggered workflow does not require registration through a merge into `main`.
+
+After those checks pass, open the queued run and choose **Review deployments → supabase-staging → Approve and deploy**. This existing GitHub environment review authorizes the actual staging upgrade. The job uses the existing `SUPABASE_ACCESS_TOKEN` and this project's `SUPABASE_DB_PASSWORD` from GitHub secrets. Paddle private keys stay in Supabase; no secret values or project confirmations need copying into workflow inputs. If manual dispatch is available, select `Ahmed-billing` and `mode=apply`; `mode=preflight` prepares and uploads a verified backup without hosted writes.
+
+The fixed target is `dgogugyuyfourdttvwuy`, app origin `https://repsync-staging.netlify.app`. The workflow binds execution to the exact checked-out GitHub SHA, repository, branch, workflow and run attempt. It uses CLI 2.109.1 through the guarded remote wrapper and verifies the frozen application payload `8af05aa48cbccca694b2da447d77f8977ec3401a`. To inspect the source-only plan locally:
+
+```sh
+node scripts/staging-populated-upgrade.mjs plan
+```
+
+The protected job performs this sequence:
+
+1. Verify the installed migration prefix, schema, disabled test policy, secret names, function metadata and retained test work. Capture every public table, `auth.users`, and the full migration ledger through read-only requests; repeat observations to reject drift.
+2. Reconstruct the same schema on an isolated local database, restore the captured rows and inventoried table ACLs there, and verify every retained table hash plus the full ledger. Remove that local database. This recovery proof must succeed before any hosted write.
+3. Encrypt the private snapshot with AES-256-GCM and a scrypt key derived from the existing database password. Upload `staging-upgrade-backup-<run-id>-<attempt>` successfully before continuing. Bind the snapshot to this project, commit, run and attempt, and check staging again immediately before applying.
+4. Set sandbox mode, keep checkout disabled and set the staging payment-page URL. Deploy containment handlers for all 15 billing routes, with webhook containment first. These temporarily stop new billing requests while the schema is upgraded.
+5. Apply only pending canonical migrations through checkpoints 184, 185 and 188. Verify schema, retained row hashes, original ledger rows, existing ACLs and retained work after each phase. Deploy all 17 canonical functions, restoring the Paddle webhook last; verify final active/JWT metadata and preserve any separately classified non-billing function.
+
+Success is `backend_upgraded_sandbox_disabled`: migration 188, canonical function deployment, retained records intact, and sales/reconciliation/checkout still disabled. Auth settings, frontend deployment, catalogue publication and provider payment tests are separate follow-up work.
+
+### Backup scope and failure handling
+
+The encrypted recovery artifact is retained by GitHub for **seven days**. Retain a downloaded copy and the database password used for that run in secure storage if a longer recovery window is needed; a later password rotation does not decrypt an older backup. Public reports contain only aggregate results and digests. Plaintext snapshots, credentials and row contents are not uploaded or logged.
+
+This is a targeted backup of public application tables, Auth users, migration history and verified schema, not a full Supabase project backup. Other managed Auth tables, storage objects, hosted settings, deployed function versions and Paddle resources are outside the snapshot and are not deleted by the upgrade. Local restoration is verified; the workflow provides no automatic hosted restore or destructive rollback.
+
+Read **Staging billing upgrade** in the job summary or download `staging-billing-upgrade-<run-id>-<attempt>`. Its `stage`, `code`, optional HTTP/SQL error fields, and `remoteWritesMayHaveOccurred` distinguish a preflight block from a partial deployment. `migrationCount` is the last successfully verified checkpoint, which can lag the database after a failed migration command. Inspect current state before continuing.
+
+A failure stops without automatic retry, reset, deletion, replay, or rollback. The runner supports canonical prefixes 180–188 so a reviewed continuation can capture a **new** backup and apply only the remaining migrations. Partial runs may leave billing routes contained. Resolve the recorded failure and inspect the current migration/function state before rerunning; do not repair the migration ledger or reset staging merely to bypass a failed check.
 
 ## Earlier inventory of the replacement project
 
@@ -120,9 +152,9 @@ Read **Initial staging installation** in the job summary or download `staging-in
 
 ## Finish the staging frontend and sandbox activation
 
-Installation success verifies the backend installation and configuration names. It does not validate private key values, publish Paddle catalogue mappings, enable checkout, deploy the frontend, or prove a payment works. Its only target is the corrected staging project above; production and the replacement project remain outside this operation. It does not merge `main`.
+Backend installation or upgrade success verifies schema/deployment checks and configuration names. It does not validate private key values, publish Paddle catalogue mappings, enable checkout, deploy the frontend, or prove a payment works. Its only target is the corrected staging project above; production and the replacement project remain outside this operation. It does not merge `main`.
 
-Deploy the matching frontend from the tested commit to `https://repsync-staging.netlify.app`. Its build needs `VITE_SUPABASE_URL=https://dgogugyuyfourdttvwuy.supabase.co`, that project's public anon key, `VITE_BILLING_PROVIDER=paddle`, `VITE_PADDLE_ENVIRONMENT=sandbox`, and `VITE_PADDLE_SANDBOX_CLIENT_TOKEN`. Frontend deployment and catalogue/pilot activation still need their own concrete staging execution steps; the initial installer does not perform them.
+Deploy the matching frontend from the tested commit to `https://repsync-staging.netlify.app`. Its build needs `VITE_SUPABASE_URL=https://dgogugyuyfourdttvwuy.supabase.co`, that project's public anon key, `VITE_BILLING_PROVIDER=paddle`, `VITE_PADDLE_ENVIRONMENT=sandbox`, and `VITE_PADDLE_SANDBOX_CLIENT_TOKEN`. Verify the staging Auth site and callback URLs when preparing the test owner. Frontend deployment and catalogue/pilot activation still need their own concrete staging execution steps; the backend upgrade does not perform them.
 
 ## Before merging the billing feature
 

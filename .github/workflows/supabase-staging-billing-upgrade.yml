@@ -1,0 +1,148 @@
+name: Supabase Staging Billing Upgrade
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [preflight, apply]
+        default: preflight
+        required: true
+  push:
+    branches: [Ahmed-billing]
+    paths:
+      - .github/workflows/supabase-staging-billing-upgrade.yml
+      - scripts/staging-populated-upgrade.mjs
+      - scripts/staging-upgrade-schema.mjs
+      - scripts/staging-upgrade-backup.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-staging-commercial
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    name: Validate upgrade source and billing application
+    if: github.repository == 'elkasaby1996-sys/coachos' && github.ref == 'refs/heads/Ahmed-billing'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Validate immutable payload and source quality
+        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs && npm run lint && npm run format && npm run build && node scripts/billing-edge-typecheck.mjs
+      - name: Run unit and CI regression tests
+        run: npm run test:unit && node --test .github/scripts/ci-change-scope.test.mjs
+      - name: Produce plan before environment review
+        run: node scripts/staging-populated-upgrade.mjs plan
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: staging-upgrade-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: output/staging-upgrade/report.json
+          retention-days: 7
+          if-no-files-found: error
+
+  database:
+    name: Verify migrations and all source schema checkpoints
+    if: github.repository == 'elkasaby1996-sys/coachos' && github.ref == 'refs/heads/Ahmed-billing'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      schema_artifact_id: ${{ steps.schema-upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: 2.109.1
+      - run: supabase db start --yes
+      - run: supabase db lint --local --level error --fail-on error
+      - run: supabase test db
+      - run: node scripts/staging-schema-reference.mjs "$RUNNER_TEMP/staging-schema-reference.json"
+      - id: schema-upload
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: staging-upgrade-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/staging-schema-reference.json
+          retention-days: 7
+          if-no-files-found: error
+
+  upgrade:
+    name: Review and upgrade synthetic staging to migration 188
+    if: github.repository == 'elkasaby1996-sys/coachos' && github.ref == 'refs/heads/Ahmed-billing'
+    needs: [quality, database]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: supabase-staging
+    env:
+      STAGING_UPGRADE_ENVIRONMENT: supabase-staging
+      STAGING_SUPABASE_PROJECT_REF: dgogugyuyfourdttvwuy
+      STAGING_APPLICATION_ORIGIN: https://repsync-staging.netlify.app
+      STAGING_SCHEMA_REFERENCE_PATH: ${{ runner.temp }}/staging-upgrade-source/staging-schema-reference.json
+      STAGING_UPGRADE_BACKUP_PATH: ${{ runner.temp }}/staging-upgrade-backup.json.aes
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: 2.109.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.database.outputs.schema_artifact_id }}
+          path: ${{ runner.temp }}/staging-upgrade-source
+          merge-multiple: true
+      - name: Capture encrypted backup and prove local recovery
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: node scripts/staging-populated-upgrade.mjs prepare
+      - name: Retain encrypted recovery artifact before hosted writes
+        id: backup-upload
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: staging-upgrade-backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/staging-upgrade-backup.json.aes
+          retention-days: 7
+          if-no-files-found: error
+      - name: Apply canonical migrations and deploy sandbox billing
+        if: github.event_name == 'push' || inputs.mode == 'apply'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          ALLOW_REMOTE_SUPABASE: I_UNDERSTAND_THIS_TOUCHES_REMOTE
+          SUPABASE_PROJECT_REF: dgogugyuyfourdttvwuy
+          STAGING_BACKUP_ARTIFACT_ID: ${{ steps.backup-upload.outputs.artifact-id }}
+          STAGING_BACKUP_ARTIFACT_DIGEST: ${{ steps.backup-upload.outputs.artifact-digest }}
+        run: node scripts/staging-populated-upgrade.mjs apply
+      - name: Publish sanitized upgrade result
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: staging-billing-upgrade-${{ github.run_id }}-${{ github.run_attempt }}
+          path: output/staging-upgrade/report.json
+          retention-days: 7
+          if-no-files-found: ignore
