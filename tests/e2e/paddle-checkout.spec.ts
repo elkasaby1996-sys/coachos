@@ -22,6 +22,7 @@ const cases = [
     plan: "growth",
     cadence: "monthly",
     name: outcome,
+    seats: 0,
   })),
   ...["launch", "growth", "scale"].flatMap((plan) =>
     ["monthly", "annual"].map((cadence) => ({
@@ -29,10 +30,28 @@ const cases = [
       plan,
       cadence,
       name: `${plan}-${cadence}`,
+      seats: 0,
     })),
   ),
 ];
-for (const { outcome, plan, cadence, name } of cases) {
+cases.push(
+  ...(
+    [
+      ["launch", 1],
+      ["growth", 3],
+      ["scale", 5],
+    ] as const
+  ).flatMap(([plan, seats]) =>
+    ["monthly", "annual"].map((cadence) => ({
+      outcome: "ready" as const,
+      plan,
+      cadence,
+      seats,
+      name: `${plan}-${cadence}-initial-seats`,
+    })),
+  ),
+);
+for (const { outcome, plan, cadence, name, seats } of cases) {
   test(`Paddle checkout ${name} uses only the authenticated browser contract`, async ({
     page,
     context,
@@ -87,7 +106,7 @@ for (const { outcome, plan, cadence, name } of cases) {
           "legal",
           "planKey",
         ]);
-        expect(body.additionalCoachSeats).toBe(0);
+        expect(body.additionalCoachSeats).toBe(seats);
         expect(body.planKey).toBe(plan);
         expect(body.cadence).toBe(cadence);
         expect(body.legal.termsAccepted).toBe(true);
@@ -146,6 +165,14 @@ for (const { outcome, plan, cadence, name } of cases) {
     await page
       .getByRole("checkbox", { name: "I acknowledge the Refund Policy" })
       .check();
+    if (seats > 0) {
+      const input = page.getByLabel("Additional coach seats", { exact: true });
+      await expect(input).toHaveAttribute("max", String(seats));
+      await input.fill(String(seats + 1));
+      await expect(start).toBeDisabled();
+      await expect(input).toHaveAttribute("aria-invalid", "true");
+      await input.fill(String(seats));
+    }
     await expect(start).toBeEnabled();
     await start.click();
     if (outcome === "ready" || outcome === "legacy")

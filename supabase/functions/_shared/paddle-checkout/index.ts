@@ -21,13 +21,13 @@ export type * from "./contract.ts";
 export { PaddleCheckoutError } from "./validation.ts";
 export { PADDLE_CHECKOUT_LIMITS } from "./http.ts";
 
-/** Trusted composition only. PREP requires injected transport; no production wiring. */
+/** Server composition selects the realm and injects the provider transport. */
 export type PaddleCheckoutDependencies = {
   fetch: typeof fetch;
   readEnvironment: ServerEnvironmentReader;
   /** Approved merchant page containing Paddle.js; this is NOT a success redirect. */
   paymentPageUrl: string;
-  /** Optional dashboard-created Paddle sandbox hosted-checkout launch URL. */
+  /** Optional dashboard-created hosted-checkout launcher in the selected realm. */
   hostedCheckoutLaunchUrl?: string;
 };
 export function createPaddleCheckoutTransport(

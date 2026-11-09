@@ -36,6 +36,12 @@ export function BillingCheckoutPanel({
       subscription.effectiveStatus,
     );
   const selected = PUBLIC_PLAN_SNAPSHOT_V1.find((p) => p.planKey === plan)!;
+  const maximumSeats =
+    selected.capacities.maxCoachSeats - selected.capacities.includedCoachSeats;
+  const seatsInvalid =
+    !Number.isInteger(additionalCoachSeats) ||
+    additionalCoachSeats < 0 ||
+    additionalCoachSeats > maximumSeats;
   const blocked =
     billing.create.error instanceof BillingCheckoutError &&
     billing.create.error.blocksNewCheckout;
@@ -48,7 +54,8 @@ export function BillingCheckoutPanel({
       !billingBrowserProvider ||
       lock.current ||
       blocked ||
-      consentMissing
+      consentMissing ||
+      seatsInvalid
     )
       return;
     lock.current = true;
@@ -106,7 +113,24 @@ export function BillingCheckoutPanel({
                 className="ui-input block min-h-11 w-full"
                 value={plan}
                 disabled={billing.create.isPending || redirecting}
-                onChange={(e) => setPlan(e.target.value as PublicPlanKey)}
+                onChange={(e) => {
+                  const next = PUBLIC_PLAN_SNAPSHOT_V1.find(
+                    (p) => p.planKey === e.target.value,
+                  )!;
+                  setPlan(next.planKey);
+                  setAdditionalCoachSeats((seats) =>
+                    Number.isInteger(seats)
+                      ? Math.max(
+                          0,
+                          Math.min(
+                            seats,
+                            next.capacities.maxCoachSeats -
+                              next.capacities.includedCoachSeats,
+                          ),
+                        )
+                      : 0,
+                  );
+                }}
               >
                 {PUBLIC_PLAN_SNAPSHOT_V1.map((p) => (
                   <option key={p.planKey} value={p.planKey}>
@@ -156,15 +180,24 @@ export function BillingCheckoutPanel({
               <input
                 type="number"
                 min={0}
-                max={5}
+                max={maximumSeats}
                 step={1}
                 className="ui-input block min-h-11 w-full"
-                value={additionalCoachSeats}
+                value={
+                  Number.isNaN(additionalCoachSeats) ? "" : additionalCoachSeats
+                }
+                aria-invalid={seatsInvalid || undefined}
                 onChange={(e) =>
                   setAdditionalCoachSeats(e.target.valueAsNumber)
                 }
               />
             </label>
+            {seatsInvalid ? (
+              <p role="alert" className="text-sm text-danger">
+                Choose a whole number from 0 to {maximumSeats} additional coach
+                seats.
+              </p>
+            ) : null}
             <p className="text-sm text-muted-foreground">
               Additional seat pricing is confirmed at checkout.
             </p>
@@ -211,7 +244,8 @@ export function BillingCheckoutPanel({
               billing.create.isPending ||
               redirecting ||
               blocked ||
-              consentMissing
+              consentMissing ||
+              seatsInvalid
             }
           >
             {redirecting
