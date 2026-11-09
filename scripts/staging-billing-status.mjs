@@ -30,7 +30,7 @@ class StatusError extends Error {
 const requireShape = (condition) => {
   if (!condition) throw new StatusError("STAGING_RESPONSE_INVALID");
 };
-async function boundedJson(response) {
+export async function readBoundedStagingJson(response) {
   requireShape(
     /^application\/json(?:;|$)/i.test(
       response.headers.get("content-type") ?? "",
@@ -105,7 +105,7 @@ export async function inspectStagingBilling({
             "STAGING_READ_ONLY_REQUEST_FAILED",
             response.status,
           );
-        return await boundedJson(response);
+        return await readBoundedStagingJson(response);
       } catch (error) {
         if (error instanceof StatusError) throw error;
         throw new StatusError("STAGING_READ_ONLY_REQUEST_FAILED");
@@ -178,6 +178,7 @@ export async function inspectStagingBilling({
       },
       billingPolicy: policy,
       functions: {
+        totalDeployedCount: functions.length,
         expectedBillingCount: BILLING_FUNCTIONS.length,
         missing: BILLING_FUNCTIONS.filter(
           (name) => !functions.some((f) => f.name === name),

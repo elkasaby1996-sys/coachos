@@ -1,5 +1,10 @@
 # Fresh staging bootstrap
 
+For the user-approved initial `Ahmed-billing` installation using GitHub's required
+environment review, follow [Initial Paddle staging installation](paddle-staging-installation.md).
+The rest of this document describes the preserved legacy signed-authorization
+contract and its main-only workflow job.
+
 PAY-05BF adds [founder-owned synthetic staging governance](staging-founder-governance.md).
 The protected bootstrap workflow selects explicitly non-independent founder mode,
 which remains disarmed and externally unconfigured. Independent-review instructions
