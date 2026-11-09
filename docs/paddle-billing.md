@@ -63,10 +63,14 @@ If a provider request may have succeeded, inspect the retained operation and pro
 
 ## Inspect staging with existing GitHub and Supabase secrets
 
-Use GitHub **Actions → Supabase Migration Status → Run workflow**, select `Ahmed-billing`, and run it. The workflow uses the existing `SUPABASE_ACCESS_TOKEN` available to the protected `supabase-staging` GitHub environment. Its target is fixed to the confirmed staging project `exmrksgdikfprtfeltzu`. It needs no database password, Paddle key copied into GitHub, or credentials in the Codex cloud environment.
+First open and review a pull request from `Ahmed-billing` into `main`. After required checks and review pass, merge with **Create a merge commit** to preserve the pinned billing implementation commit. Then use GitHub **Actions → Supabase Migration Status → Run workflow**, select `main`, and run it. The updated workflow must be merged before using these instructions; the older version on `main` uses different commands and requires a database password.
+
+The updated workflow uses the existing `SUPABASE_ACCESS_TOKEN` available to the protected `supabase-staging` GitHub environment. Its target is fixed to the confirmed staging project `exmrksgdikfprtfeltzu`. It needs no database password, Paddle key copied into GitHub, or credentials in the Codex cloud environment.
+
+GitHub rejected [run 42627510363](https://github.com/elkasaby1996-sys/coachos/actions/runs/42627510363/job/129196143896) before any step ran: **Branch "Ahmed-billing" is not allowed to deploy to supabase-staging due to environment protection rules.** This restriction also applies to read-only jobs that reference the protected environment. Re-running the feature-branch job cannot resolve it; use the reviewed merge into `main`. This failure does not establish anything about the validity of secrets or database state.
 
 The job summary and `staging-billing-status-<run-id>` artifact contain only a sanitized report: migration version prefix and pending filenames, missing/inactive billing functions, JWT configuration mismatches, required server-setting names that are missing, and the stored billing policy. It uses only Management API metadata reads and the database **read-only** query endpoint. It performs no linking, migrations, deployment, secret changes, provider calls, or payment actions.
 
-A successful inventory run does not validate migration hashes, deployed source, secret values, the frontend token, Paddle products/prices, or real payments. Keep Paddle runtime credentials in Supabase. If GitHub environment branch restrictions prevent selecting `Ahmed-billing`, the reviewed changes must reach an allowed branch first; do not relax the environment protection to run the check.
+A successful inventory run does not validate migration hashes, deployed source, secret values, the frontend token, Paddle products/prices, or real payments. Keep Paddle runtime credentials in Supabase and retain the environment protection rules.
 
 The deployment workflow remains separate. The current founder authorization policy is disabled, and its trusted workflow-approval and durable action-claim integrations are unimplemented. Inventory does not enable or bypass those deployment requirements. `Ahmed-billing` also needs review and a merge into `main` before the existing deployment workflow can use it.
