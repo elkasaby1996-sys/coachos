@@ -63,15 +63,15 @@ If a provider request may have succeeded, inspect the retained operation and pro
 
 ## Inspect staging with existing GitHub and Supabase secrets
 
-The successful staging inspection found no recorded RepSync migrations, all 15 billing functions missing, and eight required Paddle setting names absent. The user subsequently reported updating all keys and links. See the [initial staging installation guide](paddle-staging-installation.md) for the verified report, current preflight checks, and executable feature-branch installation path.
+The earlier successful inspection covered replacement project `exmrksgdikfprtfeltzu`. The user subsequently reported updating all keys and links and corrected the intended target to `dgogugyuyfourdttvwuy`. Run a new inventory from the latest `Ahmed-billing` branch; the earlier report does not describe this project's state. See the [staging installation guide](paddle-staging-installation.md) for the correction, current checks, and initial-installation versus upgrade decision.
 
-The selected release order is **`Ahmed-billing` → staging → real Paddle sandbox tests → reviewed merge into `main`**. Keep the billing feature on its branch until staging tests pass. The staging target is Supabase project `exmrksgdikfprtfeltzu` and app `https://repsync-staging-replacement.netlify.app`; provider payments use Paddle sandbox.
+The selected release order is **`Ahmed-billing` → staging → real Paddle sandbox tests → reviewed merge into `main`**. Keep the billing feature on its branch until staging tests pass. The corrected staging target is Supabase project `dgogugyuyfourdttvwuy` and app `https://repsync-staging.netlify.app`; provider payments use Paddle sandbox.
 
 The repository administrator must first allow the exact branch `Ahmed-billing` in **Settings → Environments → supabase-staging → Deployment branches and tags**. Retain existing allowed branches and required reviewers. This is a scoped staging branch-policy update for the user's selected release order; production permissions and targets remain separate.
 
 Then use GitHub **Actions → Supabase Migration Status → Run workflow**, select `Ahmed-billing`, and run it. Approve the job if the environment requires a reviewer. The updated inventory workflow is already published on that branch; no merge into `main` is needed for this check.
 
-The updated workflow uses the existing `SUPABASE_ACCESS_TOKEN` available to the protected `supabase-staging` GitHub environment. Its target is fixed to the confirmed staging project `exmrksgdikfprtfeltzu`. It needs no database password, Paddle key copied into GitHub, or credentials in the Codex cloud environment.
+The updated workflow uses the existing `SUPABASE_ACCESS_TOKEN` available to the protected `supabase-staging` GitHub environment. Its target is fixed to the corrected staging project `dgogugyuyfourdttvwuy`. It needs no database password, Paddle key copied into GitHub, or credentials in the Codex cloud environment.
 
 GitHub rejected [run 42627510363](https://github.com/elkasaby1996-sys/coachos/actions/runs/42627510363/job/129196143896) before any step ran: **Branch "Ahmed-billing" is not allowed to deploy to supabase-staging due to environment protection rules.** This restriction also applies to read-only jobs that reference the protected environment. Re-running before the branch-policy update will fail again. This failure does not establish anything about the validity of secrets or database state.
 

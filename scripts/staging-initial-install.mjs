@@ -13,6 +13,7 @@ import {
 import { validateDryRun } from "./billing-retirement-release.mjs";
 import {
   STAGING_PROJECT,
+  STAGING_ORIGIN,
   inspectStagingBilling,
   readBoundedStagingJson,
 } from "./staging-billing-status.mjs";
@@ -22,7 +23,7 @@ export const INSTALL_SCOPE = Object.freeze({
   branch: "Ahmed-billing",
   environment: "supabase-staging",
   project: STAGING_PROJECT,
-  origin: "https://repsync-staging-replacement.netlify.app",
+  origin: STAGING_ORIGIN,
   workflow: "Supabase Staging Empty Bootstrap",
   workflowPath: ".github/workflows/supabase-staging-bootstrap.yml",
   cliVersion: "2.109.1",

@@ -9,7 +9,10 @@ import {
   JWT_CONTRACTS,
 } from "./billing-deployment-contract.mjs";
 
-export const STAGING_PROJECT = "exmrksgdikfprtfeltzu";
+// The user corrected the active feature-branch staging target on 2026-11-09.
+// The legacy replacement registry is a separate signed-release contract.
+export const STAGING_PROJECT = "dgogugyuyfourdttvwuy";
+export const STAGING_ORIGIN = "https://repsync-staging.netlify.app";
 export const STATUS_QUERIES = Object.freeze({
   schema:
     "select to_regclass('supabase_migrations.schema_migrations') is not null as has_migration_history, to_regclass('public.billing_runtime_policy') is not null as has_billing_policy;",

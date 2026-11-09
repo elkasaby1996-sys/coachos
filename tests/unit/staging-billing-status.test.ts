@@ -168,7 +168,7 @@ describe("read-only staging billing inventory", () => {
     expect(JSON.stringify(result)).not.toContain(privateValue);
     expect(JSON.stringify(result)).not.toContain(env.SUPABASE_ACCESS_TOKEN);
   });
-  it.each([undefined, "", "btrfmxjpjzbyowtvncnc", "dgogugyuyfourdttvwuy"])(
+  it.each([undefined, "", "btrfmxjpjzbyowtvncnc", "exmrksgdikfprtfeltzu"])(
     "rejects unconfirmed target %s before IO",
     async (project) => {
       const transport = vi.fn();

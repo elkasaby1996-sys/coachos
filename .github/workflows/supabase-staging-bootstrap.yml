@@ -133,8 +133,8 @@ jobs:
     env:
       BOOTSTRAP_MODE: ${{ inputs.mode }}
       STAGING_INSTALL_ENVIRONMENT: supabase-staging
-      STAGING_SUPABASE_PROJECT_REF: exmrksgdikfprtfeltzu
-      STAGING_APPLICATION_ORIGIN: https://repsync-staging-replacement.netlify.app
+      STAGING_SUPABASE_PROJECT_REF: dgogugyuyfourdttvwuy
+      STAGING_APPLICATION_ORIGIN: https://repsync-staging.netlify.app
       CONFIRM_COMMIT_SHA: ${{ inputs.confirm_commit_sha }}
       CONFIRM_PROJECT_REF: ${{ inputs.confirm_project_ref }}
       CONFIRM_APP_ORIGIN: ${{ inputs.confirm_app_origin }}
@@ -157,7 +157,7 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ inputs.mode == 'apply' && secrets.SUPABASE_DB_PASSWORD || '' }}
-          SUPABASE_PROJECT_REF: exmrksgdikfprtfeltzu
+          SUPABASE_PROJECT_REF: dgogugyuyfourdttvwuy
           ALLOW_REMOTE_SUPABASE: ${{ inputs.mode == 'apply' && 'I_UNDERSTAND_THIS_TOUCHES_REMOTE' || '' }}
         run: node scripts/staging-initial-install.mjs "$BOOTSTRAP_MODE"
       - name: Upload sanitized installation result

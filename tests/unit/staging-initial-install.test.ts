@@ -307,8 +307,9 @@ describe("initial staging installation under GitHub environment review", () => {
     ["GITHUB_SHA", "b".repeat(40)],
     ["CONFIRM_COMMIT_SHA", "b".repeat(40)],
     ["CONFIRM_PROJECT_REF", "btrfmxjpjzbyowtvncnc"],
-    ["STAGING_SUPABASE_PROJECT_REF", "dgogugyuyfourdttvwuy"],
+    ["STAGING_SUPABASE_PROJECT_REF", "exmrksgdikfprtfeltzu"],
     ["CONFIRM_APP_ORIGIN", "https://repsync-production.netlify.app"],
+    ["CONFIRM_APP_ORIGIN", "https://repsync-staging-replacement.netlify.app"],
     ["STAGING_APPLICATION_ORIGIN", "https://unrelated.invalid"],
     ["SUPABASE_PROJECT_REF", "btrfmxjpjzbyowtvncnc"],
     ["ALLOW_REMOTE_SUPABASE", ""],
@@ -627,6 +628,16 @@ describe("initial staging installation under GitHub environment review", () => {
     expect(job.needs).toEqual(["feature-quality", "feature-database"]);
     expect(job.if).toContain("refs/heads/Ahmed-billing");
     expect(job.env.STAGING_SUPABASE_PROJECT_REF).toBe(INSTALL_SCOPE.project);
+    expect(job.env.STAGING_APPLICATION_ORIGIN).toBe(INSTALL_SCOPE.origin);
+    const statusWorkflow = createRequire(import.meta.url)("js-yaml").load(
+      readFileSync(".github/workflows/supabase-migration-status.yml", "utf8"),
+    );
+    const statusStep = statusWorkflow.jobs["migration-status"].steps.find(
+      (s: any) => s.run?.includes("staging-billing-status.mjs"),
+    );
+    expect(statusStep.env.STAGING_SUPABASE_PROJECT_REF).toBe(
+      INSTALL_SCOPE.project,
+    );
     const remote = job.steps.find((s: any) =>
       s.run?.includes("staging-initial-install.mjs"),
     );

@@ -2,9 +2,23 @@
 
 The selected order is `Ahmed-billing` → staging installation → real Paddle sandbox tests → reviewed merge into `main`.
 
-## Observed starting point
+## Current target and next run
 
-[Migration Status run 42688366250](https://github.com/elkasaby1996-sys/coachos/actions/runs/42688366250) succeeded on commit `0d2f33f`. The uploaded `report.json` names the confirmed staging project `exmrksgdikfprtfeltzu`. Its ZIP SHA-256 matches the run's published artifact digest, `75488e68cbc5376c3c0aaab949d28177716df1db09db34e3ae5ad42621c256be`.
+The user corrected the staging target on 2026-11-09:
+
+- Supabase project: `dgogugyuyfourdttvwuy`
+- Application origin: `https://repsync-staging.netlify.app`
+- Workflow branch: **`Ahmed-billing`**
+
+First run [Supabase Migration Status](https://github.com/elkasaby1996-sys/coachos/actions/workflows/supabase-migration-status.yml) from the latest `Ahmed-billing` commit. This read-only report establishes the corrected project's current migrations, functions, setting names, and billing policy. It uses the existing GitHub management token and requires no workflow inputs. The prior report below describes a different project and cannot establish this project's installation state.
+
+The screenshot's branch selection was `main`; it must be changed to `Ahmed-billing` to run this implementation. Commit `8bc0335` still targets the replacement project, so dispatch a new run from the updated branch instead of rerunning that old commit. The legacy signed-release registry still labels the corrected target archived; the feature-branch workflows now use the user's explicit target correction and preserve their fixed-target and fresh-project checks.
+
+If the new report shows existing migrations or application state, prepare an upgrade against that state. The initial installer below refuses an installed or partially migrated project; it does not reset it. Only use initial installation after the corrected project's fresh-state checks pass.
+
+## Earlier inventory of the replacement project
+
+[Migration Status run 42688366250](https://github.com/elkasaby1996-sys/coachos/actions/runs/42688366250) succeeded on commit `0d2f33f`. The uploaded `report.json` names replacement project `exmrksgdikfprtfeltzu`, which is not the user's corrected target. Its ZIP SHA-256 matches the run's published artifact digest, `75488e68cbc5376c3c0aaab949d28177716df1db09db34e3ae5ad42621c256be`.
 
 | Item                            | Observed result                                                           |
 | ------------------------------- | ------------------------------------------------------------------------- |
@@ -19,7 +33,7 @@ This confirms authenticated inspection. It does not prove the project has no oth
 
 ## Settings on the confirmed staging project
 
-Use [this project's Edge Function secrets](https://supabase.com/dashboard/project/exmrksgdikfprtfeltzu/functions/secrets). The report found these names absent at inspection time. The user has since reported updating all keys and links; installation checks their current names again, without retrieving or printing credential values.
+Use [this project's Edge Function secrets](https://supabase.com/dashboard/project/dgogugyuyfourdttvwuy/functions/secrets). The user reported updating all keys and links; the next inventory checks setting names on this corrected project without retrieving or printing credential values. The earlier report's missing-name list applies only to the replacement project.
 
 | Name                                    | Required staging value or purpose                                                                                       |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -29,12 +43,12 @@ Use [this project's Edge Function secrets](https://supabase.com/dashboard/projec
 | `PADDLE_SANDBOX_PAYMENT_METHOD_API_KEY` | Dedicated sandbox payment-method API key                                                                                |
 | `PADDLE_SANDBOX_PORTAL_API_KEY`         | Dedicated sandbox customer-portal-session API key                                                                       |
 | `PADDLE_SANDBOX_WEBHOOK_SECRET`         | Notification destination secret for this staging webhook                                                                |
-| `PADDLE_SANDBOX_PAYMENT_PAGE_URL`       | `https://repsync-staging-replacement.netlify.app/billing/checkout`                                                      |
+| `PADDLE_SANDBOX_PAYMENT_PAGE_URL`       | `https://repsync-staging.netlify.app/billing/checkout`                                                                  |
 | `PADDLE_CHECKOUT_ACCESS_MODE`           | Initially `disabled`; use `pilot` with `PADDLE_CHECKOUT_PILOT_USER_ID` only when the test owner and catalogue are ready |
 
 Enter credential values directly in Supabase. The GitHub `SUPABASE_ACCESS_TOKEN` authenticates deployment/inspection and is distinct from the Paddle runtime settings above. The server API keys and webhook secret must remain outside browser build variables, Git, logs, and shared reports. Follow the route-specific permissions in [the billing configuration guide](paddle-billing.md#configuration).
 
-The eventual Paddle sandbox notification destination is `https://exmrksgdikfprtfeltzu.supabase.co/functions/v1/billing-paddle-webhook`. Register the events listed in [the activation guide](paddle-billing.md#catalogue-and-activation) when preparing notification delivery.
+The Paddle sandbox notification destination for the corrected target is `https://dgogugyuyfourdttvwuy.supabase.co/functions/v1/billing-paddle-webhook`. Register the events listed in [the activation guide](paddle-billing.md#catalogue-and-activation) when preparing notification delivery.
 
 ## Install from Ahmed-billing with GitHub environment review
 
@@ -48,15 +62,15 @@ node scripts/staging-initial-install.mjs plan
 
 Before running, retain the required reviewer and allow `Ahmed-billing` in the GitHub `supabase-staging` environment, as already done for inventory. The protected job uses the existing `SUPABASE_ACCESS_TOKEN` and, for `apply`, `SUPABASE_DB_PASSWORD` for **this staging project**. Paddle private keys stay in Supabase. No credential values belong in workflow inputs or chat.
 
-Open [Supabase Staging Empty Bootstrap](https://github.com/elkasaby1996-sys/coachos/actions/workflows/supabase-staging-bootstrap.yml), select **Run workflow**, and enter:
+After the corrected project's inventory establishes that initial installation is appropriate, open [Supabase Staging Empty Bootstrap](https://github.com/elkasaby1996-sys/coachos/actions/workflows/supabase-staging-bootstrap.yml), select **Run workflow**, and enter:
 
 | Field                 | Value                                                         |
 | --------------------- | ------------------------------------------------------------- |
 | Branch                | `Ahmed-billing`                                               |
 | `mode`                | `apply`                                                       |
 | `confirm_commit_sha`  | The full 40-character commit SHA currently at `Ahmed-billing` |
-| `confirm_project_ref` | `exmrksgdikfprtfeltzu`                                        |
-| `confirm_app_origin`  | `https://repsync-staging-replacement.netlify.app`             |
+| `confirm_project_ref` | `dgogugyuyfourdttvwuy`                                        |
+| `confirm_app_origin`  | `https://repsync-staging.netlify.app`                         |
 
 The workflow tests the source, immutable payload, and all migrations on a disposable local database before the installation job can run. Approve that job through GitHub's required environment review. `apply` includes its own fresh-project checks and dry run; a separate `preflight` run is optional. `preflight` performs only metadata/read-only SQL requests and needs no database password. `plan` runs local checks and produces a plan without entering the protected installation job.
 
@@ -67,7 +81,7 @@ Installation applies all 188 canonical migrations, verifies the stored test poli
 ```text
 PADDLE_ENVIRONMENT=sandbox
 PADDLE_CHECKOUT_ACCESS_MODE=disabled
-PADDLE_SANDBOX_PAYMENT_PAGE_URL=https://repsync-staging-replacement.netlify.app/billing/checkout
+PADDLE_SANDBOX_PAYMENT_PAGE_URL=https://repsync-staging.netlify.app/billing/checkout
 ```
 
 Supabase Auth receives the staging app origin as its site URL and `/auth/callback` as its redirect URL. Signup is enabled and email confirmation remains required. Private Paddle keys and webhook secrets are not overwritten.
@@ -76,9 +90,9 @@ Read **Initial staging installation** in the job summary or download `staging-in
 
 ## Finish the staging frontend and sandbox activation
 
-Installation success verifies the backend installation and configuration names. It does not validate private key values, publish Paddle catalogue mappings, enable checkout, deploy the frontend, or prove a payment works. It does not deploy to production or the archived staging project, and does not merge `main`.
+Installation success verifies the backend installation and configuration names. It does not validate private key values, publish Paddle catalogue mappings, enable checkout, deploy the frontend, or prove a payment works. Its only target is the corrected staging project above; production and the replacement project remain outside this operation. It does not merge `main`.
 
-Deploy the matching frontend from the tested commit to `https://repsync-staging-replacement.netlify.app`. Its build needs `VITE_SUPABASE_URL=https://exmrksgdikfprtfeltzu.supabase.co`, that project's public anon key, `VITE_BILLING_PROVIDER=paddle`, `VITE_PADDLE_ENVIRONMENT=sandbox`, and `VITE_PADDLE_SANDBOX_CLIENT_TOKEN`. Frontend deployment and catalogue/pilot activation still need their own concrete staging execution steps; the initial installer does not perform them.
+Deploy the matching frontend from the tested commit to `https://repsync-staging.netlify.app`. Its build needs `VITE_SUPABASE_URL=https://dgogugyuyfourdttvwuy.supabase.co`, that project's public anon key, `VITE_BILLING_PROVIDER=paddle`, `VITE_PADDLE_ENVIRONMENT=sandbox`, and `VITE_PADDLE_SANDBOX_CLIENT_TOKEN`. Frontend deployment and catalogue/pilot activation still need their own concrete staging execution steps; the initial installer does not perform them.
 
 ## Before merging the billing feature
 
