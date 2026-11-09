@@ -63,6 +63,8 @@ If a provider request may have succeeded, inspect the retained operation and pro
 
 ## Inspect staging with existing GitHub and Supabase secrets
 
+The successful staging inspection found no recorded RepSync migrations, all 15 billing functions missing, and eight required Paddle setting names absent. See the [initial staging installation plan](paddle-staging-installation.md) for the verified report, exact settings, payload phases, and remaining deployment work.
+
 The selected release order is **`Ahmed-billing` → staging → real Paddle sandbox tests → reviewed merge into `main`**. Keep the billing feature on its branch until staging tests pass. The staging target is Supabase project `exmrksgdikfprtfeltzu` and app `https://repsync-staging-replacement.netlify.app`; provider payments use Paddle sandbox.
 
 The repository administrator must first allow the exact branch `Ahmed-billing` in **Settings → Environments → supabase-staging → Deployment branches and tags**. Retain existing allowed branches and required reviewers. This is a scoped staging branch-policy update for the user's selected release order; production permissions and targets remain separate.
