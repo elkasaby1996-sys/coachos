@@ -7,51 +7,39 @@ permissions:
   contents: read
 
 concurrency:
-  group: supabase-migration-status-${{ github.ref }}
+  group: supabase-staging-commercial
   cancel-in-progress: false
 
 jobs:
   migration-status:
+    if: github.repository == 'elkasaby1996-sys/coachos' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Ahmed-billing')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     environment: supabase-staging
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+      - name: Checkout selected branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          version: v2.109.1
+          persist-credentials: false
 
-      - name: Validate status secrets
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+
+      - name: Inspect staging using existing GitHub credentials
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          STAGING_SUPABASE_PROJECT_REF: exmrksgdikfprtfeltzu
         run: |
-          required=(
-            SUPABASE_ACCESS_TOKEN
-            SUPABASE_PROJECT_ID
-            SUPABASE_DB_PASSWORD
-          )
+          mkdir -p output/staging-status
+          node scripts/staging-billing-status.mjs > output/staging-status/report.json
 
-          missing=0
-          for key in "${required[@]}"; do
-            if [ -z "${!key}" ]; then
-              echo "Missing required secret: $key"
-              missing=1
-            fi
-          done
-
-          if [ "$missing" -eq 1 ]; then
-            echo "Supabase migration status secrets are incomplete."
-            exit 1
-          fi
-
-      - name: Link Supabase project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
-
-      - name: List linked migration status
-        run: supabase migration list --linked --password "$SUPABASE_DB_PASSWORD"
+      - name: Upload sanitized inventory
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: staging-billing-status-${{ github.run_id }}
+          path: output/staging-status/report.json
+          retention-days: 7
+          if-no-files-found: ignore

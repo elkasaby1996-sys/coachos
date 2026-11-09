@@ -60,3 +60,13 @@ Before live sales, complete real sandbox checkout, renewal, failed-payment recov
 Existing limits remain: plan changes require no additional seats; scheduled plan/seat reductions cannot be undone through RepSync; payment-method updates wait for conflicting/uncertain operations to resolve. Seat reductions take effect at renewal; increases require confirmed payment. Portal cancellation follows Paddle's confirmation flow and paid-period access rules. Subscription resume is not exposed as a RepSync action.
 
 If a provider request may have succeeded, inspect the retained operation and provider transaction before starting another charge. Disable new checkout during an incident while preserving reconciliation and financial history.
+
+## Inspect staging with existing GitHub and Supabase secrets
+
+Use GitHub **Actions → Supabase Migration Status → Run workflow**, select `Ahmed-billing`, and run it. The workflow uses the existing `SUPABASE_ACCESS_TOKEN` available to the protected `supabase-staging` GitHub environment. Its target is fixed to the confirmed staging project `exmrksgdikfprtfeltzu`. It needs no database password, Paddle key copied into GitHub, or credentials in the Codex cloud environment.
+
+The job summary and `staging-billing-status-<run-id>` artifact contain only a sanitized report: migration version prefix and pending filenames, missing/inactive billing functions, JWT configuration mismatches, required server-setting names that are missing, and the stored billing policy. It uses only Management API metadata reads and the database **read-only** query endpoint. It performs no linking, migrations, deployment, secret changes, provider calls, or payment actions.
+
+A successful inventory run does not validate migration hashes, deployed source, secret values, the frontend token, Paddle products/prices, or real payments. Keep Paddle runtime credentials in Supabase. If GitHub environment branch restrictions prevent selecting `Ahmed-billing`, the reviewed changes must reach an allowed branch first; do not relax the environment protection to run the check.
+
+The deployment workflow remains separate. The current founder authorization policy is disabled, and its trusted workflow-approval and durable action-claim integrations are unimplemented. Inventory does not enable or bypass those deployment requirements. `Ahmed-billing` also needs review and a merge into `main` before the existing deployment workflow can use it.
