@@ -11,6 +11,7 @@ on:
   push:
     branches: [Ahmed-billing]
     paths:
+      - .gitignore
       - .github/workflows/supabase-staging-billing-upgrade.yml
       - scripts/staging-populated-upgrade.mjs
       - scripts/staging-upgrade-schema.mjs

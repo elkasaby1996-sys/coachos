@@ -1509,3 +1509,8 @@ When working in this repository, every agent or human contributor should treat t
 
 - Initial push `3dc5195` queued run 42717749303, which GitHub rejected before starting any job: `runner.temp` is unavailable in job-level `env`. Moved the source-reference and private-backup paths into the prepare/apply step environments, where the runner context is supported. No deployment or credential access occurred in the rejected run.
 - Verified the corrected workflow with official actionlint v1.7.7 (release archive checksum verified), all **32 upgrade unit tests**, formatting and whitespace checks. Workflow behavior, target, secrets, backup/recovery requirements and GitHub deployment review are unchanged. Push the correction on `Ahmed-billing` and inspect its new run before requesting the existing environment review.
+
+### Keep upgrade reports out of source-integrity checks — 2026-11-09, 23:13 UTC (approx.)
+
+- Before approving the protected job, a real local plan exposed an untracked `output/staging-upgrade/report.json`. The runner writes progress before checking source cleanliness, so the unignored report would reject preparation before any hosted API request. Added that generated directory to `.gitignore` and included `.gitignore` changes in the upgrade workflow's branch trigger.
+- Added an actual Git ignore regression check. All **33 focused upgrade tests**, actionlint, changed-file formatting and whitespace checks passed. The application payload is unchanged; previously passed full unit/database/build checks remain applicable. The corrected commit supersedes run 42717986623; cancel that older run if it still occupies the shared staging queue before approving the new run. No hosted writes have occurred.

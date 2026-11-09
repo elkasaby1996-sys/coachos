@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import {
   runPopulatedUpgrade,
@@ -622,6 +623,14 @@ describe("private backup integrity and schema compatibility", () => {
         UPGRADE_SCOPE.project,
       ),
     ).toThrow("UPGRADE_DATABASE_SCHEMA_NOT_REVIEWED");
+  });
+  it("keeps generated progress reports outside the clean-checkout comparison", () => {
+    expect(
+      execFileSync("git", ["check-ignore", "--stdin"], {
+        input: "output/staging-upgrade/report.json\n",
+        encoding: "utf8",
+      }).trim(),
+    ).toBe("output/staging-upgrade/report.json");
   });
   it("requires quality/database checks, environment review and uploaded encrypted recovery before apply", () => {
     const workflow = createRequire(import.meta.url)("js-yaml").load(

@@ -20,6 +20,7 @@ __pycache__/
 /tmp/exercise-catalog/
 /output/staging-commercial/
 /output/staging-release/
+/output/staging-upgrade/
 /backup/
 
 # Defense in depth only: the verifier rejects bindings anywhere inside Git.
