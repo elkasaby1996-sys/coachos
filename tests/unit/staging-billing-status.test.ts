@@ -1,4 +1,7 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   inspectStagingBilling,
@@ -79,6 +82,58 @@ function fixture() {
 }
 
 describe("read-only staging billing inventory", () => {
+  it.each([
+    {
+      project: STAGING_PROJECT,
+      token: "",
+      code: "SUPABASE_ACCESS_TOKEN_MISSING",
+    },
+    {
+      project: "unconfirmed-project",
+      token: env.SUPABASE_ACCESS_TOKEN,
+      code: "STAGING_PROJECT_MISMATCH",
+    },
+  ])(
+    "publishes a safe $code annotation while keeping the CLI artifact valid JSON",
+    ({ project, token, code }) => {
+      const directory = mkdtempSync(join(tmpdir(), "staging-status-cli-"));
+      const summary = join(directory, "summary.md");
+      try {
+        const result = spawnSync(
+          process.execPath,
+          ["scripts/staging-billing-status.mjs"],
+          {
+            env: {
+              ...process.env,
+              STAGING_SUPABASE_PROJECT_REF: project,
+              SUPABASE_ACCESS_TOKEN: token,
+              GITHUB_STEP_SUMMARY: summary,
+            },
+            encoding: "utf8",
+            timeout: 5_000,
+          },
+        );
+        expect(result.error).toBeUndefined();
+        expect(result.status).toBe(1);
+        expect(JSON.parse(result.stdout)).toEqual({
+          status: "blocked",
+          stage: "configuration",
+          code,
+          remoteChangesPerformed: false,
+        });
+        expect(result.stderr.trim()).toBe(
+          `::error title=Staging billing inventory::stage=configuration; code=${code}`,
+        );
+        const writtenSummary = readFileSync(summary, "utf8");
+        expect(writtenSummary).toContain(result.stdout.trim());
+        expect(result.stdout + result.stderr + writtenSummary).not.toContain(
+          env.SUPABASE_ACCESS_TOKEN,
+        );
+      } finally {
+        rmSync(directory, { recursive: true, force: true });
+      }
+    },
+  );
   it("identifies the pending billing migrations without claiming deployment or payment certification", async () => {
     const f = fixture();
     const result = await f.run();

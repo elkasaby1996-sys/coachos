@@ -226,10 +226,22 @@ if (
   const report = await inspectStagingBilling();
   const json = JSON.stringify(report, null, 2);
   console.log(json);
+  if (report.status !== "inspected") {
+    process.exitCode = 1;
+    // stdout is the JSON artifact. GitHub still reads workflow commands on
+    // stderr, making these fixed diagnostic fields visible in job annotations.
+    const diagnostic = [
+      `stage=${report.stage}`,
+      `code=${report.code}`,
+      ...(report.httpStatus === undefined
+        ? []
+        : [`httpStatus=${report.httpStatus}`]),
+    ].join("; ");
+    console.error(`::error title=Staging billing inventory::${diagnostic}`);
+  }
   if (process.env.GITHUB_STEP_SUMMARY)
     appendFileSync(
       process.env.GITHUB_STEP_SUMMARY,
       `## Staging billing inventory\n\nRead-only observations; deployment and real payments are not certified.\n\n\`\`\`json\n${json}\n\`\`\`\n`,
     );
-  if (report.status !== "inspected") process.exitCode = 1;
 }
