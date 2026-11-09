@@ -26,7 +26,7 @@ Use separate Supabase projects for sandbox and production. The database pins its
 
 The payment page must be the approved HTTPS app URL ending in `/billing/checkout`, without a query or fragment. Configure Paddle's default payment link and approved domain accordingly. The SPA host must serve the app on that path. API origins are fixed to `sandbox-api.paddle.com` and `api.paddle.com`. Mixed-realm credentials and custom API origins are rejected. Server keys, notification secrets, and Supabase service keys must never enter `VITE_*` configuration.
 
-Scope keys to their routes: products/prices read for catalogue; subscriptions read/update for plans/seats; transactions create/read for checkout; subscription/payment-method transaction access for card updates; customer portal session creation for invoices/cancellation. Portal authority comes from the authenticated account owner. Session URLs are ephemeral and must not be logged or saved.
+Scope keys to their routes: products/prices read for catalogue; subscriptions read/update for plans/seats; transactions create/read for checkout; `transaction.read` and `transaction.write` for card updates; `customer_portal_session.write` for invoices/cancellation portal sessions. Portal authority comes from the authenticated account owner. Session URLs are ephemeral and must not be logged or saved.
 
 Existing Supabase URL, anon key, service-role key, and authenticated browser sessions remain required. The webhook is the only billing route without gateway JWT verification; it verifies the raw body, signature, timestamp, and selected realm's notification secret.
 
@@ -63,7 +63,7 @@ If a provider request may have succeeded, inspect the retained operation and pro
 
 ## Inspect staging with existing GitHub and Supabase secrets
 
-The earlier successful inspection covered replacement project `exmrksgdikfprtfeltzu`. The user subsequently reported updating all keys and links and corrected the intended target to `dgogugyuyfourdttvwuy`. Run a new inventory from the latest `Ahmed-billing` branch; the earlier report does not describe this project's state. See the [staging installation guide](paddle-staging-installation.md) for the correction, current checks, and initial-installation versus upgrade decision.
+The verified report from run 42698712938 covers corrected project `dgogugyuyfourdttvwuy`: 180 of 188 migrations are installed, billing is in test mode with both gates disabled, and the payment-method/portal functions and their two key names were missing. The user has since reported adding those keys. This project needs an upgrade, so do not use the empty-project installer. See the [staging deployment guide](paddle-staging-installation.md) for the verified report and expanded read-only upgrade assessment.
 
 The selected release order is **`Ahmed-billing` → staging → real Paddle sandbox tests → reviewed merge into `main`**. Keep the billing feature on its branch until staging tests pass. The corrected staging target is Supabase project `dgogugyuyfourdttvwuy` and app `https://repsync-staging.netlify.app`; provider payments use Paddle sandbox.
 

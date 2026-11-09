@@ -33,7 +33,12 @@ class StatusError extends Error {
 const requireShape = (condition) => {
   if (!condition) throw new StatusError("STAGING_RESPONSE_INVALID");
 };
-export async function readBoundedStagingJson(response) {
+export async function readBoundedStagingJson(response, maxBytes = 1024 * 1024) {
+  requireShape(
+    Number.isSafeInteger(maxBytes) &&
+      maxBytes > 0 &&
+      maxBytes <= 8 * 1024 * 1024,
+  );
   requireShape(
     /^application\/json(?:;|$)/i.test(
       response.headers.get("content-type") ?? "",
@@ -48,7 +53,7 @@ export async function readBoundedStagingJson(response) {
       const { done, value } = await reader.read();
       if (done) break;
       length += value.byteLength;
-      requireShape(length <= 1024 * 1024);
+      requireShape(length <= maxBytes);
       chunks.push(value);
     }
   } finally {

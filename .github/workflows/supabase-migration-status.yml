@@ -2,6 +2,12 @@ name: Supabase Migration Status
 
 on:
   workflow_dispatch:
+  push:
+    branches: [Ahmed-billing]
+    paths:
+      - .github/workflows/supabase-migration-status.yml
+      - scripts/staging-billing-status.mjs
+      - scripts/staging-upgrade-readiness.mjs
 
 permissions:
   contents: read
@@ -20,12 +26,17 @@ jobs:
       - name: Checkout selected branch
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 22
+          cache: npm
+
+      - name: Install local contract dependencies
+        run: npm ci
 
       - name: Inspect staging using existing GitHub credentials
         env:
@@ -33,7 +44,7 @@ jobs:
           STAGING_SUPABASE_PROJECT_REF: dgogugyuyfourdttvwuy
         run: |
           mkdir -p output/staging-status
-          node scripts/staging-billing-status.mjs > output/staging-status/report.json
+          node scripts/staging-upgrade-readiness.mjs > output/staging-status/report.json
 
       - name: Upload sanitized inventory
         if: always()

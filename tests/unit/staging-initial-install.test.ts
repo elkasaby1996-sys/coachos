@@ -633,7 +633,7 @@ describe("initial staging installation under GitHub environment review", () => {
       readFileSync(".github/workflows/supabase-migration-status.yml", "utf8"),
     );
     const statusStep = statusWorkflow.jobs["migration-status"].steps.find(
-      (s: any) => s.run?.includes("staging-billing-status.mjs"),
+      (s: any) => s.run?.includes("staging-upgrade-readiness.mjs"),
     );
     expect(statusStep.env.STAGING_SUPABASE_PROJECT_REF).toBe(
       INSTALL_SCOPE.project,

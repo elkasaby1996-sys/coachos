@@ -1,4 +1,4 @@
-# Initial Paddle staging installation
+# Paddle staging deployment
 
 The selected order is `Ahmed-billing` → staging installation → real Paddle sandbox tests → reviewed merge into `main`.
 
@@ -10,11 +10,29 @@ The user corrected the staging target on 2026-11-09:
 - Application origin: `https://repsync-staging.netlify.app`
 - Workflow branch: **`Ahmed-billing`**
 
-First run [Supabase Migration Status](https://github.com/elkasaby1996-sys/coachos/actions/workflows/supabase-migration-status.yml) from the latest `Ahmed-billing` commit. This read-only report establishes the corrected project's current migrations, functions, setting names, and billing policy. It uses the existing GitHub management token and requires no workflow inputs. The prior report below describes a different project and cannot establish this project's installation state.
+[Migration Status run 42698712938](https://github.com/elkasaby1996-sys/coachos/actions/runs/42698712938) inspected this project at `d839bba`. The uploaded ZIP matches GitHub's SHA-256 `8ff5f707b085fc37efbc6ca669356e62931ead121d81d7b231ecc60166d64694`. It confirms **180 of 188 migrations**, with the exact canonical prefix and eight pending migrations. The project needs an upgrade; **do not run the empty-project installer**.
+
+| Item                                | Verified result                                                                        |
+| ----------------------------------- | -------------------------------------------------------------------------------------- |
+| Billing policy                      | `test`, sales disabled, reconciliation disabled                                        |
+| Deployed functions                  | 15 total; existing expected billing names have active status and matching JWT settings |
+| Missing functions                   | `billing-update-payment-method`, `billing-create-paddle-portal`                        |
+| Missing setting names at inspection | `PADDLE_SANDBOX_PAYMENT_METHOD_API_KEY`, `PADDLE_SANDBOX_PORTAL_API_KEY`               |
+| Live Paddle setting names           | None reported                                                                          |
+
+The user subsequently reported adding the two keys. Their current presence will be rechecked; key values, provider permissions, and payments remain unverified.
 
 The screenshot's branch selection was `main`; it must be changed to `Ahmed-billing` to run this implementation. Commit `8bc0335` still targets the replacement project, so dispatch a new run from the updated branch instead of rerunning that old commit. The legacy signed-release registry still labels the corrected target archived; the feature-branch workflows now use the user's explicit target correction and preserve their fixed-target and fresh-project checks.
 
-If the new report shows existing migrations or application state, prepare an upgrade against that state. The initial installer below refuses an installed or partially migrated project; it does not reset it. Only use initial installation after the corrected project's fresh-state checks pass.
+## Upgrade assessment and sequence
+
+The existing [Supabase Migration Status](https://github.com/elkasaby1996-sys/coachos/actions/workflows/supabase-migration-status.yml) workflow now includes `scripts/staging-upgrade-readiness.mjs`. It runs manually on the selected branch and automatically for `Ahmed-billing` pushes that change the status workflow or its inspection scripts. Its protected `supabase-staging` job still requires GitHub's configured review. It uses only the existing management token, metadata GETs and the database read-only endpoint.
+
+The assessment compares actual public function definitions, permissions, RLS and schema against the source-bound checkpoint for the installed migration count. It collects aggregate legacy-provider roots, unfinished operations, pending webhook processing, and scheduled changes. It hashes retained public rows and Auth users without exporting them, then repeats the observations to reject drift or an observation older than one minute. Schema responses have a fixed 8 MiB limit; the observed local schema exceeds the inventory reader's ordinary 1 MiB limit. Reports and public notices contain sanitized results, never raw definitions, row data, credentials, or webhook bodies.
+
+Use `upgradeReadiness.blockers` and the **Staging upgrade assessment** annotation to resolve schema mismatches, retained legacy history, unfinished work, missing keys, or unexpected functions before preparing an apply run. A zero-blocker result means the upgrade can be prepared; it does not claim a verified backup, deployed source, provider certification, or deployment authorization. The expanded remote assessment has not yet run when this change is prepared.
+
+The pending upgrade sequence is migrations 181–184, retirement migration 185, then migrations 186–188, followed by the canonical billing and non-billing functions. Existing history must remain intact. Before applying, establish a recoverable staging backup and review retained billing obligations and in-flight work. The main-only signed-release runner remains separate; an operational feature-branch upgrade must use the chosen GitHub review model with these data-preservation checks. The initial-install script is intentionally unsuitable for this populated project and will reject it before writes.
 
 ## Earlier inventory of the replacement project
 
@@ -33,7 +51,7 @@ This confirms authenticated inspection. It does not prove the project has no oth
 
 ## Settings on the confirmed staging project
 
-Use [this project's Edge Function secrets](https://supabase.com/dashboard/project/dgogugyuyfourdttvwuy/functions/secrets). The user reported updating all keys and links; the next inventory checks setting names on this corrected project without retrieving or printing credential values. The earlier report's missing-name list applies only to the replacement project.
+Use [this project's Edge Function secrets](https://supabase.com/dashboard/project/dgogugyuyfourdttvwuy/functions/secrets). The user reported adding the two keys missing in run 11; the next inventory checks their names without retrieving or printing credential values.
 
 | Name                                    | Required staging value or purpose                                                                                       |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -48,9 +66,13 @@ Use [this project's Edge Function secrets](https://supabase.com/dashboard/projec
 
 Enter credential values directly in Supabase. The GitHub `SUPABASE_ACCESS_TOKEN` authenticates deployment/inspection and is distinct from the Paddle runtime settings above. The server API keys and webhook secret must remain outside browser build variables, Git, logs, and shared reports. Follow the route-specific permissions in [the billing configuration guide](paddle-billing.md#configuration).
 
+Create server API keys in Paddle Sandbox's **My account → Settings → Authentication → API keys**. The payment-method key needs `transaction.write` for [preparing the update transaction](https://developer.paddle.com/api-reference/subscriptions/get-subscription-update-payment-method-transaction) and `transaction.read` for inspecting it. The portal key needs `customer_portal_session.write` for [creating a customer portal session](https://developer.paddle.com/api-reference/customer-portals/create-customer-portal-session). Store each generated value under the exact Supabase name above. An existing sandbox key with the required permissions also works; credentials need not be shared in chat.
+
 The Paddle sandbox notification destination for the corrected target is `https://dgogugyuyfourdttvwuy.supabase.co/functions/v1/billing-paddle-webhook`. Register the events listed in [the activation guide](paddle-billing.md#catalogue-and-activation) when preparing notification delivery.
 
 ## Install from Ahmed-billing with GitHub environment review
+
+This section documents the empty-project path. The verified current project is at migration 180, so it must use the upgrade sequence above instead.
 
 The user selected GitHub's existing required `supabase-staging` environment review for this initial staging installation. The existing **Supabase Staging Empty Bootstrap** workflow now has a separate `Ahmed-billing` installation path. Its legacy main-only signed-founder job remains separate. The feature path does not need the unfinished custom signed-approval integrations.
 
