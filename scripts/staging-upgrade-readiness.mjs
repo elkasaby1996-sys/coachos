@@ -1,6 +1,6 @@
 // Read-only assessment of an installed staging database. No migration, link,
 // deployment, provider call, backup claim, or change to retained billing history.
-import { appendFileSync, readFileSync } from "node:fs";
+import { appendFileSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -20,6 +20,38 @@ import {
 } from "./staging-release-observation.mjs";
 import { releaseIdentity, canonical } from "./staging-release-artifacts.mjs";
 import { hash } from "./billing-retirement-release.mjs";
+import {
+  compareSchemaObjects,
+  verifySchemaReference,
+} from "./staging-schema-diagnostics.mjs";
+
+// Aggregate, bounded categories only. No IDs, provider references, payloads,
+// free-form error strings, or row-level values leave the database.
+export const WORK_DETAIL_QUERY = `select
+  jsonb_build_object(
+    'webhooks', (select coalesce(jsonb_agg(to_jsonb(g) order by environment,status),'[]'::jsonb) from (
+      select case when environment in ('test','live') then environment else 'unknown' end environment,
+        case when processing_status in ('received','deferred','failed','manual_review') then processing_status else 'unknown' end status, count(*) count
+      from public.billing_webhook_events_v2 where processing_status not in ('processed','ignored') group by 1,2) g),
+    'scheduled', (select coalesce(jsonb_agg(to_jsonb(g) order by source,environment,timing),'[]'::jsonb) from (
+      select source, case when environment in ('test','live') then environment else 'unknown' end environment,
+        case when effective_at is null or not isfinite(effective_at) then 'invalid' when effective_at <= now() then 'overdue' else 'future' end timing, count(*) count
+      from (
+        select 'paddle'::text source,environment,effective_at from public.billing_operations_v2 where status='scheduled'
+        union all select 'legacyPlans',s.environment,o.effective_at from public.billing_plan_change_operations o left join public.billing_provider_subscriptions s on s.id=o.billing_provider_subscription_id where o.status='scheduled'
+        union all select 'legacySeats',s.environment,o.effective_at from public.billing_seat_quantity_operations o left join public.billing_provider_subscriptions s on s.id=o.billing_provider_subscription_id where o.status='scheduled'
+      ) operations group by 1,2,3) g),
+    'subscriptions', (select coalesce(jsonb_agg(to_jsonb(g) order by provider,environment,status),'[]'::jsonb) from (
+      select provider,case when environment in ('test','live') then environment else 'unknown' end environment,
+        case when provider_status in ('active','trialing','on_trial','past_due','paused','canceled','cancelled','expired','unpaid') then provider_status else 'unknown' end status,count(*) count
+      from (
+        select 'paddle'::text provider,environment,provider_status from public.billing_subscriptions_v2
+        union all select 'lemonsqueezy',environment,provider_status from public.billing_provider_subscriptions
+      ) subscriptions group by 1,2,3) g)
+  ) details,
+  jsonb_build_object('postgresVersion',current_setting('server_version_num')::integer,
+    'searchPath',case current_setting('search_path') when 'public, extensions' then 'public, extensions' when '"$user", public, extensions' then '"$user", public, extensions' when 'public' then 'public' when '"$user", public' then '"$user", public' when 'pg_catalog' then 'pg_catalog' else 'other' end,
+    'sessionRole',case when current_user in ('postgres','supabase_admin') then current_user::text else 'other' end) rendering;`;
 
 const WORK_KEYS = [
   "legacyCheckouts",
@@ -50,7 +82,22 @@ const sortedObject = (value) =>
   Object.fromEntries(
     Object.entries(value).sort(([a], [b]) => a.localeCompare(b)),
   );
-function localRelease() {
+function localRelease(env) {
+  let schemaReference;
+  if (env.STAGING_SCHEMA_REFERENCE_PATH) {
+    const path = env.STAGING_SCHEMA_REFERENCE_PATH;
+    requireEvidence(
+      statSync(path).isFile() && statSync(path).size <= 32 * 1024 * 1024,
+      "UPGRADE_SCHEMA_REFERENCE_INVALID",
+    );
+    schemaReference = JSON.parse(readFileSync(path, "utf8"));
+    requireEvidence(
+      schemaReference &&
+        typeof schemaReference === "object" &&
+        !Array.isArray(schemaReference),
+      "UPGRADE_SCHEMA_REFERENCE_INVALID",
+    );
+  }
   return {
     identity: releaseIdentity(),
     checkpoints: JSON.parse(
@@ -59,13 +106,14 @@ function localRelease() {
         "utf8",
       ),
     ),
+    schemaReference,
   };
 }
 
 export async function inspectUpgradeReadiness({
   env = process.env,
   transport = fetch,
-  readLocal = localRelease,
+  readLocal = () => localRelease(env),
   now = Date.now,
 } = {}) {
   const started = now();
@@ -95,7 +143,7 @@ export async function inspectUpgradeReadiness({
   }
   let stage = "local_contract";
   try {
-    const { identity, checkpoints } = readLocal();
+    const { identity, checkpoints, schemaReference } = readLocal();
     requireEvidence(
       checkpoints.frozenPayloadCommit === identity.payload.frozenCommit &&
         checkpoints.manifestDigest === hash(canonical(identity.manifest)) &&
@@ -104,6 +152,19 @@ export async function inspectUpgradeReadiness({
         ),
       "UPGRADE_LOCAL_CONTRACT_INVALID",
     );
+    let expectedSchema;
+    if (schemaReference) {
+      try {
+        expectedSchema = verifySchemaReference(
+          schemaReference,
+          identity,
+          checkpoints,
+          applied,
+        );
+      } catch {
+        throw new ReadinessError("UPGRADE_SCHEMA_REFERENCE_INVALID");
+      }
+    }
     const expectedVersions = identity.manifest.migrations.approved
       .slice(0, applied)
       .map((m) => m.filename.slice(0, 14));
@@ -187,6 +248,75 @@ export async function inspectUpgradeReadiness({
           (typeof work.scheduled.earliest === "string" &&
             Number.isFinite(Date.parse(work.scheduled.earliest))),
       );
+      const detail = single(await sql(WORK_DETAIL_QUERY));
+      const realm = ["test", "live", "unknown"];
+      const validGroups = (rows, categories) =>
+        Array.isArray(rows) &&
+        rows.length <= 100 &&
+        rows.every(
+          (row) =>
+            row &&
+            count(row.count) &&
+            Object.keys(row).length === Object.keys(categories).length + 1 &&
+            Object.entries(categories).every(([key, allowed]) =>
+              allowed.includes(row[key]),
+            ),
+        ) &&
+        new Set(
+          rows.map((row) =>
+            JSON.stringify(Object.keys(categories).map((key) => row[key])),
+          ),
+        ).size === rows.length;
+      requireEvidence(
+        detail.details &&
+          validGroups(detail.details.webhooks, {
+            environment: realm,
+            status: [
+              "received",
+              "deferred",
+              "failed",
+              "manual_review",
+              "unknown",
+            ],
+          }) &&
+          validGroups(detail.details.scheduled, {
+            source: ["paddle", "legacyPlans", "legacySeats"],
+            environment: realm,
+            timing: ["invalid", "overdue", "future"],
+          }) &&
+          validGroups(detail.details.subscriptions, {
+            provider: ["paddle", "lemonsqueezy"],
+            environment: realm,
+            status: [
+              "active",
+              "trialing",
+              "on_trial",
+              "past_due",
+              "paused",
+              "canceled",
+              "cancelled",
+              "expired",
+              "unpaid",
+              "unknown",
+            ],
+          }) &&
+          detail.details.webhooks.reduce((sum, row) => sum + row.count, 0) ===
+            work.work.paddleWebhooks &&
+          detail.details.scheduled.reduce((sum, row) => sum + row.count, 0) ===
+            work.scheduled.count &&
+          count(detail.rendering?.postgresVersion) &&
+          [
+            "public, extensions",
+            '"$user", public, extensions',
+            "public",
+            '"$user", public',
+            "pg_catalog",
+            "other",
+          ].includes(detail.rendering.searchPath) &&
+          ["postgres", "supabase_admin", "other"].includes(
+            detail.rendering.sessionRole,
+          ),
+      );
       const history = single(await sql(historyQuery(tables))).history;
       requireEvidence(
         history &&
@@ -205,6 +335,20 @@ export async function inspectUpgradeReadiness({
         historyDigest: hash(canonical(sortedObject(history))),
         tableCount: tables.length,
         work,
+        detail: {
+          details: Object.fromEntries(
+            ["webhooks", "scheduled", "subscriptions"].map((key) => [
+              key,
+              detail.details[key],
+            ]),
+          ),
+          rendering: Object.fromEntries(
+            ["postgresVersion", "searchPath", "sessionRole"].map((key) => [
+              key,
+              detail.rendering[key],
+            ]),
+          ),
+        },
         functions,
       };
     }
@@ -266,6 +410,12 @@ export async function inspectUpgradeReadiness({
       inventory.functions.jwtMismatch.length
     )
       blockers.push("EXISTING_FUNCTION_CONFIGURATION_REVIEW_REQUIRED");
+    if (
+      Object.values(closing.detail.details).some((groups) =>
+        groups.some((group) => group.environment !== "test"),
+      )
+    )
+      blockers.push("RETAINED_NON_SANDBOX_BILLING_REVIEW_REQUIRED");
     Object.assign(assessment, {
       status: blockers.length
         ? "review_required"
@@ -276,6 +426,10 @@ export async function inspectUpgradeReadiness({
         matchesCheckpoint: closing.contractDigest === expectedDigest,
         expectedDigest,
         observedDigest: closing.contractDigest,
+        rendering: closing.detail.rendering,
+        diagnostics: expectedSchema
+          ? compareSchemaObjects(expectedSchema, closing.facts)
+          : { status: "reference_not_supplied" },
       },
       retainedHistory: {
         publicTableCount: closing.tableCount,
@@ -285,6 +439,7 @@ export async function inspectUpgradeReadiness({
       legacyRoots,
       inFlightWork,
       scheduledOperations: closing.work.scheduled,
+      retainedWorkDetails: closing.detail.details,
       unclassifiedFunctionCount,
       blockers,
       nextSteps: [
@@ -318,6 +473,45 @@ export function readinessAnnotation(report) {
   return `::notice title=Staging upgrade assessment::migrations=${report.migrations.appliedCount}/188; missingSettings=${report.configuration.missingServerSettings.length}; assessment=${assessment.status}; schemaMatches=${assessment.schema?.matchesCheckpoint ?? "unknown"}; blockers=${assessment.blockers?.join(",") || assessment.reason || "none"}; deploymentAuthorized=false`;
 }
 
+export function diagnosticAnnotations(report) {
+  const assessment = report.upgradeReadiness;
+  if (!assessment?.stable || assessment.status === "inspection_failed")
+    return [];
+  const escape = (text) =>
+    text.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
+  const notice = (title, value) =>
+    `::notice title=${title}::${escape(JSON.stringify(value))}`;
+  const annotations = [];
+  const diagnostics = assessment.schema?.diagnostics;
+  if (diagnostics?.status === "compared") {
+    annotations.push(
+      notice("Staging schema comparison", {
+        exactMatch: diagnostics.exactMatch,
+        changedObjectCount: diagnostics.changedObjectCount,
+        truncated: diagnostics.truncated,
+        sections: diagnostics.sections,
+        rendering: assessment.schema.rendering,
+      }),
+    );
+    for (let i = 0; i < diagnostics.changes.length; i += 20)
+      annotations.push(
+        notice(
+          "Staging schema differences",
+          diagnostics.changes.slice(i, i + 20).map((change) => ({
+            ...change,
+            ...(change.object ? { object: change.object.slice(0, 300) } : {}),
+          })),
+        ),
+      );
+  }
+  for (const key of ["webhooks", "scheduled", "subscriptions"])
+    if (assessment.retainedWorkDetails?.[key])
+      annotations.push(
+        notice(`Staging retained ${key}`, assessment.retainedWorkDetails[key]),
+      );
+  return annotations;
+}
+
 if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
@@ -326,6 +520,8 @@ if (
   const json = JSON.stringify(report, null, 2);
   console.log(json);
   console.error(readinessAnnotation(report));
+  for (const annotation of diagnosticAnnotations(report))
+    console.error(annotation);
   if (process.env.GITHUB_STEP_SUMMARY)
     appendFileSync(
       process.env.GITHUB_STEP_SUMMARY,

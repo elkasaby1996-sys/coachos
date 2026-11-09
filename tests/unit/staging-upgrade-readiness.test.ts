@@ -4,6 +4,8 @@ import { createRequire } from "node:module";
 import {
   inspectUpgradeReadiness,
   readinessAnnotation,
+  WORK_DETAIL_QUERY,
+  diagnosticAnnotations,
 } from "../../scripts/staging-upgrade-readiness.mjs";
 import {
   STAGING_PROJECT,
@@ -135,7 +137,7 @@ function fixture() {
     expect(url.endsWith("/database/query/read-only")).toBe(true);
     expect(options.method).toBe("POST");
     const { query } = JSON.parse(options.body as string);
-    expect(query).toMatch(/^select /);
+    expect(query).toMatch(/^select\s/);
     if (query === STATUS_QUERIES.schema)
       return Response.json([
         {
@@ -150,6 +152,38 @@ function fixture() {
       return Response.json([{ facts: state.facts }]);
     if (query === workQuery(false))
       return Response.json([{ work: state.work, scheduled: state.scheduled }]);
+    if (query === WORK_DETAIL_QUERY)
+      return Response.json([
+        {
+          details: {
+            webhooks: state.work.paddleWebhooks
+              ? [
+                  {
+                    environment: "test",
+                    status: "deferred",
+                    count: state.work.paddleWebhooks,
+                  },
+                ]
+              : [],
+            scheduled: state.scheduled.count
+              ? [
+                  {
+                    source: "paddle",
+                    environment: "test",
+                    timing: "future",
+                    count: state.scheduled.count,
+                  },
+                ]
+              : [],
+            subscriptions: [],
+          },
+          rendering: {
+            postgresVersion: 170006,
+            searchPath: "public, extensions",
+            sessionRole: "postgres",
+          },
+        },
+      ]);
     if (query === historyQuery(tables)) {
       state.historyReads++;
       if (state.changeHistory && state.historyReads === 2)
@@ -238,6 +272,169 @@ describe("read-only assessment before upgrading installed staging", () => {
       schema: { matchesCheckpoint: false },
       blockers: ["DATABASE_SCHEMA_DIFFERS_FROM_CHECKPOINT"],
     });
+  });
+  it("reports exact source object/field differences but keeps the mismatch blocker", async () => {
+    const f = fixture();
+    const schemaReference = {
+      schemaVersion: 1,
+      frozenPayloadCommit: identity.payload.frozenCommit,
+      manifestDigest: hash(JSON.stringify(identity.manifest)),
+      checkpoints: { "180": structuredClone(f.state.facts) },
+    };
+    f.state.facts.functions[0].definition = `${privateValue}-altered`;
+    const result = await f.run({
+      readLocal: () => ({
+        identity,
+        checkpoints: f.checkpoints,
+        schemaReference,
+      }),
+    });
+    expect(result.upgradeReadiness).toMatchObject({
+      status: "review_required",
+      blockers: ["DATABASE_SCHEMA_DIFFERS_FROM_CHECKPOINT"],
+      schema: {
+        matchesCheckpoint: false,
+        diagnostics: {
+          changedObjectCount: 1,
+          changes: [
+            { kind: "functions", object: "example()", fields: ["definition"] },
+          ],
+        },
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain(privateValue);
+  });
+  it("rejects a substituted reference before reading the remote schema", async () => {
+    const f = fixture();
+    const result = await f.run({
+      readLocal: () => ({
+        identity,
+        checkpoints: f.checkpoints,
+        schemaReference: { schemaVersion: 1 },
+      }),
+    });
+    expect(result.upgradeReadiness).toMatchObject({
+      code: "UPGRADE_SCHEMA_REFERENCE_INVALID",
+    });
+    expect(
+      f.transport.mock.calls.some(
+        ([, options]) =>
+          options.body &&
+          JSON.parse(options.body as string).query === INVENTORY_QUERY,
+      ),
+    ).toBe(false);
+  });
+  it("publishes actionable diagnostics in bounded notices without raw definitions", () => {
+    const report = {
+      upgradeReadiness: {
+        stable: true,
+        status: "review_required",
+        schema: {
+          rendering: { postgresVersion: 170006 },
+          diagnostics: {
+            status: "compared",
+            exactMatch: false,
+            changedObjectCount: 25,
+            truncated: false,
+            sections: {},
+            changes: Array.from({ length: 25 }, () => ({
+              kind: "functions",
+              object: "example()",
+              change: "changed",
+              fields: ["acl"],
+            })),
+          },
+        },
+        retainedWorkDetails: {
+          webhooks: [{ environment: "test", status: "deferred", count: 28 }],
+          scheduled: [],
+          subscriptions: [],
+        },
+      },
+    };
+    const notices = diagnosticAnnotations(report);
+    expect(notices).toHaveLength(6);
+    expect(notices[1]).toContain('"object":"example()"');
+    expect(notices[3]).toContain('"count":28');
+    expect(
+      notices.every(
+        (notice: string) => notice.length < 10_000 && !notice.includes("\n"),
+      ),
+    ).toBe(true);
+    expect(
+      diagnosticAnnotations({
+        upgradeReadiness: { status: "inspection_failed" },
+      }),
+    ).toEqual([]);
+  });
+  it("keeps a blocker for live-labelled records when other work is drained", async () => {
+    const f = fixture();
+    const result = await f.run({
+      transport: async (url: string, options: RequestInit) => {
+        if (
+          options.body &&
+          JSON.parse(options.body as string).query === WORK_DETAIL_QUERY
+        )
+          return Response.json([
+            {
+              details: {
+                webhooks: [],
+                scheduled: [],
+                subscriptions: [
+                  {
+                    provider: "paddle",
+                    environment: "live",
+                    status: "active",
+                    count: 1,
+                  },
+                ],
+              },
+              rendering: {
+                postgresVersion: 170006,
+                searchPath: "public",
+                sessionRole: "postgres",
+              },
+            },
+          ]);
+        return f.transport(url, options);
+      },
+    });
+    expect(result.upgradeReadiness.blockers).toEqual([
+      "RETAINED_NON_SANDBOX_BILLING_REVIEW_REQUIRED",
+    ]);
+    expect(result.remoteChangesPerformed).toBe(false);
+  });
+  it("rejects private aggregate categories without reporting them", async () => {
+    const f = fixture();
+    const result = await f.run({
+      transport: async (url: string, options: RequestInit) => {
+        if (
+          options.body &&
+          JSON.parse(options.body as string).query === WORK_DETAIL_QUERY
+        )
+          return Response.json([
+            {
+              details: {
+                webhooks: [
+                  { environment: "test", status: privateValue, count: 1 },
+                ],
+                scheduled: [],
+                subscriptions: [],
+              },
+              rendering: {
+                postgresVersion: 170006,
+                searchPath: "public",
+                sessionRole: "postgres",
+              },
+            },
+          ]);
+        return f.transport(url, options);
+      },
+    });
+    expect(result.upgradeReadiness).toMatchObject({
+      code: "UPGRADE_RESPONSE_INVALID",
+    });
+    expect(JSON.stringify(result)).not.toContain(privateValue);
   });
   it.each(["btrfmxjpjzbyowtvncnc", "exmrksgdikfprtfeltzu"])(
     "never queries another target %s",
@@ -396,6 +593,15 @@ describe("read-only assessment before upgrading installed staging", () => {
       "scripts/staging-upgrade-readiness.mjs",
     );
     const job = workflow.jobs["migration-status"];
+    expect(job.needs).toBe("schema-reference");
+    const localJob = workflow.jobs["schema-reference"];
+    expect(localJob.environment).toBeUndefined();
+    expect(JSON.stringify(localJob)).not.toContain("secrets.");
+    expect(
+      localJob.steps.some((s: any) =>
+        s.run?.includes("staging-schema-reference.mjs"),
+      ),
+    ).toBe(true);
     expect(job.environment).toBe("supabase-staging");
     expect(
       job.steps.find((s: any) => s.name === "Checkout selected branch").with[
@@ -406,6 +612,9 @@ describe("read-only assessment before upgrading installed staging", () => {
       s.run?.includes("staging-upgrade-readiness.mjs"),
     );
     expect(step.env.STAGING_SUPABASE_PROJECT_REF).toBe(STAGING_PROJECT);
+    expect(step.env.STAGING_SCHEMA_REFERENCE_PATH).toContain(
+      "staging-schema-reference.json",
+    );
     expect(JSON.stringify(job)).not.toContain("SUPABASE_DB_PASSWORD");
     expect(JSON.stringify(job)).not.toContain("ALLOW_REMOTE_SUPABASE");
   });

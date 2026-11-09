@@ -10,17 +10,21 @@ The user corrected the staging target on 2026-11-09:
 - Application origin: `https://repsync-staging.netlify.app`
 - Workflow branch: **`Ahmed-billing`**
 
-[Migration Status run 42698712938](https://github.com/elkasaby1996-sys/coachos/actions/runs/42698712938) inspected this project at `d839bba`. The uploaded ZIP matches GitHub's SHA-256 `8ff5f707b085fc37efbc6ca669356e62931ead121d81d7b231ecc60166d64694`. It confirms **180 of 188 migrations**, with the exact canonical prefix and eight pending migrations. The project needs an upgrade; **do not run the empty-project installer**.
+[Migration Status run 42702256586](https://github.com/elkasaby1996-sys/coachos/actions/runs/42702256586) successfully inspected this project at `344dad4`. The uploaded ZIP matches GitHub's SHA-256 `064887ca5239f86975c4fdb554c1df30e7cd5927a89d9e97b33d145b76673556`. It confirms **180 of 188 migrations**, with the exact canonical prefix and eight pending migrations. The inspection passed; deployment readiness still requires review. The project needs an upgrade; **do not run the empty-project installer**.
 
 | Item                                | Verified result                                                                        |
 | ----------------------------------- | -------------------------------------------------------------------------------------- |
 | Billing policy                      | `test`, sales disabled, reconciliation disabled                                        |
 | Deployed functions                  | 15 total; existing expected billing names have active status and matching JWT settings |
 | Missing functions                   | `billing-update-payment-method`, `billing-create-paddle-portal`                        |
-| Missing setting names at inspection | `PADDLE_SANDBOX_PAYMENT_METHOD_API_KEY`, `PADDLE_SANDBOX_PORTAL_API_KEY`               |
+| Missing setting names at inspection | None; both new API key names are present                                               |
 | Live Paddle setting names           | None reported                                                                          |
+| Actual database schema              | Differs from the source checkpoint for migration 180                                   |
+| Retained history                    | 128 public tables plus Auth users; stable during the inspection                        |
+| Unfinished Paddle webhook records   | 28; their processing states still need inspection                                      |
+| Scheduled operations                | One, with an effective date of 2026-10-23                                              |
 
-The user subsequently reported adding the two keys. Their current presence will be rechecked; key values, provider permissions, and payments remain unverified.
+The user confirmed that this project contains entirely synthetic test data. The upgrade will preserve those records; this classification does not authorize a reset, deletion, or replay. Key values, provider permissions, and payments remain unverified.
 
 The screenshot's branch selection was `main`; it must be changed to `Ahmed-billing` to run this implementation. Commit `8bc0335` still targets the replacement project, so dispatch a new run from the updated branch instead of rerunning that old commit. The legacy signed-release registry still labels the corrected target archived; the feature-branch workflows now use the user's explicit target correction and preserve their fixed-target and fresh-project checks.
 
@@ -28,9 +32,13 @@ The screenshot's branch selection was `main`; it must be changed to `Ahmed-billi
 
 The existing [Supabase Migration Status](https://github.com/elkasaby1996-sys/coachos/actions/workflows/supabase-migration-status.yml) workflow now includes `scripts/staging-upgrade-readiness.mjs`. It runs manually on the selected branch and automatically for `Ahmed-billing` pushes that change the status workflow or its inspection scripts. Its protected `supabase-staging` job still requires GitHub's configured review. It uses only the existing management token, metadata GETs and the database read-only endpoint.
 
-The assessment compares actual public function definitions, permissions, RLS and schema against the source-bound checkpoint for the installed migration count. It collects aggregate legacy-provider roots, unfinished operations, pending webhook processing, and scheduled changes. It hashes retained public rows and Auth users without exporting them, then repeats the observations to reject drift or an observation older than one minute. Schema responses have a fixed 8 MiB limit; the observed local schema exceeds the inventory reader's ordinary 1 MiB limit. Reports and public notices contain sanitized results, never raw definitions, row data, credentials, or webhook bodies.
+Before remote inspection, a job with no hosted credentials reconstructs migrations 180–188 on a unique disposable local Postgres database using CLI 2.109.1. Every reconstructed schema must match its existing source-bound checkpoint. The local database is then removed. Its artifact contains source-derived schema definitions only; no hosted database contents are included. The protected inspection job reads the artifact from the same workflow run and verifies it against the frozen payload, migration manifest, exact version prefix, and checkpoint before using it.
 
-Use `upgradeReadiness.blockers` and the **Staging upgrade assessment** annotation to resolve schema mismatches, retained legacy history, unfinished work, missing keys, or unexpected functions before preparing an apply run. A zero-blocker result means the upgrade can be prepared; it does not claim a verified backup, deployed source, provider certification, or deployment authorization. The expanded remote assessment has not yet run when this change is prepared.
+The assessment compares actual public function definitions, permissions, RLS and schema against that reference. It identifies changed or missing source objects and the changed fields; unrecognized remote object names are represented by hashes. Reports never include actual function bodies, default values, policy expressions, credential values, or webhook contents. Array ordering is reported separately, while the original exact schema comparison remains required. Read-only aggregate queries also separate unfinished webhook states, overdue/future scheduled changes, and subscription provider/environment/status groups. Live-labelled or unknown-environment records require review even when no operation is unfinished.
+
+The assessment hashes retained public rows and Auth users without exporting them, then repeats the observations to reject drift or an observation older than one minute. Schema responses have a fixed 8 MiB limit. Public **Staging schema comparison**, **Staging schema differences**, and **Staging retained ...** notices expose the sanitized diagnostic results alongside the JSON report, so basic investigation does not require downloading another artifact.
+
+Use `upgradeReadiness.schema.diagnostics`, `retainedWorkDetails`, and `blockers` to resolve the recorded mismatch and retained work before preparing an apply run. Run 12 established the mismatch but did not identify the changed objects; the new comparison has been verified locally and awaits its first hosted inspection. A zero-blocker result means the upgrade can be prepared; it does not claim a verified backup, deployed source, provider certification, or deployment authorization.
 
 The pending upgrade sequence is migrations 181–184, retirement migration 185, then migrations 186–188, followed by the canonical billing and non-billing functions. Existing history must remain intact. Before applying, establish a recoverable staging backup and review retained billing obligations and in-flight work. The main-only signed-release runner remains separate; an operational feature-branch upgrade must use the chosen GitHub review model with these data-preservation checks. The initial-install script is intentionally unsuitable for this populated project and will reject it before writes.
 
@@ -51,7 +59,7 @@ This confirms authenticated inspection. It does not prove the project has no oth
 
 ## Settings on the confirmed staging project
 
-Use [this project's Edge Function secrets](https://supabase.com/dashboard/project/dgogugyuyfourdttvwuy/functions/secrets). The user reported adding the two keys missing in run 11; the next inventory checks their names without retrieving or printing credential values.
+Use [this project's Edge Function secrets](https://supabase.com/dashboard/project/dgogugyuyfourdttvwuy/functions/secrets). Run 12 confirms both keys missing in run 11 are now present. Inspection reads names only and does not retrieve credential values.
 
 | Name                                    | Required staging value or purpose                                                                                       |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
