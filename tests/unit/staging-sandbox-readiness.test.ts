@@ -332,7 +332,7 @@ describe("staging sandbox readiness observations", () => {
     expect(workflow.jobs.catalogue.environment).toBe("supabase-staging");
     expect(workflow.jobs.catalogue.needs).toBe("validate");
     expect(JSON.stringify(workflow.jobs.validate)).not.toContain("secrets.");
-    expect(JSON.stringify(workflow)).not.toMatch(
+    expect(JSON.stringify(workflow.jobs.catalogue)).not.toMatch(
       /SUPABASE_DB_PASSWORD|ALLOW_REMOTE_SUPABASE|functions deploy|db push/,
     );
     expect(CATALOGUE_QUERY).toMatch(/^select /);

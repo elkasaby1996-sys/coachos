@@ -2,12 +2,29 @@ name: Paddle Staging Readiness
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Inspect only, enable checkout for one test owner, or pause new checkout
+        type: choice
+        options: [inspect, enable_pilot, pause_checkout]
+        default: inspect
+        required: true
+      pilot_user_id:
+        description: Confirmed staging workspace owner's Auth UID (required for activation/pause)
+        type: string
+        required: false
+      confirm_commit_sha:
+        description: Full Ahmed-billing commit SHA (required for activation/pause)
+        type: string
+        required: false
   push:
     branches: [Ahmed-billing]
     paths:
       - .github/workflows/paddle-staging-readiness.yml
       - scripts/staging-sandbox-readiness.mjs
+      - scripts/staging-sandbox-pilot.mjs
       - tests/unit/staging-sandbox-readiness.test.ts
+      - tests/unit/staging-sandbox-pilot.test.ts
 
 permissions:
   contents: read
@@ -32,12 +49,12 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Validate immutable payload and catalogue inspection
-        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs && npx vitest run tests/unit/staging-sandbox-readiness.test.ts tests/unit/paddle-catalogue-verifier.test.ts tests/unit/staging-billing-status.test.ts
+        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs && npx vitest run tests/unit/staging-sandbox-readiness.test.ts tests/unit/staging-sandbox-pilot.test.ts tests/unit/paddle-catalogue-verifier.test.ts tests/unit/staging-billing-status.test.ts
       - run: npm run lint && npm run format
 
   catalogue:
     name: Inspect sandbox catalogue and staging email settings
-    if: github.repository == 'elkasaby1996-sys/coachos' && github.ref == 'refs/heads/Ahmed-billing'
+    if: github.repository == 'elkasaby1996-sys/coachos' && github.ref == 'refs/heads/Ahmed-billing' && github.event_name == 'workflow_dispatch' && inputs.mode == 'inspect'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -66,5 +83,49 @@ jobs:
         with:
           name: staging-sandbox-readiness-${{ github.run_id }}
           path: output/staging-sandbox-readiness/report.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  pilot:
+    name: Review sandbox pilot activation or pause
+    if: github.repository == 'elkasaby1996-sys/coachos' && github.ref == 'refs/heads/Ahmed-billing' && github.event_name == 'workflow_dispatch' && (inputs.mode == 'enable_pilot' || inputs.mode == 'pause_checkout')
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: supabase-staging
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: 2.109.1
+      - name: Apply the reviewed staging checkout setting
+        env:
+          STAGING_PILOT_MODE: ${{ inputs.mode }}
+          STAGING_PILOT_USER_ID: ${{ inputs.pilot_user_id }}
+          CONFIRM_COMMIT_SHA: ${{ inputs.confirm_commit_sha }}
+          STAGING_PILOT_ENVIRONMENT: supabase-staging
+          STAGING_SUPABASE_PROJECT_REF: dgogugyuyfourdttvwuy
+          SUPABASE_PROJECT_REF: dgogugyuyfourdttvwuy
+          PADDLE_ENVIRONMENT: sandbox
+          ALLOW_REMOTE_SUPABASE: I_UNDERSTAND_THIS_TOUCHES_REMOTE
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PADDLE_SANDBOX_API_KEY: ${{ secrets.PADDLE_SANDBOX_API_KEY }}
+        run: |
+          mkdir -p output/staging-sandbox-readiness
+          node --experimental-transform-types scripts/staging-sandbox-pilot.mjs > output/staging-sandbox-readiness/pilot-report.json
+      - name: Retain sanitized pilot result
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: staging-sandbox-pilot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: output/staging-sandbox-readiness/pilot-report.json
           retention-days: 7
           if-no-files-found: ignore
