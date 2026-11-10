@@ -204,6 +204,16 @@ To stop new checkout, dispatch the same workflow with `mode=pause_checkout`, the
 
 For the first test, use Growth monthly with zero additional paid seats. Confirm the sandbox transaction, resulting active subscription and included capacity before purchasing one extra coach seat. The browser success screen alone is insufficient: the subscription and seat entitlements must update after signed webhook processing.
 
+Pilot activation [run 42887118038](https://github.com/elkasaby1996-sys/coachos/actions/runs/42887118038), at `c0afe353bfc9c6be43d5b8906a1f121dfb3d74e0`, completed successfully. Its digest-verified artifact confirms the selected owner, `pilot_enabled`, all eight active mappings matching Paddle, and test sales/reconciliation enabled. The user subsequently completed the first Growth monthly sandbox checkout and reported **Paid subscription confirmed — Growth**. Backend payment observations are checked separately below; activation success itself did not verify a payment.
+
+### Inspect the test account after checkout or seat changes
+
+Dispatch the same **Paddle Staging Readiness** workflow with `mode=inspect` and the test owner's `pilot_user_id`. The optional owner input adds a single fixed SELECT through Supabase's read-only query endpoint; it needs only the existing protected environment credentials. There is no additional deployment workflow, settings update, provider write or webhook replay.
+
+The report's `accountPayment.payment` contains the resolved plan/status, included seats, effective seat limit, provider reconciliation status, checkout/payment counts, and grouped event statuses/error codes. `subscriptionPaymentVerified=true` requires a current, processed provider subscription linked to an active paid account subscription, a completed checkout, and exactly one corresponding initial payment backed by retained authenticated webhook evidence. Missing, pending and inconsistent records stay unverified. The report includes no account email, raw UUID, provider reference, callback URL or webhook body. The SHA-256 owner digest identifies which private input was checked.
+
+This is an observation of persisted sandbox payment results, not the entire release certification. `fullPaymentSuiteVerified` remains false; later seat purchases, proration, renewal, recovery and cancellation still need their own tests. Reuse `inspect` after each test to compare the actual paid entitlement and seat allowance, rather than rerunning `enable_pilot` after an account already has payment history.
+
 ## Before merging the billing feature
 
 Keep the eight sandbox plan/seat mappings verified against the installed canonical catalogue; the latest run already confirms the existing mappings. Prepare webhook delivery and enable pilot checkout through the workflow above. Record sandbox checkout, initial/later seat purchases and proration, duplicate/delayed webhooks, invoice/portal access, renewal, failed-payment recovery, and cancellation against the deployed commit. Only then complete the required review/checks and merge using a merge commit that preserves the pinned implementation commit.

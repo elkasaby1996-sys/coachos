@@ -147,6 +147,50 @@ function fixture() {
 }
 
 describe("staging sandbox readiness observations", () => {
+  it("includes optional account payment observations through the same read-only transport", async () => {
+    const f = fixture();
+    const original = f.transport.getMockImplementation()!;
+    f.transport.mockImplementation(async (url, options) => {
+      if (
+        typeof options.body === "string" &&
+        JSON.parse(options.body).query.startsWith("with account as (")
+      )
+        return Response.json([
+          {
+            payment_status: {
+              accountCount: 0,
+              environment: "test",
+              subscription: null,
+              providerSubscriptions: [],
+              checkouts: [],
+              payments: [],
+              events: [],
+              verifiedInitialPayments: 0,
+            },
+          },
+        ]);
+      return original(url, options);
+    });
+    const result = await f.run({
+      env: {
+        ...env,
+        STAGING_PILOT_USER_ID: "00000000-0000-4000-8000-000000000099",
+      },
+    });
+    expect(result).toMatchObject({
+      status: "inspected",
+      paymentsVerified: false,
+      accountPayment: {
+        status: "inspected",
+        readOnly: true,
+        payment: {
+          outcome: "account_missing",
+          subscriptionPaymentVerified: false,
+        },
+      },
+    });
+    expect(f.transport).toHaveBeenCalledTimes(3);
+  });
   it("freshly retrieves all explicitly mapped prices and reports no payment or email certification", async () => {
     const f = fixture();
     const result = await f.run();

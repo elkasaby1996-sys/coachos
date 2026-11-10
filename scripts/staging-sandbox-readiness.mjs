@@ -4,6 +4,7 @@ import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import { inspectSandboxPayment } from "./staging-sandbox-payment-status.mjs";
 import {
   createPaddleSandboxCatalogue,
   PaddleCatalogueError,
@@ -372,6 +373,15 @@ export async function inspectSandboxCatalogue({
       state,
       createCapability(),
     );
+    if (env.STAGING_PILOT_USER_ID) {
+      report.stage = "read_test_owner_payment_status";
+      report.accountPayment = await inspectSandboxPayment({ env, transport });
+      if (report.accountPayment.status !== "inspected")
+        fail(
+          "STAGING_PAYMENT_STATUS_READ_FAILED",
+          report.accountPayment.httpStatus,
+        );
+    }
     report.status = "inspected";
     report.stage = "complete";
   } catch (error) {
@@ -400,6 +410,7 @@ export async function inspectSandboxCatalogue({
       "SANDBOX_CAPABILITY_REQUIRED",
       "STAGING_AUTH_RESPONSE_INVALID",
       "STAGING_AUTH_READ_FAILED",
+      "STAGING_PAYMENT_STATUS_READ_FAILED",
     ];
     report.code = safeCodes.includes(error.safeCode)
       ? error.safeCode
@@ -425,10 +436,10 @@ if (
   if (process.env.GITHUB_STEP_SUMMARY)
     appendFileSync(
       process.env.GITHUB_STEP_SUMMARY,
-      `## Paddle staging readiness\n\nRead-only: no mappings published, settings changed, emails sent or payments tested.\n\n\`\`\`json\n${json}\n\`\`\`\n`,
+      `## Paddle staging readiness\n\nRead-only: no mappings published, settings changed, emails sent or new payments created. Optional account inspection checks retained payment evidence; the full payment suite remains unverified.\n\n\`\`\`json\n${json}\n\`\`\`\n`,
     );
   console.error(
-    `::${report.status === "blocked" ? "error" : "notice"} title=Paddle sandbox catalogue::status=${report.status}; stage=${report.stage}; code=${report.code ?? "none"}; readiness=${report.catalogue?.readiness ?? "unverified"}; matchedActiveMappings=${report.catalogue?.matchedActiveMappings ?? 0}/8; paymentsVerified=false`,
+    `::${report.status === "blocked" ? "error" : "notice"} title=Paddle sandbox catalogue::status=${report.status}; stage=${report.stage}; code=${report.code ?? "none"}; readiness=${report.catalogue?.readiness ?? "unverified"}; matchedActiveMappings=${report.catalogue?.matchedActiveMappings ?? 0}/8; subscriptionPaymentVerified=${report.accountPayment?.payment?.subscriptionPaymentVerified ?? "not_inspected"}; paymentsVerified=false`,
   );
   if (report.status === "blocked") process.exitCode = 1;
 }

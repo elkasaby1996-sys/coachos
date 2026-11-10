@@ -10,7 +10,7 @@ on:
         default: inspect
         required: true
       pilot_user_id:
-        description: Confirmed staging workspace owner's Auth UID (required for activation/pause)
+        description: Staging owner's Auth UID (optional payment inspection; required for activation/pause)
         type: string
         required: false
       confirm_commit_sha:
@@ -23,8 +23,10 @@ on:
       - .github/workflows/paddle-staging-readiness.yml
       - scripts/staging-sandbox-readiness.mjs
       - scripts/staging-sandbox-pilot.mjs
+      - scripts/staging-sandbox-payment-status.mjs
       - tests/unit/staging-sandbox-readiness.test.ts
       - tests/unit/staging-sandbox-pilot.test.ts
+      - tests/unit/staging-sandbox-payment-status.test.ts
 
 permissions:
   contents: read
@@ -49,7 +51,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Validate immutable payload and catalogue inspection
-        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs && npx vitest run tests/unit/staging-sandbox-readiness.test.ts tests/unit/staging-sandbox-pilot.test.ts tests/unit/paddle-catalogue-verifier.test.ts tests/unit/staging-billing-status.test.ts
+        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs && npx vitest run tests/unit/staging-sandbox-readiness.test.ts tests/unit/staging-sandbox-pilot.test.ts tests/unit/staging-sandbox-payment-status.test.ts tests/unit/paddle-catalogue-verifier.test.ts tests/unit/staging-billing-status.test.ts
       - run: npm run lint && npm run format
 
   catalogue:
@@ -72,6 +74,7 @@ jobs:
         env:
           STAGING_SUPABASE_PROJECT_REF: dgogugyuyfourdttvwuy
           PADDLE_ENVIRONMENT: sandbox
+          STAGING_PILOT_USER_ID: ${{ inputs.pilot_user_id }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           PADDLE_SANDBOX_API_KEY: ${{ secrets.PADDLE_SANDBOX_API_KEY }}
         run: |
