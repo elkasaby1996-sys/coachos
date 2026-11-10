@@ -30,6 +30,12 @@ The user confirmed that this project contains entirely synthetic test data. The 
 
 [Upgrade run #4](https://github.com/elkasaby1996-sys/coachos/actions/runs/42782915567) passed the managed-column restoration but stopped at `UPGRADE_RESTORED_HISTORY_DIFFERS`, again before hosted writes. The same failure was reproduced locally when JSON conversion rounded large integers or changed decimal precision/scale; the public run did not identify individual affected records. The corrected snapshot format preserves PostgreSQL's original JSON text, verifies captured bytes against the source hashes before restoring, and uses explicit `C` ordering for row hashes across database locales. The local regression includes precise numeric values in application data, Auth metadata and the full migration ledger.
 
+[Upgrade run #5](https://github.com/elkasaby1996-sys/coachos/actions/runs/42788122184) passed source quality checks but could not start its local database because host port `54322` was already occupied. The database image downloaded successfully; the protected hosted job never started. The database job now uses `scripts/staging-upgrade-local-checks.mjs` to create a unique temporary project with available ports, copy the verified migrations and SQL fixtures, and run database lint/tests, all schema checkpoints and populated recovery. It removes only its own local project afterward. Existing stacks and the tracked Supabase configuration stay unchanged. This can be rehearsed with CLI 2.109.1 and Docker while another local stack is running:
+
+```bash
+node scripts/staging-upgrade-local-checks.mjs /tmp/staging-schema-reference.json
+```
+
 The screenshot's branch selection was `main`; it must be changed to `Ahmed-billing` to run this implementation. Commit `8bc0335` still targets the replacement project, so dispatch a new run from the updated branch instead of rerunning that old commit. The legacy signed-release registry still labels the corrected target archived; the feature-branch workflows now use the user's explicit target correction and preserve their fixed-target and fresh-project checks.
 
 ## Upgrade assessment and sequence

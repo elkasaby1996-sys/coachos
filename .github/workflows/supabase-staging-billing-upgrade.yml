@@ -17,6 +17,7 @@ on:
       - scripts/staging-upgrade-schema.mjs
       - scripts/staging-upgrade-backup.mjs
       - scripts/staging-upgrade-recovery-test.mjs
+      - scripts/staging-upgrade-local-checks.mjs
 
 permissions:
   contents: read
@@ -74,12 +75,8 @@ jobs:
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
           version: 2.109.1
-      - run: supabase db start --yes
-      - run: supabase db lint --local --level error --fail-on error
-      - run: supabase test db
-      - run: node scripts/staging-schema-reference.mjs "$RUNNER_TEMP/staging-schema-reference.json"
-      - name: Restore populated backup across managed-column versions locally
-        run: node scripts/staging-upgrade-recovery-test.mjs "$RUNNER_TEMP/staging-schema-reference.json"
+      - name: Verify database and backup recovery on isolated local ports
+        run: node scripts/staging-upgrade-local-checks.mjs "$RUNNER_TEMP/staging-schema-reference.json"
       - id: schema-upload
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
