@@ -47,6 +47,110 @@ const sorted = (value) =>
   Object.fromEntries(
     Object.entries(value).sort(([a], [b]) => a.localeCompare(b)),
   );
+const MANAGED_RELATIONS = [
+  "auth.users",
+  "supabase_migrations.schema_migrations",
+];
+const managedFilter =
+  "(n.nspname='auth' and c.relname='users') or (n.nspname='supabase_migrations' and c.relname='schema_migrations')";
+const columnQuery = (filter) =>
+  `select jsonb_object_agg(name,columns) as columns from (select n.nspname||'.'||c.relname name,jsonb_agg(jsonb_build_object('name',a.attname,'type',format_type(a.atttypid,a.atttypmod),'typeSchema',tn.nspname,'generated',a.attgenerated<>'') order by a.attnum) columns from pg_class c join pg_namespace n on n.oid=c.relnamespace join pg_attribute a on a.attrelid=c.oid join pg_type ty on ty.oid=a.atttypid join pg_namespace tn on tn.oid=ty.typnamespace where c.relkind='r' and a.attnum>0 and not a.attisdropped and (${filter}) group by n.nspname,c.relname) q;`;
+export const MANAGED_COLUMNS_QUERY = columnQuery(managedFilter);
+const RESTORE_COLUMNS_QUERY = columnQuery(
+  `n.nspname='public' or ${managedFilter}`,
+);
+// Only PostgreSQL built-in row types are admitted. Never execute hosted defaults,
+// generated expressions, custom type names, or other supplied SQL during recovery.
+const builtinType =
+  /^(?:uuid|text|boolean|smallint|integer|bigint|real|double precision|bytea|jsonb?|date|inet|cidr|(?:timestamp|time)(?:\([0-6]\))? (?:with|without) time zone|character(?: varying)?(?:\([1-9][0-9]{0,7}\))?|numeric(?:\([1-9][0-9]{0,3}(?:,-?[0-9]{1,4})?\))?)(?:\[\])?$/;
+
+export function validateManagedColumns(columns) {
+  check(
+    columns &&
+      JSON.stringify(Object.keys(columns).sort()) ===
+        JSON.stringify(MANAGED_RELATIONS),
+    "UPGRADE_BACKUP_MANAGED_SCHEMA_INVALID",
+  );
+  for (const name of MANAGED_RELATIONS) {
+    const rows = columns[name];
+    check(
+      Array.isArray(rows) && rows.length > 0 && rows.length <= 128,
+      "UPGRADE_BACKUP_MANAGED_SCHEMA_INVALID",
+    );
+    const names = new Set();
+    for (const column of rows) {
+      check(
+        column &&
+          /^[a-z_][a-z0-9_]*$/.test(column.name) &&
+          column.name.length <= 63 &&
+          !names.has(column.name) &&
+          typeof column.generated === "boolean",
+        "UPGRADE_BACKUP_MANAGED_SCHEMA_INVALID",
+      );
+      check(
+        column.typeSchema === "pg_catalog" &&
+          typeof column.type === "string" &&
+          builtinType.test(column.type),
+        "UPGRADE_BACKUP_MANAGED_TYPE_UNSUPPORTED",
+      );
+      names.add(column.name);
+    }
+    const key = name === "auth.users" ? ["id", "uuid"] : ["version", "text"];
+    check(
+      rows.some((column) => column.name === key[0] && column.type === key[1]),
+      "UPGRADE_BACKUP_MANAGED_SCHEMA_INVALID",
+    );
+  }
+  return columns;
+}
+
+export function managedRestoreSql(source, local) {
+  validateManagedColumns(source);
+  const statements = ["begin; set local search_path=pg_catalog;"];
+  for (const name of MANAGED_RELATIONS) {
+    const columns = local[name];
+    check(Array.isArray(columns), "UPGRADE_BACKUP_RESTORE_COLUMNS_INVALID");
+    for (const column of source[name]) {
+      const existing = columns.find((item) => item.name === column.name);
+      if (existing)
+        check(
+          existing.type === column.type &&
+            existing.typeSchema === column.typeSchema,
+          "UPGRADE_BACKUP_MANAGED_TYPE_MISMATCH",
+        );
+      else
+        statements.push(
+          `alter table ${relation(name)} add column ${identifier(column.name)} ${column.type};`,
+        );
+    }
+    // This SQL is used only on the uniquely named, disposable local database.
+    // Remove local-version-only fields so FULL row hashes can match the source;
+    // RESTRICT refuses to remove fields referenced by the application schema.
+    for (const column of columns)
+      if (!source[name].some((item) => item.name === column.name))
+        statements.push(
+          `alter table ${relation(name)} drop column ${identifier(column.name)} restrict;`,
+        );
+  }
+  statements.push("commit;");
+  return statements.join("\n");
+}
+
+export function validateManagedRows(data, columns) {
+  validateManagedColumns(columns);
+  for (const name of MANAGED_RELATIONS) {
+    const keys = columns[name].map((column) => column.name).sort();
+    check(
+      Array.isArray(data[name]) &&
+        data[name].every(
+          (row) =>
+            row &&
+            JSON.stringify(Object.keys(row).sort()) === JSON.stringify(keys),
+        ),
+      "UPGRADE_BACKUP_MANAGED_COLUMNS_DIFFER",
+    );
+  }
+}
 const key = (password, salt) => {
   check(
     typeof password === "string" && password.length > 0,
@@ -224,6 +328,7 @@ export async function verifyUpgradeBackupLocally(
   snapshot,
   { identity, reference, checkpoints, root = process.cwd() },
 ) {
+  validateManagedRows(snapshot.data, snapshot.managedColumns);
   const count = snapshot.facts.versions.length;
   const sourceSchema = verifyUpgradeSchema(
     snapshot.facts,
@@ -256,7 +361,7 @@ export async function verifyUpgradeBackupLocally(
       throw error;
     }
   };
-  const sql = (query) =>
+  const sql = (query, role = "postgres") =>
     run(
       "docker",
       [
@@ -273,7 +378,7 @@ export async function verifyUpgradeBackupLocally(
         "-v",
         "VERBOSITY=verbose",
         "-U",
-        "postgres",
+        role,
         "-d",
         "postgres",
       ],
@@ -310,11 +415,12 @@ export async function verifyUpgradeBackupLocally(
     stage = "restore_table_permissions";
     sql(restoreLocalGrantSql(sourceSchema.grants));
     stage = "inspect_restore_columns";
-    const columns = JSON.parse(
-      sql(
-        `select jsonb_object_agg(name,columns) from (select n.nspname||'.'||c.relname name,jsonb_agg(jsonb_build_object('name',a.attname,'generated',a.attgenerated<>'') order by a.attnum) columns from pg_class c join pg_namespace n on n.oid=c.relnamespace join pg_attribute a on a.attrelid=c.oid where c.relkind='r' and a.attnum>0 and not a.attisdropped and (n.nspname='public' or (n.nspname='auth' and c.relname='users') or (n.nspname='supabase_migrations' and c.relname='schema_migrations')) group by n.nspname,c.relname) q;`,
-      ),
-    );
+    let columns = JSON.parse(sql(RESTORE_COLUMNS_QUERY));
+    stage = "restore_managed_column_shapes";
+    // Auth tables belong to supabase_auth_admin. Use the disposable container's
+    // local administrator for column alignment, never a hosted connection.
+    sql(managedRestoreSql(snapshot.managedColumns, columns), "supabase_admin");
+    columns = JSON.parse(sql(RESTORE_COLUMNS_QUERY));
     stage = "restore_retained_rows";
     sql(restoreRowsSql(snapshot.data, columns));
     stage = "verify_restored_history";
@@ -361,9 +467,13 @@ export async function verifyUpgradeBackupLocally(
       publicTableCount: tables.length,
       authUsersIncluded: true,
       migrationLedgerIncluded: true,
+      managedSchemaCaptured: true,
       allRetainedRowsIdentical: true,
       schemaProfile: restored.profile,
     };
+  } catch (error) {
+    error.localStage ??= stage;
+    throw error;
   } finally {
     try {
       if (started) {

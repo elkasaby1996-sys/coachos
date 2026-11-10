@@ -13,6 +13,10 @@ import {
   decryptUpgradeBackup,
   backupRowsQuery,
   restoreRowsSql,
+  MANAGED_COLUMNS_QUERY,
+  validateManagedColumns,
+  validateManagedRows,
+  managedRestoreSql,
 } from "../../scripts/staging-upgrade-backup.mjs";
 import {
   verifyUpgradeSchema,
@@ -38,6 +42,20 @@ import { hash } from "../../scripts/billing-retirement-release.mjs";
 
 const secret = "private-backup-data-do-not-print";
 const emptyDigest = "d751713988987e9331980363e24189ce";
+const managedColumn = (name: string, type: string) => ({
+  name,
+  type,
+  typeSchema: "pg_catalog",
+  generated: false,
+});
+const managedColumns = () => ({
+  "auth.users": [managedColumn("id", "uuid")],
+  "supabase_migrations.schema_migrations": [
+    managedColumn("version", "text"),
+    managedColumn("statements", "text[]"),
+    managedColumn("name", "text"),
+  ],
+});
 let identity: any;
 beforeAll(() => {
   identity = releaseIdentity();
@@ -135,6 +153,7 @@ function fixture(start = 180) {
     failFunction: null,
     historyChange: false,
     ledgerChange: false,
+    managedColumns: managedColumns(),
     functions: identity.functions
       .filter(
         (f: any) =>
@@ -224,6 +243,8 @@ function fixture(start = 180) {
       return Response.json([{ details: state.details }]);
     if (query === SEQUENCE_QUERY) return Response.json([{ count: 0 }]);
     if (query === LEDGER_ROWS_QUERY) return Response.json([{ rows: ledger() }]);
+    if (query === MANAGED_COLUMNS_QUERY)
+      return Response.json([{ columns: state.managedColumns }]);
     const names = [
       ...tables().map((name: string) => `public.${name}`),
       "auth.users",
@@ -303,6 +324,7 @@ function fixture(start = 180) {
     publicTableCount: tables().length,
     authUsersIncluded: true,
     migrationLedgerIncluded: true,
+    managedSchemaCaptured: true,
     allRetainedRowsIdentical: true,
   }));
   const run = (action: string, overrides = {}) =>
@@ -441,7 +463,7 @@ describe("GitHub-reviewed populated staging upgrade", () => {
     expect(f.execute).not.toHaveBeenCalled();
     expect(JSON.stringify(report)).not.toContain(secret);
   });
-  it.each(["history", "ledger", "functions"])(
+  it.each(["history", "ledger", "functions", "managed schema"])(
     "blocks writes when %s changed after the recovery snapshot",
     async (kind) => {
       const f = fixture();
@@ -449,6 +471,10 @@ describe("GitHub-reviewed populated staging upgrade", () => {
       if (kind === "history") f.state.historyChange = true;
       if (kind === "ledger") f.state.ledgerChange = true;
       if (kind === "functions") f.state.functions[0].version++;
+      if (kind === "managed schema")
+        f.state.managedColumns["auth.users"].push(
+          managedColumn("new_platform_field", "text"),
+        );
       const report = await f.run("apply");
       expect(report).toMatchObject({
         status: "blocked",
@@ -539,6 +565,88 @@ describe("private backup integrity and schema compatibility", () => {
     runId: "1",
     attempt: "1",
   };
+  it("reconstructs hosted managed fields locally without filtering captured values", () => {
+    const local = managedColumns();
+    local["auth.users"].push(managedColumn("local_only_flag", "boolean"));
+    const hosted = managedColumns();
+    hosted["auth.users"].push(managedColumn("source_metadata", "jsonb"));
+    hosted["supabase_migrations.schema_migrations"].push(
+      managedColumn("created_by", "text"),
+      managedColumn("rollback", "text[]"),
+      managedColumn("idempotency_key", "uuid"),
+    );
+    const query = managedRestoreSql(hosted, local);
+    expect(query).toContain(
+      'alter table "auth"."users" add column "source_metadata" jsonb;',
+    );
+    expect(query).toContain(
+      'alter table "supabase_migrations"."schema_migrations" add column "rollback" text[];',
+    );
+    expect(query).toContain('drop column "local_only_flag" restrict;');
+    expect(query).not.toMatch(/cascade|public\./i);
+    const data = {
+      "auth.users": [{ id: "synthetic", source_metadata: { private: secret } }],
+      "supabase_migrations.schema_migrations": [
+        {
+          version: "synthetic",
+          statements: [],
+          name: "test",
+          created_by: secret,
+          rollback: [secret],
+          idempotency_key: null,
+        },
+      ],
+    };
+    expect(() => validateManagedRows(data, hosted)).not.toThrow();
+    const insert = restoreRowsSql(data, hosted);
+    expect(insert).toContain('"created_by","rollback","idempotency_key"');
+    expect(insert).toContain(secret);
+    expect(data["auth.users"][0].source_metadata.private).toBe(secret);
+  });
+  it("requires every source-managed field, including null fields, to be captured", () => {
+    const columns = managedColumns();
+    const data = {
+      "auth.users": [{ id: "synthetic" }],
+      "supabase_migrations.schema_migrations": [
+        { version: "synthetic", statements: null, name: null },
+      ],
+    };
+    expect(() => validateManagedRows(data, columns)).not.toThrow();
+    expect(() =>
+      validateManagedRows({ ...data, "auth.users": [{}] }, columns),
+    ).toThrow("UPGRADE_BACKUP_MANAGED_COLUMNS_DIFFER");
+    expect(() =>
+      validateManagedRows(
+        { ...data, "auth.users": [{ id: "synthetic", unexpected: secret }] },
+        columns,
+      ),
+    ).toThrow("UPGRADE_BACKUP_MANAGED_COLUMNS_DIFFER");
+  });
+  it.each([
+    { type: "text; delete from auth.users; --" },
+    { type: "text /* SQL */" },
+    { typeSchema: "public" },
+    { name: 'id"; drop table public.clients; --' },
+  ])("rejects executable or custom managed column metadata: %j", (change) => {
+    const columns = managedColumns();
+    Object.assign(columns["auth.users"][0], change);
+    expect(() => managedRestoreSql(columns, managedColumns())).toThrow();
+  });
+  it("rejects unknown managed tables, missing identity fields and type changes", () => {
+    expect(() =>
+      validateManagedColumns({ ...managedColumns(), "public.clients": [] }),
+    ).toThrow("UPGRADE_BACKUP_MANAGED_SCHEMA_INVALID");
+    const columns = managedColumns();
+    columns["auth.users"] = [managedColumn("different", "uuid")];
+    expect(() => validateManagedColumns(columns)).toThrow(
+      "UPGRADE_BACKUP_MANAGED_SCHEMA_INVALID",
+    );
+    const local = managedColumns();
+    local["auth.users"][0].type = "text";
+    expect(() => managedRestoreSql(managedColumns(), local)).toThrow(
+      "UPGRADE_BACKUP_MANAGED_TYPE_MISMATCH",
+    );
+  });
   it("round-trips the encrypted snapshot and authenticates its target, commit and attempt", () => {
     const snapshot = { ...binding, data: { value: secret } };
     const bytes = encryptUpgradeBackup(snapshot, secret);

@@ -16,6 +16,7 @@ on:
       - scripts/staging-populated-upgrade.mjs
       - scripts/staging-upgrade-schema.mjs
       - scripts/staging-upgrade-backup.mjs
+      - scripts/staging-upgrade-recovery-test.mjs
 
 permissions:
   contents: read
@@ -77,6 +78,8 @@ jobs:
       - run: supabase db lint --local --level error --fail-on error
       - run: supabase test db
       - run: node scripts/staging-schema-reference.mjs "$RUNNER_TEMP/staging-schema-reference.json"
+      - name: Restore populated backup across managed-column versions locally
+        run: node scripts/staging-upgrade-recovery-test.mjs "$RUNNER_TEMP/staging-schema-reference.json"
       - id: schema-upload
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:

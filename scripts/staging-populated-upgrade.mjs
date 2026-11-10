@@ -43,6 +43,8 @@ import {
   encryptUpgradeBackup,
   decryptUpgradeBackup,
   verifyUpgradeBackupLocally,
+  MANAGED_COLUMNS_QUERY,
+  validateManagedColumns,
 } from "./staging-upgrade-backup.mjs";
 import { hash, validateDryRun } from "./billing-retirement-release.mjs";
 
@@ -218,6 +220,10 @@ export function assertRetainedRows(
   check(
     canonical(snapshot.schema.grants) === canonical(current.schema.grants),
     "UPGRADE_EXISTING_PERMISSIONS_CHANGED",
+  );
+  check(
+    canonical(snapshot.managedColumns) === canonical(current.managedColumns),
+    "UPGRADE_MANAGED_SCHEMA_CHANGED",
   );
   check(
     canonical(snapshot.work) === canonical(current.work) &&
@@ -466,6 +472,9 @@ export async function runPopulatedUpgrade({
         "UPGRADE_UNSUPPORTED_APPLICATION_SEQUENCES",
       );
       const functions = normalizeFunctionInventory(await request("functions"));
+      const managedColumns = validateManagedColumns(
+        one(await sql(MANAGED_COLUMNS_QUERY)).columns,
+      );
       const ledger = one(await sql(LEDGER_ROWS_QUERY)).rows;
       ledgerRowsDigest(ledger);
       check(
@@ -495,6 +504,7 @@ export async function runPopulatedUpgrade({
         details,
         functions,
         ledger,
+        managedColumns,
       };
     }
     stage("observe_installed_staging");
@@ -544,7 +554,8 @@ export async function runPopulatedUpgrade({
         snapshot.recovery?.verified === true &&
           snapshot.recovery.allRetainedRowsIdentical === true &&
           snapshot.recovery.authUsersIncluded === true &&
-          snapshot.recovery.migrationLedgerIncluded === true,
+          snapshot.recovery.migrationLedgerIncluded === true &&
+          snapshot.recovery.managedSchemaCaptured === true,
         "UPGRADE_RECOVERY_NOT_VERIFIED",
       );
       stage("recheck_staging_after_recovery_test");
@@ -563,6 +574,7 @@ export async function runPopulatedUpgrade({
         publicTableCount: snapshot.recovery.publicTableCount,
         authUsersIncluded: true,
         migrationLedgerIncluded: true,
+        managedSchemaCaptured: true,
         recoveryVerifiedAt: snapshot.recovery.verifiedAt,
         encryption: "AES-256-GCM with scrypt; existing database password",
       };
@@ -582,7 +594,8 @@ export async function runPopulatedUpgrade({
         snapshot.recovery?.verified === true &&
         snapshot.recovery.allRetainedRowsIdentical === true &&
         snapshot.recovery.authUsersIncluded === true &&
-        snapshot.recovery.migrationLedgerIncluded === true,
+        snapshot.recovery.migrationLedgerIncluded === true &&
+        snapshot.recovery.managedSchemaCaptured === true,
       "UPGRADE_RECOVERY_NOT_VERIFIED",
     );
     check(
