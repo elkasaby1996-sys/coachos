@@ -119,13 +119,13 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           PADDLE_SANDBOX_API_KEY: ${{ secrets.PADDLE_SANDBOX_API_KEY }}
         run: |
-          mkdir -p output/staging-sandbox-readiness
-          node --experimental-transform-types scripts/staging-sandbox-pilot.mjs > output/staging-sandbox-readiness/pilot-report.json
+          mkdir -p "$RUNNER_TEMP/staging-sandbox-pilot"
+          node --experimental-transform-types scripts/staging-sandbox-pilot.mjs > "$RUNNER_TEMP/staging-sandbox-pilot/pilot-report.json"
       - name: Retain sanitized pilot result
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: staging-sandbox-pilot-${{ github.run_id }}-${{ github.run_attempt }}
-          path: output/staging-sandbox-readiness/pilot-report.json
+          path: ${{ runner.temp }}/staging-sandbox-pilot/pilot-report.json
           retention-days: 7
           if-no-files-found: ignore

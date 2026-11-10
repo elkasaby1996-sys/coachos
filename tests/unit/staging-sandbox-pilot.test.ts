@@ -341,6 +341,15 @@ describe("staging pilot activation", () => {
     expect(workflow.on.workflow_dispatch.inputs.mode.default).toBe("inspect");
     expect(workflow.jobs.pilot.environment).toBe("supabase-staging");
     expect(workflow.jobs.pilot.needs).toBe("validate");
+    const applyStep = workflow.jobs.pilot.steps.find(
+      (step: any) => step.env?.STAGING_PILOT_MODE,
+    );
+    expect(applyStep.run).toContain(
+      '> "$RUNNER_TEMP/staging-sandbox-pilot/pilot-report.json"',
+    );
+    expect(workflow.jobs.pilot.steps.at(-1).with.path).toBe(
+      "${{ runner.temp }}/staging-sandbox-pilot/pilot-report.json",
+    );
     expect(workflow.jobs.pilot.if).toContain(
       "github.event_name == 'workflow_dispatch'",
     );
