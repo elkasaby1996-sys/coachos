@@ -26,7 +26,6 @@ import {
 } from "./staging-release-artifacts.mjs";
 import { INVENTORY_QUERY } from "./billing-retirement-remote-inventory.mjs";
 import {
-  historyQuery,
   workQuery,
   normalizeFunctionInventory,
 } from "./staging-release-observation.mjs";
@@ -45,6 +44,10 @@ import {
   verifyUpgradeBackupLocally,
   MANAGED_COLUMNS_QUERY,
   validateManagedColumns,
+  BACKUP_DATA_ENCODING,
+  readBackupRows,
+  verifyCapturedHistory,
+  recoveryHistoryQuery as historyQuery,
 } from "./staging-upgrade-backup.mjs";
 import { hash, validateDryRun } from "./billing-retirement-release.mjs";
 
@@ -76,7 +79,7 @@ const one = (rows) => {
 export const SEQUENCE_QUERY =
   "select count(*)::integer as count from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='S';";
 export const LEDGER_ROWS_QUERY =
-  "select jsonb_agg(to_jsonb(m) order by version) as rows from supabase_migrations.schema_migrations m;";
+  "select jsonb_build_object('rows',jsonb_agg(to_jsonb(m) order by version)::text,'rowHashes',jsonb_object_agg(version,md5(to_jsonb(m)::text))) as ledger from supabase_migrations.schema_migrations m;";
 const nowIso = () => new Date().toISOString();
 
 export function validateUpgradeContext(env, source, action) {
@@ -208,7 +211,10 @@ export function assertRetainedRows(
 ) {
   check(
     ledgerRowsDigest(snapshot.ledger) ===
-      ledgerRowsDigest(current.ledger.slice(0, snapshot.ledger.length)),
+      ledgerRowsDigest(current.ledger.slice(0, snapshot.ledger.length)) &&
+      Object.entries(snapshot.ledgerRowHashes).every(
+        ([version, digest]) => current.ledgerRowHashes[version] === digest,
+      ),
     "UPGRADE_MIGRATION_HISTORY_CHANGED",
   );
   check(
@@ -475,8 +481,19 @@ export async function runPopulatedUpgrade({
       const managedColumns = validateManagedColumns(
         one(await sql(MANAGED_COLUMNS_QUERY)).columns,
       );
-      const ledger = one(await sql(LEDGER_ROWS_QUERY)).rows;
+      const ledgerObservation = one(await sql(LEDGER_ROWS_QUERY)).ledger;
+      const ledgerRaw = ledgerObservation?.rows;
+      const ledger = readBackupRows(ledgerRaw);
+      const ledgerRowHashes = ledgerObservation.rowHashes;
       ledgerRowsDigest(ledger);
+      check(
+        ledgerRowHashes &&
+          Object.keys(ledgerRowHashes).length === ledger.length &&
+          ledger.every((row) =>
+            /^[a-f0-9]{32}$/.test(ledgerRowHashes[row.version] ?? ""),
+          ),
+        "UPGRADE_LEDGER_HASHES_INVALID",
+      );
       check(
         canonical(ledger.map((row) => row.version)) ===
           canonical(facts.versions),
@@ -504,6 +521,8 @@ export async function runPopulatedUpgrade({
         details,
         functions,
         ledger,
+        ledgerRaw,
+        ledgerRowHashes,
         managedColumns,
       };
     }
@@ -525,15 +544,16 @@ export async function runPopulatedUpgrade({
       );
       const snapshot = {
         ...binding,
-        schemaVersion: 1,
+        schemaVersion: 2,
+        dataEncoding: BACKUP_DATA_ENCODING,
         createdAt,
         payloadCommit: identity.payload.frozenCommit,
         ...current,
         data,
       };
+      verifyCapturedHistory(data, current.history);
       check(
-        ledgerRowsDigest(data["supabase_migrations.schema_migrations"]) ===
-          ledgerRowsDigest(current.ledger),
+        data["supabase_migrations.schema_migrations"] === current.ledgerRaw,
         "UPGRADE_MIGRATION_HISTORY_CHANGED",
       );
       stage("verify_snapshot_stability");
@@ -555,7 +575,8 @@ export async function runPopulatedUpgrade({
           snapshot.recovery.allRetainedRowsIdentical === true &&
           snapshot.recovery.authUsersIncluded === true &&
           snapshot.recovery.migrationLedgerIncluded === true &&
-          snapshot.recovery.managedSchemaCaptured === true,
+          snapshot.recovery.managedSchemaCaptured === true &&
+          snapshot.recovery.dataEncoding === BACKUP_DATA_ENCODING,
         "UPGRADE_RECOVERY_NOT_VERIFIED",
       );
       stage("recheck_staging_after_recovery_test");
@@ -575,6 +596,7 @@ export async function runPopulatedUpgrade({
         authUsersIncluded: true,
         migrationLedgerIncluded: true,
         managedSchemaCaptured: true,
+        dataEncoding: BACKUP_DATA_ENCODING,
         recoveryVerifiedAt: snapshot.recovery.verifiedAt,
         encryption: "AES-256-GCM with scrypt; existing database password",
       };
@@ -589,15 +611,18 @@ export async function runPopulatedUpgrade({
       binding,
     );
     check(
-      snapshot.schemaVersion === 1 &&
+      snapshot.schemaVersion === 2 &&
+        snapshot.dataEncoding === BACKUP_DATA_ENCODING &&
         snapshot.payloadCommit === identity.payload.frozenCommit &&
         snapshot.recovery?.verified === true &&
         snapshot.recovery.allRetainedRowsIdentical === true &&
         snapshot.recovery.authUsersIncluded === true &&
         snapshot.recovery.migrationLedgerIncluded === true &&
-        snapshot.recovery.managedSchemaCaptured === true,
+        snapshot.recovery.managedSchemaCaptured === true &&
+        snapshot.recovery.dataEncoding === BACKUP_DATA_ENCODING,
       "UPGRADE_RECOVERY_NOT_VERIFIED",
     );
+    verifyCapturedHistory(snapshot.data, snapshot.history);
     check(
       Number.isFinite(Date.parse(snapshot.createdAt)) &&
         now() >= Date.parse(snapshot.createdAt) &&
@@ -840,6 +865,18 @@ export async function runPopulatedUpgrade({
       report.localStage = error.localStage;
     if (/^[0-9A-Z]{5}$/.test(error.sqlState ?? ""))
       report.sqlState = error.sqlState;
+    if (
+      typeof error.recoveryMismatch?.authUsers === "boolean" &&
+      Array.isArray(error.recoveryMismatch.publicTableIndexes) &&
+      error.recoveryMismatch.publicTableIndexes.length <= 1000 &&
+      error.recoveryMismatch.publicTableIndexes.every(
+        (index) => Number.isSafeInteger(index) && index >= 0 && index < 1000,
+      )
+    )
+      report.recoveryMismatch = {
+        authUsers: error.recoveryMismatch.authUsers,
+        publicTableIndexes: error.recoveryMismatch.publicTableIndexes,
+      };
   } finally {
     for (const artifact of artifacts.reverse()) {
       try {
@@ -869,8 +906,11 @@ if (
       ),
   });
   console.log(JSON.stringify(report, null, 2));
+  const mismatchNotice = report.recoveryMismatch
+    ? `; publicTableIndexes=${report.recoveryMismatch.publicTableIndexes.join(",")}; authUsersDiffer=${report.recoveryMismatch.authUsers}`
+    : "";
   console.error(
-    `::${report.status === "blocked" ? "error" : "notice"} title=Staging billing upgrade::status=${report.status}; stage=${report.stage}; code=${report.code ?? "none"}; migrations=${report.migrationCount ?? "unobserved"}/188; backupVerified=${report.backupVerified}; remoteWritesMayHaveOccurred=${report.remoteWritesMayHaveOccurred}${report.httpStatus ? `; httpStatus=${report.httpStatus}` : ""}${report.localStage ? `; localStage=${report.localStage}` : ""}${report.sqlState ? `; sqlState=${report.sqlState}` : ""}`,
+    `::${report.status === "blocked" ? "error" : "notice"} title=Staging billing upgrade::status=${report.status}; stage=${report.stage}; code=${report.code ?? "none"}; migrations=${report.migrationCount ?? "unobserved"}/188; backupVerified=${report.backupVerified}; remoteWritesMayHaveOccurred=${report.remoteWritesMayHaveOccurred}${report.httpStatus ? `; httpStatus=${report.httpStatus}` : ""}${report.localStage ? `; localStage=${report.localStage}` : ""}${report.sqlState ? `; sqlState=${report.sqlState}` : ""}${mismatchNotice}`,
   );
   if (process.env.GITHUB_STEP_SUMMARY)
     appendFileSync(

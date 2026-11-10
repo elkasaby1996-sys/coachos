@@ -4,6 +4,7 @@
 import {
   createCipheriv,
   createDecipheriv,
+  createHash,
   randomBytes,
   scryptSync,
 } from "node:crypto";
@@ -41,8 +42,47 @@ const relation = (name) => {
   check(!extra && ["public", "auth", "supabase_migrations"].includes(schema));
   return `${identifier(schema)}.${identifier(table)}`;
 };
-const literal = (value) =>
-  `'${JSON.stringify(value).replaceAll("'", "''")}'::jsonb`;
+const literal = (jsonText) => `'${jsonText.replaceAll("'", "''")}'::jsonb`;
+export const BACKUP_DATA_ENCODING = "postgres-jsonb-text-v1";
+export const recoveryHistoryQuery = (tables) =>
+  historyQuery(tables).replaceAll(
+    "order by to_jsonb(t)::text",
+    'order by to_jsonb(t)::text collate "C"',
+  );
+export function readBackupRows(jsonText) {
+  check(
+    typeof jsonText === "string" && Buffer.byteLength(jsonText) <= MAX_BYTES,
+    "UPGRADE_BACKUP_ENCODING_INVALID",
+  );
+  let rows;
+  try {
+    rows = JSON.parse(jsonText);
+  } catch {
+    throw new Error("UPGRADE_BACKUP_ENCODING_INVALID");
+  }
+  check(
+    Array.isArray(rows) &&
+      rows.every(
+        (row) => row && typeof row === "object" && !Array.isArray(row),
+      ),
+    "UPGRADE_BACKUP_ENCODING_INVALID",
+  );
+  // Decode only for field names/counts. Restoration always uses the ORIGINAL
+  // PostgreSQL text, never JSON.stringify(rows), which loses numeric precision.
+  return rows;
+}
+
+export function verifyCapturedHistory(data, history) {
+  for (const [name, expected] of Object.entries(history)) {
+    const relationName = name === "auth.users" ? name : `public.${name}`;
+    const bytes = data[relationName];
+    readBackupRows(bytes);
+    check(
+      createHash("md5").update(bytes).digest("hex") === expected,
+      "UPGRADE_CAPTURED_HISTORY_DIFFERS",
+    );
+  }
+}
 const sorted = (value) =>
   Object.fromEntries(
     Object.entries(value).sort(([a], [b]) => a.localeCompare(b)),
@@ -141,12 +181,11 @@ export function validateManagedRows(data, columns) {
   for (const name of MANAGED_RELATIONS) {
     const keys = columns[name].map((column) => column.name).sort();
     check(
-      Array.isArray(data[name]) &&
-        data[name].every(
-          (row) =>
-            row &&
-            JSON.stringify(Object.keys(row).sort()) === JSON.stringify(keys),
-        ),
+      readBackupRows(data[name]).every(
+        (row) =>
+          row &&
+          JSON.stringify(Object.keys(row).sort()) === JSON.stringify(keys),
+      ),
       "UPGRADE_BACKUP_MANAGED_COLUMNS_DIFFER",
     );
   }
@@ -240,7 +279,9 @@ export function backupRowsQuery(names) {
       names.length <= 8 &&
       new Set(names).size === names.length,
   );
-  return `select jsonb_build_object(${names.map((name) => `'${name}',(select coalesce(jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text),'[]'::jsonb) from ${relation(name)} t)`).join(",")}) as data;`;
+  // Text survives JSON decoding by both the Management API and this process.
+  // JSON-valued responses would round large integers and remove decimal scale.
+  return `select jsonb_build_object(${names.map((name) => `'${name}',(select coalesce(jsonb_agg(to_jsonb(t) order by ${name === "supabase_migrations.schema_migrations" ? "t.version" : 'to_jsonb(t)::text collate "C"'}),'[]'::jsonb)::text from ${relation(name)} t)`).join(",")}) as data;`;
 }
 
 export async function captureUpgradeRows(sql, tables) {
@@ -262,16 +303,15 @@ export async function captureUpgradeRows(sql, tables) {
           JSON.stringify([...batch].sort()),
     );
     for (const name of batch) {
-      check(Array.isArray(rows[0].data[name]));
+      readBackupRows(rows[0].data[name]);
       data[name] = rows[0].data[name];
-      bytes += Buffer.byteLength(JSON.stringify(data[name]));
+      bytes += Buffer.byteLength(data[name]);
       check(bytes <= MAX_BYTES, "UPGRADE_BACKUP_TOO_LARGE");
     }
   }
-  data["supabase_migrations.schema_migrations"].sort((a, b) =>
-    a.version.localeCompare(b.version),
+  ledgerRowsDigest(
+    readBackupRows(data["supabase_migrations.schema_migrations"]),
   );
-  ledgerRowsDigest(data["supabase_migrations.schema_migrations"]);
   return data;
 }
 
@@ -310,12 +350,13 @@ export function restoreRowsSql(data, columns) {
     const insertColumns = schemaColumns
       .filter((column) => !column.generated)
       .map((column) => identifier(column.name));
-    for (const row of data[name])
+    const rows = readBackupRows(data[name]);
+    for (const row of rows)
       check(
         row && Object.keys(row).every((column) => allowed.has(column)),
         "UPGRADE_BACKUP_MANAGED_COLUMNS_DIFFER",
       );
-    if (data[name].length)
+    if (rows.length)
       statements.push(
         `insert into ${relation(name)} (${insertColumns.join(",")}) overriding system value select ${insertColumns.join(",")} from jsonb_populate_recordset(null::${relation(name)},${literal(data[name])});`,
       );
@@ -328,6 +369,11 @@ export async function verifyUpgradeBackupLocally(
   snapshot,
   { identity, reference, checkpoints, root = process.cwd() },
 ) {
+  check(
+    snapshot.dataEncoding === BACKUP_DATA_ENCODING,
+    "UPGRADE_BACKUP_ENCODING_INVALID",
+  );
+  verifyCapturedHistory(snapshot.data, snapshot.history);
   validateManagedRows(snapshot.data, snapshot.managedColumns);
   const count = snapshot.facts.versions.length;
   const sourceSchema = verifyUpgradeSchema(
@@ -425,23 +471,28 @@ export async function verifyUpgradeBackupLocally(
     sql(restoreRowsSql(snapshot.data, columns));
     stage = "verify_restored_history";
     const tables = snapshot.facts.tables.map((table) => table.name).sort();
-    const history = JSON.parse(sql(historyQuery(tables)));
-    check(
-      JSON.stringify(sorted(history)) ===
-        JSON.stringify(sorted(snapshot.history)),
-      "UPGRADE_RESTORED_HISTORY_DIFFERS",
-    );
-    stage = "verify_restored_ledger";
-    const ledger = JSON.parse(
-      sql(
-        "select jsonb_agg(to_jsonb(m) order by version) from supabase_migrations.schema_migrations m;",
-      ),
-    );
-    check(
-      ledgerRowsDigest(ledger) ===
-        ledgerRowsDigest(
-          snapshot.data["supabase_migrations.schema_migrations"],
+    const history = JSON.parse(sql(recoveryHistoryQuery(tables)));
+    if (
+      JSON.stringify(sorted(history)) !==
+      JSON.stringify(sorted(snapshot.history))
+    ) {
+      const error = new Error("UPGRADE_RESTORED_HISTORY_DIFFERS");
+      // Fixed source-table positions identify mismatches without exposing rows,
+      // IDs, values, or even hosted-only managed column names.
+      error.recoveryMismatch = {
+        publicTableIndexes: tables.flatMap((name, index) =>
+          history[name] === snapshot.history[name] ? [] : [index],
         ),
+        authUsers: history["auth.users"] !== snapshot.history["auth.users"],
+      };
+      throw error;
+    }
+    stage = "verify_restored_ledger";
+    const ledgerText = sql(
+      "select jsonb_agg(to_jsonb(m) order by version)::text from supabase_migrations.schema_migrations m;",
+    ).trim();
+    check(
+      ledgerText === snapshot.data["supabase_migrations.schema_migrations"],
       "UPGRADE_RESTORED_LEDGER_DIFFERS",
     );
     stage = "verify_restored_schema";
@@ -468,6 +519,7 @@ export async function verifyUpgradeBackupLocally(
       authUsersIncluded: true,
       migrationLedgerIncluded: true,
       managedSchemaCaptured: true,
+      dataEncoding: BACKUP_DATA_ENCODING,
       allRetainedRowsIdentical: true,
       schemaProfile: restored.profile,
     };

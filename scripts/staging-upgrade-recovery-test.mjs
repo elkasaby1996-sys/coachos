@@ -11,8 +11,6 @@ import { releaseIdentity } from "./staging-release-artifacts.mjs";
 import { verifyUpgradeSchema } from "./staging-upgrade-schema.mjs";
 import { STAGING_PROJECT } from "./staging-billing-status.mjs";
 import { INVENTORY_QUERY } from "./billing-retirement-remote-inventory.mjs";
-import { historyQuery } from "./staging-release-observation.mjs";
-import { ledgerRowsDigest } from "./staging-backup-ledger.mjs";
 import {
   MANAGED_COLUMNS_QUERY,
   backupRowsQuery,
@@ -20,6 +18,10 @@ import {
   verifyUpgradeBackupLocally,
   encryptUpgradeBackup,
   decryptUpgradeBackup,
+  BACKUP_DATA_ENCODING,
+  readBackupRows,
+  verifyCapturedHistory,
+  recoveryHistoryQuery as historyQuery,
 } from "./staging-upgrade-backup.mjs";
 try {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -54,7 +56,8 @@ try {
       ],
       {
         input:
-          "set search_path=public,extensions; set timezone='UTC';\n" + query,
+          "set standard_conforming_strings=on; set search_path=public,extensions; set timezone='UTC';\n" +
+          query,
         encoding: "utf8",
         env,
         cwd: root,
@@ -74,9 +77,9 @@ try {
   ];
   const originalHistory = read(historyQuery(tables));
   const originalManaged = read(MANAGED_COLUMNS_QUERY);
-  const originalLedger = read(
-    "select jsonb_agg(to_jsonb(m) order by version) from supabase_migrations.schema_migrations m;",
-  );
+  const ledgerQuery =
+    "select jsonb_agg(to_jsonb(m) order by version)::text from supabase_migrations.schema_migrations m;";
+  const originalLedger = run(ledgerQuery).trim();
   const queries = [];
   for (let i = 0; i < names.length; i += 8)
     queries.push(backupRowsQuery(names.slice(i, i + 8)));
@@ -86,12 +89,13 @@ insert into auth.users (id,email) values ('${fixtureId}','managed-recovery@examp
 alter table auth.users add column recovery_source_metadata jsonb;
 alter table auth.users add column recovery_source_tag text;
 alter table auth.users drop column is_anonymous restrict;
-update auth.users set recovery_source_metadata=jsonb_build_object('private','synthetic metadata','nested',jsonb_build_array(null,true,'unicode Ω')),recovery_source_tag='synthetic O''Brien';
+update auth.users set recovery_source_metadata=jsonb_build_object('private','synthetic metadata','nested',jsonb_build_array(null,true,'unicode Ω'),'precision','{"scaled":1.00,"large":9007199254740993,"fraction":0.12345678901234567890123456789}'::jsonb),recovery_source_tag='synthetic O''Brien';
+update public.commercial_plan_feature_entitlements set configuration=configuration || '{"recovery_numeric_fixture":{"scaled":1.00,"large":9007199254740993,"fraction":0.12345678901234567890123456789}}'::jsonb;
 alter table supabase_migrations.schema_migrations add column created_by text;
 alter table supabase_migrations.schema_migrations add column rollback text[];
 alter table supabase_migrations.schema_migrations add column idempotency_key uuid;
 alter table supabase_migrations.schema_migrations add column source_metadata jsonb;
-update supabase_migrations.schema_migrations set created_by='synthetic O''Brien',rollback=array['select 1;','synthetic recovery text'],idempotency_key='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',source_metadata=jsonb_build_object('source','test');
+update supabase_migrations.schema_migrations set created_by='synthetic O''Brien',rollback=array['select 1;','synthetic recovery text'],idempotency_key='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',source_metadata='{"scaled":1.00,"large":9007199254740993,"fraction":0.12345678901234567890123456789}'::jsonb;
 ${MANAGED_COLUMNS_QUERY}
 ${historyQuery(tables)};
 ${queries.join("\n")}
@@ -103,9 +107,23 @@ rollback;`;
   const managedColumns = results.shift(),
     history = results.shift(),
     data = Object.assign({}, ...results);
-  data["supabase_migrations.schema_migrations"].sort((a, b) =>
-    a.version.localeCompare(b.version),
-  );
+  let numericFailureReproduced = false;
+  try {
+    const lossy = JSON.stringify(JSON.parse(data["auth.users"]));
+    // Canonicalize in PostgreSQL again to remove whitespace/key-order effects;
+    // the remaining difference demonstrates lost numeric values/decimal scale.
+    const canonicalLossy = run(
+      `select '${lossy.replaceAll("'", "''")}'::jsonb::text;`,
+    ).trim();
+    verifyCapturedHistory(
+      { "auth.users": canonicalLossy },
+      { "auth.users": history["auth.users"] },
+    );
+  } catch (error) {
+    numericFailureReproduced =
+      error.message === "UPGRADE_CAPTURED_HISTORY_DIFFERS";
+  }
+  if (!numericFailureReproduced) throw Error("NUMERIC_FAILURE_NOT_REPRODUCED");
   let reproduced = false;
   try {
     restoreRowsSql(
@@ -130,7 +148,14 @@ rollback;`;
     runId: "local-recovery-test",
     attempt: "1",
   };
-  const snapshot = { ...binding, facts, managedColumns, history, data };
+  const snapshot = {
+    ...binding,
+    dataEncoding: BACKUP_DATA_ENCODING,
+    facts,
+    managedColumns,
+    history,
+    data,
+  };
   const recovery = await verifyUpgradeBackupLocally(snapshot, {
     root,
     identity,
@@ -147,20 +172,20 @@ rollback;`;
       JSON.stringify(originalHistory) ||
     JSON.stringify(read(MANAGED_COLUMNS_QUERY)) !==
       JSON.stringify(originalManaged) ||
-    ledgerRowsDigest(
-      read(
-        "select jsonb_agg(to_jsonb(m) order by version) from supabase_migrations.schema_migrations m;",
-      ),
-    ) !== ledgerRowsDigest(originalLedger)
+    run(ledgerQuery).trim() !== originalLedger
   )
     throw Error("LOCAL_SOURCE_CHANGED");
   const report = {
     localOnly: true,
     status: "passed",
     originalFailureReproduced: reproduced,
+    numericFailureReproduced,
+    numericPublicTable: "commercial_plan_feature_entitlements",
     recovery,
-    authUserCount: data["auth.users"].length,
-    ledgerRowCount: data["supabase_migrations.schema_migrations"].length,
+    authUserCount: readBackupRows(data["auth.users"]).length,
+    ledgerRowCount: readBackupRows(
+      data["supabase_migrations.schema_migrations"],
+    ).length,
     sourceOnlyAuthColumns: 2,
     sourceOnlyLedgerColumns: 4,
     localOnlyAuthColumns: 1,

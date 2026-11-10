@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import {
   runPopulatedUpgrade,
@@ -17,6 +18,10 @@ import {
   validateManagedColumns,
   validateManagedRows,
   managedRestoreSql,
+  BACKUP_DATA_ENCODING,
+  readBackupRows,
+  verifyCapturedHistory,
+  recoveryHistoryQuery as historyQuery,
 } from "../../scripts/staging-upgrade-backup.mjs";
 import {
   verifyUpgradeSchema,
@@ -28,7 +33,6 @@ import {
 } from "../../scripts/staging-release-artifacts.mjs";
 import {
   databaseContract,
-  historyQuery,
   workQuery,
 } from "../../scripts/staging-release-observation.mjs";
 import {
@@ -42,6 +46,11 @@ import { hash } from "../../scripts/billing-retirement-release.mjs";
 
 const secret = "private-backup-data-do-not-print";
 const emptyDigest = "d751713988987e9331980363e24189ce";
+const rowText = (data: Record<string, unknown[]>) =>
+  Object.fromEntries(
+    Object.entries(data).map(([name, rows]) => [name, JSON.stringify(rows)]),
+  );
+const md5 = (value: string) => createHash("md5").update(value).digest("hex");
 const managedColumn = (name: string, type: string) => ({
   name,
   type,
@@ -153,6 +162,7 @@ function fixture(start = 180) {
     failFunction: null,
     historyChange: false,
     ledgerChange: false,
+    ledgerHashChange: false,
     managedColumns: managedColumns(),
     functions: identity.functions
       .filter(
@@ -242,7 +252,25 @@ function fixture(start = 180) {
     if (query === WORK_DETAIL_QUERY)
       return Response.json([{ details: state.details }]);
     if (query === SEQUENCE_QUERY) return Response.json([{ count: 0 }]);
-    if (query === LEDGER_ROWS_QUERY) return Response.json([{ rows: ledger() }]);
+    if (query === LEDGER_ROWS_QUERY)
+      return Response.json([
+        {
+          ledger: {
+            rows: JSON.stringify(ledger()),
+            rowHashes: Object.fromEntries(
+              ledger().map((row: any, index: number) => [
+                row.version,
+                md5(
+                  JSON.stringify(row) +
+                    (state.ledgerHashChange && index === 0
+                      ? "changed representation"
+                      : ""),
+                ),
+              ]),
+            ),
+          },
+        },
+      ]);
     if (query === MANAGED_COLUMNS_QUERY)
       return Response.json([{ columns: state.managedColumns }]);
     const names = [
@@ -259,8 +287,8 @@ function fixture(start = 180) {
               batch.map((name: string) => [
                 name,
                 name === "supabase_migrations.schema_migrations"
-                  ? ledger()
-                  : [],
+                  ? JSON.stringify(ledger())
+                  : "[]",
               ]),
             ),
           },
@@ -325,6 +353,7 @@ function fixture(start = 180) {
     authUsersIncluded: true,
     migrationLedgerIncluded: true,
     managedSchemaCaptured: true,
+    dataEncoding: BACKUP_DATA_ENCODING,
     allRetainedRowsIdentical: true,
   }));
   const run = (action: string, overrides = {}) =>
@@ -463,13 +492,43 @@ describe("GitHub-reviewed populated staging upgrade", () => {
     expect(f.execute).not.toHaveBeenCalled();
     expect(JSON.stringify(report)).not.toContain(secret);
   });
-  it.each(["history", "ledger", "functions", "managed schema"])(
+  it("reports only safe mismatch locations when recovery fails", async () => {
+    const f = fixture();
+    const report = await f.run("prepare", {
+      verifyRecovery: async () => {
+        throw Object.assign(new Error("UPGRADE_RESTORED_HISTORY_DIFFERS"), {
+          localStage: "verify_restored_history",
+          recoveryMismatch: {
+            authUsers: true,
+            publicTableIndexes: [0, 5],
+            privateValue: secret,
+          },
+        });
+      },
+    });
+    expect(report).toMatchObject({
+      status: "blocked",
+      remoteWritesMayHaveOccurred: false,
+      recoveryMismatch: { authUsers: true, publicTableIndexes: [0, 5] },
+    });
+    expect(JSON.stringify(report.recoveryMismatch)).not.toContain(secret);
+    expect(f.state.backup).toBeNull();
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+  it.each([
+    "history",
+    "ledger",
+    "ledger representation",
+    "functions",
+    "managed schema",
+  ])(
     "blocks writes when %s changed after the recovery snapshot",
     async (kind) => {
       const f = fixture();
       await f.run("prepare");
       if (kind === "history") f.state.historyChange = true;
       if (kind === "ledger") f.state.ledgerChange = true;
+      if (kind === "ledger representation") f.state.ledgerHashChange = true;
       if (kind === "functions") f.state.functions[0].version++;
       if (kind === "managed schema")
         f.state.managedColumns["auth.users"].push(
@@ -597,8 +656,8 @@ describe("private backup integrity and schema compatibility", () => {
         },
       ],
     };
-    expect(() => validateManagedRows(data, hosted)).not.toThrow();
-    const insert = restoreRowsSql(data, hosted);
+    expect(() => validateManagedRows(rowText(data), hosted)).not.toThrow();
+    const insert = restoreRowsSql(rowText(data), hosted);
     expect(insert).toContain('"created_by","rollback","idempotency_key"');
     expect(insert).toContain(secret);
     expect(data["auth.users"][0].source_metadata.private).toBe(secret);
@@ -611,13 +670,16 @@ describe("private backup integrity and schema compatibility", () => {
         { version: "synthetic", statements: null, name: null },
       ],
     };
-    expect(() => validateManagedRows(data, columns)).not.toThrow();
+    expect(() => validateManagedRows(rowText(data), columns)).not.toThrow();
     expect(() =>
-      validateManagedRows({ ...data, "auth.users": [{}] }, columns),
+      validateManagedRows(rowText({ ...data, "auth.users": [{}] }), columns),
     ).toThrow("UPGRADE_BACKUP_MANAGED_COLUMNS_DIFFER");
     expect(() =>
       validateManagedRows(
-        { ...data, "auth.users": [{ id: "synthetic", unexpected: secret }] },
+        rowText({
+          ...data,
+          "auth.users": [{ id: "synthetic", unexpected: secret }],
+        }),
         columns,
       ),
     ).toThrow("UPGRADE_BACKUP_MANAGED_COLUMNS_DIFFER");
@@ -676,11 +738,11 @@ describe("private backup integrity and schema compatibility", () => {
       backupRowsQuery(["public.clients'; delete from auth.users; --"]),
     ).toThrow();
     const query = restoreRowsSql(
-      {
+      rowText({
         "auth.users": [
           { email: "O'Brien@example.test", confirmed_at: "generated" },
         ],
-      },
+      }),
       {
         "auth.users": [
           { name: "email", generated: false },
@@ -691,12 +753,62 @@ describe("private backup integrity and schema compatibility", () => {
     expect(query).toContain('insert into "auth"."users" ("email")');
     expect(query).toContain("O''Brien@example.test");
     expect(() =>
-      restoreRowsSql(
-        { "auth.users": [{ unexpected: secret }] },
-        { "auth.users": [{ name: "id", generated: false }] },
-      ),
+      restoreRowsSql(rowText({ "auth.users": [{ unexpected: secret }] }), {
+        "auth.users": [{ name: "id", generated: false }],
+      }),
     ).toThrow("UPGRADE_BACKUP_MANAGED_COLUMNS_DIFFER");
   });
+  it("preserves PostgreSQL decimal scale and integers beyond JavaScript precision", () => {
+    const raw =
+      '[{"id": 9007199254740993, "amount": 1.00, "payload": {"fraction": 0.12345678901234567890123456789}}]';
+    const data = { "public.clients": raw };
+    expect(() =>
+      verifyCapturedHistory(data, { clients: md5(raw) }),
+    ).not.toThrow();
+    const converted = JSON.stringify(JSON.parse(raw));
+    expect(converted).not.toBe(raw);
+    expect(() =>
+      verifyCapturedHistory(
+        { "public.clients": converted },
+        { clients: md5(raw) },
+      ),
+    ).toThrow("UPGRADE_CAPTURED_HISTORY_DIFFERS");
+    const sql = restoreRowsSql(data, {
+      "public.clients": [
+        { name: "id", generated: false },
+        { name: "amount", generated: false },
+        { name: "payload", generated: false },
+      ],
+    });
+    expect(sql).toContain(raw);
+    expect(sql).toContain("9007199254740993");
+    expect(sql).toContain("0.12345678901234567890123456789");
+    const recovered = decryptUpgradeBackup(
+      encryptUpgradeBackup(
+        { ...binding, dataEncoding: BACKUP_DATA_ENCODING, data },
+        secret,
+      ),
+      secret,
+      binding,
+    );
+    expect(recovered.data).toEqual(data);
+  });
+  it("orders source and restored row hashes independently of database locale", () => {
+    expect(
+      historyQuery(["clients", "workspaces"]).match(/collate "C"/g),
+    ).toHaveLength(3);
+    expect(
+      backupRowsQuery(["public.clients", "auth.users"]).match(/collate "C"/g),
+    ).toHaveLength(2);
+  });
+  it.each([[], "null", "{}", "[1]", "not json"])(
+    "rejects non-text or malformed row encoding: %j",
+    (value) => {
+      expect(() => readBackupRows(value)).toThrow(
+        "UPGRADE_BACKUP_ENCODING_INVALID",
+      );
+    },
+  );
   it("accepts only the known extension qualification and rejects function/grant drift", () => {
     const f = fixture();
     const facts = f.facts();
