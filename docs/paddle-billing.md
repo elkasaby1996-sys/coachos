@@ -49,7 +49,7 @@ Register `billing-paddle-webhook` for `subscription.created`, `subscription.upda
 
 After verifying the catalogue and configuration, enable reconciliation using the existing trusted operator workflow. `PADDLE_CHECKOUT_ACCESS_MODE=pilot` plus `PADDLE_CHECKOUT_PILOT_USER_ID` limits checkout to the chosen account owner; `all` opens checkout to authenticated account owners. Unknown/missing modes are disabled. Database gates `paddle_sales_enabled` and `paddle_reconciliation_enabled` also require explicit activation. No migration enables them.
 
-Remote changes require a named project and the guarded workflow in [AGENTS.md](../AGENTS.md). This branch has not been deployed remotely or used to make a real payment.
+Remote changes require a named project and the guarded workflow in [AGENTS.md](../AGENTS.md). The backend was deployed to the confirmed staging project by [upgrade run #6](https://github.com/elkasaby1996-sys/coachos/actions/runs/42792290161). Frontend deployment, catalogue activation and real provider payments remain pending.
 
 ## Verification and limits
 
@@ -63,7 +63,9 @@ If a provider request may have succeeded, inspect the retained operation and pro
 
 ## Inspect staging with existing GitHub and Supabase secrets
 
-The verified inventories cover corrected project `dgogugyuyfourdttvwuy`: 180 of 188 migrations are installed, billing is in test mode with both gates disabled, and all required secret names are present. The payment-method/portal functions still need deployment. Successful run 42707688666 identifies four table ACL differences, 15 UUID-default differences and three constraint differences; function definitions, RLS, policies, indexes and triggers match. The 28 retained Paddle webhooks are deferred/manual review, the scheduled Paddle operation is overdue, and all inspected subscriptions/work are labelled test. The user confirmed all staging data is synthetic; preserve it during the upgrade. Use the [populated-project upgrade](paddle-staging-installation.md#upgrade-the-populated-project-with-github-environment-review), which verifies the exact accepted schema and proves recovery before hosted writes. Do not use the empty-project installer.
+The current corrected project `dgogugyuyfourdttvwuy` has **188 of 188 migrations** and all 17 canonical functions deployed, including payment-method and portal support. [Upgrade run #6](https://github.com/elkasaby1996-sys/coachos/actions/runs/42792290161) verified the backup before hosted writes and completed with checkout, sales and reconciliation disabled. The user confirmed the staging Netlify site still deploys `main`; follow the [frontend steps](paddle-staging-installation.md#finish-the-staging-frontend-and-sandbox-activation) to deploy `Ahmed-billing` there before payment testing.
+
+The pre-upgrade inventory at run 42707688666 had 180 migrations and identified four table ACL differences, 15 UUID-default differences and three constraint differences, with function definitions, RLS, policies, indexes and triggers matching. The completed upgrade preserved the reviewed ACLs, 28 deferred/manual-review Paddle webhook records, one overdue test operation and six legacy subscriptions. The user confirmed all staging data is synthetic; retain it. Do not use the empty-project installer on this populated project.
 
 The selected release order is **`Ahmed-billing` → staging → real Paddle sandbox tests → reviewed merge into `main`**. Keep the billing feature on its branch until staging tests pass. The corrected staging target is Supabase project `dgogugyuyfourdttvwuy` and app `https://repsync-staging.netlify.app`; provider payments use Paddle sandbox.
 

@@ -10,7 +10,9 @@ The user corrected the staging target on 2026-11-09:
 - Application origin: `https://repsync-staging.netlify.app`
 - Workflow branch: **`Ahmed-billing`**
 
-[Migration Status run 42707688666](https://github.com/elkasaby1996-sys/coachos/actions/runs/42707688666) successfully inspected this project at `131f1bc`. Its public notices identify the precise schema differences and retained work below. The earlier uploaded run 42702256586 report was verified against GitHub's SHA-256 `064887ca5239f86975c4fdb554c1df30e7cd5927a89d9e97b33d145b76673556`. Staging has **180 of 188 migrations**, with the exact canonical prefix and eight pending migrations. These are successful inspections, not deployments. The next operation is **Supabase Staging Billing Upgrade** on `Ahmed-billing`; **do not run the empty-project installer**.
+[Upgrade run #6](https://github.com/elkasaby1996-sys/coachos/actions/runs/42792290161) successfully deployed the backend at `0bcbf6d8205eb3e370dc7ba2215b9a80bb7afd23`. Its downloaded report confirms `backend_upgraded_sandbox_disabled`, **188 of 188 migrations**, `backupVerified=true`, all 17 canonical functions deployed, and preservation of the reviewed grants and retained test work. Checkout, sales and reconciliation remain disabled. Frontend deployment, catalogue verification/activation and real sandbox payments remain pending. **Do not rerun the upgrade or empty-project installer to deploy the frontend.**
+
+Before that upgrade, [Migration Status run 42707688666](https://github.com/elkasaby1996-sys/coachos/actions/runs/42707688666) inspected this project at `131f1bc`, with **180 of 188 migrations**, the exact canonical prefix and eight pending migrations. Its public notices identify the precise schema differences and retained work below. The earlier uploaded run 42702256586 report was verified against GitHub's SHA-256 `064887ca5239f86975c4fdb554c1df30e7cd5927a89d9e97b33d145b76673556`.
 
 | Item                                | Verified result                                                                        |
 | ----------------------------------- | -------------------------------------------------------------------------------------- |
@@ -126,7 +128,7 @@ The Paddle sandbox notification destination for the corrected target is `https:/
 
 ## Install from Ahmed-billing with GitHub environment review
 
-This section documents the empty-project path. The verified current project is at migration 180, so it must use the upgrade sequence above instead.
+This section records the earlier empty-project path. The current populated project has already completed its upgrade to migration 188.
 
 The user selected GitHub's existing required `supabase-staging` environment review for this initial staging installation. The existing **Supabase Staging Empty Bootstrap** workflow now has a separate `Ahmed-billing` installation path. Its legacy main-only signed-founder job remains separate. The feature path does not need the unfinished custom signed-approval integrations.
 
@@ -169,6 +171,10 @@ Read **Initial staging installation** in the job summary or download `staging-in
 Backend installation or upgrade success verifies schema/deployment checks and configuration names. It does not validate private key values, publish Paddle catalogue mappings, enable checkout, deploy the frontend, or prove a payment works. Its only target is the corrected staging project above; production and the replacement project remain outside this operation. It does not merge `main`.
 
 Deploy the matching frontend from the tested commit to `https://repsync-staging.netlify.app`. Its build needs `VITE_SUPABASE_URL=https://dgogugyuyfourdttvwuy.supabase.co`, that project's public anon key, `VITE_BILLING_PROVIDER=paddle`, `VITE_PADDLE_ENVIRONMENT=sandbox`, and `VITE_PADDLE_SANDBOX_CLIENT_TOKEN`. Verify the staging Auth site and callback URLs when preparing the test owner. Frontend deployment and catalogue/pilot activation still need their own concrete staging execution steps; the backend upgrade does not perform them.
+
+After upgrade run #6, the user confirmed that the **repsync-staging** Netlify site still deploys `main`. In that site's **Project configuration → Build & deploy → Continuous deployment → Branches and deploy contexts**, change **Production branch** to `Ahmed-billing`. Netlify uses this setting name for the default branch of each site, including a staging site. Ensure the build environment variables above apply to this site's production deploy context, then use **Deploys → Trigger deploy → Deploy site**. The existing build command is `npm run build` and publish directory is `dist`; the SPA redirect is already in `netlify.toml`.
+
+The checkout page and customer-portal/frontend changes are on `Ahmed-billing`; 13 application files differ from `main`. A read-only check of the current entry and billing JavaScript chunks confirmed the intended Supabase project but did not find a sandbox browser token in those two chunks. This limited observation does not establish all deployed configuration. Verify the token in Netlify without sending credential values in chat. Direct catalogue reads from this cloud executor received Paddle's Cloudflare HTTP 403 block, so that request did not verify the key, products or prices. GitHub's backend upgrade report also explicitly records zero provider calls and no verified payments.
 
 ## Before merging the billing feature
 
