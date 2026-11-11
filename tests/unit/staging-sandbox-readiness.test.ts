@@ -147,6 +147,47 @@ function fixture() {
 }
 
 describe("staging sandbox readiness observations", () => {
+  it("retains redacted database diagnostics in the accountPayment failure report", async () => {
+    const f = fixture();
+    const original = f.transport.getMockImplementation()!;
+    f.transport.mockImplementation(async (url, options) => {
+      if (
+        typeof options.body === "string" &&
+        JSON.parse(options.body).query.startsWith("with account as (")
+      )
+        return Response.json(
+          {
+            code: "42501",
+            message:
+              "permission denied for function resolve_account_entitlements",
+            details: "PRIVATE-ACCOUNT-CONTEXT",
+          },
+          { status: 400 },
+        );
+      return original(url, options);
+    });
+    const result = await f.run({
+      env: {
+        ...env,
+        STAGING_PILOT_USER_ID: "00000000-0000-4000-8000-000000000099",
+      },
+    });
+    expect(result).toMatchObject({
+      status: "blocked",
+      stage: "read_test_owner_payment_status",
+      accountPayment: {
+        code: "PAYMENT_STATUS_DATABASE_ERROR",
+        httpStatus: 400,
+        diagnostic: {
+          sqlstate: "42501",
+          category: "insufficient_privilege",
+          dependency: "resolve_account_entitlements",
+        },
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("PRIVATE-ACCOUNT-CONTEXT");
+  });
+
   it("includes optional account payment observations through the same read-only transport", async () => {
     const f = fixture();
     const original = f.transport.getMockImplementation()!;
@@ -162,6 +203,7 @@ describe("staging sandbox readiness observations", () => {
               environment: "test",
               subscription: null,
               providerSubscriptions: [],
+              seatOperations: [],
               checkouts: [],
               payments: [],
               events: [],

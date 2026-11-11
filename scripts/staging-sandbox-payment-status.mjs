@@ -1,4 +1,5 @@
-// Read-only, single-account observations for real sandbox payment testing.
+// Read-only stored facts, not a runtime entitlement evaluation. Private billing
+// helpers intentionally remain unavailable to the Management API query role.
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
@@ -11,9 +12,13 @@ export function sandboxPaymentQuery(userId) {
     throw new Error("PAYMENT_STATUS_OWNER_INVALID");
   return `with account as (
     select id from public.billing_accounts where owner_user_id='${userId}'::uuid
-  ), resolved as (
-    select id,public.resolve_account_entitlements(id) as e,
-      public.billing_seat_effective_limit(id,false) as seat_limit from account
+  ), canonical as (
+    select distinct on (s.billing_account_id) s.*
+    from public.account_subscriptions s join account a on a.id=s.billing_account_id
+    where s.status<>'superseded'
+    order by s.billing_account_id,
+      (s.status in ('trialing','trial_recovery','active','past_due','grace','restricted')) desc,
+      s.created_at desc,s.id desc
   ), subscriptions as (
     select s.* from public.billing_subscriptions_v2 s join account a on a.id=s.billing_account_id
     where s.provider='paddle' and s.environment='test'
@@ -33,7 +38,7 @@ export function sandboxPaymentQuery(userId) {
   ), applied_initial as (
     select p.id from payments p
     join subscriptions s on s.id=p.subscription_id and s.billing_account_id=p.billing_account_id
-    join public.account_subscriptions a on a.id=s.account_subscription_id and a.billing_account_id=s.billing_account_id
+    join canonical a on a.id=s.account_subscription_id and a.billing_account_id=s.billing_account_id
     join checkouts c on c.id=p.checkout_id and c.billing_account_id=p.billing_account_id
       and c.completed_subscription_id=s.id and c.provider_transaction_ref=p.provider_transaction_ref
     join public.billing_evidence_v2 v on v.id=p.evidence_id and v.subscription_id=s.id
@@ -60,11 +65,25 @@ export function sandboxPaymentQuery(userId) {
     'accountCount',(select count(*)::integer from account),
     'environment',(select entitlement_environment from public.billing_runtime_policy where id=1),
     'subscription',(select jsonb_build_object(
-      'kind',e#>>'{subscription,kind}','status',e#>>'{subscription,effectiveStatus}',
-      'plan',e#>>'{subscription,planKey}','includedCoachSeats',e#>'{limits,includedCoachSeats}',
-      'effectiveCoachSeatLimit',seat_limit,
-      'currentPeriodEndsAt',e#>>'{subscription,currentPeriodEndsAt}'
-    ) from resolved),
+      'kind',a.subscription_kind,'status',a.status,'plan',p.plan_key,
+      'includedCoachSeats',case when a.subscription_kind='trial' then t.included_coach_seats else p.included_coach_seats end,
+      'maxCoachSeats',case when a.subscription_kind='trial' then t.max_coach_seats else p.max_coach_seats end,
+      'approvedExtraSeats',s.approved_additional_coach_seats,
+      'storedCoachSeatLimit',case when a.subscription_kind='paid' and s.id is not null
+        then least(p.max_coach_seats,p.included_coach_seats+s.approved_additional_coach_seats) end,
+      'currentPeriodEndsAt',a.current_period_ends_at,'cancelAtPeriodEnd',a.cancel_at_period_end
+    ) from canonical a
+    left join public.commercial_plan_versions p on p.id=a.plan_version_id
+    left join public.commercial_trial_policy_versions t on t.id=a.trial_policy_version_id
+    left join subscriptions s on s.account_subscription_id=a.id and s.shadow_status='current'),
+    'seatOperations',coalesce((select jsonb_agg(jsonb_build_object(
+      'status',o.status,'timing',o.effective_timing,
+      'sourceExtraSeats',o.source_additional_seats,'targetExtraSeats',o.target_additional_seats,
+      'effectiveAt',o.effective_at,'completedAt',o.completed_at,
+      'error',case when o.error_code ~ '^[A-Z][A-Z0-9_]{0,95}$' then o.error_code when o.error_code is not null then 'UNRECOGNIZED' else null end
+    ) order by o.created_at,o.id) from public.billing_operations_v2 o
+      join subscriptions s on s.id=o.subscription_id and s.billing_account_id=o.billing_account_id
+      where o.operation_kind='seat_quantity' and o.provider='paddle' and o.environment='test'),'[]'::jsonb),
     'providerSubscriptions',coalesce((select jsonb_agg(jsonb_build_object(
       'status',s.provider_status,'reconciliation',s.reconciliation_status,'shadow',s.shadow_status,
       'linked',s.account_subscription_id is not null,'approvedExtraSeats',s.approved_additional_coach_seats,
@@ -104,10 +123,26 @@ const stateSchema = z.strictObject({
       status: safeWord,
       plan: z.enum(["launch", "growth", "scale", "custom"]).nullable(),
       includedCoachSeats: count.nullable(),
-      effectiveCoachSeatLimit: count.nullable(),
+      maxCoachSeats: count.nullable(),
+      approvedExtraSeats: count.nullable(),
+      storedCoachSeatLimit: count.nullable(),
+      cancelAtPeriodEnd: z.boolean(),
       currentPeriodEndsAt: z.string().datetime({ offset: true }).nullable(),
     })
     .nullable(),
+  seatOperations: z
+    .array(
+      z.strictObject({
+        status: safeWord,
+        timing: z.enum(["immediate", "period_end"]),
+        sourceExtraSeats: count,
+        targetExtraSeats: count,
+        effectiveAt: z.string().datetime({ offset: true }).nullable(),
+        completedAt: z.string().datetime({ offset: true }).nullable(),
+        error: errorCode,
+      }),
+    )
+    .max(100),
   providerSubscriptions: z
     .array(
       z.strictObject({
@@ -157,6 +192,8 @@ export function summarizeSandboxPayment(value) {
     current[0].linked;
   return {
     ...s,
+    observationBasis: "stored_records",
+    runtimeEntitlementsEvaluated: false,
     subscriptionPaymentVerified,
     outcome: subscriptionPaymentVerified
       ? "paid_subscription_active"
@@ -168,6 +205,47 @@ export function summarizeSandboxPayment(value) {
     // This observation does not certify renewals, later seats or recovery flows.
     fullPaymentSuiteVerified: false,
   };
+}
+
+export async function paymentReadDiagnostic(response) {
+  const diagnostic = { category: "http_error" };
+  try {
+    const body = await readBoundedStagingJson(response, 16 * 1024);
+    if (!body || typeof body !== "object" || Array.isArray(body))
+      return diagnostic;
+    const message = typeof body.message === "string" ? body.message : "";
+    const structured =
+      typeof body.code === "string" ? body.code : body.sqlstate;
+    const sqlstate = /^[0-9A-Z]{5}$/.test(structured ?? "")
+      ? structured
+      : /\bERROR:\s+([0-9A-Z]{5}):/.exec(message)?.[1];
+    // Only recognized SQLSTATEs are published: arbitrary five-character strings
+    // from an untrusted response could themselves contain private information.
+    const categories = {
+      42501: "insufficient_privilege",
+      25006: "read_only_violation",
+      "42P01": "undefined_table",
+      42703: "undefined_column",
+      42883: "undefined_function",
+      21000: "cardinality_violation",
+      57014: "query_canceled",
+      42601: "syntax_error",
+    };
+    if (Object.hasOwn(categories, sqlstate)) {
+      diagnostic.category = categories[sqlstate];
+      diagnostic.sqlstate = sqlstate;
+      if (sqlstate === "42501") {
+        const dependency =
+          /permission denied for function (?:public\.)?(resolve_account_entitlements|billing_seat_effective_limit)(?:\(|\s|$)/.exec(
+            message,
+          )?.[1];
+        if (dependency) diagnostic.dependency = dependency;
+      }
+    } else if (sqlstate) diagnostic.category = "database_error";
+  } catch {
+    /* Malformed, non-JSON, oversized and unreadable bodies stay private. */
+  }
+  return diagnostic;
 }
 
 export async function inspectSandboxPayment({
@@ -206,7 +284,12 @@ export async function inspectSandboxPayment({
     );
     if (!response.ok) {
       report.httpStatus = response.status;
-      throw new Error("PAYMENT_STATUS_READ_FAILED");
+      report.diagnostic = await paymentReadDiagnostic(response);
+      throw new Error(
+        report.diagnostic.sqlstate
+          ? "PAYMENT_STATUS_DATABASE_ERROR"
+          : "PAYMENT_STATUS_READ_FAILED",
+      );
     }
     const rows = await readBoundedStagingJson(response);
     if (!Array.isArray(rows) || rows.length !== 1)
@@ -218,6 +301,7 @@ export async function inspectSandboxPayment({
       "PAYMENT_STATUS_TARGET_INVALID",
       "PAYMENT_STATUS_OWNER_INVALID",
       "SUPABASE_ACCESS_TOKEN_MISSING",
+      "PAYMENT_STATUS_DATABASE_ERROR",
       "PAYMENT_STATUS_READ_FAILED",
       "PAYMENT_STATUS_RESPONSE_INVALID",
     ].includes(error.message)

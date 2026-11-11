@@ -25,9 +25,21 @@ function paid() {
       status: "active",
       plan: "growth",
       includedCoachSeats: 2,
-      effectiveCoachSeatLimit: 2,
+      maxCoachSeats: 20,
+      approvedExtraSeats: 0,
+      storedCoachSeatLimit: 2,
+      cancelAtPeriodEnd: false,
       currentPeriodEndsAt: "2026-12-10T12:00:00+00:00",
     },
+    seatOperations: [] as Array<{
+      status: string;
+      timing: string;
+      sourceExtraSeats: number;
+      targetExtraSeats: number;
+      effectiveAt: string | null;
+      completedAt: string | null;
+      error: string | null;
+    }>,
     providerSubscriptions: [
       {
         status: "active",
@@ -88,12 +100,33 @@ describe("single-owner sandbox payment inspection", () => {
   });
   it("reports later seat capacity without claiming the whole payment suite passed", () => {
     const s = paid();
-    s.subscription.effectiveCoachSeatLimit = 3;
+    s.subscription.storedCoachSeatLimit = 3;
+    s.subscription.approvedExtraSeats = 1;
+    s.seatOperations = [
+      {
+        status: "scheduled",
+        timing: "period_end",
+        sourceExtraSeats: 1,
+        targetExtraSeats: 0,
+        effectiveAt: "2026-12-11T12:00:00+00:00",
+        completedAt: null,
+        error: null,
+      },
+    ];
     s.providerSubscriptions[0].approvedExtraSeats = 1;
     s.payments.push({ kind: "seat_increase", count: 1 });
     expect(summarizeSandboxPayment(s)).toMatchObject({
       subscriptionPaymentVerified: true,
-      subscription: { effectiveCoachSeatLimit: 3 },
+      subscription: { storedCoachSeatLimit: 3, approvedExtraSeats: 1 },
+      observationBasis: "stored_records",
+      runtimeEntitlementsEvaluated: false,
+      seatOperations: [
+        {
+          status: "scheduled",
+          targetExtraSeats: 0,
+          effectiveAt: "2026-12-11T12:00:00+00:00",
+        },
+      ],
       fullPaymentSuiteVerified: false,
     });
   });
@@ -102,6 +135,15 @@ describe("single-owner sandbox payment inspection", () => {
       ...paid(),
       accountCount: 0,
       subscription: null,
+      seatOperations: [] as Array<{
+        status: string;
+        timing: string;
+        sourceExtraSeats: number;
+        targetExtraSeats: number;
+        effectiveAt: string | null;
+        completedAt: string | null;
+        error: string | null;
+      }>,
       providerSubscriptions: [],
       checkouts: [],
       payments: [],
@@ -181,6 +223,98 @@ describe("single-owner sandbox payment inspection", () => {
       expect(r.status).toBe("blocked");
       expect(JSON.stringify(r)).not.toContain(credential);
     }
+  });
+  it.each(["resolve_account_entitlements", "billing_seat_effective_limit"])(
+    "classifies permission failure for %s without sharing raw context",
+    async (dependency) => {
+      for (const body of [
+        {
+          code: "42501",
+          message: `permission denied for function ${dependency}`,
+          details: credential,
+          query: sandboxPaymentQuery(uid),
+        },
+        {
+          message: `Failed to run sql query: ERROR: 42501: permission denied for function public.${dependency}(uuid)\nCONTEXT: ${uid} ${credential}`,
+        },
+      ]) {
+        const r = await inspectSandboxPayment({
+          env,
+          transport: async () => Response.json(body, { status: 400 }),
+        });
+        expect(r).toMatchObject({
+          status: "blocked",
+          code: "PAYMENT_STATUS_DATABASE_ERROR",
+          httpStatus: 400,
+          diagnostic: {
+            category: "insufficient_privilege",
+            sqlstate: "42501",
+            dependency,
+          },
+        });
+        expect(JSON.stringify(r)).not.toContain(uid);
+        expect(JSON.stringify(r)).not.toContain(credential);
+        expect(JSON.stringify(r)).not.toContain("select");
+      }
+    },
+  );
+  it.each([
+    ["42P01", "undefined_table"],
+    ["42703", "undefined_column"],
+    ["25006", "read_only_violation"],
+    ["57014", "query_canceled"],
+    ["21000", "cardinality_violation"],
+  ])("retains safe SQLSTATE %s", async (code, category) => {
+    const r = await inspectSandboxPayment({
+      env,
+      transport: async () =>
+        Response.json(
+          { code, message: `${uid} ${credential}` },
+          { status: 400 },
+        ),
+    });
+    expect(r.diagnostic).toEqual({ category, sqlstate: code });
+    expect(JSON.stringify(r)).not.toContain(credential);
+  });
+  it("bounds and redacts malformed, non-JSON, oversized and unrecognized errors", async () => {
+    for (const response of [
+      new Response(`${credential} ${uid}`, { status: 502 }),
+      new Response("{", {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      }),
+      Response.json({ code: "SECRET", message: credential }, { status: 400 }),
+      Response.json(
+        { code: "42501", message: "x".repeat(17000) + uid },
+        { status: 400 },
+      ),
+      Response.json({ message: `42501 ${uid} ${credential}` }, { status: 400 }),
+      Response.json(
+        {
+          code: "42501",
+          message: `permission denied for function ${credential}`,
+        },
+        { status: 400 },
+      ),
+    ]) {
+      const r = await inspectSandboxPayment({
+        env,
+        transport: async () => response,
+      });
+      expect(r.status).toBe("blocked");
+      expect(JSON.stringify(r)).not.toContain(uid);
+      expect(JSON.stringify(r)).not.toContain(credential);
+      expect(r.diagnostic).not.toHaveProperty("dependency");
+    }
+  });
+  it("projects stored records without executing private entitlement helpers", () => {
+    const query = sandboxPaymentQuery(uid);
+    expect(query).not.toMatch(
+      /public\.(resolve_account_entitlements|billing_seat_effective_limit)\s*\(/,
+    );
+    expect(query).toContain("public.account_subscriptions");
+    expect(query).toContain("public.billing_operations_v2");
+    expect(query).not.toMatch(/\b(grant|revoke|update|insert|delete)\b/i);
   });
   it("routes the optional owner through the existing protected inspect job", () => {
     const w = createRequire(import.meta.url)("js-yaml").load(
