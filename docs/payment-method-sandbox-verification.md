@@ -125,3 +125,11 @@ this paid period violates RepSync's lifecycle boundary contract. Neither a
 declined card-verification attempt nor Paddle's frontend recovery simulation
 would prove debt recovery. Keep the successful test instrument and paid records;
 arrange a separately reviewed renewal-time test instead of fabricating history.
+
+The November 12 follow-up rechecked the existing fixture, authenticated owner
+RPC, current official Paddle controls and deployed period guards. The next
+renewal remains **`2026-12-12T10:52:51.618914Z` (UTC)**. Genuine recovery is still
+unverified: supported acceleration changes a billing boundary that this
+integration cannot yet authorize. See the [exact blocker and renewal-time
+procedure](failed-renewal-sandbox-verification.md), including the provider/server
+evidence and duplicate-collection checks required to resume.
