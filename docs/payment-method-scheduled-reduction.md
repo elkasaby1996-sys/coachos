@@ -127,3 +127,12 @@ plans remain bounded to the 188 baseline and cannot authorize a newer schema.
 Read-only inventory reports the approved patch separately; it does not infer
 hash/schema verification from migration versions alone. New installation or
 upgrade plans beyond that historical baseline need their own complete plan.
+
+The reviewed patch run `43209598190` subsequently passed on staging. The retained
+attempt completed through the scoped reconciliation, and a fresh real sandbox
+checkout completed automatically through the deployed webhook path. Both have
+processed authenticated zero-authorization events and no financial application.
+Close/explicit-refresh/reopen also passed with an unchanged preparation/dispatch.
+Original account/subscription/billing/reduction hashes remain unchanged. This
+verifies active, clean-subscription payment-method updates; scheduled-reduction
+coexistence and genuine failed-renewal recovery are not certified by these tests.

@@ -89,12 +89,34 @@ lockout fix on the hosted app. Closure itself did not complete the preparation.
 
 Completing reopened Paddle checkout with the official sandbox Visa debit card
 showed provider success. Server confirmation exposed the zero-authorization
-completion defect described in `payment-method-scheduled-reduction.md`. Until
-the reviewed SQL patch is applied and that exact signed event/preparation is
-confirmed processed/completed, this is **not a passed server-confirmed update**.
-Use readiness mode `repair_payment_method_completion`, the existing synthetic
-owner as `fixture_user_id`, the original owner as `pilot_user_id`, and the exact
-reviewed commit. Do not rerun account preparation or create another checkout.
+completion defect described in `payment-method-scheduled-reduction.md`.
+
+After the retained required review, patch run
+[43209598190](https://github.com/elkasaby1996-sys/coachos/actions/runs/43209598190)
+passed on runtime commit `be8a53246e9eb1f24807ae4e862540ca2773e3f2`. Staging has
+the exact 189th migration and expected function definition/ACLs. The reviewed
+normal reconciliation completed that exact retained event/preparation at
+12:33:07 UTC, with the initial-payment fingerprint and original account unchanged.
+The original provider-success attempt is now **server-confirmed**.
+
+A fresh hosted update then verified the deployed automatic webhook path. An
+explicit billing refresh permitted checkout. Closing it, waiting for bounded
+verification, explicitly refreshing and reopening reused one new preparation
+and dispatch: the full preparation-row digest was identical before closure,
+after closure and after retry. Both app calls returned HTTP 200, `update_only`.
+Completing with the official valid `4242` test card displayed Paddle success;
+its authenticated completion event was processed and its exact preparation
+completed automatically at 12:44:09 UTC, with no manual replay. Both distinct
+updates are completed, no preparations remain open, and the unique initial
+financial payment remains unchanged. **Payment-method update and close/retry
+scenarios passed in staging.** Browser close/refresh alone was never counted as
+proof.
+
+The original owner's complete retained fingerprint still matches the reviewed
+setup report, including its scheduled reduction. Its scheduled-change eligibility
+restriction remains intentional. Do not rerun fixture preparation or the exact
+patch job; the fixture exists and the migration is applied. Keep their reports
+as historical evidence.
 
 Genuine failed-renewal recovery remains **blocked** for immediate execution. The
 separate subscription is paid and has no failed recurring obligation. The
