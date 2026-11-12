@@ -21,6 +21,15 @@ import {
 import { hash } from "./billing-retirement-release.mjs";
 
 export const FROZEN_PAYLOAD = "8af05aa48cbccca694b2da447d77f8977ec3401a";
+// Bounded frontend-only amendment. Backend/schema/configuration stay frozen.
+// A new frontend edit must be reviewed and repinned here; never accept a path
+// allowlist without verifying its exact normalized contents.
+export const PAYMENT_METHOD_UI_AMENDMENT = Object.freeze({
+  "src/features/billing/billing-management-panel.tsx":
+    "d3712ecff7d70a8c709f2b30ad28e2e95833580d7ea78f84896bf718873e2cc7",
+  "src/features/billing/use-payment-method-update.ts":
+    "b79be20efc5f064ba05aedeb017c4abfec2448c8ab3578b6bb5028e129b40cd9",
+});
 export const TARGETS = Object.freeze({
   baseline: 184,
   retirement: 185,
@@ -83,10 +92,17 @@ export function payloadFingerprint(root = process.cwd()) {
     git(["merge-base", FROZEN_PAYLOAD, "HEAD"]) === FROZEN_PAYLOAD,
     "FROZEN_PAYLOAD_ANCESTRY",
   );
-  ensure(
-    git(["diff", FROZEN_PAYLOAD, "--", ...protectedPaths]) === "",
-    "FROZEN_PAYLOAD_DRIFT",
-  );
+  const changed = git([
+    "diff",
+    "--name-only",
+    FROZEN_PAYLOAD,
+    "--",
+    ...protectedPaths,
+  ])
+    .split("\n")
+    .filter(Boolean)
+    .sort();
+  verifyPaymentMethodUiAmendment(root, changed);
   ensure(
     git([
       "ls-files",
@@ -105,9 +121,29 @@ export function payloadFingerprint(root = process.cwd()) {
     .map((path) => ({ path, sha256: hash(text(join(root, path))) }));
   return {
     frozenCommit: FROZEN_PAYLOAD,
+    amendments: changed.map((path) => ({
+      path,
+      sha256: PAYMENT_METHOD_UI_AMENDMENT[path],
+    })),
     digest: hash(canonical(records)),
     records,
   };
+}
+export function verifyPaymentMethodUiAmendment(root, changed) {
+  // Either the original frozen payload or the complete pinned amendment.
+  if (changed.length === 0) return;
+  ensure(
+    canonical(changed) ===
+      canonical(Object.keys(PAYMENT_METHOD_UI_AMENDMENT).sort()),
+    "FROZEN_PAYLOAD_DRIFT",
+  );
+  for (const path of changed) {
+    verifyPathBoundary(root, join(root, path));
+    ensure(
+      hash(text(join(root, path))) === PAYMENT_METHOD_UI_AMENDMENT[path],
+      "FROZEN_PAYLOAD_DRIFT",
+    );
+  }
 }
 export function migrationArtifact(manifest, stage) {
   ensure(Object.hasOwn(TARGETS, stage), "ARBITRARY_MIGRATION_TARGET_REJECTED");

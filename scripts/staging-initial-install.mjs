@@ -219,6 +219,7 @@ export async function runInitialInstall({
     report.plan = {
       origin: INSTALL_SCOPE.origin,
       payloadCommit: identity.payload.frozenCommit,
+      payloadAmendments: identity.payload.amendments,
       payloadDigest: identity.payload.digest,
       migrationCount: migrations.length,
       firstMigration: migrations[0].filename,

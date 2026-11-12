@@ -7,6 +7,77 @@ test.describe.configure({ mode: "parallel" });
 test.afterEach(async ({ context }) => {
   await context.unrouteAll({ behavior: "wait" });
 });
+test("scheduled reduction explains the payment-method restriction without provider calls", async ({
+  page,
+  context,
+}) => {
+  const f = await paymentMethodFixture(page, context, "scheduled-reduction");
+  f.fixture.state = {
+    available: false,
+    reason: "not_available",
+    maySettleExistingBalance: false,
+  };
+  await context.route(
+    "**/rest/v1/rpc/get_my_billing_seat_quantity_state",
+    (route) =>
+      route.fulfill({
+        json: {
+          provider: "paddle",
+          available: false,
+          canCancel: false,
+          blockingOperation: null,
+          summary: {
+            planKey: "growth",
+            cadence: "monthly",
+            includedSeats: 2,
+            currentAdditionalSeats: 1,
+            maximumSeats: 10,
+            maximumAdditionalSeats: 8,
+            currentEffectiveLimit: 3,
+            actual: 1,
+            pending: 0,
+            reserved: 0,
+            committed: 1,
+            unitPriceMinor: 1200,
+            currentTotalMinor: 7100,
+            growthLimit: 2,
+            manualReview: false,
+          },
+          operation: {
+            id: "00000000-0000-4000-8000-000000000001",
+            status: "scheduled",
+            direction: "reduction",
+            targetAdditionalSeats: 0,
+            effectiveAt: "2026-12-10T22:23:38.061119Z",
+            errorCode: null,
+          },
+        },
+      }),
+  );
+  await gotoBilling(page);
+  await expect(
+    page.getByText("RepSync pauses payment-method updates", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Update payment method", exact: true }),
+  ).toBeDisabled();
+  const section = page.getByText("RepSync pauses payment-method updates", {
+    exact: false,
+  });
+  await expect(section.locator("time")).toHaveAttribute(
+    "datetime",
+    "2026-12-10T22:23:38.061119Z",
+  );
+  expect(f.fixture.requests).toBe(0);
+  await page
+    .getByRole("button", { name: "Refresh billing", exact: true })
+    .click();
+  await expect(section).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Update payment method", exact: true }),
+  ).toBeDisabled();
+  expect(f.fixture.requests).toBe(0);
+});
 test("owner sees payment and invoice actions without portal-return polling", async ({
   page,
   context,

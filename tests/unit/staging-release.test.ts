@@ -3,7 +3,7 @@ import {
   timingTestReviewPolicy,
   signTimingFixture,
 } from "../helpers/staging-timing-fixture";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import {
   readFileSync,
   writeFileSync,
@@ -131,6 +131,11 @@ function lifecycleAuthority(kind: string, account: string) {
 }
 const identity = releaseIdentity();
 const NOW = Date.now();
+// Evidence in this file is bound to NOW. Real-adapter tests also consult Date,
+// so a slow runner must not expire fixtures merely by reaching later cases.
+// Explicit expiry/race tests still advance this clock themselves.
+beforeEach(() => vi.setSystemTime(NOW));
+afterEach(() => vi.useRealTimers());
 const iso = (offset = 0) => new Date(NOW + offset).toISOString();
 const root = process.cwd();
 const context = {

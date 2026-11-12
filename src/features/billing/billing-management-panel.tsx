@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/button";
 import type { AccountSubscriptionSummary } from "../account-entitlements/contracts";
 import {
   usePaymentMethodState,
+  usePaymentMethodSeatState,
   usePaymentMethodUpdateMutation,
 } from "./use-payment-method-update";
 import {
@@ -71,6 +72,9 @@ export function BillingManagementPanel({
   refresh: () => Promise<unknown>;
 }) {
   const state = usePaymentMethodState(owner);
+  const seats = usePaymentMethodSeatState(
+    owner && state.data?.available === false,
+  );
   const mutation = usePaymentMethodUpdateMutation();
   const [phase, setPhase] = useState<Phase>("idle");
   const [refreshFailed, setRefreshFailed] = useState(false);
@@ -84,6 +88,9 @@ export function BillingManagementPanel({
       paymentMethodBrowserRegistry.subscribe((signal) => {
         if (owner && launched.current) {
           setCheckoutFailed(signal === "failed");
+          // A failure alone does not prove that the checkout has closed.
+          // Accept the first close/completion, then ignore late SDK callbacks.
+          if (signal !== "failed") launched.current = false;
           setPhase(signal === "failed" ? "pending" : "verifying");
         }
       }),
@@ -141,16 +148,35 @@ export function BillingManagementPanel({
     };
   }, [owner, phase, refetchState, refresh]);
   const eligible = Boolean(owner && state.data?.available && !state.isError);
+  const canOpen = phase === "idle" || phase === "refreshed";
+  const reduction =
+    !state.isError &&
+    !seats.isError &&
+    seats.data?.provider === "paddle" &&
+    seats.data.summary &&
+    !seats.data.summary.manualReview &&
+    seats.data.operation?.status === "scheduled" &&
+    seats.data.operation.direction === "reduction" &&
+    seats.data.operation.errorCode === null &&
+    seats.data.operation.targetAdditionalSeats <
+      seats.data.summary.currentAdditionalSeats
+      ? seats.data.operation
+      : null;
+  const reductionDate = reduction?.effectiveAt
+    ? new Date(reduction.effectiveAt)
+    : null;
   async function open() {
-    if (!eligible || busy.current || phase !== "idle") return;
+    if (!eligible || busy.current || launched.current || !canOpen) return;
     busy.current = true;
     launched.current = true;
+    setRefreshFailed(false);
+    setCheckoutFailed(false);
+    setPhase("checkout");
     wasPastDue.current = Boolean(
       state.data?.available && state.data.status === "past_due",
     );
     try {
       await mutation.mutateAsync();
-      setPhase((current) => (current === "idle" ? "checkout" : current));
     } catch {
       launched.current = false;
       setPhase("pending");
@@ -159,13 +185,19 @@ export function BillingManagementPanel({
     }
   }
   async function manualRefresh() {
-    if (busy.current) return;
+    if (busy.current || launched.current || phase === "verifying") return;
     busy.current = true;
     try {
       const [p] = await Promise.all([refetchState(), refresh()]);
+      if (state.data?.available === false) await seats.refetch();
       setRefreshFailed(Boolean(p.isError));
-      if (paymentMethodRecoveryConfirmed(wasPastDue.current, p.data))
+      // A fresh positive RPC permits a new action or reuse of the server's
+      // ready preparation. Never retry on cached data or a refresh error.
+      // This says nothing about completion of an active update-only checkout.
+      if (!p.isError && p.data?.available) {
+        setCheckoutFailed(false);
         setPhase("refreshed");
+      }
     } catch {
       setRefreshFailed(true);
     } finally {
@@ -195,7 +227,7 @@ export function BillingManagementPanel({
       {subscription?.kind === "paid" &&
       !["expired", "canceled"].includes(subscription.effectiveStatus) ? (
         <Button
-          disabled={!eligible || mutation.isPending || phase !== "idle"}
+          disabled={!eligible || mutation.isPending || !canOpen}
           onClick={() => void open()}
         >
           {mutation.isPending
@@ -205,8 +237,30 @@ export function BillingManagementPanel({
       ) : null}
       {!eligible && !state.isLoading ? (
         <p className="text-sm text-muted-foreground">
-          Payment-method update is unavailable. Refresh billing or contact
-          support.
+          {reduction ? (
+            <>
+              A seat reduction is scheduled
+              {reductionDate && Number.isFinite(reductionDate.getTime()) ? (
+                <>
+                  {" for "}
+                  <time dateTime={reduction!.effectiveAt!}>
+                    {new Intl.DateTimeFormat(undefined, {
+                      dateStyle: "long",
+                      timeStyle: "short",
+                    }).format(reductionDate)}
+                  </time>
+                </>
+              ) : null}
+              . RepSync pauses payment-method updates while this change is
+              pending. Refresh billing after it takes effect, or contact support
+              for help sooner. Other billing checks may also need to resolve.
+            </>
+          ) : (
+            <>
+              Payment-method update is unavailable. Refresh billing or contact
+              support.
+            </>
+          )}
         </p>
       ) : null}
       {phase === "checkout" ? (
@@ -239,7 +293,12 @@ export function BillingManagementPanel({
       ) : null}
       <Button
         variant="secondary"
-        disabled={mutation.isPending || phase === "verifying"}
+        disabled={
+          mutation.isPending ||
+          phase === "checkout" ||
+          phase === "verifying" ||
+          launched.current
+        }
         onClick={() => void manualRefresh()}
       >
         Refresh billing

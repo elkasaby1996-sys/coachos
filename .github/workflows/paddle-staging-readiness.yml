@@ -27,6 +27,12 @@ on:
       - tests/unit/staging-sandbox-readiness.test.ts
       - tests/unit/staging-sandbox-pilot.test.ts
       - tests/unit/staging-sandbox-payment-status.test.ts
+      - scripts/staging-release-artifacts.mjs
+      - src/features/billing/billing-management-panel.tsx
+      - src/features/billing/use-payment-method-update.ts
+      - tests/unit/billing-management-interactions.test.ts
+      - tests/unit/billing-management-panel.test.ts
+      - tests/unit/staging-payment-method-ui-amendment.test.ts
 
 permissions:
   contents: read
@@ -51,7 +57,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Validate immutable payload and catalogue inspection
-        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs && npx vitest run tests/unit/staging-sandbox-readiness.test.ts tests/unit/staging-sandbox-pilot.test.ts tests/unit/staging-sandbox-payment-status.test.ts tests/unit/paddle-catalogue-verifier.test.ts tests/unit/staging-billing-status.test.ts
+        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs && npx vitest run tests/unit/staging-sandbox-readiness.test.ts tests/unit/staging-sandbox-pilot.test.ts tests/unit/staging-sandbox-payment-status.test.ts tests/unit/paddle-catalogue-verifier.test.ts tests/unit/staging-billing-status.test.ts tests/unit/billing-management-interactions.test.ts tests/unit/billing-management-panel.test.ts tests/unit/staging-payment-method-ui-amendment.test.ts
       - run: npm run lint && npm run format
 
   catalogue:

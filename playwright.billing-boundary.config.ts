@@ -10,6 +10,7 @@ export default defineConfig({
     "**/paddle-plan-change.spec.ts",
     "**/paddle-coach-seats.spec.ts",
     "**/paddle-payment-method.spec.ts",
+    "**/billing-management.spec.ts",
   ],
   use: { ...checkout.use, trace: "off", video: "off", screenshot: "off" },
   webServer: {

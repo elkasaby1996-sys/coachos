@@ -336,6 +336,7 @@ export async function runPopulatedUpgrade({
       identity = source.identity;
     report.commit = source.commit;
     report.payloadCommit = identity.payload.frozenCommit;
+    report.payloadAmendments = identity.payload.amendments;
     report.plan = {
       supportedStartingMigrations: [
         180, 181, 182, 183, 184, 185, 186, 187, 188,

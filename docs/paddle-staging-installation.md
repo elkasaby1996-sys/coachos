@@ -1,5 +1,12 @@
 # Paddle staging deployment
 
+For the November 12 frontend-only billing correction, follow
+[the payment-method reduction diagnosis and staging plan](payment-method-scheduled-reduction.md).
+The original backend freeze remains intact, with an exact two-file frontend
+amendment reported by installation/upgrade plans. No backend upgrade, migration,
+pilot activation or checkout attempt is needed for that correction. The
+payment-method action remains guarded during the existing scheduled reduction.
+
 The selected order is `Ahmed-billing` → staging installation → real Paddle sandbox tests → reviewed merge into `main`.
 
 ## Current target and next run

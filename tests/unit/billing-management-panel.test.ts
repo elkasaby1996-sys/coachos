@@ -3,13 +3,20 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import type { AccountSubscriptionSummary } from "../../src/features/account-entitlements/contracts";
 import type { PaymentMethodState } from "../../src/features/billing/payment-method-contracts";
+import type { SeatQuantityState } from "../../src/features/billing/seat-quantity-contracts";
 const mocks = vi.hoisted(() => ({
   subscription: {} as AccountSubscriptionSummary,
   state: {} as PaymentMethodState,
+  seats: undefined as SeatQuantityState | undefined,
+  seatError: false,
 }));
 vi.mock("../../src/features/billing/use-payment-method-update", () => ({
   usePaymentMethodState: () => ({ data: mocks.state, refetch: vi.fn() }),
   usePaymentMethodUpdateMutation: () => ({ isPending: false }),
+  usePaymentMethodSeatState: () => ({
+    data: mocks.seats,
+    isError: mocks.seatError,
+  }),
 }));
 import { BillingManagementPanel } from "../../src/features/billing/billing-management-panel";
 function render(owner = true) {
@@ -22,6 +29,8 @@ function render(owner = true) {
   );
 }
 beforeEach(() => {
+  mocks.seats = undefined;
+  mocks.seatError = false;
   mocks.subscription = {
     kind: "paid",
     effectiveStatus: "active",
@@ -90,4 +99,37 @@ describe("RepSync billing management", () => {
     );
   });
   it("nonowner has no panel", () => expect(render(false)).toBe(""));
+  it("explains a pending reduction without advertising eligibility or cancellation", () => {
+    mocks.state = {
+      available: false,
+      reason: "not_available",
+      maySettleExistingBalance: false,
+    };
+    mocks.seats = {
+      provider: "paddle",
+      available: false,
+      summary: { currentAdditionalSeats: 1, manualReview: false },
+      operation: {
+        id: "synthetic",
+        status: "scheduled",
+        direction: "reduction",
+        targetAdditionalSeats: 0,
+        effectiveAt: "2026-12-10T22:23:38.061119Z",
+        errorCode: null,
+      },
+    } as SeatQuantityState;
+    const html = render();
+    expect(html).toContain("RepSync pauses payment-method updates");
+    expect(html).toContain('dateTime="2026-12-10T22:23:38.061119Z"');
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Update payment method/);
+    expect(html).not.toContain("Cancel reduction");
+    mocks.seatError = true;
+    expect(render()).not.toContain("A seat reduction is scheduled");
+    expect(render()).toContain("Payment-method update is unavailable");
+    mocks.seatError = false;
+    mocks.seats.operation!.status = "ambiguous";
+    expect(render()).not.toContain("A seat reduction is scheduled");
+    mocks.seats.operation!.status = "completed";
+    expect(render()).not.toContain("A seat reduction is scheduled");
+  });
 });
