@@ -57,7 +57,11 @@ Local database tests cover both realms, every plan/cadence, supported seat quant
 
 Before live sales, complete real sandbox checkout, renewal, failed-payment recovery, invoice, seat proration, cancellation, and retry tests, followed by a controlled live purchase on the approved domain. Verify taxes, receipts, notification delivery, and entitlement changes.
 
-Existing limits remain: plan changes require no additional seats; scheduled plan/seat reductions cannot be undone through RepSync; payment-method updates wait for conflicting/uncertain operations to resolve. Seat reductions take effect at renewal; increases require confirmed payment. Portal cancellation follows Paddle's confirmation flow and paid-period access rules. Subscription resume is not exposed as a RepSync action.
+Existing limits remain: plan changes require no additional seats; scheduled plan/seat reductions cannot be undone through RepSync; payment-method updates wait for conflicting/uncertain operations to resolve. Seat reductions take effect at renewal; increases require confirmed payment. Portal cancellation follows Paddle's confirmation flow and paid-period access rules. [Scheduling and undoing a future cancellation](cancellation-sandbox-verification.md) passed on the hosted sandbox portal, including automatic server processing and continued access. A separate custom subscription-resume action is not exposed by RepSync; portal **Don’t cancel** is not reinstatement of an already canceled subscription.
+
+Current verification status and remaining release gates are recorded in the
+[billing release roadmap](billing-release-roadmap.md), including the limits of
+the [read-only historical renewal audit](historical-renewal-readonly-audit.md).
 
 If a provider request may have succeeded, inspect the retained operation and provider transaction before starting another charge. Disable new checkout during an incident while preserving reconciliation and financial history.
 
