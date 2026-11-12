@@ -33,9 +33,10 @@ const paths = Object.keys(PAYMENT_METHOD_UI_AMENDMENT).sort();
 describe("bounded payment-method frontend release amendment", () => {
   it("binds the current real payload and advertises only the two pinned frontend files", () => {
     const payload = payloadFingerprint();
-    expect(payload.amendments.map((item) => item.path)).toEqual(paths);
+    const ui = payload.amendments.filter((item) => paths.includes(item.path));
+    expect(ui.map((item) => item.path)).toEqual(paths);
     expect(payload.records.filter((item) => paths.includes(item.path))).toEqual(
-      payload.amendments,
+      ui,
     );
   });
   it("rejects arbitrary backend drift and partial amendments", () => {

@@ -12,6 +12,7 @@ import {
   BILLING_FUNCTIONS,
   CONFIGURATION_CLASSES,
   JWT_CONTRACTS,
+  BILLING_APPROVED_PATCH_MIGRATIONS,
 } from "../../scripts/billing-deployment-contract.mjs";
 
 const manifest = JSON.parse(
@@ -82,6 +83,28 @@ function fixture() {
 }
 
 describe("read-only staging billing inventory", () => {
+  it("recognizes only the approved patch suffix while preserving historical baseline evidence", async () => {
+    const f = fixture();
+    f.state.versions = [
+      ...versions,
+      ...BILLING_APPROVED_PATCH_MIGRATIONS.map((m) => ({
+        version: m.filename.slice(0, 14),
+      })),
+    ];
+    expect((await f.run()).migrations).toMatchObject({
+      appliedCount: 189,
+      expectedCount: 188,
+      appliedPatchCount: 1,
+      matchesApprovedVersionPrefix: true,
+      pending: [],
+    });
+    f.state.versions.push({ version: "20990101000000" });
+    expect((await f.run()).migrations).toMatchObject({
+      matchesApprovedVersionPrefix: false,
+      appliedPatchCount: null,
+      pending: null,
+    });
+  });
   it.each([
     {
       project: STAGING_PROJECT,

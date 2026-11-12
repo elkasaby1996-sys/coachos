@@ -10,6 +10,7 @@ import {
   SECRET_NAMES,
   JWT_CONTRACTS,
   BILLING_EXTENSION_MIGRATIONS,
+  BILLING_APPROVED_PATCH_MIGRATIONS,
   BILLING_MIGRATION_COUNT,
   BILLING_LATEST_MIGRATION,
   ACTIVATION_SHA,
@@ -140,8 +141,13 @@ export function validateRepository(root, input) {
     }));
   validateMigrations(
     manifest.migrations.approved,
-    actual,
+    actual.slice(0, BILLING_MIGRATION_COUNT),
     manifest.migrations.expectedLatestMigration,
+  );
+  requireCheck(
+    JSON.stringify(actual.slice(BILLING_MIGRATION_COUNT)) ===
+      JSON.stringify(BILLING_APPROVED_PATCH_MIGRATIONS),
+    "BILLING_PATCH_MIGRATION_DRIFT",
   );
   requireCheck(
     actual[184].sha256 === RETIREMENT_SHA,
@@ -152,7 +158,7 @@ export function validateRepository(root, input) {
     "ACTIVATION_MIGRATION_DRIFT",
   );
   requireCheck(
-    JSON.stringify(actual.slice(186)) ===
+    JSON.stringify(actual.slice(186, BILLING_MIGRATION_COUNT)) ===
       JSON.stringify(BILLING_EXTENSION_MIGRATIONS),
     "BILLING_EXTENSION_MIGRATION_DRIFT",
   );

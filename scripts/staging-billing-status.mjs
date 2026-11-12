@@ -7,6 +7,7 @@ import {
   BILLING_FUNCTIONS,
   CONFIGURATION_CLASSES,
   JWT_CONTRACTS,
+  BILLING_APPROVED_PATCH_MIGRATIONS,
 } from "./billing-deployment-contract.mjs";
 
 // The user corrected the active feature-branch staging target on 2026-11-09.
@@ -139,9 +140,13 @@ export async function inspectStagingBilling({
         history.every((r) => /^\d{14}$/.test(r.version)),
     );
     const versions = history.map((r) => r.version);
+    const patched = [
+      ...approved,
+      ...BILLING_APPROVED_PATCH_MIGRATIONS.map((m) => m.filename.slice(0, 14)),
+    ];
     const matches =
-      versions.length <= approved.length &&
-      versions.every((v, i) => v === approved[i]);
+      versions.length <= patched.length &&
+      versions.every((v, i) => v === patched[i]);
     let policy = null;
     if (schema[0].has_billing_policy) {
       const rows = await sql(STATUS_QUERIES.policy);
@@ -183,6 +188,12 @@ export async function inspectStagingBilling({
               .map((m) => m.filename)
           : null,
         hashesAndSchemaVerified: false,
+        appliedPatchCount: matches
+          ? Math.max(0, versions.length - approved.length)
+          : null,
+        approvedPatches: BILLING_APPROVED_PATCH_MIGRATIONS.map(
+          (m) => m.filename,
+        ),
       },
       billingPolicy: policy,
       functions: {

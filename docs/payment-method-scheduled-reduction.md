@@ -91,3 +91,39 @@ Verify the published Netlify commit, billing explanation and server restriction,
 then compare retained subscription/operation/payment/evidence hashes. The
 payment-method checkout remains intentionally unavailable during the reduction;
 this release cannot be reported as a successful payment-method update.
+
+## Subsequent isolated sandbox test and bounded SQL amendment
+
+End-to-end testing on a separate paid sandbox owner exposed a completion defect:
+Paddle's signed zero-value `transaction.completed` contains one `authorized`
+attempt for amount `0`. The original completion check accepted only an empty
+attempt list. The provider checkout succeeded while the preparation remained
+ready. This observation does not change scheduled-reduction eligibility.
+
+Migration `20261112110032_payment_method_zero_authorization_completion.sql`
+accepts empty attempts or exactly one zero-value authorized verification. It
+retains receipt, customer, subscription, item, origin, currency, captured-value,
+all-zero financial totals and no-payment-application checks. It marks only the
+verified update-only completion event processed in the same transaction as its
+preparation. Debt settlement still requires the existing authenticated unique
+renewal application. No eligibility, operation, dispatch or authority guard is
+removed.
+
+This supersedes the frontend-only deployment scope above for the isolated-test
+follow-up. The historical 188 migration hashes and release checkpoints remain
+immutable. The exact 189th migration is registered separately in the deployment
+contract and aggregate payload freeze; arbitrary SQL changes still fail closed.
+The readiness workflow's `repair_payment_method_completion` mode waits for
+source checks and a fresh local reset/lint/SQL/race suite, then requires the
+existing `supabase-staging` review. The guarded pinned CLI pushes only that exact
+pending migration from a verified disposable artifact. It verifies the prior
+function's exact definition, ledger and unchanged ACLs, then reconciles only the
+separate synthetic owner's exact retained signed event through the normal
+service function. Original account hashes must remain unchanged. Ambiguous
+writes stop without automatic retries.
+
+Do not run historical populated upgrade/bootstrap to apply this patch. Those
+plans remain bounded to the 188 baseline and cannot authorize a newer schema.
+Read-only inventory reports the approved patch separately; it does not infer
+hash/schema verification from migration versions alone. New installation or
+upgrade plans beyond that historical baseline need their own complete plan.

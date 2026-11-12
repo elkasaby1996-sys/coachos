@@ -4,10 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Inspect only, enable checkout for one test owner, or pause new checkout
+        description: Inspect, manage the scoped sandbox pilot, prepare a fixture, or apply the exact payment-method patch
         type: choice
         options:
-          [inspect, enable_pilot, pause_checkout, prepare_payment_method_test]
+          [
+            inspect,
+            enable_pilot,
+            pause_checkout,
+            prepare_payment_method_test,
+            repair_payment_method_completion,
+          ]
         default: inspect
         required: true
       pilot_user_id:
@@ -19,7 +25,7 @@ on:
         type: string
         required: false
       fixture_user_id:
-        description: Fresh synthetic owner UUID for reviewed payment-method test preparation
+        description: Synthetic owner UUID (fresh for preparation; existing isolated owner for the exact patch)
         type: string
         required: false
       fixture_public_key:
@@ -44,6 +50,8 @@ on:
       - tests/unit/staging-payment-method-ui-amendment.test.ts
       - scripts/staging-payment-method-fixture.mjs
       - tests/unit/staging-payment-method-fixture.test.ts
+      - scripts/staging-payment-method-patch.mjs
+      - tests/unit/staging-payment-method-patch.test.ts
 
 permissions:
   contents: read
@@ -68,8 +76,31 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Validate immutable payload and catalogue inspection
-        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs && npx vitest run tests/unit/staging-sandbox-readiness.test.ts tests/unit/staging-sandbox-pilot.test.ts tests/unit/staging-sandbox-payment-status.test.ts tests/unit/paddle-catalogue-verifier.test.ts tests/unit/staging-billing-status.test.ts tests/unit/billing-management-interactions.test.ts tests/unit/billing-management-panel.test.ts tests/unit/staging-payment-method-ui-amendment.test.ts tests/unit/staging-payment-method-fixture.test.ts
+        run: npm run staging:commercial:validate && node scripts/validate-billing-retirement.mjs && npx vitest run tests/unit/staging-sandbox-readiness.test.ts tests/unit/staging-sandbox-pilot.test.ts tests/unit/staging-sandbox-payment-status.test.ts tests/unit/paddle-catalogue-verifier.test.ts tests/unit/staging-billing-status.test.ts tests/unit/billing-management-interactions.test.ts tests/unit/billing-management-panel.test.ts tests/unit/staging-payment-method-ui-amendment.test.ts tests/unit/staging-payment-method-fixture.test.ts tests/unit/staging-payment-method-patch.test.ts
       - run: npm run lint && npm run format
+
+  payment-method-database-validation:
+    if: github.repository == 'elkasaby1996-sys/coachos' && github.ref == 'refs/heads/Ahmed-billing' && github.event_name == 'workflow_dispatch' && inputs.mode == 'repair_payment_method_completion'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: 2.109.1
+      - run: supabase db start --yes && supabase db reset --local --yes
+      - run: supabase db lint --local --level error --fail-on error && supabase test db
+      - run: python scripts/test-payment-method-zero-concurrency.py
+      - if: always()
+        run: supabase stop --no-backup
 
   catalogue:
     name: Inspect sandbox catalogue and staging email settings
@@ -193,4 +224,48 @@ jobs:
           name: staging-payment-method-fixture-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/staging-payment-method-fixture/
           retention-days: 1
+          if-no-files-found: ignore
+
+  payment-method-patch:
+    name: Review exact zero-authorization SQL patch and retained completion
+    if: github.repository == 'elkasaby1996-sys/coachos' && github.ref == 'refs/heads/Ahmed-billing' && github.event_name == 'workflow_dispatch' && inputs.mode == 'repair_payment_method_completion'
+    needs: [validate, payment-method-database-validation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: supabase-staging
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: 2.109.1
+      - name: Apply only the pinned migration and verify the retained synthetic completion
+        env:
+          STAGING_FIXTURE_USER_ID: ${{ inputs.fixture_user_id }}
+          STAGING_PILOT_USER_ID: ${{ inputs.pilot_user_id }}
+          CONFIRM_COMMIT_SHA: ${{ inputs.confirm_commit_sha }}
+          STAGING_PILOT_ENVIRONMENT: supabase-staging
+          STAGING_SUPABASE_PROJECT_REF: dgogugyuyfourdttvwuy
+          SUPABASE_PROJECT_REF: dgogugyuyfourdttvwuy
+          PADDLE_ENVIRONMENT: sandbox
+          ALLOW_REMOTE_SUPABASE: I_UNDERSTAND_THIS_TOUCHES_REMOTE
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/staging-payment-method-patch"
+          node --experimental-transform-types scripts/staging-payment-method-patch.mjs > "$RUNNER_TEMP/staging-payment-method-patch/report.json"
+      - name: Retain sanitized exact-patch verification
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: staging-payment-method-patch-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/staging-payment-method-patch/
+          retention-days: 7
           if-no-files-found: ignore

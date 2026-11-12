@@ -73,3 +73,33 @@ this scenario as blocked if a supported real recurring failure cannot be reached
 Record actual outcomes, commit/deployment, retained preparation/event identities
 privately, provider/server confirmation and original-account preservation in the
 session journal. Distinguish local mocked regressions from hosted sandbox passes.
+
+## Observed hosted results on November 12, 2026
+
+The approved fixture setup run `43202595104` created the isolated owner and
+changed only the checkout pilot scope; its original-account fingerprint matched
+before/after. Real staging checkout purchased Growth monthly with zero extra
+seats. Processed subscription-created and transaction-completed events confirm
+the unique initial payment; the next boundary is December 12 at 10:52:51 UTC.
+
+Closing payment-method checkout, explicitly refreshing and reopening succeeded.
+Both calls reused one ready preparation with identical full-row digest,
+transaction reference and dispatch claim. This exercises the frontend refresh
+lockout fix on the hosted app. Closure itself did not complete the preparation.
+
+Completing reopened Paddle checkout with the official sandbox Visa debit card
+showed provider success. Server confirmation exposed the zero-authorization
+completion defect described in `payment-method-scheduled-reduction.md`. Until
+the reviewed SQL patch is applied and that exact signed event/preparation is
+confirmed processed/completed, this is **not a passed server-confirmed update**.
+Use readiness mode `repair_payment_method_completion`, the existing synthetic
+owner as `fixture_user_id`, the original owner as `pilot_user_id`, and the exact
+reviewed commit. Do not rerun account preparation or create another checkout.
+
+Genuine failed-renewal recovery remains **blocked** for immediate execution. The
+separate subscription is paid and has no failed recurring obligation. The
+official subsequent-decline card needs an actual later charge, while accelerating
+this paid period violates RepSync's lifecycle boundary contract. Neither a
+declined card-verification attempt nor Paddle's frontend recovery simulation
+would prove debt recovery. Keep the successful test instrument and paid records;
+arrange a separately reviewed renewal-time test instead of fabricating history.

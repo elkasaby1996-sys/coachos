@@ -9,6 +9,14 @@ export const BILLING_EXTENSION_MIGRATIONS = Object.freeze([
   },
 ]);
 export const BILLING_MIGRATION_COUNT = 188;
+// Historical installation/retirement evidence remains bound to the immutable
+// 188-migration baseline. Later bounded patches have separate review/apply jobs.
+export const BILLING_APPROVED_PATCH_MIGRATIONS = Object.freeze([
+  {
+    filename: "20261112110032_payment_method_zero_authorization_completion.sql",
+    sha256: "f05b39eff5e7c655fd5ed61bc3f40d40013ef848297f1bde3fed096c369f8667",
+  },
+]);
 export const BILLING_LATEST_MIGRATION =
   BILLING_EXTENSION_MIGRATIONS.at(-1).filename;
 // Repository-authoritative deployment metadata. No transport, credentials or mutation.

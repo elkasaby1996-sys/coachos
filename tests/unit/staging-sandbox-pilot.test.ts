@@ -357,7 +357,10 @@ describe("staging pilot activation", () => {
       "github.event_name == 'workflow_dispatch'",
     );
     expect(JSON.stringify(workflow.jobs.validate)).not.toContain("secrets.");
-    expect(JSON.stringify(workflow)).not.toMatch(
+    expect(JSON.stringify(workflow.jobs.pilot)).not.toMatch(
+      /SUPABASE_DB_PASSWORD|functions deploy|db push/,
+    );
+    expect(JSON.stringify(workflow.jobs["payment-method-fixture"])).not.toMatch(
       /SUPABASE_DB_PASSWORD|functions deploy|db push/,
     );
   });

@@ -17,11 +17,12 @@ import {
   FUNCTION_CONTRACTS,
   LS_TOMBSTONES,
   OUTSIDE_BILLING_DEPLOYMENT,
+  BILLING_APPROVED_PATCH_MIGRATIONS,
 } from "./billing-deployment-contract.mjs";
 import { hash } from "./billing-retirement-release.mjs";
 
 export const FROZEN_PAYLOAD = "8af05aa48cbccca694b2da447d77f8977ec3401a";
-// Bounded frontend-only amendment. Backend/schema/configuration stay frozen.
+// Bounded amendments. Each exact payload needs fresh environment review.
 // A new frontend edit must be reviewed and repinned here; never accept a path
 // allowlist without verifying its exact normalized contents.
 export const PAYMENT_METHOD_UI_AMENDMENT = Object.freeze({
@@ -29,6 +30,18 @@ export const PAYMENT_METHOD_UI_AMENDMENT = Object.freeze({
     "d3712ecff7d70a8c709f2b30ad28e2e95833580d7ea78f84896bf718873e2cc7",
   "src/features/billing/use-payment-method-update.ts":
     "b79be20efc5f064ba05aedeb017c4abfec2448c8ab3578b6bb5028e129b40cd9",
+});
+export const PAYMENT_METHOD_SQL_AMENDMENT = Object.freeze(
+  Object.fromEntries(
+    BILLING_APPROVED_PATCH_MIGRATIONS.map((m) => [
+      `supabase/migrations/${m.filename}`,
+      m.sha256,
+    ]),
+  ),
+);
+const PAYMENT_METHOD_AMENDMENTS = Object.freeze({
+  ...PAYMENT_METHOD_UI_AMENDMENT,
+  ...PAYMENT_METHOD_SQL_AMENDMENT,
 });
 export const TARGETS = Object.freeze({
   baseline: 184,
@@ -102,7 +115,7 @@ export function payloadFingerprint(root = process.cwd()) {
     .split("\n")
     .filter(Boolean)
     .sort();
-  verifyPaymentMethodUiAmendment(root, changed);
+  verifyPaymentMethodAmendments(root, changed);
   ensure(
     git([
       "ls-files",
@@ -123,11 +136,29 @@ export function payloadFingerprint(root = process.cwd()) {
     frozenCommit: FROZEN_PAYLOAD,
     amendments: changed.map((path) => ({
       path,
-      sha256: PAYMENT_METHOD_UI_AMENDMENT[path],
+      sha256: PAYMENT_METHOD_AMENDMENTS[path],
     })),
     digest: hash(canonical(records)),
     records,
   };
+}
+export function verifyPaymentMethodAmendments(root, changed) {
+  ensure(
+    canonical(changed) ===
+      canonical(Object.keys(PAYMENT_METHOD_AMENDMENTS).sort()),
+    "FROZEN_PAYLOAD_DRIFT",
+  );
+  verifyPaymentMethodUiAmendment(
+    root,
+    changed.filter((path) => Object.hasOwn(PAYMENT_METHOD_UI_AMENDMENT, path)),
+  );
+  for (const path of Object.keys(PAYMENT_METHOD_SQL_AMENDMENT)) {
+    verifyPathBoundary(root, join(root, path));
+    ensure(
+      hash(text(join(root, path))) === PAYMENT_METHOD_SQL_AMENDMENT[path],
+      "FROZEN_PAYLOAD_DRIFT",
+    );
+  }
 }
 export function verifyPaymentMethodUiAmendment(root, changed) {
   // Either the original frozen payload or the complete pinned amendment.
